@@ -130,16 +130,106 @@ Graduate research team of 3–4 students with the following role coverage:
 
 ## Getting Started
 
-Code, datasets, and model checkpoints will be released phase by phase. Check back as the project progresses.
+Phase 1 — the MCP benchmark harness (`benchmark/`) — is runnable now. Phases 2–4
+land in `interpretability/`, `finetuning/`, and `experts/` as the project progresses.
 
 ```
-# Repository structure (planned)
-├── benchmark/        # Phase 1: MCP evaluation harness
-├── interpretability/ # Phase 2: layer attribution tools
-├── finetuning/       # Phase 3: selective FT experiments
-├── experts/          # Phase 4: domain specialist models
-└── paper/            # LaTeX source for publications
+# Repository structure
+├── benchmark/        # Phase 1: MCP evaluation harness   (available)
+├── interpretability/ # Phase 2: layer attribution tools  (planned)
+├── finetuning/       # Phase 3: selective FT experiments (planned)
+├── experts/          # Phase 4: domain specialist models (planned)
+└── paper/            # LaTeX source for publications      (planned)
 ```
+
+### Prerequisites
+
+- **Git** and **Python 3.10+**
+- **[uv](https://docs.astral.sh/uv/)** — package/venv manager
+  - Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - Windows (PowerShell): `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+- A **model server with an OpenAI-compatible API**. The examples below use
+  [llama.cpp](https://github.com/ggml-org/llama.cpp), but any OpenAI-compatible
+  endpoint (vLLM, etc.) works — the harness only speaks HTTP.
+
+### 1. Clone the repo and install the harness
+
+**Linux / macOS**
+```bash
+git clone https://github.com/mcp-research-arvp/LayerMCP.git
+cd LayerMCP
+uv venv
+source .venv/bin/activate
+uv pip install -e ./benchmark
+```
+
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/mcp-research-arvp/LayerMCP.git
+cd LayerMCP
+uv venv
+.venv\Scripts\Activate.ps1
+uv pip install -e .\benchmark
+```
+
+This installs the `mcpbench` CLI into the virtual environment.
+
+### 2. Start a model server (llama.cpp)
+
+> **`--jinja` is required** — without it, llama.cpp does not parse tool calls into
+> the OpenAI `tool_calls` field and every task records an empty response.
+
+**Linux / macOS — build from source**
+```bash
+sudo apt install -y cmake build-essential libcurl4-openssl-dev libopenblas-dev   # Debian/Ubuntu
+git clone https://github.com/ggml-org/llama.cpp ~/llama.cpp
+cmake -S ~/llama.cpp -B ~/llama.cpp/build -DCMAKE_BUILD_TYPE=Release \
+      -DGGML_NATIVE=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS
+cmake --build ~/llama.cpp/build -j
+```
+Add `-DGGML_CUDA=ON` instead of the BLAS flags if you have an NVIDIA GPU.
+
+**Windows — prebuilt binaries (easiest)**
+Download the latest Windows build from the
+[llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases) — e.g.
+`llama-*-bin-win-cpu-x64.zip` (CPU) or a `cuda` build (NVIDIA GPU) — and extract
+it to, say, `C:\llama.cpp`.
+
+**Download a model** (both OSes; `uv pip install huggingface_hub` first):
+```bash
+hf download Qwen/Qwen3-8B-GGUF Qwen3-8B-Q4_K_M.gguf --local-dir models
+```
+
+**Run the server:**
+
+Linux / macOS
+```bash
+~/llama.cpp/build/bin/llama-server --model models/Qwen3-8B-Q4_K_M.gguf \
+    --port 8080 --ctx-size 4096 --jinja
+```
+Windows (PowerShell)
+```powershell
+C:\llama.cpp\llama-server.exe --model models\Qwen3-8B-Q4_K_M.gguf `
+    --port 8080 --ctx-size 4096 --jinja
+```
+
+### 3. Add tasks and run the harness
+
+`benchmark/suites/` ships empty — drop in JSON task files (each file is an array of
+tasks; the schema is the `Task` model in
+[`benchmark/mcpbench/schema.py`](benchmark/mcpbench/schema.py)). Then run (with the
+venv activated, on either OS):
+
+```bash
+mcpbench run --suite all --no-think                          # every suite in benchmark/suites/
+mcpbench run --suite finance --no-think                      # just benchmark/suites/finance.json
+mcpbench run --endpoint http://localhost:8080 --limit 5      # first 5 tasks only
+```
+
+Each run sends every task to the endpoint, records the model's tool choice and
+telemetry (tokens, latency), prints a per-task line, and writes a JSON report to
+`results/`. `--no-think` disables Qwen3's chain-of-thought for faster, cleaner
+tool calls.
 
 ---
 

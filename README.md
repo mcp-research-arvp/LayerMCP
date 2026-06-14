@@ -128,108 +128,147 @@ Graduate research team of 3–4 students with the following role coverage:
 
 ---
 
+---
+
 ## Getting Started
 
-Phase 1 — the MCP benchmark harness (`benchmark/`) — is runnable now. Phases 2–4
-land in `interpretability/`, `finetuning/`, and `experts/` as the project progresses.
+The research direction above is still the intent of the project, but the current runnable
+repo structure is the local MCP tool-routing prototype below.
 
-```
-# Repository structure
-├── benchmark/        # Phase 1: MCP evaluation harness   (available)
-├── interpretability/ # Phase 2: layer attribution tools  (planned)
-├── finetuning/       # Phase 3: selective FT experiments (planned)
-├── experts/          # Phase 4: domain specialist models (planned)
-└── paper/            # LaTeX source for publications      (planned)
+### Current Repository Structure
+
+```text
+LayerMCP/
+├── benchmark/
+│   └── tool_routing.json
+├── evaluation/
+│   ├── __init__.py
+│   └── evaluate.py
+├── mcp_server/
+│   ├── __init__.py
+│   ├── server.py
+│   └── tool_impls.py
+├── models/
+│   ├── __init__.py
+│   └── qwen_router.py
+├── .gitignore
+├── pyproject.toml
+└── README.md
 ```
 
 ### Prerequisites
 
 - **Git** and **Python 3.10+**
-- **[uv](https://docs.astral.sh/uv/)** — package/venv manager
-  - Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-  - Windows (PowerShell): `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
-- A **model server with an OpenAI-compatible API**. The examples below use
-  [llama.cpp](https://github.com/ggml-org/llama.cpp), but any OpenAI-compatible
-  endpoint (vLLM, etc.) works — the harness only speaks HTTP.
+- Enough RAM/VRAM to load `Qwen/Qwen2.5-3B-Instruct`
+- Optional `HF_TOKEN` for faster Hugging Face downloads and higher rate limits
 
-### 1. Clone the repo and install the harness
-
-**Linux / macOS**
-```bash
-git clone https://github.com/mcp-research-arvp/LayerMCP.git
-cd LayerMCP
-uv venv
-source .venv/bin/activate
-uv pip install -e ./benchmark
-```
+### 1. Clone the Repo and Install the Project
 
 **Windows (PowerShell)**
+
 ```powershell
 git clone https://github.com/mcp-research-arvp/LayerMCP.git
 cd LayerMCP
-uv venv
+python -m venv .venv
 .venv\Scripts\Activate.ps1
-uv pip install -e .\benchmark
+pip install -e .
 ```
 
-This installs the `mcpbench` CLI into the virtual environment.
+This installs the dependencies from `pyproject.toml` and registers:
 
-### 2. Start a model server (llama.cpp)
+- `layermcp-server`
+- `layermcp-evaluate`
 
-> **`--jinja` is required** — without it, llama.cpp does not parse tool calls into
-> the OpenAI `tool_calls` field and every task records an empty response.
+### 2. Start the MCP Server
 
-**Linux / macOS — build from source**
-```bash
-sudo apt install -y cmake build-essential libcurl4-openssl-dev libopenblas-dev   # Debian/Ubuntu
-git clone https://github.com/ggml-org/llama.cpp ~/llama.cpp
-cmake -S ~/llama.cpp -B ~/llama.cpp/build -DCMAKE_BUILD_TYPE=Release \
-      -DGGML_NATIVE=ON -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS
-cmake --build ~/llama.cpp/build -j
-```
-Add `-DGGML_CUDA=ON` instead of the BLAS flags if you have an NVIDIA GPU.
+Run the server directly:
 
-**Windows — prebuilt binaries (easiest)**
-Download the latest Windows build from the
-[llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases) — e.g.
-`llama-*-bin-win-cpu-x64.zip` (CPU) or a `cuda` build (NVIDIA GPU) — and extract
-it to, say, `C:\llama.cpp`.
-
-**Download a model** (both OSes; `uv pip install huggingface_hub` first):
-```bash
-hf download Qwen/Qwen3-8B-GGUF Qwen3-8B-Q4_K_M.gguf --local-dir models
-```
-
-**Run the server:**
-
-Linux / macOS
-```bash
-~/llama.cpp/build/bin/llama-server --model models/Qwen3-8B-Q4_K_M.gguf \
-    --port 8080 --ctx-size 4096 --jinja
-```
-Windows (PowerShell)
 ```powershell
-C:\llama.cpp\llama-server.exe --model models\Qwen3-8B-Q4_K_M.gguf `
-    --port 8080 --ctx-size 4096 --jinja
+python mcp_server\server.py
 ```
 
-### 3. Add tasks and run the harness
+Or use the installed entrypoint:
 
-`benchmark/suites/` ships empty — drop in JSON task files (each file is an array of
-tasks; the schema is the `Task` model in
-[`benchmark/mcpbench/schema.py`](benchmark/mcpbench/schema.py)). Then run (with the
-venv activated, on either OS):
-
-```bash
-mcpbench run --suite all --no-think                          # every suite in benchmark/suites/
-mcpbench run --suite finance --no-think                      # just benchmark/suites/finance.json
-mcpbench run --endpoint http://localhost:8080 --limit 5      # first 5 tasks only
+```powershell
+layermcp-server
 ```
 
-Each run sends every task to the endpoint, records the model's tool choice and
-telemetry (tokens, latency), prints a per-task line, and writes a JSON report to
-`results/`. `--no-think` disables Qwen3's chain-of-thought for faster, cleaner
-tool calls.
+The server will usually appear to do nothing. That is expected. It is a stdio MCP server, so it waits silently for a client connection.
+
+### 3. Run the Evaluation Harness
+
+The evaluator starts the MCP server automatically. You do not need to start `mcp_server\server.py` first for evaluation runs.
+
+Evaluate routing only:
+
+```powershell
+python evaluation\evaluate.py
+```
+
+Evaluate routing and execute the predicted MCP tool for each sample:
+
+```powershell
+python evaluation\evaluate.py --call-predicted-tools
+```
+
+Or use the installed entrypoint:
+
+```powershell
+layermcp-evaluate --call-predicted-tools
+```
+
+### 4. Available CLI Flags
+
+- `--dataset <path>` -- use a different benchmark JSON file
+- `--server <path>` -- use a different MCP server entrypoint
+- `--call-predicted-tools` -- execute the predicted tool with `tool_args` from the dataset
+- `--help` -- show the built-in CLI help
+
+### 5. Current MCP Tools
+
+The server currently exposes:
+
+- `calculator`
+- `customer_lookup`
+- `github_search`
+
+These are deterministic offline fixtures for research and testing:
+
+- `calculator` safely evaluates simple arithmetic
+- `customer_lookup` returns deterministic mock customer data
+- `github_search` returns deterministic mock GitHub-style results without calling the live GitHub API
+
+### 6. Benchmark Format
+
+The benchmark file is `benchmark/tool_routing.json`. Each item looks like:
+
+```json
+[
+  {
+    "query": "What is 25 * 17?",
+    "expected_tool": "calculator",
+    "tool_args": {
+      "expression": "25 * 17"
+    }
+  }
+]
+```
+
+`tool_args` is used only when you run the evaluator with `--call-predicted-tools`.
+
+### 7. Runtime Flow
+
+1. `evaluation/evaluate.py` launches `mcp_server/server.py` as a child process.
+2. The MCP client connects over stdio and calls `initialize`.
+3. The evaluator calls `list_tools` to get the live tool catalog from the server.
+4. The router predicts one tool name from that live catalog.
+5. If `--call-predicted-tools` is enabled, the evaluator calls the predicted tool with the sample's `tool_args`.
+
+### Notes
+
+- The evaluation path no longer uses a hardcoded static tool list.
+- The router defaults to `Qwen/Qwen2.5-3B-Instruct`. You can override that with the `LAYERMCP_MODEL_NAME` environment variable.
+- If the model is not already cached locally, the first run will download it from the Hugging Face Hub.
 
 ---
 

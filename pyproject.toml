@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "layermcp"
+version = "0.1.0"
+description = "Research-oriented MCP server and tool routing experiments."
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=1.7,<2",
+    "mcp[cli]>=1.27,<2",
+    "pandas>=2.2,<3",
+    "torch>=2.6,<3",
+    "transformers>=4.52,<5",
+    "tqdm>=4.67,<5",
+]
+
+[project.scripts]
+layermcp-evaluate = "evaluation.evaluate:main"
+layermcp-server = "mcp_server.server:main"
+
+[tool.setuptools]
+packages = ["evaluation", "mcp_server", "models"]

@@ -6,14 +6,32 @@ build-backend = "setuptools.build_meta"
 name = "layermcp"
 version = "0.1.0"
 description = "Research-oriented MCP server and tool routing experiments."
+readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
 dependencies = [
-    "accelerate>=1.7,<2",
     "mcp[cli]>=1.27,<2",
+    "tqdm>=4.67,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.15,<2",
+    "pytest>=8.0,<9",
+    "ruff>=0.11,<1",
+]
+train = [
+    "accelerate>=1.7,<2",
+    "bitsandbytes>=0.45,<1; platform_system != 'Windows'",
+    "datasets>=3.6,<5",
     "pandas>=2.2,<3",
+    "peft>=0.15,<1",
     "torch>=2.6,<3",
     "transformers>=4.52,<5",
-    "tqdm>=4.67,<5",
+    "trl>=0.17,<1",
+]
+serve = [
+    "vllm>=0.8,<1; platform_system != 'Windows'",
 ]
 
 [project.scripts]
@@ -21,4 +39,22 @@ layermcp-evaluate = "evaluation.evaluate:main"
 layermcp-server = "mcp_server.server:main"
 
 [tool.setuptools]
-packages = ["evaluation", "mcp_server", "models"]
+packages = ["benchmark", "evaluation", "mcp_server", "models"]
+
+[tool.setuptools.package-data]
+benchmark = ["*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

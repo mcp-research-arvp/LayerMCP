@@ -2,17 +2,29 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from types import ModuleType
 from typing import Sequence
-
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL_NAME = os.environ.get("LAYERMCP_MODEL_NAME", "Qwen/Qwen2.5-3B-Instruct")
 HALLUCINATED_TOOL = "hallucinated_tool"
 
 
+def _require_transformer_dependencies():
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    except ImportError as exc:
+        raise RuntimeError(
+            "The Qwen router requires the training/model dependencies. "
+            'Install them with: pip install -e ".[train]"'
+        ) from exc
+
+    return torch, AutoModelForCausalLM, AutoTokenizer
+
+
 @lru_cache(maxsize=1)
 def _load_model_components():
+    torch, AutoModelForCausalLM, AutoTokenizer = _require_transformer_dependencies()
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     model_kwargs = {"low_cpu_mem_usage": True}
@@ -73,6 +85,8 @@ def choose_tool(query: str, available_tools: Sequence[str]) -> str:
     if not tool_catalog:
         raise ValueError("available_tools must not be empty.")
 
+    torch: ModuleType
+    torch, _, _ = _require_transformer_dependencies()
     tokenizer, model = _load_model_components()
 
     messages = [

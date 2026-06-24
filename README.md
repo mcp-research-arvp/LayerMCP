@@ -1,4 +1,4 @@
-# LayerMCP# Layer-Aware Adaptation of Open-Source LLMs for MCP Tool Selection and Domain Expertization
+# LayerMCP
 
 > Investigating whether transformer layer subsets drive MCP tool-routing and domain reasoning — and whether selectively fine-tuning those layers can replace full-model adaptation.
 
@@ -140,6 +140,7 @@ repo structure is the local MCP tool-routing prototype below.
 ```text
 LayerMCP/
 ├── benchmark/
+│   ├── __init__.py
 │   └── tool_routing.json
 ├── evaluation/
 │   ├── __init__.py
@@ -151,7 +152,12 @@ LayerMCP/
 ├── models/
 │   ├── __init__.py
 │   └── qwen_router.py
+├── tests/
+│   ├── test_evaluate_helpers.py
+│   ├── test_qwen_router.py
+│   └── test_tool_impls.py
 ├── .gitignore
+├── LICENSE
 ├── pyproject.toml
 └── README.md
 ```
@@ -159,37 +165,71 @@ LayerMCP/
 ### Prerequisites
 
 - **Git** and **Python 3.10+**
-- Enough RAM/VRAM to load `Qwen/Qwen2.5-3B-Instruct`
+- Enough RAM/VRAM to load `Qwen/Qwen2.5-3B-Instruct` when running model-backed evaluation
 - Optional `HF_TOKEN` for faster Hugging Face downloads and higher rate limits
 
 ### 1. Clone the Repo and Install the Project
 
-**Windows (PowerShell)**
+**Linux / macOS**
+
+```bash
+git clone https://github.com/mcp-research-arvp/LayerMCP.git
+cd LayerMCP
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+**Windows PowerShell**
 
 ```powershell
 git clone https://github.com/mcp-research-arvp/LayerMCP.git
 cd LayerMCP
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -e .
+pip install -e ".[dev]"
 ```
 
-This installs the dependencies from `pyproject.toml` and registers:
+This installs the lightweight runtime and developer tools, then registers:
 
 - `layermcp-server`
 - `layermcp-evaluate`
+
+Install model training/evaluation dependencies only when you need to load Hugging Face models:
+
+```bash
+pip install -e ".[train]"
+```
+
+Install vLLM support separately for fast post-training inference:
+
+```bash
+pip install -e ".[serve]"
+```
+
+You can combine extras when setting up a full research environment:
+
+```bash
+pip install -e ".[dev,train]"
+```
+
+Run the no-model smoke tests with:
+
+```bash
+python -m unittest discover -s tests
+```
 
 ### 2. Start the MCP Server
 
 Run the server directly:
 
-```powershell
-python mcp_server\server.py
+```bash
+python -m mcp_server.server
 ```
 
 Or use the installed entrypoint:
 
-```powershell
+```bash
 layermcp-server
 ```
 
@@ -201,21 +241,23 @@ The evaluator starts the MCP server automatically. You do not need to start `mcp
 
 Evaluate routing only:
 
-```powershell
-python evaluation\evaluate.py
+```bash
+python -m evaluation.evaluate
 ```
 
 Evaluate routing and execute the predicted MCP tool for each sample:
 
-```powershell
-python evaluation\evaluate.py --call-predicted-tools
+```bash
+python -m evaluation.evaluate --call-predicted-tools
 ```
 
 Or use the installed entrypoint:
 
-```powershell
+```bash
 layermcp-evaluate --call-predicted-tools
 ```
+
+The evaluator uses `models.qwen_router` by default. Install the `train` extra before running model-backed evaluation.
 
 ### 4. Available CLI Flags
 

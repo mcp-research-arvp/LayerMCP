@@ -8,10 +8,6 @@ import sys
 import time
 from typing import Any
 
-from mcp import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
-from tqdm import tqdm
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -54,6 +50,9 @@ def _summarize_tool_result(result: Any) -> str:
 
 
 async def _run_server_session(server_path: Path):
+    from mcp import ClientSession
+    from mcp.client.stdio import StdioServerParameters, stdio_client
+
     server = StdioServerParameters(
         command=sys.executable,
         args=[str(server_path)],
@@ -72,6 +71,7 @@ async def _evaluate_with_server(
     call_predicted_tools: bool,
 ) -> None:
     from models.qwen_router import HALLUCINATED_TOOL, choose_tool
+    from tqdm import tqdm
 
     total = 0
     correct = 0

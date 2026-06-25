@@ -9,6 +9,7 @@ description = "Research-oriented MCP server and tool routing experiments."
 requires-python = ">=3.10"
 dependencies = [
     "accelerate>=1.7,<2",
+    "matplotlib>=3.8,<4",
     "mcp[cli]>=1.27,<2",
     "pandas>=2.2,<3",
     "torch>=2.6,<3",
@@ -21,4 +22,4 @@ layermcp-evaluate = "evaluation.evaluate:main"
 layermcp-server = "mcp_server.server:main"
 
 [tool.setuptools]
-packages = ["evaluation", "mcp_server", "models"]
+packages = ["analysis", "evaluation", "mcp_server", "models"]

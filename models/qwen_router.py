@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from functools import lru_cache
 from typing import Sequence
@@ -9,6 +10,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL_NAME = os.environ.get("LAYERMCP_MODEL_NAME", "Qwen/Qwen2.5-3B-Instruct")
 HALLUCINATED_TOOL = "hallucinated_tool"
+PROMPT_TEMPLATE = "tool_name_only_v1"
 
 
 @lru_cache(maxsize=1)
@@ -46,14 +48,28 @@ User query:
 
 
 def _extract_tool_name(response: str, available_tools: Sequence[str]) -> str:
+    tool_catalog = tuple(tool.lower() for tool in available_tools)
     normalized = response.strip().lower()
 
-    if normalized in available_tools:
+    if normalized in tool_catalog:
         return normalized
 
-    for tool in available_tools:
-        if tool in normalized:
-            return tool
+    try:
+        parsed = json.loads(response)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        tool_value = parsed.get("tool") or parsed.get("tool_name")
+        if isinstance(tool_value, str) and tool_value.strip().lower() in tool_catalog:
+            return tool_value.strip().lower()
+
+    first_line = next(
+        (line.strip().lower() for line in response.splitlines() if line.strip()),
+        "",
+    )
+    if first_line in tool_catalog:
+        return first_line
 
     if HALLUCINATED_TOOL in normalized:
         return HALLUCINATED_TOOL

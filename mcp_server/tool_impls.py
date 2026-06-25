@@ -22,6 +22,20 @@ _ALLOWED_UNARYOPS = {
 
 _CUSTOMER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
+_STOCK_PRICES = {
+    "AAPL": 214.35,
+    "MSFT": 497.12,
+    "TSLA": 182.44,
+    "NVDA": 141.67,
+}
+
+_CODE_FILES = {
+    "src/auth.py": "def authenticate(token):\n    return token == 'offline-demo-token'\n",
+    "src/payments.py": "def calculate_invoice_total(items):\n    return sum(item['price'] for item in items)\n",
+    "tests/test_auth.py": "def test_authenticate_accepts_demo_token():\n    assert authenticate('offline-demo-token')\n",
+    "README.md": "# Example Project\n\nOffline fixture used for code-routing benchmarks.\n",
+}
+
 
 def _safe_eval(node: ast.AST) -> int | float:
     if isinstance(node, ast.Expression):
@@ -94,6 +108,54 @@ def customer_lookup(customer_id: str) -> dict[str, Any]:
     }
 
 
+def stock_price_api(ticker: str) -> dict[str, Any]:
+    """
+    Return deterministic fake stock prices for offline finance routing experiments.
+    """
+    normalized = ticker.strip().upper()
+    if normalized not in _STOCK_PRICES:
+        raise ValueError(
+            "ticker must be one of: " + ", ".join(sorted(_STOCK_PRICES))
+        )
+
+    return {
+        "ticker": normalized,
+        "price": _STOCK_PRICES[normalized],
+        "currency": "USD",
+        "source": "offline-fixture",
+    }
+
+
+def unit_converter(value: float, from_unit: str, to_unit: str) -> dict[str, Any]:
+    """
+    Convert supported distance or temperature units using deterministic formulas.
+    """
+    source_unit = from_unit.strip().lower()
+    target_unit = to_unit.strip().lower()
+    conversions = {
+        ("km", "miles"): value * 0.621371,
+        ("kilometers", "miles"): value * 0.621371,
+        ("miles", "km"): value / 0.621371,
+        ("miles", "kilometers"): value / 0.621371,
+        ("celsius", "fahrenheit"): (value * 9 / 5) + 32,
+        ("fahrenheit", "celsius"): (value - 32) * 5 / 9,
+    }
+
+    key = (source_unit, target_unit)
+    if key not in conversions:
+        raise ValueError(
+            "supported conversions are km/miles and Celsius/Fahrenheit."
+        )
+
+    return {
+        "value": value,
+        "from_unit": source_unit,
+        "to_unit": target_unit,
+        "converted_value": round(conversions[key], 4),
+        "source": "offline-fixture",
+    }
+
+
 def github_search(query: str) -> dict[str, Any]:
     """
     Return deterministic mock GitHub-style search results without network access.
@@ -118,4 +180,46 @@ def github_search(query: str) -> dict[str, Any]:
                 "title": f"Discussion about {summary}",
             },
         ],
+    }
+
+
+def read_code_file(path: str) -> dict[str, Any]:
+    """
+    Return deterministic fake repository file contents for offline coding tasks.
+    """
+    normalized = path.strip().replace("\\", "/")
+    if normalized not in _CODE_FILES:
+        raise ValueError(
+            "path must be one of: " + ", ".join(sorted(_CODE_FILES))
+        )
+
+    return {
+        "path": normalized,
+        "content": _CODE_FILES[normalized],
+        "source": "offline-fixture",
+    }
+
+
+def ticket_router(issue: str) -> dict[str, Any]:
+    """
+    Route an enterprise support issue to a deterministic offline ticket category.
+    """
+    normalized = issue.strip()
+    if not normalized:
+        raise ValueError("issue must not be empty.")
+
+    lowered = normalized.lower()
+    if any(word in lowered for word in ("invoice", "billing", "refund", "charge")):
+        category = "billing"
+    elif any(word in lowered for word in ("password", "login", "account", "profile")):
+        category = "account"
+    elif any(word in lowered for word in ("breach", "security", "phishing", "mfa")):
+        category = "security"
+    else:
+        category = "technical_support"
+
+    return {
+        "issue": normalized,
+        "category": category,
+        "source": "offline-fixture",
     }

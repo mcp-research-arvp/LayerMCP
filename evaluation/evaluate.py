@@ -3,33 +3,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing.json"
+from evaluation.dataset import BenchmarkSample, NO_TOOL_NAME, load_benchmark
+
+BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing.jsonl"
 SERVER_PATH = PROJECT_ROOT / "mcp_server" / "server.py"
-
-
-def _load_dataset(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Benchmark dataset not found: {path}. "
-            "Create benchmark/tool_routing.json or update --dataset."
-        )
-
-    with path.open("r", encoding="utf-8") as handle:
-        dataset = json.load(handle)
-
-    if not isinstance(dataset, list):
-        raise ValueError("Benchmark dataset must be a JSON list.")
-
-    return dataset
 
 
 def _summarize_tool_result(result: Any) -> str:
@@ -66,11 +52,11 @@ async def _run_server_session(server_path: Path):
 
 
 async def _evaluate_with_server(
-    dataset: list[dict[str, Any]],
+    dataset: list[BenchmarkSample],
     server_path: Path,
     call_predicted_tools: bool,
 ) -> None:
-    from models.qwen_router import HALLUCINATED_TOOL, choose_tool
+    from models.qwen_router import choose_tool
     from tqdm import tqdm
 
     total = 0
@@ -86,34 +72,45 @@ async def _evaluate_with_server(
         print(f"Discovered MCP tools: {', '.join(available_tools)}")
 
         for sample in tqdm(dataset):
-            query = sample["query"]
-            expected = sample["expected_tool"]
+            missing_tools = sorted(set(sample.tools) - set(available_tools))
+            if missing_tools:
+                raise ValueError(
+                    f"Sample {sample.id} references tool(s) not exposed by the "
+                    f"server: {', '.join(missing_tools)}"
+                )
 
             start = time.perf_counter()
-            predicted = choose_tool(query, available_tools)
+            predicted = choose_tool(sample.query, sample.tools)
             latency = time.perf_counter() - start
 
             latencies.append(latency)
             total += 1
 
-            if predicted == expected:
+            if predicted == sample.expected_tool:
                 correct += 1
 
-            if predicted == HALLUCINATED_TOOL:
+            if predicted == NO_TOOL_NAME:
                 hallucinations += 1
 
-            print(f"\nQuery: {query}")
-            print(f"Expected: {expected}")
+            print(f"\nSample: {sample.id} ({sample.domain}, {sample.difficulty})")
+            print(f"Query: {sample.query}")
+            print(f"Expected: {sample.expected_tool}")
             print(f"Predicted: {predicted}")
 
-            if call_predicted_tools and predicted != HALLUCINATED_TOOL:
-                tool_args = sample.get("tool_args")
-                if tool_args is None:
-                    print("Tool call: skipped (no tool_args in dataset)")
+            if call_predicted_tools and predicted != NO_TOOL_NAME:
+                if not sample.expected_arguments:
+                    print("Tool call: skipped (no expected_arguments in dataset)")
                 else:
-                    call_result = await session.call_tool(predicted, tool_args)
-                    executed_tool_calls += 1
-                    print(f"Tool call: {_summarize_tool_result(call_result)}")
+                    try:
+                        call_result = await session.call_tool(
+                            predicted,
+                            sample.expected_arguments,
+                        )
+                    except Exception as exc:
+                        print(f"Tool call failed: {type(exc).__name__}: {exc}")
+                    else:
+                        executed_tool_calls += 1
+                        print(f"Tool call: {_summarize_tool_result(call_result)}")
 
     accuracy = correct / total if total else 0.0
     avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
@@ -134,7 +131,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dataset",
         type=Path,
         default=BENCHMARK_PATH,
-        help="Path to the benchmark JSON dataset.",
+        help="Path to the benchmark JSONL dataset.",
     )
     parser.add_argument(
         "--server",
@@ -145,13 +142,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--call-predicted-tools",
         action="store_true",
-        help="Call the predicted MCP tool using sample.tool_args when present.",
+        help=(
+            "Call the predicted MCP tool using sample.expected_arguments when "
+            "present."
+        ),
     )
     return parser
 
 
 async def _async_main(args: argparse.Namespace) -> None:
-    dataset = _load_dataset(args.dataset)
+    dataset = load_benchmark(args.dataset)
     await _evaluate_with_server(
         dataset=dataset,
         server_path=args.server,

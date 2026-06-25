@@ -141,9 +141,10 @@ repo structure is the local MCP tool-routing prototype below.
 LayerMCP/
 ├── benchmark/
 │   ├── __init__.py
-│   └── tool_routing.json
+│   └── tool_routing.jsonl
 ├── evaluation/
 │   ├── __init__.py
+│   ├── dataset.py
 │   └── evaluate.py
 ├── mcp_server/
 │   ├── __init__.py
@@ -153,6 +154,7 @@ LayerMCP/
 │   ├── __init__.py
 │   └── qwen_router.py
 ├── tests/
+│   ├── test_dataset.py
 │   ├── test_evaluate_helpers.py
 │   ├── test_qwen_router.py
 │   └── test_tool_impls.py
@@ -261,9 +263,9 @@ The evaluator uses `models.qwen_router` by default. Install the `train` extra be
 
 ### 4. Available CLI Flags
 
-- `--dataset <path>` -- use a different benchmark JSON file
+- `--dataset <path>` -- use a different benchmark JSONL file
 - `--server <path>` -- use a different MCP server entrypoint
-- `--call-predicted-tools` -- execute the predicted tool with `tool_args` from the dataset
+- `--call-predicted-tools` -- execute the predicted tool with `expected_arguments`
 - `--help` -- show the built-in CLI help
 
 ### 5. Current MCP Tools
@@ -282,29 +284,36 @@ These are deterministic offline fixtures for research and testing:
 
 ### 6. Benchmark Format
 
-The benchmark file is `benchmark/tool_routing.json`. Each item looks like:
+The benchmark file is `benchmark/tool_routing.jsonl`. Each line is one JSON
+object:
 
 ```json
-[
-  {
-    "query": "What is 25 * 17?",
-    "expected_tool": "calculator",
-    "tool_args": {
-      "expression": "25 * 17"
-    }
-  }
-]
+{"id":"math_easy_multiply_001","domain":"math","query":"What is 25 * 17?","tools":["calculator","customer_lookup","github_search"],"expected_tool":"calculator","expected_arguments":{"expression":"25 * 17"},"expected_result":{"expression":"25 * 17","result":425},"difficulty":"easy"}
 ```
 
-`tool_args` is used only when you run the evaluator with `--call-predicted-tools`.
+Required fields:
+
+- `id` -- unique stable sample identifier
+- `domain` -- research domain label such as `math`, `enterprise`, or `software_engineering`
+- `query` -- user-facing request
+- `tools` -- tool names available for that sample
+- `expected_tool` -- expected tool name, or `hallucinated_tool` when no tool should be called
+- `expected_arguments` -- expected tool arguments as a JSON object
+- `expected_result` -- expected deterministic tool result, or `null` for no-tool samples
+- `difficulty` -- one of `easy`, `medium`, or `hard`
+
+The loader also accepts legacy JSON-list files for migration, but JSONL is the
+default format for larger benchmark runs.
 
 ### 7. Runtime Flow
 
 1. `evaluation/evaluate.py` launches `mcp_server/server.py` as a child process.
 2. The MCP client connects over stdio and calls `initialize`.
 3. The evaluator calls `list_tools` to get the live tool catalog from the server.
-4. The router predicts one tool name from that live catalog.
-5. If `--call-predicted-tools` is enabled, the evaluator calls the predicted tool with the sample's `tool_args`.
+4. Each benchmark row is validated against the richer JSONL schema.
+5. The evaluator checks that the row's listed tools exist on the server.
+6. The router predicts one tool name from the row's `tools` list.
+7. If `--call-predicted-tools` is enabled, the evaluator calls the predicted tool with the sample's `expected_arguments`.
 
 ### Notes
 

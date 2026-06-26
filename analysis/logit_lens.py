@@ -5,14 +5,15 @@ import csv
 from collections import defaultdict
 from datetime import datetime, timezone
 import json
-import os
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+from models.model_loader import load_model_components, resolve_model_name
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing_phase2_seed.json"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "results"
-DEFAULT_MODEL_NAME = os.environ.get("LAYERMCP_MODEL_NAME", "Qwen/Qwen2.5-3B-Instruct")
+DEFAULT_MODEL_NAME = resolve_model_name()
 LABELS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 PROMPT_TEMPLATE = "forced_choice_label_v1"
 
@@ -306,7 +307,6 @@ def plot_results(rows: Sequence[Mapping[str, Any]], path: Path) -> None:
 
 def run_analysis(args: argparse.Namespace) -> dict[str, Path]:
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
     if args.plot:
         try:
@@ -322,12 +322,9 @@ def run_analysis(args: argparse.Namespace) -> dict[str, Path]:
     if args.max_examples is not None:
         samples = samples[: args.max_examples]
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model_kwargs: dict[str, Any] = {"low_cpu_mem_usage": True}
-    if torch.cuda.is_available():
-        model_kwargs["torch_dtype"] = torch.float16
-        model_kwargs["device_map"] = "auto"
-    model = AutoModelForCausalLM.from_pretrained(args.model, **model_kwargs)
+    components = load_model_components(args.model, output_hidden_states=True)
+    tokenizer = components.tokenizer
+    model = components.model
     if not torch.cuda.is_available():
         model.eval()
 

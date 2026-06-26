@@ -6,11 +6,15 @@ from collections import defaultdict
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import sys
 from typing import Any, Mapping, Sequence
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.model_loader import load_model_components, resolve_model_name
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing_phase2_seed.json"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "results"
 DEFAULT_MODEL_NAME = resolve_model_name()

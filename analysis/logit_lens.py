@@ -20,6 +20,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "results"
 DEFAULT_MODEL_NAME = resolve_model_name()
 LABELS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 PROMPT_TEMPLATE = "forced_choice_label_v1"
+GROUP_BY_CHOICES = ("phase2_focus", "domain")
 
 
 def load_benchmark(path: Path) -> list[dict[str, Any]]:
@@ -128,6 +129,7 @@ def aggregate_summary(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "average_correct_minus_best_wrong_logit": 0.0,
             "final_layer_accuracy": 0.0,
             "by_phase2_focus": {},
+            "by_domain": {},
         }
 
     sample_final_rows: dict[str, Mapping[str, Any]] = {}
@@ -145,8 +147,10 @@ def aggregate_summary(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         if row["predicted_label_at_final_layer"] == row["correct_label"]
     )
     focus_groups: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    domain_groups: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for row in rows:
         focus_groups[str(row["phase2_focus"])].append(row)
+        domain_groups[str(row["domain"])].append(row)
 
     return {
         "total_rows": len(rows),
@@ -166,7 +170,95 @@ def aggregate_summary(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             }
             for focus, group in sorted(focus_groups.items())
         },
+        "by_domain": {
+            domain: {
+                "rows": len(group),
+                "average_correct_minus_best_wrong_logit": sum(
+                    float(row["correct_minus_best_wrong_logit"]) for row in group
+                )
+                / len(group),
+            }
+            for domain, group in sorted(domain_groups.items())
+        },
     }
+
+
+def group_layer_margins(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    group_by: str,
+) -> dict[str, dict[int, list[float]]]:
+    if group_by not in GROUP_BY_CHOICES:
+        supported = ", ".join(GROUP_BY_CHOICES)
+        raise ValueError(f"Unsupported group_by {group_by!r}. Expected one of: {supported}.")
+
+    grouped: dict[str, dict[int, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        grouped[str(row[group_by])][int(row["layer_index"])].append(
+            float(row["correct_minus_best_wrong_logit"])
+        )
+    return grouped
+
+
+def summarize_samples(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    sample_groups: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for row in rows:
+        sample_groups[str(row["sample_id"])].append(row)
+
+    summaries: list[dict[str, Any]] = []
+    for sample_id, sample_rows in sorted(sample_groups.items()):
+        ordered = sorted(sample_rows, key=lambda row: int(row["layer_index"]))
+        final_row = ordered[-1]
+        strongest = max(ordered, key=lambda row: float(row["correct_minus_best_wrong_logit"]))
+        weakest = min(ordered, key=lambda row: float(row["correct_minus_best_wrong_logit"]))
+
+        summaries.append(
+            {
+                "sample_id": sample_id,
+                "domain": final_row["domain"],
+                "phase2_focus": final_row["phase2_focus"],
+                "correct_tool": final_row["correct_tool"],
+                "correct_label": final_row["correct_label"],
+                "final_predicted_label": final_row["predicted_label_at_final_layer"],
+                "final_correct": (
+                    final_row["predicted_label_at_final_layer"]
+                    == final_row["correct_label"]
+                ),
+                "final_correct_minus_best_wrong_logit": float(
+                    final_row["correct_minus_best_wrong_logit"]
+                ),
+                "strongest_layer": int(strongest["layer_index"]),
+                "strongest_margin": float(strongest["correct_minus_best_wrong_logit"]),
+                "weakest_layer": int(weakest["layer_index"]),
+                "weakest_margin": float(weakest["correct_minus_best_wrong_logit"]),
+            }
+        )
+
+    return summaries
+
+
+def select_strongest_successes(
+    sample_summaries: Sequence[Mapping[str, Any]],
+    *,
+    limit: int = 5,
+) -> list[Mapping[str, Any]]:
+    successful = [summary for summary in sample_summaries if summary["final_correct"]]
+    return sorted(
+        successful,
+        key=lambda summary: float(summary["final_correct_minus_best_wrong_logit"]),
+        reverse=True,
+    )[:limit]
+
+
+def select_weakest_cases(
+    sample_summaries: Sequence[Mapping[str, Any]],
+    *,
+    limit: int = 5,
+) -> list[Mapping[str, Any]]:
+    return sorted(
+        sample_summaries,
+        key=lambda summary: float(summary["final_correct_minus_best_wrong_logit"]),
+    )[:limit]
 
 
 def make_output_paths(output_dir: Path, timestamp: str | None = None) -> dict[str, Path]:
@@ -176,6 +268,7 @@ def make_output_paths(output_dir: Path, timestamp: str | None = None) -> dict[st
         "csv": output_dir / f"logit_lens_{run_timestamp}.csv",
         "summary": output_dir / f"logit_lens_{run_timestamp}_summary.json",
         "plot": output_dir / f"logit_lens_{run_timestamp}.png",
+        "sample_summary": output_dir / f"logit_lens_{run_timestamp}_sample_summary.csv",
     }
 
 
@@ -263,6 +356,27 @@ def write_csv(rows: Sequence[Mapping[str, Any]], path: Path) -> None:
         writer.writerows(rows)
 
 
+def write_sample_summary_csv(rows: Sequence[Mapping[str, Any]], path: Path) -> None:
+    fieldnames = [
+        "sample_id",
+        "domain",
+        "phase2_focus",
+        "correct_tool",
+        "correct_label",
+        "final_predicted_label",
+        "final_correct",
+        "final_correct_minus_best_wrong_logit",
+        "strongest_layer",
+        "strongest_margin",
+        "weakest_layer",
+        "weakest_margin",
+    ]
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def write_summary(
     *,
     rows: Sequence[Mapping[str, Any]],
@@ -282,27 +396,28 @@ def write_summary(
         json.dump(summary, handle, ensure_ascii=True, indent=2)
 
 
-def plot_results(rows: Sequence[Mapping[str, Any]], path: Path) -> None:
+def plot_results(
+    rows: Sequence[Mapping[str, Any]],
+    path: Path,
+    *,
+    group_by: str = "phase2_focus",
+) -> None:
     import matplotlib.pyplot as plt
 
-    grouped: dict[str, dict[int, list[float]]] = defaultdict(lambda: defaultdict(list))
-    for row in rows:
-        grouped[str(row["phase2_focus"])][int(row["layer_index"])].append(
-            float(row["correct_minus_best_wrong_logit"])
-        )
+    grouped = group_layer_margins(rows, group_by=group_by)
 
     plt.figure(figsize=(10, 6))
-    for focus, layer_values in sorted(grouped.items()):
+    for group_name, layer_values in sorted(grouped.items()):
         layers = sorted(layer_values)
         averages = [
             sum(layer_values[layer]) / len(layer_values[layer])
             for layer in layers
         ]
-        plt.plot(layers, averages, marker="o", label=focus)
+        plt.plot(layers, averages, marker="o", label=group_name)
 
     plt.xlabel("Layer")
     plt.ylabel("Average correct minus best-wrong logit")
-    plt.title("Layer-wise MCP tool-label separation")
+    plt.title(f"Layer-wise MCP tool-label separation by {group_by}")
     plt.legend()
     plt.tight_layout()
     plt.savefig(path)
@@ -338,6 +453,8 @@ def run_analysis(args: argparse.Namespace) -> dict[str, Path]:
 
     paths = make_output_paths(args.output_dir)
     write_csv(rows, paths["csv"])
+    sample_summaries = summarize_samples(rows)
+    write_sample_summary_csv(sample_summaries, paths["sample_summary"])
     write_summary(
         rows=rows,
         path=paths["summary"],
@@ -345,7 +462,7 @@ def run_analysis(args: argparse.Namespace) -> dict[str, Path]:
         model_name=args.model,
     )
     if args.plot:
-        plot_results(rows, paths["plot"])
+        plot_results(rows, paths["plot"], group_by=args.group_by)
 
     return paths
 
@@ -359,6 +476,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--max-examples", type=int)
     parser.add_argument("--plot", action="store_true")
+    parser.add_argument(
+        "--group-by",
+        choices=GROUP_BY_CHOICES,
+        default="phase2_focus",
+        help="Group plot lines by phase2_focus or domain.",
+    )
     return parser
 
 

@@ -1,32 +1,21 @@
 from __future__ import annotations
 
 import json
-import os
 from functools import lru_cache
 from typing import Sequence
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from models.model_loader import resolve_model_name, load_model_components
 
-MODEL_NAME = os.environ.get("LAYERMCP_MODEL_NAME", "Qwen/Qwen2.5-3B-Instruct")
+MODEL_NAME = resolve_model_name()
 HALLUCINATED_TOOL = "hallucinated_tool"
 PROMPT_TEMPLATE = "tool_name_only_v1"
 
 
 @lru_cache(maxsize=1)
 def _load_model_components():
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
-    model_kwargs = {"low_cpu_mem_usage": True}
-    if torch.cuda.is_available():
-        model_kwargs["dtype"] = torch.float16
-        model_kwargs["device_map"] = "auto"
-
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        **model_kwargs,
-    )
-    return tokenizer, model
+    components = load_model_components(MODEL_NAME)
+    return components.tokenizer, components.model
 
 
 def _build_prompt(query: str, available_tools: Sequence[str]) -> str:

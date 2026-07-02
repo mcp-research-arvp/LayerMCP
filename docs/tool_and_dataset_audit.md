@@ -157,8 +157,8 @@ Current model:
 
 - Default model: `Qwen/Qwen2.5-3B-Instruct`
 - Override mechanism: `LAYERMCP_MODEL_NAME` environment variable
-- Loading: `AutoTokenizer.from_pretrained()` and `AutoModelForCausalLM.from_pretrained()`
-- CUDA behavior: if CUDA is available, uses `torch.float16` and `device_map = "auto"`
+- Loading: shared Hugging Face/PyTorch utilities in `models/model_loader.py`
+- CUDA behavior: centralized in `models/model_loader.py`
 - Caching: model and tokenizer are cached in-process with `@lru_cache(maxsize=1)`
 
 Prompt construction:

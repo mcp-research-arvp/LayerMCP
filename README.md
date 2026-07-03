@@ -150,7 +150,11 @@ LayerMCP/
 │   └── tool_impls.py
 ├── models/
 │   ├── __init__.py
-│   └── qwen_router.py
+│   ├── routers/
+│   │   ├── qwen_hf_router.py
+│   │   └── gpt_oss_local_router.py
+│   └── architectures/
+│       └── gpt_oss_pytorch/
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
@@ -159,7 +163,7 @@ LayerMCP/
 ### Prerequisites
 
 - **Git** and **Python 3.10+**
-- Enough RAM/VRAM to load `Qwen/Qwen2.5-3B-Instruct`
+- Enough RAM/VRAM to load the router you choose
 - Optional `HF_TOKEN` for faster Hugging Face downloads and higher rate limits
 
 ### 1. Clone the Repo and Install the Project
@@ -217,10 +221,44 @@ Or use the installed entrypoint:
 layermcp-evaluate --call-predicted-tools
 ```
 
+Choose a router backend explicitly:
+
+```powershell
+layermcp-evaluate --router qwen-hf
+layermcp-evaluate --router gpt-oss-local
+```
+
+Router naming:
+
+- `qwen-hf` uses Hugging Face Transformers for both the architecture loader and Qwen weights.
+- `gpt-oss-local` uses the local PyTorch GPT-OSS architecture in `models/architectures/gpt_oss_pytorch/` and local checkpoint files.
+
+### GPT-OSS Checkpoints
+
+Downloaded weights should not be committed. By default, the GPT-OSS local router looks for:
+
+```text
+checkpoints/gpt-oss-20b/original/
+```
+
+You can download into the ignored `checkpoints/` directory:
+
+```powershell
+mkdir checkpoints
+hf download openai/gpt-oss-20b --local-dir checkpoints/gpt-oss-20b
+```
+
+If your checkpoint lives somewhere else, set:
+
+```powershell
+$env:LAYERMCP_GPT_OSS_CHECKPOINT = "path\to\gpt-oss-20b\original"
+```
+
 ### 4. Available CLI Flags
 
 - `--dataset <path>` -- use a different benchmark JSON file
 - `--server <path>` -- use a different MCP server entrypoint
+- `--router <name>` -- choose `qwen-hf` or `gpt-oss-local`
 - `--call-predicted-tools` -- execute the predicted tool with `tool_args` from the dataset
 - `--help` -- show the built-in CLI help
 

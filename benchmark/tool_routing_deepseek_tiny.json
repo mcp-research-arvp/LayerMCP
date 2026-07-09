@@ -1,0 +1,10 @@
+[
+  {
+    "id": "deepseek_tiny_001",
+    "domain": "mathematics",
+    "query": "What is 23 * 19?",
+    "available_tools": ["calculator", "stock_price_api", "github_search", "customer_lookup"],
+    "expected_tool": "calculator",
+    "expected_args": {"expression": "23 * 19"}
+  }
+]

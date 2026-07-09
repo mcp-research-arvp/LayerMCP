@@ -124,8 +124,19 @@ async def _evaluate_with_server(
     benchmark_path: Path,
     server_path: Path,
     call_predicted_tools: bool,
+    router_name: str,
 ) -> None:
-    from models.qwen_router import HALLUCINATED_TOOL, MODEL_NAME, PROMPT_TEMPLATE, choose_tool
+    if router_name == "qwen":
+        from models.qwen_router import HALLUCINATED_TOOL, MODEL_NAME, PROMPT_TEMPLATE, choose_tool
+    elif router_name == "deepseek_model_surgery":
+        from models.deepseek_model_surgery_router import (
+            HALLUCINATED_TOOL,
+            MODEL_NAME,
+            PROMPT_TEMPLATE,
+            choose_tool,
+        )
+    else:
+        raise ValueError(f"Unknown router: {router_name}")
 
     total = 0
     correct = 0
@@ -261,6 +272,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Call the predicted MCP tool using sample.tool_args when present.",
     )
+    parser.add_argument(
+        "--router",
+        choices=["qwen", "deepseek_model_surgery"],
+        default="qwen",
+        help="Router backend to evaluate. Defaults to the existing Qwen router.",
+    )
     return parser
 
 
@@ -272,6 +289,7 @@ async def _async_main(args: argparse.Namespace) -> None:
         benchmark_path=benchmark_path,
         server_path=args.server,
         call_predicted_tools=args.call_predicted_tools,
+        router_name=args.router,
     )
 
 

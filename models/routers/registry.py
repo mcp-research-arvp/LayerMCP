@@ -17,6 +17,14 @@ ROUTER_MODULES = {
     "phi4-local": "models.routers.phi4_local_router",
     "phi-4-local": "models.routers.phi4_local_router",
     "phi4_local": "models.routers.phi4_local_router",
+    "llama": "models.routers.llama31_8b_local_router",
+    "llama31": "models.routers.llama31_8b_local_router",
+    "llama-3.1": "models.routers.llama31_8b_local_router",
+    "llama-3.1-8b": "models.routers.llama31_8b_local_router",
+    "llama-3.1-8b-local": "models.routers.llama31_8b_local_router",
+    "llama-3.1-8b-instruct": "models.routers.llama31_8b_local_router",
+    "llama-3.1-8b-instruct-local": "models.routers.llama31_8b_local_router",
+    "llama31_8b_local": "models.routers.llama31_8b_local_router",
 }
 
 

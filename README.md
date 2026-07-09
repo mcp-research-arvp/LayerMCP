@@ -227,6 +227,7 @@ Choose a router backend explicitly:
 layermcp-evaluate --router qwen-hf
 layermcp-evaluate --router gpt-oss-local
 layermcp-evaluate --router phi-4-local
+layermcp-evaluate --router llama-3.1-8b-local
 ```
 
 Router naming:
@@ -234,6 +235,7 @@ Router naming:
 - `qwen-hf` uses Hugging Face Transformers for both the architecture loader and Qwen weights.
 - `gpt-oss-local` uses the local PyTorch GPT-OSS architecture in `models/architectures/gpt_oss_pytorch/` and local checkpoint files.
 - `phi-4-local` uses the local PyTorch Phi-4 text-backbone architecture in `models/architectures/phi4_pytorch/` and local checkpoint files.
+- `llama-3.1-8b-local` uses the local PyTorch Llama 3.1 8B Instruct architecture in `models/architectures/llama31_8b_pytorch/` and local checkpoint files.
 
 ### GPT-OSS Checkpoints
 
@@ -270,11 +272,25 @@ The directory should contain `config.json`, tokenizer files, and `.safetensors` 
 $env:LAYERMCP_PHI4_CHECKPOINT = "path\to\phi-4"
 ```
 
+### Llama 3.1 8B Instruct Checkpoints
+
+By default, the Llama 3.1 8B Instruct local router looks for a Hugging Face-format checkpoint at:
+
+```text
+checkpoints/llama-3.1-8b-instruct/
+```
+
+The directory should contain tokenizer files and `.safetensors` shards. If your checkpoint lives somewhere else, set:
+
+```powershell
+$env:LAYERMCP_LLAMA31_8B_CHECKPOINT = "path\to\llama-3.1-8b-instruct"
+```
+
 ### 4. Available CLI Flags
 
 - `--dataset <path>` -- use a different benchmark JSON file
 - `--server <path>` -- use a different MCP server entrypoint
-- `--router <name>` -- choose `qwen-hf`, `gpt-oss-local`, or `phi-4-local`
+- `--router <name>` -- choose `qwen-hf`, `gpt-oss-local`, `phi-4-local`, or `llama-3.1-8b-local`
 - `--call-predicted-tools` -- execute the predicted tool with `tool_args` from the dataset
 - `--help` -- show the built-in CLI help
 

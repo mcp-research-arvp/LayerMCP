@@ -149,10 +149,12 @@ class RouterRegistryTests(unittest.TestCase):
         qwen_router = load_router("qwen-hf")
         gpt_oss_router = load_router("gpt-oss-local")
         phi4_router = load_router("phi-4-local")
+        llama_router = load_router("llama-3.1-8b-local")
 
         self.assertEqual(qwen_router.ROUTER_ID, "qwen_hf_router")
         self.assertEqual(gpt_oss_router.ROUTER_ID, "gpt_oss_local_router")
         self.assertEqual(phi4_router.ROUTER_ID, "phi4_local_router")
+        self.assertEqual(llama_router.ROUTER_ID, "llama31_8b_local_router")
 
     def test_registry_rejects_unknown_router(self) -> None:
         from models.routers.registry import load_router
@@ -205,6 +207,28 @@ class RouterRegistryTests(unittest.TestCase):
             self.assertEqual(
                 resolve_checkpoint_path(),
                 Path("custom/phi4"),
+            )
+
+    def test_llama31_router_extracts_json_tool_name(self) -> None:
+        from models.routers.llama31_8b_local_router import _extract_tool_name
+
+        response = '{"tool_name": "github_search"}'
+
+        self.assertEqual(
+            _extract_tool_name(response, ["calculator", "github_search"]),
+            "github_search",
+        )
+
+    def test_llama31_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.llama31_8b_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_LLAMA31_8B_CHECKPOINT": "custom/llama"},
+        ):
+            self.assertEqual(
+                resolve_checkpoint_path(),
+                Path("custom/llama"),
             )
 
 

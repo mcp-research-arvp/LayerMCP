@@ -12,6 +12,11 @@ ROUTER_MODULES = {
     "gpt-oss": "models.routers.gpt_oss_local_router",
     "gpt-oss-local": "models.routers.gpt_oss_local_router",
     "gpt_oss_local": "models.routers.gpt_oss_local_router",
+    "phi4": "models.routers.phi4_local_router",
+    "phi-4": "models.routers.phi4_local_router",
+    "phi4-local": "models.routers.phi4_local_router",
+    "phi-4-local": "models.routers.phi4_local_router",
+    "phi4_local": "models.routers.phi4_local_router",
 }
 
 

@@ -148,9 +148,11 @@ class RouterRegistryTests(unittest.TestCase):
 
         qwen_router = load_router("qwen-hf")
         gpt_oss_router = load_router("gpt-oss-local")
+        phi4_router = load_router("phi-4-local")
 
         self.assertEqual(qwen_router.ROUTER_ID, "qwen_hf_router")
         self.assertEqual(gpt_oss_router.ROUTER_ID, "gpt_oss_local_router")
+        self.assertEqual(phi4_router.ROUTER_ID, "phi4_local_router")
 
     def test_registry_rejects_unknown_router(self) -> None:
         from models.routers.registry import load_router
@@ -181,6 +183,28 @@ class RouterRegistryTests(unittest.TestCase):
             self.assertEqual(
                 resolve_checkpoint_path(),
                 Path("custom/checkpoint"),
+            )
+
+    def test_phi4_router_extracts_json_tool_name(self) -> None:
+        from models.routers.phi4_local_router import _extract_tool_name
+
+        response = '```json\n{"name": "calculator", "arguments": {"expression": "2 + 2"}}\n```'
+
+        self.assertEqual(
+            _extract_tool_name(response, ["calculator", "github_search"]),
+            "calculator",
+        )
+
+    def test_phi4_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.phi4_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_PHI4_CHECKPOINT": "custom/phi4"},
+        ):
+            self.assertEqual(
+                resolve_checkpoint_path(),
+                Path("custom/phi4"),
             )
 
 

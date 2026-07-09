@@ -226,12 +226,14 @@ Choose a router backend explicitly:
 ```powershell
 layermcp-evaluate --router qwen-hf
 layermcp-evaluate --router gpt-oss-local
+layermcp-evaluate --router phi-4-local
 ```
 
 Router naming:
 
 - `qwen-hf` uses Hugging Face Transformers for both the architecture loader and Qwen weights.
 - `gpt-oss-local` uses the local PyTorch GPT-OSS architecture in `models/architectures/gpt_oss_pytorch/` and local checkpoint files.
+- `phi-4-local` uses the local PyTorch Phi-4 text-backbone architecture in `models/architectures/phi4_pytorch/` and local checkpoint files.
 
 ### GPT-OSS Checkpoints
 
@@ -254,11 +256,25 @@ If your checkpoint lives somewhere else, set:
 $env:LAYERMCP_GPT_OSS_CHECKPOINT = "path\to\gpt-oss-20b\original"
 ```
 
+### PHI-4 Checkpoints
+
+By default, the PHI-4 local router looks for a Hugging Face-format checkpoint at:
+
+```text
+checkpoints/phi-4/
+```
+
+The directory should contain `config.json`, tokenizer files, and `.safetensors` shards. If your checkpoint lives somewhere else, set:
+
+```powershell
+$env:LAYERMCP_PHI4_CHECKPOINT = "path\to\phi-4"
+```
+
 ### 4. Available CLI Flags
 
 - `--dataset <path>` -- use a different benchmark JSON file
 - `--server <path>` -- use a different MCP server entrypoint
-- `--router <name>` -- choose `qwen-hf` or `gpt-oss-local`
+- `--router <name>` -- choose `qwen-hf`, `gpt-oss-local`, or `phi-4-local`
 - `--call-predicted-tools` -- execute the predicted tool with `tool_args` from the dataset
 - `--help` -- show the built-in CLI help
 

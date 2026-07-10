@@ -150,11 +150,15 @@ class RouterRegistryTests(unittest.TestCase):
         gpt_oss_router = load_router("gpt-oss-local")
         phi4_router = load_router("phi-4-local")
         llama_router = load_router("llama-3.1-8b-local")
+        qwen36_router = load_router("qwen-3.6-local")
+        gemma4_router = load_router("gemma-4-local")
 
         self.assertEqual(qwen_router.ROUTER_ID, "qwen_hf_router")
         self.assertEqual(gpt_oss_router.ROUTER_ID, "gpt_oss_local_router")
         self.assertEqual(phi4_router.ROUTER_ID, "phi4_local_router")
         self.assertEqual(llama_router.ROUTER_ID, "llama31_8b_local_router")
+        self.assertEqual(qwen36_router.ROUTER_ID, "qwen36_local_router")
+        self.assertEqual(gemma4_router.ROUTER_ID, "gemma4_local_router")
 
     def test_registry_rejects_unknown_router(self) -> None:
         from models.routers.registry import load_router
@@ -230,6 +234,46 @@ class RouterRegistryTests(unittest.TestCase):
                 resolve_checkpoint_path(),
                 Path("custom/llama"),
             )
+
+    def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
+        from models.routers.qwen36_local_router import _extract_tool_name
+
+        self.assertEqual(
+            _extract_tool_name(
+                '<tool_call>{"name": "calculator", "arguments": {}}</tool_call>',
+                ["calculator", "github_search"],
+            ),
+            "calculator",
+        )
+
+    def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.qwen36_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_QWEN36_CHECKPOINT": "custom/qwen36"},
+        ):
+            self.assertEqual(resolve_checkpoint_path(), Path("custom/qwen36"))
+
+    def test_gemma4_router_extracts_gemma_tool_call(self) -> None:
+        from models.routers.gemma4_local_router import _extract_tool_name
+
+        self.assertEqual(
+            _extract_tool_name(
+                '<|tool_call>call:calculator{ expression: <|"|>2 + 2<|"|> }<tool_call|>',
+                ["calculator", "github_search"],
+            ),
+            "calculator",
+        )
+
+    def test_gemma4_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.gemma4_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_GEMMA4_CHECKPOINT": "custom/gemma4"},
+        ):
+            self.assertEqual(resolve_checkpoint_path(), Path("custom/gemma4"))
 
 
 if __name__ == "__main__":

@@ -26,10 +26,10 @@ from mcp_server.tool_impls import calculator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_BENCHMARK_PATH = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_public_v2.json"
+    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_public_derived.json"
 )
 CONTROLLED_BENCHMARK_PATH = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_v2_controlled.json"
+    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_controlled.json"
 )
 MATH_V2_MENU = [
     "calculator",
@@ -56,6 +56,13 @@ PUBLIC_EXPECTED_COUNTS = {
     "base_arithmetic": 5,
 }
 CONTROLLED_EXPECTED_COUNTS = {
+    "calculator": 5,
+    "simplify_expression": 5,
+    "solve_equation": 5,
+    "factor_expression": 5,
+    "expand_expression": 5,
+    "differentiate_expression": 5,
+    "convert_units": 5,
     "integer_factorization": 4,
     "gcd_lcm": 4,
     "modular_arithmetic": 4,
@@ -101,7 +108,7 @@ class MathPublicBenchmarkV2Tests(unittest.TestCase):
 
     def test_public_and_controlled_benchmarks_load_with_existing_loader(self) -> None:
         self.assertEqual(len(load_benchmark(PUBLIC_BENCHMARK_PATH)), 77)
-        self.assertEqual(len(load_benchmark(CONTROLLED_BENCHMARK_PATH)), 16)
+        self.assertEqual(len(load_benchmark(CONTROLLED_BENCHMARK_PATH)), 51)
 
     def test_counts_and_unique_ids(self) -> None:
         all_samples = self.public_samples + self.controlled_samples
@@ -122,7 +129,8 @@ class MathPublicBenchmarkV2Tests(unittest.TestCase):
             expected_tool = sample["expected_tool"]
             self.assertIn(expected_tool, registered_tools)
             self.assertIn(expected_tool, sample["available_tools"])
-            self.assertEqual(sample["available_tools"], MATH_V2_MENU)
+            if sample in self.public_samples:
+                self.assertEqual(sample["available_tools"], MATH_V2_MENU)
 
             function = TOOL_FUNCTIONS[expected_tool]
             inspect.signature(function).bind(**sample["expected_args"])

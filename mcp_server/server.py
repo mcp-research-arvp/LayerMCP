@@ -16,10 +16,14 @@ from mcp_server.enterprise_tools import (
     update_order_status,
 )
 from mcp_server.math_tools import (
+    base_arithmetic,
     convert_units,
     differentiate_expression,
     expand_expression,
     factor_expression,
+    gcd_lcm,
+    integer_factorization,
+    modular_arithmetic,
     simplify_expression,
     solve_equation,
 )
@@ -47,6 +51,10 @@ mcp.tool()(factor_expression)
 mcp.tool()(expand_expression)
 mcp.tool()(differentiate_expression)
 mcp.tool()(convert_units)
+mcp.tool()(integer_factorization)
+mcp.tool()(gcd_lcm)
+mcp.tool()(modular_arithmetic)
+mcp.tool()(base_arithmetic)
 mcp.tool()(get_order)
 mcp.tool()(update_order_status)
 mcp.tool()(create_support_ticket)

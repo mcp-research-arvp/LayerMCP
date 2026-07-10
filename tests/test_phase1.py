@@ -12,10 +12,14 @@ from mcp_server.enterprise_tools import (
     update_order_status,
 )
 from mcp_server.math_tools import (
+    base_arithmetic,
     convert_units,
     differentiate_expression,
     expand_expression,
     factor_expression,
+    gcd_lcm,
+    integer_factorization,
+    modular_arithmetic,
     simplify_expression,
     solve_equation,
 )
@@ -107,6 +111,55 @@ class ToolFixtureTests(unittest.TestCase):
         self.assertEqual(result["converted_value"], 1000.0)
         self.assertEqual(result["source"], "pint")
 
+    def test_integer_factorization_examples(self) -> None:
+        self.assertEqual(
+            integer_factorization("9879")["prime_factors"],
+            {"3": 1, "37": 1, "89": 1},
+        )
+        self.assertEqual(integer_factorization("7**4 - 7**3")["least_prime_factor"], 2)
+        self.assertEqual(integer_factorization("3**7 + 6**6")["greatest_prime_factor"], 67)
+
+    def test_gcd_lcm_examples(self) -> None:
+        self.assertEqual(gcd_lcm(["154", "252"], "gcd")["gcd"], 14)
+        self.assertEqual(gcd_lcm(["8", "12", "24"], "lcm")["lcm"], 24)
+        result = gcd_lcm(
+            ["121**2 + 233**2 + 345**2", "120**2 + 232**2 + 346**2"],
+            "gcd",
+        )
+        self.assertEqual(result["gcd"], 5)
+
+    def test_modular_arithmetic_examples(self) -> None:
+        self.assertEqual(
+            modular_arithmetic("247 + 5*39 + 7*143 + 4*15", 13, "mod")["result"],
+            8,
+        )
+        self.assertEqual(
+            modular_arithmetic("2011*2012*2013*2014", 5, "mod")["result"],
+            4,
+        )
+        self.assertEqual(modular_arithmetic("201", 299, "inverse")["result"], 180)
+        self.assertEqual(modular_arithmetic("5", 10, "pow", 4)["result"], 5)
+
+    def test_base_arithmetic_examples(self) -> None:
+        self.assertEqual(
+            base_arithmetic("2343 + 15325", 6, 6)["base_result"],
+            "22112",
+        )
+        self.assertEqual(
+            base_arithmetic("1011 + 101 - 1100 + 1101", 2, 2)["base_result"],
+            "10001",
+        )
+
+    def test_new_math_tools_reject_invalid_inputs(self) -> None:
+        with self.assertRaises(ValueError):
+            integer_factorization("x + 1")
+        with self.assertRaises(ValueError):
+            gcd_lcm(["8", "12"], "median")
+        with self.assertRaises(ValueError):
+            modular_arithmetic("6", 9, "inverse")
+        with self.assertRaises(ValueError):
+            base_arithmetic("102", 2, 2)
+
     def test_enterprise_order_lookup_and_update(self) -> None:
         order = get_order("ord-1001")
         self.assertEqual(order["customer_id"], "CUST-1001")
@@ -159,6 +212,10 @@ class ToolFixtureTests(unittest.TestCase):
             "expand_expression",
             "differentiate_expression",
             "convert_units",
+            "integer_factorization",
+            "gcd_lcm",
+            "modular_arithmetic",
+            "base_arithmetic",
             "get_order",
             "update_order_status",
             "create_support_ticket",

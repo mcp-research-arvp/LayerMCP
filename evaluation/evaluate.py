@@ -124,8 +124,15 @@ async def _evaluate_with_server(
     benchmark_path: Path,
     server_path: Path,
     call_predicted_tools: bool,
+    router_name: str,
 ) -> None:
-    from models.qwen_router import HALLUCINATED_TOOL, MODEL_NAME, PROMPT_TEMPLATE, choose_tool
+    from models.routers.registry import load_router
+
+    router = load_router(router_name)
+    hallucinated_tool = router.HALLUCINATED_TOOL
+    model_name = router.MODEL_NAME
+    prompt_template = router.PROMPT_TEMPLATE
+    choose_tool = router.choose_tool
 
     total = 0
     correct = 0
@@ -161,7 +168,7 @@ async def _evaluate_with_server(
                 if is_correct:
                     correct += 1
 
-                hallucinated = predicted == HALLUCINATED_TOOL
+                hallucinated = predicted == hallucinated_tool
                 if hallucinated:
                     hallucinations += 1
 
@@ -199,8 +206,16 @@ async def _evaluate_with_server(
                     "is_correct": is_correct,
                     "hallucinated": hallucinated,
                     "latency_seconds": latency,
-                    "model_name": MODEL_NAME,
-                    "prompt_template": PROMPT_TEMPLATE,
+                    "model_name": model_name,
+                    "router_id": getattr(router, "ROUTER_ID", router_name),
+                    "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
+                    "architecture_source": getattr(
+                        router,
+                        "ARCHITECTURE_SOURCE",
+                        "unknown",
+                    ),
+                    "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
+                    "prompt_template": prompt_template,
                     "called_tool": called_tool,
                     "expected_args": sample.expected_args,
                     "tool_args_used": tool_args_used,
@@ -214,7 +229,11 @@ async def _evaluate_with_server(
     summary = {
         "timestamp": timestamp,
         "benchmark_path": str(benchmark_path),
-        "model_name": MODEL_NAME,
+        "model_name": model_name,
+        "router_id": getattr(router, "ROUTER_ID", router_name),
+        "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
+        "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
+        "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "total_samples": total,
         "accuracy": accuracy,
         "hallucination_count": hallucinations,
@@ -261,6 +280,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Call the predicted MCP tool using sample.tool_args when present.",
     )
+    parser.add_argument(
+        "--router",
+        default="qwen-hf",
+        help=(
+            "Router backend to evaluate. Use qwen-hf for the Hugging Face "
+            "Qwen baseline or gpt-oss-local for the local GPT-OSS PyTorch router."
+        ),
+    )
     return parser
 
 
@@ -272,6 +299,7 @@ async def _async_main(args: argparse.Namespace) -> None:
         benchmark_path=benchmark_path,
         server_path=args.server,
         call_predicted_tools=args.call_predicted_tools,
+        router_name=args.router,
     )
 
 

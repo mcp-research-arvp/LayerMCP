@@ -83,7 +83,7 @@ class ModelLoaderTests(unittest.TestCase):
 
 class SharedLoaderIntegrationTests(unittest.TestCase):
     def test_router_uses_shared_loader_through_cache_boundary(self) -> None:
-        from models import qwen_router
+        from models.routers import qwen_hf_router
 
         fake_components = LoadedModelComponents(
             tokenizer=object(),
@@ -91,22 +91,22 @@ class SharedLoaderIntegrationTests(unittest.TestCase):
             model_name="fake/model",
         )
 
-        qwen_router._load_model_components.cache_clear()
+        qwen_hf_router._load_model_components.cache_clear()
         try:
             with patch(
-                "models.qwen_router.load_model_components",
+                "models.routers.qwen_hf_router.load_model_components",
                 return_value=fake_components,
             ) as load_model:
-                tokenizer, model = qwen_router._load_model_components()
-                cached_tokenizer, cached_model = qwen_router._load_model_components()
+                tokenizer, model = qwen_hf_router._load_model_components()
+                cached_tokenizer, cached_model = qwen_hf_router._load_model_components()
 
-            load_model.assert_called_once_with(qwen_router.MODEL_NAME)
+            load_model.assert_called_once_with(qwen_hf_router.MODEL_NAME)
             self.assertIs(tokenizer, fake_components.tokenizer)
             self.assertIs(model, fake_components.model)
             self.assertIs(cached_tokenizer, tokenizer)
             self.assertIs(cached_model, model)
         finally:
-            qwen_router._load_model_components.cache_clear()
+            qwen_hf_router._load_model_components.cache_clear()
 
     def test_logit_lens_uses_shared_loader_through_mock(self) -> None:
         from analysis import logit_lens
@@ -140,6 +140,140 @@ class SharedLoaderIntegrationTests(unittest.TestCase):
             load_model.assert_called_once_with("fake/model", output_hidden_states=True)
             self.assertTrue(paths["csv"].exists())
             self.assertTrue(paths["summary"].exists())
+
+
+class RouterRegistryTests(unittest.TestCase):
+    def test_registry_loads_named_router_modules(self) -> None:
+        from models.routers.registry import load_router
+
+        qwen_router = load_router("qwen-hf")
+        gpt_oss_router = load_router("gpt-oss-local")
+        phi4_router = load_router("phi-4-local")
+        llama_router = load_router("llama-3.1-8b-local")
+        qwen36_router = load_router("qwen-3.6-local")
+        gemma4_router = load_router("gemma-4-local")
+
+        self.assertEqual(qwen_router.ROUTER_ID, "qwen_hf_router")
+        self.assertEqual(gpt_oss_router.ROUTER_ID, "gpt_oss_local_router")
+        self.assertEqual(phi4_router.ROUTER_ID, "phi4_local_router")
+        self.assertEqual(llama_router.ROUTER_ID, "llama31_8b_local_router")
+        self.assertEqual(qwen36_router.ROUTER_ID, "qwen36_local_router")
+        self.assertEqual(gemma4_router.ROUTER_ID, "gemma4_local_router")
+
+    def test_registry_rejects_unknown_router(self) -> None:
+        from models.routers.registry import load_router
+
+        with self.assertRaises(ValueError):
+            load_router("unknown-router")
+
+    def test_gpt_oss_router_extracts_harmony_tool_name(self) -> None:
+        from models.routers.gpt_oss_local_router import _extract_tool_name
+
+        response = (
+            "to=calculator to=functions<|channel|><|constrain|>json"
+            '<|message|>{"expression": "2 + 2"}<|call|>'
+        )
+
+        self.assertEqual(
+            _extract_tool_name(response, ["calculator", "github_search"]),
+            "calculator",
+        )
+
+    def test_gpt_oss_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.gpt_oss_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_GPT_OSS_CHECKPOINT": "custom/checkpoint"},
+        ):
+            self.assertEqual(
+                resolve_checkpoint_path(),
+                Path("custom/checkpoint"),
+            )
+
+    def test_phi4_router_extracts_json_tool_name(self) -> None:
+        from models.routers.phi4_local_router import _extract_tool_name
+
+        response = '```json\n{"name": "calculator", "arguments": {"expression": "2 + 2"}}\n```'
+
+        self.assertEqual(
+            _extract_tool_name(response, ["calculator", "github_search"]),
+            "calculator",
+        )
+
+    def test_phi4_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.phi4_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_PHI4_CHECKPOINT": "custom/phi4"},
+        ):
+            self.assertEqual(
+                resolve_checkpoint_path(),
+                Path("custom/phi4"),
+            )
+
+    def test_llama31_router_extracts_json_tool_name(self) -> None:
+        from models.routers.llama31_8b_local_router import _extract_tool_name
+
+        response = '{"tool_name": "github_search"}'
+
+        self.assertEqual(
+            _extract_tool_name(response, ["calculator", "github_search"]),
+            "github_search",
+        )
+
+    def test_llama31_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.llama31_8b_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_LLAMA31_8B_CHECKPOINT": "custom/llama"},
+        ):
+            self.assertEqual(
+                resolve_checkpoint_path(),
+                Path("custom/llama"),
+            )
+
+    def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
+        from models.routers.qwen36_local_router import _extract_tool_name
+
+        self.assertEqual(
+            _extract_tool_name(
+                '<tool_call>{"name": "calculator", "arguments": {}}</tool_call>',
+                ["calculator", "github_search"],
+            ),
+            "calculator",
+        )
+
+    def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.qwen36_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_QWEN36_CHECKPOINT": "custom/qwen36"},
+        ):
+            self.assertEqual(resolve_checkpoint_path(), Path("custom/qwen36"))
+
+    def test_gemma4_router_extracts_gemma_tool_call(self) -> None:
+        from models.routers.gemma4_local_router import _extract_tool_name
+
+        self.assertEqual(
+            _extract_tool_name(
+                '<|tool_call>call:calculator{ expression: <|"|>2 + 2<|"|> }<tool_call|>',
+                ["calculator", "github_search"],
+            ),
+            "calculator",
+        )
+
+    def test_gemma4_checkpoint_path_uses_environment_override(self) -> None:
+        from models.routers.gemma4_local_router import resolve_checkpoint_path
+
+        with patch.dict(
+            "os.environ",
+            {"LAYERMCP_GEMMA4_CHECKPOINT": "custom/gemma4"},
+        ):
+            self.assertEqual(resolve_checkpoint_path(), Path("custom/gemma4"))
 
 
 if __name__ == "__main__":

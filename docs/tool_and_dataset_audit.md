@@ -11,7 +11,7 @@ Relevant files:
 | MCP tool definitions | `mcp_server/tool_impls.py` | Implements `calculator`, `customer_lookup`, and `github_search`. |
 | MCP tool registration | `mcp_server/server.py` | Creates a `FastMCP` server and registers the three implemented tools. |
 | Benchmark data | `benchmark/tool_routing.json` | Contains four toy tool-routing examples. |
-| Model routing | `models/qwen_router.py` | Loads a Hugging Face causal LM and prompts it to choose a tool name. |
+| Model routing | `models/routers/qwen_hf_router.py` | Loads a Hugging Face causal LM and prompts it to choose a tool name. |
 | Evaluation | `evaluation/evaluate.py` | Loads benchmark data, starts the MCP server, discovers tools, calls the router, computes metrics, and optionally executes predicted tools. |
 | Package and CLI setup | `pyproject.toml` | Declares dependencies, package metadata, and CLI entrypoints. |
 | Requirements install path | `requirements.txt` | Mirrors runtime dependencies for `pip install -r requirements.txt`. |
@@ -114,7 +114,7 @@ Flow:
 5. `_run_server_session()` launches `mcp_server/server.py` using the current Python executable, then initializes an MCP `ClientSession`.
 6. `_evaluate_with_server()` calls `session.list_tools()` and builds `available_tools = [tool.name for tool in listed_tools.tools]`.
 7. For each sample, the evaluator reads `sample["query"]` and `sample["expected_tool"]`.
-8. It passes the query and live `available_tools` list to `models.qwen_router.choose_tool()`.
+8. It loads the selected router through `models.routers.registry.load_router()` and passes the query and live `available_tools` list to `router.choose_tool()`.
 9. Correctness is checked only by exact string equality: `predicted == expected`.
 10. Hallucination count increments when the predicted value equals `HALLUCINATED_TOOL`.
 11. If `--call-predicted-tools` is enabled and the prediction is not `HALLUCINATED_TOOL`, the evaluator reads `sample.get("tool_args")` and calls `session.call_tool(predicted, tool_args)`.
@@ -151,7 +151,7 @@ Important limitations before expanding:
 
 ## Router behavior
 
-The router is implemented in `models/qwen_router.py`.
+The Hugging Face Qwen router is implemented in `models/routers/qwen_hf_router.py`.
 
 Current model:
 

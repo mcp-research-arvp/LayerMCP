@@ -27,3 +27,7 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+
+# Local public datasets and generated candidate-analysis outputs.
+data/raw/
+data/processed/

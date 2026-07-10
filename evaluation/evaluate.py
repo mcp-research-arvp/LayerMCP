@@ -22,6 +22,21 @@ BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing.json"
 SERVER_PATH = PROJECT_ROOT / "mcp_server" / "server.py"
 RESULTS_DIR = PROJECT_ROOT / "results"
 
+RETAIL_TOOL_NAMES = {
+    "find_user_id_by_email",
+    "find_user_id_by_name_zip",
+    "get_user_details",
+    "get_order_details",
+    "get_product_details",
+    "cancel_pending_order",
+    "modify_pending_order_items",
+    "modify_pending_order_address",
+    "modify_user_address",
+    "return_delivered_order_items",
+    "exchange_delivered_order_items",
+    "transfer_to_human_agents",
+}
+
 
 @dataclass(frozen=True)
 class BenchmarkSample:
@@ -119,6 +134,21 @@ async def _run_server_session(server_path: Path):
             yield session
 
 
+async def _call_tool_with_sample_isolation(
+    session: ClientSession,
+    server_path: Path,
+    tool_name: str,
+    tool_args: dict[str, Any],
+) -> Any:
+    if tool_name not in RETAIL_TOOL_NAMES:
+        return await session.call_tool(tool_name, tool_args)
+
+    async for isolated_session in _run_server_session(server_path):
+        return await isolated_session.call_tool(tool_name, tool_args)
+
+    raise RuntimeError("Unable to start isolated Retail MCP session.")
+
+
 async def _evaluate_with_server(
     dataset: list[BenchmarkSample],
     benchmark_path: Path,
@@ -177,7 +207,12 @@ async def _evaluate_with_server(
                 if call_predicted_tools and not hallucinated:
                     called_tool = predicted
                     try:
-                        call_result = await session.call_tool(predicted, tool_args_used)
+                        call_result = await _call_tool_with_sample_isolation(
+                            session,
+                            server_path,
+                            predicted,
+                            tool_args_used,
+                        )
                         executed_tool_calls += 1
                         tool_result = _summarize_tool_result(call_result)
                         print(f"Tool call: {tool_result}")

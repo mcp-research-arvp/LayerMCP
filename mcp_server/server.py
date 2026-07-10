@@ -27,6 +27,20 @@ from mcp_server.math_tools import (
     simplify_expression,
     solve_equation,
 )
+from mcp_server.retail_tools import (
+    cancel_pending_order,
+    exchange_delivered_order_items,
+    find_user_id_by_email,
+    find_user_id_by_name_zip,
+    get_order_details,
+    get_product_details,
+    get_user_details,
+    modify_pending_order_address,
+    modify_pending_order_items,
+    modify_user_address,
+    return_delivered_order_items,
+    transfer_to_human_agents,
+)
 from mcp_server.tool_impls import (
     calculator,
     customer_lookup,
@@ -60,6 +74,18 @@ mcp.tool()(update_order_status)
 mcp.tool()(create_support_ticket)
 mcp.tool()(search_knowledge_base)
 mcp.tool()(check_policy)
+mcp.tool()(find_user_id_by_email)
+mcp.tool()(find_user_id_by_name_zip)
+mcp.tool()(get_user_details)
+mcp.tool()(get_order_details)
+mcp.tool()(get_product_details)
+mcp.tool()(cancel_pending_order)
+mcp.tool()(modify_pending_order_items)
+mcp.tool()(modify_pending_order_address)
+mcp.tool()(modify_user_address)
+mcp.tool()(return_delivered_order_items)
+mcp.tool()(exchange_delivered_order_items)
+mcp.tool()(transfer_to_human_agents)
 
 
 def main() -> None:

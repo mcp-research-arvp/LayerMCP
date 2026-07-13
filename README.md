@@ -150,7 +150,11 @@ LayerMCP/
 │   └── tool_impls.py
 ├── models/
 │   ├── __init__.py
-│   └── qwen_router.py
+│   ├── routers/
+│   │   ├── qwen_hf_router.py
+│   │   └── gpt_oss_local_router.py
+│   └── architectures/
+│       └── gpt_oss_pytorch/
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
@@ -159,7 +163,7 @@ LayerMCP/
 ### Prerequisites
 
 - **Git** and **Python 3.10+**
-- Enough RAM/VRAM to load `Qwen/Qwen2.5-3B-Instruct`
+- Enough RAM/VRAM to load the router you choose
 - Optional `HF_TOKEN` for faster Hugging Face downloads and higher rate limits
 
 ### 1. Clone the Repo and Install the Project
@@ -217,10 +221,108 @@ Or use the installed entrypoint:
 layermcp-evaluate --call-predicted-tools
 ```
 
+Choose a router backend explicitly:
+
+```powershell
+layermcp-evaluate --router qwen-hf
+layermcp-evaluate --router gpt-oss-local
+layermcp-evaluate --router phi-4-local
+layermcp-evaluate --router llama-3.1-8b-local
+layermcp-evaluate --router qwen-3.6-local
+layermcp-evaluate --router gemma-4-local
+```
+
+Router naming:
+
+- `qwen-hf` uses Hugging Face Transformers for both the architecture loader and Qwen weights.
+- `gpt-oss-local` uses the local PyTorch GPT-OSS architecture in `models/architectures/gpt_oss_pytorch/` and local checkpoint files.
+- `phi-4-local` uses the local PyTorch Phi-4 text-backbone architecture in `models/architectures/phi4_pytorch/` and local checkpoint files.
+- `llama-3.1-8b-local` uses the local PyTorch Llama 3.1 8B Instruct architecture in `models/architectures/llama31_8b_pytorch/` and local checkpoint files.
+- `qwen-3.6-local` uses the local PyTorch Qwen 3.6 text architecture in `models/architectures/qwen36_pytorch/` and a local Hugging Face-format checkpoint.
+- `gemma-4-local` uses the local PyTorch Gemma 4 text architecture in `models/architectures/gemma4_pytorch/` and a local Hugging Face-format checkpoint.
+
+### GPT-OSS Checkpoints
+
+Downloaded weights should not be committed. By default, the GPT-OSS local router looks for:
+
+```text
+checkpoints/gpt-oss-20b/original/
+```
+
+You can download into the ignored `checkpoints/` directory:
+
+```powershell
+mkdir checkpoints
+hf download openai/gpt-oss-20b --local-dir checkpoints/gpt-oss-20b
+```
+
+If your checkpoint lives somewhere else, set:
+
+```powershell
+$env:LAYERMCP_GPT_OSS_CHECKPOINT = "path\to\gpt-oss-20b\original"
+```
+
+### PHI-4 Checkpoints
+
+By default, the PHI-4 local router looks for a Hugging Face-format checkpoint at:
+
+```text
+checkpoints/phi-4/
+```
+
+The directory should contain `config.json`, tokenizer files, and `.safetensors` shards. If your checkpoint lives somewhere else, set:
+
+```powershell
+$env:LAYERMCP_PHI4_CHECKPOINT = "path\to\phi-4"
+```
+
+### Llama 3.1 8B Instruct Checkpoints
+
+By default, the Llama 3.1 8B Instruct local router looks for a Hugging Face-format checkpoint at:
+
+```text
+checkpoints/llama-3.1-8b-instruct/
+```
+
+The directory should contain tokenizer files and `.safetensors` shards. If your checkpoint lives somewhere else, set:
+
+```powershell
+$env:LAYERMCP_LLAMA31_8B_CHECKPOINT = "path\to\llama-3.1-8b-instruct"
+```
+
+### Qwen 3.6 Checkpoints
+
+By default, the local Qwen 3.6 router looks for a Hugging Face-format checkpoint at:
+
+```text
+checkpoints/qwen-3.6/
+```
+
+The directory must contain `config.json`, tokenizer files, and `.safetensors` shards. To use another location:
+
+```powershell
+$env:LAYERMCP_QWEN36_CHECKPOINT = "path\to\qwen-3.6"
+```
+
+### Gemma 4 Checkpoints
+
+By default, the local Gemma 4 router looks for a Hugging Face-format checkpoint at:
+
+```text
+checkpoints/gemma-4/
+```
+
+The directory must contain `config.json`, tokenizer files, and `.safetensors` shards. To use another location:
+
+```powershell
+$env:LAYERMCP_GEMMA4_CHECKPOINT = "path\to\gemma-4"
+```
+
 ### 4. Available CLI Flags
 
 - `--dataset <path>` -- use a different benchmark JSON file
 - `--server <path>` -- use a different MCP server entrypoint
+- `--router <name>` -- choose `qwen-hf`, `qwen-3.6-local`, `gemma-4-local`, `gpt-oss-local`, `phi-4-local`, or `llama-3.1-8b-local`
 - `--call-predicted-tools` -- execute the predicted tool with `tool_args` from the dataset
 - `--help` -- show the built-in CLI help
 

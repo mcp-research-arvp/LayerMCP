@@ -33,7 +33,7 @@ from mcp_server.tool_impls import (
     ticket_router,
     unit_converter,
 )
-from models.qwen_router import HALLUCINATED_TOOL, _extract_tool_name
+from models.routers.qwen_hf_router import HALLUCINATED_TOOL, _extract_tool_name
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

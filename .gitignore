@@ -20,13 +20,14 @@ dist/
 
 results/
 *.log
-results/
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.venv/
-venv/
+
+# Local model checkpoints and heavyweight downloaded weights.
+checkpoints/
+weights/
+*.safetensors
+*.bin
+*.pt
+*.pth
 
 # Local public datasets and generated candidate-analysis outputs.
 data/raw/

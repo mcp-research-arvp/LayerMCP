@@ -33,7 +33,7 @@ from mcp_server.tool_impls import (
     ticket_router,
     unit_converter,
 )
-from models.routers.qwen_hf_router import HALLUCINATED_TOOL, _extract_tool_name
+from models.routers.qwen_hf_router import HALLUCINATED_TOOL, _extract_tool_call, _extract_tool_name
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -261,6 +261,15 @@ class RouterParserTests(unittest.TestCase):
             _extract_tool_name('{"tool": "calculator"}', ["calculator", "github_search"]),
             "calculator",
         )
+
+    def test_router_parser_json_tool_call_output(self) -> None:
+        prediction = _extract_tool_call(
+            '{"tool": "calculator", "arguments": {"expression": "2 + 2"}}',
+            ["calculator", "github_search"],
+        )
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
+        self.assertIn('"tool": "calculator"', prediction.raw_output)
 
     def test_router_parser_returns_hallucinated_tool_for_unknown_output(self) -> None:
         self.assertEqual(

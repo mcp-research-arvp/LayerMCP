@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -54,6 +55,14 @@ class BenchmarkSample:
     notes: str
 
 
+@dataclass(frozen=True)
+class SampleScore:
+    tool_selection_correct: bool
+    argument_match_correct: bool
+    execution_success: bool
+    failure_category: str
+
+
 def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
     expected_args = sample.get("expected_args")
     if expected_args is None:
@@ -104,6 +113,107 @@ def load_benchmark(path: Path) -> list[BenchmarkSample]:
     return [_normalize_sample(sample, index) for index, sample in enumerate(dataset)]
 
 
+def _normalize_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
+def _exact_argument_match(selected_args: dict[str, Any], expected_args: dict[str, Any]) -> bool:
+    return _normalize_json(selected_args) == _normalize_json(expected_args)
+
+
+def _score_sample(
+    *,
+    expected_tool: str,
+    selected_tool: str | None,
+    expected_args: dict[str, Any],
+    selected_args: dict[str, Any],
+    execution_success: bool,
+    execution_attempted: bool,
+) -> SampleScore:
+    no_tool_call = selected_tool is None or selected_tool == "hallucinated_tool"
+    if no_tool_call:
+        return SampleScore(
+            tool_selection_correct=False,
+            argument_match_correct=False,
+            execution_success=False,
+            failure_category="no_tool_call",
+        )
+
+    tool_selection_correct = selected_tool == expected_tool
+    argument_match_correct = tool_selection_correct and _exact_argument_match(
+        selected_args,
+        expected_args,
+    )
+
+    if not tool_selection_correct:
+        failure_category = "wrong_tool"
+    elif not argument_match_correct:
+        failure_category = "wrong_args"
+    elif execution_attempted and not execution_success:
+        failure_category = "execution_error"
+    else:
+        failure_category = "correct"
+
+    return SampleScore(
+        tool_selection_correct=tool_selection_correct,
+        argument_match_correct=argument_match_correct,
+        execution_success=execution_success,
+        failure_category=failure_category,
+    )
+
+
+def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+    total = len(records)
+    expected_tools = sorted({record["expected_tool"] for record in records})
+
+    per_tool_totals: Counter[str] = Counter(record["expected_tool"] for record in records)
+    per_tool_correct: Counter[str] = Counter(
+        record["expected_tool"]
+        for record in records
+        if record["tool_selection_correct"]
+    )
+    confusion: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for record in records:
+        selected = record["selected_tool"] or "no_tool_call"
+        confusion[record["expected_tool"]][selected] += 1
+
+    return {
+        "total_samples": total,
+        "tool_selection_accuracy": (
+            sum(1 for record in records if record["tool_selection_correct"]) / total
+            if total
+            else 0.0
+        ),
+        "exact_argument_match_accuracy": (
+            sum(1 for record in records if record["argument_match_correct"]) / total
+            if total
+            else 0.0
+        ),
+        "execution_success_rate": (
+            sum(1 for record in records if record["execution_success"]) / total
+            if total
+            else 0.0
+        ),
+        "no_tool_call_rate": (
+            sum(1 for record in records if record["failure_category"] == "no_tool_call") / total
+            if total
+            else 0.0
+        ),
+        "per_tool_accuracy": {
+            tool: (
+                per_tool_correct[tool] / per_tool_totals[tool]
+                if per_tool_totals[tool]
+                else 0.0
+            )
+            for tool in expected_tools
+        },
+        "confusion_matrix": {
+            expected: dict(sorted(selected_counts.items()))
+            for expected, selected_counts in sorted(confusion.items())
+        },
+    }
+
+
 def _summarize_tool_result(result: Any) -> str:
     structured = getattr(result, "structuredContent", None)
     if structured is not None:
@@ -149,6 +259,13 @@ async def _call_tool_with_sample_isolation(
     raise RuntimeError("Unable to start isolated Retail MCP session.")
 
 
+def _tool_schema(tool: Any) -> dict[str, Any]:
+    schema = getattr(tool, "inputSchema", None)
+    if schema is None:
+        schema = getattr(tool, "parameters", None)
+    return schema if isinstance(schema, dict) else {}
+
+
 async def _evaluate_with_server(
     dataset: list[BenchmarkSample],
     benchmark_path: Path,
@@ -162,14 +279,11 @@ async def _evaluate_with_server(
     hallucinated_tool = router.HALLUCINATED_TOOL
     model_name = router.MODEL_NAME
     prompt_template = router.PROMPT_TEMPLATE
-    choose_tool = router.choose_tool
 
-    total = 0
-    correct = 0
-    hallucinations = 0
     latencies: list[float] = []
     executed_tool_calls = 0
     errors_count = 0
+    records: list[dict[str, Any]] = []
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     RESULTS_DIR.mkdir(exist_ok=True)
     samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
@@ -178,6 +292,8 @@ async def _evaluate_with_server(
     async for session in _run_server_session(server_path):
         listed_tools = await session.list_tools()
         live_tools = [tool.name for tool in listed_tools.tools]
+        live_tool_set = set(live_tools)
+        tool_schemas = {tool.name: _tool_schema(tool) for tool in listed_tools.tools}
 
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
 
@@ -188,39 +304,52 @@ async def _evaluate_with_server(
                 expected = sample.expected_tool
 
                 start = time.perf_counter()
-                predicted = choose_tool(query, available_tools)
+                if hasattr(router, "choose_tool_call"):
+                    prediction = router.choose_tool_call(
+                        query,
+                        available_tools,
+                        {tool: tool_schemas.get(tool, {}) for tool in available_tools},
+                    )
+                    selected_tool = prediction.selected_tool
+                    selected_args = prediction.selected_args
+                    raw_model_output = prediction.raw_output
+                else:
+                    selected_tool = router.choose_tool(query, available_tools)
+                    selected_args = {}
+                    raw_model_output = selected_tool
                 latency = time.perf_counter() - start
 
                 latencies.append(latency)
-                total += 1
 
-                is_correct = predicted == expected
-                if is_correct:
-                    correct += 1
-
-                hallucinated = predicted == hallucinated_tool
-                if hallucinated:
-                    hallucinations += 1
+                no_tool_call = (
+                    selected_tool == hallucinated_tool
+                    or selected_tool not in live_tool_set
+                    or selected_tool not in available_tools
+                )
 
                 print(f"\nQuery: {query}")
                 print(f"Expected: {expected}")
-                print(f"Predicted: {predicted}")
+                print(f"Selected: {selected_tool}")
+                print(f"Selected args: {selected_args}")
 
                 called_tool = None
                 tool_result = None
                 tool_error = None
-                tool_args_used = sample.expected_args
+                execution_success = False
+                execution_attempted = False
 
-                if call_predicted_tools and not hallucinated:
-                    called_tool = predicted
+                if call_predicted_tools and not no_tool_call:
+                    called_tool = selected_tool
+                    execution_attempted = True
                     try:
                         call_result = await _call_tool_with_sample_isolation(
                             session,
                             server_path,
-                            predicted,
-                            tool_args_used,
+                            selected_tool,
+                            selected_args,
                         )
                         executed_tool_calls += 1
+                        execution_success = True
                         tool_result = _summarize_tool_result(call_result)
                         print(f"Tool call: {tool_result}")
                     except Exception as exc:  # pragma: no cover - exercised by integration runs
@@ -228,18 +357,31 @@ async def _evaluate_with_server(
                         tool_error = str(exc)
                         print(f"Tool call error: {tool_error}")
 
+                score = _score_sample(
+                    expected_tool=expected,
+                    selected_tool=None if no_tool_call else selected_tool,
+                    expected_args=sample.expected_args,
+                    selected_args=selected_args,
+                    execution_success=execution_success,
+                    execution_attempted=execution_attempted,
+                )
                 record = {
                     "sample_id": sample.id,
                     "domain": sample.domain,
+                    "query": query,
+                    "expected_tool": expected,
+                    "selected_tool": None if no_tool_call else selected_tool,
+                    "expected_args": sample.expected_args,
+                    "selected_args": selected_args,
+                    "tool_selection_correct": score.tool_selection_correct,
+                    "argument_match_correct": score.argument_match_correct,
+                    "execution_success": score.execution_success,
+                    "failure_category": score.failure_category,
+                    "raw_model_output": raw_model_output,
                     "task_type": sample.task_type,
                     "difficulty": sample.difficulty,
                     "source": sample.source,
-                    "query": query,
                     "available_tools": available_tools,
-                    "expected_tool": expected,
-                    "predicted_tool": predicted,
-                    "is_correct": is_correct,
-                    "hallucinated": hallucinated,
                     "latency_seconds": latency,
                     "model_name": model_name,
                     "router_id": getattr(router, "ROUTER_ID", router_name),
@@ -252,14 +394,13 @@ async def _evaluate_with_server(
                     "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
                     "prompt_template": prompt_template,
                     "called_tool": called_tool,
-                    "expected_args": sample.expected_args,
-                    "tool_args_used": tool_args_used,
                     "tool_result": tool_result,
                     "tool_error": tool_error,
                 }
+                records.append(record)
                 sample_handle.write(json.dumps(record, ensure_ascii=True) + "\n")
 
-    accuracy = correct / total if total else 0.0
+    metrics = _build_aggregate_metrics(records)
     avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
     summary = {
         "timestamp": timestamp,
@@ -269,20 +410,21 @@ async def _evaluate_with_server(
         "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
-        "total_samples": total,
-        "accuracy": accuracy,
-        "hallucination_count": hallucinations,
+        "prompt_template": prompt_template,
         "average_latency_seconds": avg_latency,
         "executed_tool_calls": executed_tool_calls,
         "errors_count": errors_count,
+        **metrics,
     }
     with summary_path.open("w", encoding="utf-8") as summary_handle:
         json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
 
     print("\n===================")
-    print(f"Total: {total}")
-    print(f"Accuracy: {accuracy:.2%}")
-    print(f"Hallucinations: {hallucinations}")
+    print(f"Total: {metrics['total_samples']}")
+    print(f"Tool selection accuracy: {metrics['tool_selection_accuracy']:.2%}")
+    print(f"Exact argument match accuracy: {metrics['exact_argument_match_accuracy']:.2%}")
+    print(f"Execution success rate: {metrics['execution_success_rate']:.2%}")
+    print(f"No tool call rate: {metrics['no_tool_call_rate']:.2%}")
     print(f"Avg Latency: {avg_latency:.2f}s")
     print(f"Executed tool calls: {executed_tool_calls}")
     print(f"Results: {samples_path}")

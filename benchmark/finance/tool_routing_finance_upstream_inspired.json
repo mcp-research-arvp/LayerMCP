@@ -1,0 +1,1649 @@
+[
+  {
+    "id": "finance_upstream_inspired_finance_lookup_company_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Resolve ticker LMCP to its fixture company name and CIK.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "LMCP"
+    },
+    "expected_answer": {
+      "query": "LMCP",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Company Dataset & Reference Data: company name, ticker, and CIK lookup usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Company Dataset & Reference Data: company name, ticker, and CIK lookup"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_lookup_company_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Search the company reference data for Layer Manufacturing Concepts, Inc. and return up to three matches.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "Layer Manufacturing Concepts, Inc.",
+      "max_results": 3
+    },
+    "expected_answer": {
+      "query": "Layer Manufacturing Concepts, Inc.",
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Company Dataset & Reference Data: company name, ticker, and CIK lookup usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Company Dataset & Reference Data: company name, ticker, and CIK lookup"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_lookup_company_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Use CIK 0001900002 to identify the corresponding registrant; return one result.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "0001900002",
+      "max_results": 1
+    },
+    "expected_answer": {
+      "query": "0001900002",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Company Dataset & Reference Data: company name, ticker, and CIK lookup usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Company Dataset & Reference Data: company name, ticker, and CIK lookup"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_lookup_company_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Find no more than two company records matching TBLR before browsing filings.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "TBLR",
+      "max_results": 2
+    },
+    "expected_answer": {
+      "query": "TBLR",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Company Dataset & Reference Data: company name, ticker, and CIK lookup usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Company Dataset & Reference Data: company name, ticker, and CIK lookup"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_search_filings_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Browse LMCP's filing history and keep only Form 10-K records.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "form_type": "10-K"
+    },
+    "expected_answer": {
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from data.sec.gov/submissions company filing history usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/submissions company filing history"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_search_filings_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "From the submissions history for CIK 0001900001, return its fiscal 2024 Form 10-K filing.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "0001900001",
+      "form_type": "10-K",
+      "fiscal_year": 2024
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from data.sec.gov/submissions company filing history usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/submissions company filing history"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_search_filings_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Fetch at most one fiscal 2025 Form 10-Q filing record for TBLR.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "TBLR",
+      "form_type": "10-Q",
+      "fiscal_year": 2025,
+      "max_results": 1
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from data.sec.gov/submissions company filing history usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/submissions company filing history"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_search_filings_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "List up to three filing records submitted by Tabular Cloud Labs, Inc. without opening the documents.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "Tabular Cloud Labs, Inc.",
+      "max_results": 3
+    },
+    "expected_answer": {
+      "count": 3,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from data.sec.gov/submissions company filing history usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/submissions company filing history"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_filing_section_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Extract the Business section from accession LMCP-2024-10K.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "business"
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "business",
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Filing Intelligence: Risk Factors and MD&A section extraction usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Filing Intelligence: Risk Factors and MD&A section extraction"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_filing_section_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return at most 2,000 characters from the Risk Factors section of LMCP-2024-10K.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "risk_factors",
+      "max_chars": 2000
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "risk_factors",
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Filing Intelligence: Risk Factors and MD&A section extraction usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Filing Intelligence: Risk Factors and MD&A section extraction"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_filing_section_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Get up to 2,500 characters of Management's Discussion and Analysis from TBLR-2025-Q1-10Q.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "TBLR-2025-Q1-10Q",
+      "section": "management_discussion_and_analysis",
+      "max_chars": 2500
+    },
+    "expected_answer": {
+      "accession_number": "TBLR-2025-Q1-10Q",
+      "section": "management_discussion_and_analysis",
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Filing Intelligence: Risk Factors and MD&A section extraction usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Filing Intelligence: Risk Factors and MD&A section extraction"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_filing_section_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Pull the Financial Statements section from TBLR-2024-10K, capped at 5,000 characters, without parsing its tagged facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "TBLR-2024-10K",
+      "section": "financial_statements",
+      "max_chars": 5000
+    },
+    "expected_answer": {
+      "accession_number": "TBLR-2024-10K",
+      "section": "financial_statements",
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Filing Intelligence: Risk Factors and MD&A section extraction usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Filing Intelligence: Risk Factors and MD&A section extraction"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_company_facts_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return no more than five XBRL company facts for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "max_results": 5
+    },
+    "expected_answer": {
+      "count": 5,
+      "truncated": true
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from data.sec.gov/api/xbrl/companyfacts and companyconcept usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/api/xbrl/companyfacts and companyconcept"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_company_facts_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Fetch up to ten LMCP Revenue facts for fiscal 2024 measured in USD.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "concept": "Revenue",
+      "unit": "USD",
+      "fiscal_year": 2024,
+      "max_results": 10
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from data.sec.gov/api/xbrl/companyfacts and companyconcept usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/api/xbrl/companyfacts and companyconcept"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_company_facts_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Retrieve at most two TBLR Assets facts in USD for fiscal 2024.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "TBLR",
+      "concept": "Assets",
+      "unit": "USD",
+      "fiscal_year": 2024,
+      "max_results": 2
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from data.sec.gov/api/xbrl/companyfacts and companyconcept usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/api/xbrl/companyfacts and companyconcept"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_company_facts_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Query one 2024 NetIncomeLoss company fact for CIK 0001900002, rather than loading a complete income statement.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "0001900002",
+      "concept": "NetIncomeLoss",
+      "fiscal_year": 2024,
+      "max_results": 1
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from data.sec.gov/api/xbrl/companyfacts and companyconcept usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "U.S. SEC EDGAR APIs",
+    "inspiration_url": "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+    "inspiration_reference": "data.sec.gov/api/xbrl/companyfacts and companyconcept"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_financial_statement_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Build LMCP's FY 2024 balance sheet from standardized filing data.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "statement": "balance_sheet",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY"
+    },
+    "expected_answer": {
+      "statement": "balance_sheet",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 4
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Extract Financial Statements from 10-K and 10-Q filings usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Extract Financial Statements from 10-K and 10-Q filings"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_financial_statement_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return the standardized FY 2024 income statement for Layer Manufacturing Concepts, Inc.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "Layer Manufacturing Concepts, Inc.",
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY"
+    },
+    "expected_answer": {
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 5
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Extract Financial Statements from 10-K and 10-Q filings usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Extract Financial Statements from 10-K and 10-Q filings"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_financial_statement_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Extract LMCP's FY 2024 cash-flow statement rather than individual cash-flow facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "statement": "cash_flow_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY"
+    },
+    "expected_answer": {
+      "statement": "cash_flow_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 3
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Extract Financial Statements from 10-K and 10-Q filings usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Extract Financial Statements from 10-K and 10-Q filings"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_financial_statement_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Retrieve TBLR's Q1 fiscal 2025 income statement, not the annual report.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "TBLR",
+      "statement": "income_statement",
+      "fiscal_year": 2025,
+      "fiscal_period": "Q1"
+    },
+    "expected_answer": {
+      "statement": "income_statement",
+      "fiscal_year": 2025,
+      "fiscal_period": "Q1",
+      "row_count": 5
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Extract Financial Statements from 10-K and 10-Q filings usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "dgunning/edgartools",
+    "inspiration_url": "https://github.com/dgunning/edgartools",
+    "inspiration_reference": "Extract Financial Statements from 10-K and 10-Q filings"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_parse_xbrl_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Load up to twenty tagged facts from the XBRL instance for LMCP-2024-10K.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "max_facts": 20
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 10,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Arelle Python API: Session, ModelXbrl facts, and concept filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Arelle/Arelle",
+    "inspiration_url": "https://arelle.readthedocs.io/en/latest/python_api/python_api.html",
+    "inspiration_reference": "Arelle Python API: Session, ModelXbrl facts, and concept filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_parse_xbrl_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "From LMCP-2024-10K's XBRL, select Revenue and NetIncomeLoss and return at most ten facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "concepts": [
+        "Revenue",
+        "NetIncomeLoss"
+      ],
+      "max_facts": 10
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Arelle Python API: Session, ModelXbrl facts, and concept filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Arelle/Arelle",
+    "inspiration_url": "https://arelle.readthedocs.io/en/latest/python_api/python_api.html",
+    "inspiration_reference": "Arelle Python API: Session, ModelXbrl facts, and concept filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_parse_xbrl_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Inspect TBLR-2024-10K's XBRL for Assets and Liabilities, limited to ten facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "TBLR-2024-10K",
+      "concepts": [
+        "Assets",
+        "Liabilities"
+      ],
+      "max_facts": 10
+    },
+    "expected_answer": {
+      "accession_number": "TBLR-2024-10K",
+      "fact_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Arelle Python API: Session, ModelXbrl facts, and concept filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Arelle/Arelle",
+    "inspiration_url": "https://arelle.readthedocs.io/en/latest/python_api/python_api.html",
+    "inspiration_reference": "Arelle Python API: Session, ModelXbrl facts, and concept filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_parse_xbrl_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Parse only CostOfRevenue, GrossProfit, and OperatingIncomeLoss from LMCP-2024-10K, capped at three facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "concepts": [
+        "CostOfRevenue",
+        "GrossProfit",
+        "OperatingIncomeLoss"
+      ],
+      "max_facts": 3
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 3,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Arelle Python API: Session, ModelXbrl facts, and concept filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Arelle/Arelle",
+    "inspiration_url": "https://arelle.readthedocs.io/en/latest/python_api/python_api.html",
+    "inspiration_reference": "Arelle Python API: Session, ModelXbrl facts, and concept filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_query_table_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Project ticker, fiscal year, period, and revenue from data in quarterly_metrics, ordered by ticker and period.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, fiscal_year, fiscal_period, revenue FROM data ORDER BY ticker, fiscal_year, fiscal_period"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "fiscal_year",
+        "fiscal_period",
+        "revenue"
+      ],
+      "row_count": 9,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "duckdb/duckdb",
+    "inspiration_url": "https://duckdb.org/docs/current/sql/statements/select",
+    "inspiration_reference": "DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_query_table_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "In quarterly_metrics, select LMCP's two highest-revenue rows with ticker, period, and revenue.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, fiscal_period, revenue FROM data WHERE ticker = 'LMCP' ORDER BY revenue DESC LIMIT 2"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "fiscal_period",
+        "revenue"
+      ],
+      "row_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "duckdb/duckdb",
+    "inspiration_url": "https://duckdb.org/docs/current/sql/statements/select",
+    "inspiration_reference": "DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_query_table_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Group quarterly_metrics by ticker and calculate total gross profit, sorted by ticker.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, SUM(gross_profit) AS total_gross_profit FROM data GROUP BY ticker ORDER BY ticker"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "total_gross_profit"
+      ],
+      "row_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "duckdb/duckdb",
+    "inspiration_url": "https://duckdb.org/docs/current/sql/statements/select",
+    "inspiration_reference": "DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_query_table_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Use SQL on quarterly_metrics to compute operating margin as operating income divided by revenue for each TBLR period, ordered by fiscal year and period.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT fiscal_year, fiscal_period, 1.0 * operating_income / revenue AS operating_margin FROM data WHERE ticker = 'TBLR' ORDER BY fiscal_year, fiscal_period"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "fiscal_year",
+        "fiscal_period",
+        "operating_margin"
+      ],
+      "row_count": 5,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "duckdb/duckdb",
+    "inspiration_url": "https://duckdb.org/docs/current/sql/statements/select",
+    "inspiration_reference": "DuckDB SELECT, WHERE, ORDER BY, LIMIT, expressions, and GROUP BY"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_extract_pdf_tables_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Use lattice-mode PDF table extraction on page 42 of lmcp-2024-annual-report.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42",
+      "flavor": "lattice"
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42",
+      "requested_flavor": "lattice",
+      "table_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from camelot.read_pdf pages and lattice/stream flavor arguments usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "camelot-dev/camelot",
+    "inspiration_url": "https://camelot-py.readthedocs.io/en/latest/api.html",
+    "inspiration_reference": "camelot.read_pdf pages and lattice/stream flavor arguments"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_extract_pdf_tables_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Extract tables from page 45 of the LMCP annual report with stream mode, returning at most two.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "45",
+      "flavor": "stream",
+      "max_tables": 2
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "45",
+      "requested_flavor": "stream",
+      "table_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from camelot.read_pdf pages and lattice/stream flavor arguments usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "camelot-dev/camelot",
+    "inspiration_url": "https://camelot-py.readthedocs.io/en/latest/api.html",
+    "inspiration_reference": "camelot.read_pdf pages and lattice/stream flavor arguments"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_extract_pdf_tables_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Read pages 42 and 45 of lmcp-2024-annual-report as table-bearing pages using lattice mode and cap the output at two tables.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42,45",
+      "flavor": "lattice",
+      "max_tables": 2
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42,45",
+      "requested_flavor": "lattice",
+      "table_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from camelot.read_pdf pages and lattice/stream flavor arguments usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "camelot-dev/camelot",
+    "inspiration_url": "https://camelot-py.readthedocs.io/en/latest/api.html",
+    "inspiration_reference": "camelot.read_pdf pages and lattice/stream flavor arguments"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_extract_pdf_tables_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Scan all fixture pages of tblr-2025-q1-report for pre-extracted tables and return at most three; do not retrieve filing prose.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "tblr-2025-q1-report",
+      "pages": "all",
+      "flavor": "lattice",
+      "max_tables": 3
+    },
+    "expected_answer": {
+      "document_id": "tblr-2025-q1-report",
+      "pages": "all",
+      "requested_flavor": "lattice",
+      "table_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from camelot.read_pdf pages and lattice/stream flavor arguments usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "camelot-dev/camelot",
+    "inspiration_url": "https://camelot-py.readthedocs.io/en/latest/api.html",
+    "inspiration_reference": "camelot.read_pdf pages and lattice/stream flavor arguments"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_quote_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Use the one-symbol quote operation to fetch LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "as_of": "2025-01-10",
+      "price": 42.75,
+      "volume": 151000
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Quote Endpoint / GLOBAL_QUOTE one-symbol operation usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "Quote Endpoint / GLOBAL_QUOTE one-symbol operation"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_quote_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Get the fixture's latest price-and-volume quote for TBLR.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "TBLR"
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "as_of": "2025-01-10",
+      "price": 28.6,
+      "volume": 241000
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Quote Endpoint / GLOBAL_QUOTE one-symbol operation usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "Quote Endpoint / GLOBAL_QUOTE one-symbol operation"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_quote_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Fetch the lightweight market quote for LMCP rather than its daily OHLCV history.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "as_of": "2025-01-10",
+      "price": 42.75,
+      "volume": 151000
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Quote Endpoint / GLOBAL_QUOTE one-symbol operation usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "Quote Endpoint / GLOBAL_QUOTE one-symbol operation"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_quote_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Request a single quote for TBLR; do not return a filing-derived fact or a time series.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "TBLR"
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "as_of": "2025-01-10",
+      "price": 28.6,
+      "volume": 241000
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Quote Endpoint / GLOBAL_QUOTE one-symbol operation usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "Quote Endpoint / GLOBAL_QUOTE one-symbol operation"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_time_series_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Retrieve at most five daily OHLCV observations for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "max_points": 5
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "start_date": null,
+      "end_date": null,
+      "point_count": 5,
+      "truncated": true
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from TIME_SERIES_DAILY OHLCV operation with local date filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "TIME_SERIES_DAILY OHLCV operation with local date filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_time_series_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return TBLR's daily series from 2025-01-02 through 2025-01-10, capped at seven points.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "TBLR",
+      "start_date": "2025-01-02",
+      "end_date": "2025-01-10",
+      "interval": "daily",
+      "max_points": 7
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "interval": "daily",
+      "start_date": "2025-01-02",
+      "end_date": "2025-01-10",
+      "point_count": 7,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from TIME_SERIES_DAILY OHLCV operation with local date filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "TIME_SERIES_DAILY OHLCV operation with local date filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_time_series_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Fetch LMCP daily candles from 2025-01-06 through 2025-01-10 and return no more than five.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "LMCP",
+      "start_date": "2025-01-06",
+      "end_date": "2025-01-10",
+      "interval": "daily",
+      "max_points": 5
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "start_date": "2025-01-06",
+      "end_date": "2025-01-10",
+      "point_count": 5,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from TIME_SERIES_DAILY OHLCV operation with local date filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "TIME_SERIES_DAILY OHLCV operation with local date filtering"
+  },
+  {
+    "id": "finance_upstream_inspired_finance_get_market_time_series_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Use the historical-series operation, not the quote endpoint, for at most four TBLR observations from 2025-01-03 through 2025-01-08.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "TBLR",
+      "start_date": "2025-01-03",
+      "end_date": "2025-01-08",
+      "interval": "daily",
+      "max_points": 4
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "interval": "daily",
+      "start_date": "2025-01-03",
+      "end_date": "2025-01-08",
+      "point_count": 4,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from TIME_SERIES_DAILY OHLCV operation with local date filtering usage patterns and adapted to the deterministic LayerMCP finance fixture.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "Alpha Vantage API",
+    "inspiration_url": "https://www.alphavantage.co/documentation/",
+    "inspiration_reference": "TIME_SERIES_DAILY OHLCV operation with local date filtering"
+  }
+]

@@ -24,6 +24,18 @@ from mcp_server.enterprise_tools import (
     search_knowledge_base,
     update_order_status,
 )
+from mcp_server.finance_tools import (
+    finance_extract_pdf_tables,
+    finance_get_company_facts,
+    finance_get_filing_section,
+    finance_get_financial_statement,
+    finance_get_market_quote,
+    finance_get_market_time_series,
+    finance_lookup_company,
+    finance_parse_xbrl,
+    finance_query_table,
+    finance_search_filings,
+)
 from mcp_server.math_tools import (
     base_arithmetic,
     convert_units,
@@ -102,6 +114,16 @@ mcp.tool()(git_log)
 mcp.tool()(git_show)
 mcp.tool()(git_diff)
 mcp.tool()(git_status)
+mcp.tool()(finance_lookup_company)
+mcp.tool()(finance_search_filings)
+mcp.tool()(finance_get_filing_section)
+mcp.tool()(finance_get_company_facts)
+mcp.tool()(finance_get_financial_statement)
+mcp.tool()(finance_parse_xbrl)
+mcp.tool()(finance_query_table)
+mcp.tool()(finance_extract_pdf_tables)
+mcp.tool()(finance_get_market_quote)
+mcp.tool()(finance_get_market_time_series)
 
 
 def main() -> None:

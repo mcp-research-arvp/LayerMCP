@@ -1,4 +1,4 @@
-# LayerMCP# Layer-Aware Adaptation of Open-Source LLMs for MCP Tool Selection and Domain Expertization
+# LayerMCP: Layer-Aware Adaptation of Open-Source LLMs for MCP Tool Selection and Domain Expertization
 
 > Investigating whether transformer layer subsets drive MCP tool-routing and domain reasoning — and whether selectively fine-tuning those layers can replace full-model adaptation.
 
@@ -145,6 +145,13 @@ LayerMCP/
 │   │   ├── tool_routing_coding_controlled.json
 │   │   ├── tool_routing_coding_smoke.json
 │   │   └── tool_routing_coding_upstream_inspired.json
+│   ├── finance/
+│   │   ├── fixtures/
+│   │   ├── README.md
+│   │   ├── tool_routing_finance_controlled.json
+│   │   ├── tool_routing_finance_public_derived.json
+│   │   ├── tool_routing_finance_smoke.json
+│   │   └── tool_routing_finance_upstream_inspired.json
 │   └── tool_routing.json
 ├── evaluation/
 │   ├── __init__.py
@@ -153,6 +160,8 @@ LayerMCP/
 │   ├── __init__.py
 │   ├── coding_state.py
 │   ├── coding_tools.py
+│   ├── finance_state.py
+│   ├── finance_tools.py
 │   ├── server.py
 │   └── tool_impls.py
 ├── models/
@@ -337,7 +346,7 @@ $env:LAYERMCP_GEMMA4_CHECKPOINT = "path\to\gemma-4"
 ### 5. Current MCP Tools
 
 The server exposes deterministic offline tools across mathematics, enterprise,
-Retail, and coding domains. The coding tool catalog is:
+Retail, coding, and finance domains. The coding tool catalog is:
 
 - `code_list_files` — list bounded regular files by repository path and glob
 - `code_read_file` — read a bounded UTF-8 line range
@@ -356,6 +365,25 @@ seven tools are read-only.
 The older `github_search` and `read_code_file` fixtures remain registered for
 backward compatibility with existing benchmark files.
 
+The finance tool catalog is:
+
+- `finance_lookup_company` — look up fixture companies by ticker, CIK, name, or alias
+- `finance_search_filings` — filter bounded filing metadata by company, form, and year
+- `finance_get_filing_section` — retrieve a bounded filing section
+- `finance_get_company_facts` — retrieve normalized company facts
+- `finance_get_financial_statement` — retrieve a normalized financial statement
+- `finance_parse_xbrl` — parse facts from a server-owned XBRL instance
+- `finance_query_table` — run bounded read-only SQL over an allowlisted table
+- `finance_extract_pdf_tables` — retrieve pre-extracted tables for selected PDF pages
+- `finance_get_market_quote` — retrieve the latest synthetic OHLCV quote
+- `finance_get_market_time_series` — retrieve a bounded synthetic daily series
+
+The main finance fixture uses fictional companies and synthetic filings, XBRL,
+PDF tables, and market snapshots. It is offline and read-only. A separate,
+pinned MIT-licensed FinQA adaptation supplies 15 executable public-derived table
+queries. See `benchmark/finance/README.md` for the exact runtime boundaries and
+provenance.
+
 ### 6. Benchmark Format
 
 The default benchmark file is `benchmark/tool_routing.json`. The coding-specific
@@ -366,6 +394,15 @@ datasets are:
 - `benchmark/coding/tool_routing_coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
 
 See `benchmark/coding/README.md` for their scope, provenance, and run commands.
+The finance-specific datasets are:
+
+- `benchmark/finance/tool_routing_finance_smoke.json` — 10 direct examples, one per finance tool
+- `benchmark/finance/tool_routing_finance_controlled.json` — 50 balanced controlled examples
+- `benchmark/finance/tool_routing_finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
+- `benchmark/finance/tool_routing_finance_public_derived.json` — 15 executable public-test adaptations from FinQA
+
+See `benchmark/finance/README.md` for their data boundaries, upstream mappings,
+provenance, and run commands.
 Each current-format benchmark item looks like:
 
 ```json

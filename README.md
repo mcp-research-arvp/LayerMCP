@@ -143,7 +143,8 @@ LayerMCP/
 │   ├── coding/
 │   │   ├── README.md
 │   │   ├── tool_routing_coding_controlled.json
-│   │   └── tool_routing_coding_smoke.json
+│   │   ├── tool_routing_coding_smoke.json
+│   │   └── tool_routing_coding_upstream_inspired.json
 │   └── tool_routing.json
 ├── evaluation/
 │   ├── __init__.py
@@ -362,6 +363,7 @@ datasets are:
 
 - `benchmark/coding/tool_routing_coding_smoke.json` — 7 direct examples, one per coding tool
 - `benchmark/coding/tool_routing_coding_controlled.json` — 35 balanced controlled examples
+- `benchmark/coding/tool_routing_coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
 
 See `benchmark/coding/README.md` for their scope, provenance, and run commands.
 Each current-format benchmark item looks like:

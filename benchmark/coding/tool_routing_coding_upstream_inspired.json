@@ -1,0 +1,1147 @@
+[
+  {
+    "id": "coding_upstream_inspired_code_list_files_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Recursively enumerate every Python file in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_list_files",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": ".",
+      "glob": "**/*.py"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": ".",
+      "glob": "**/*.py",
+      "count": 5,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Filesystem API: directory_tree and search_files and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: directory_tree and search_files"
+  },
+  {
+    "id": "coding_upstream_inspired_code_list_files_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Inventory the tests directory in example/research-mcp and return at most two files.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_list_files",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "max_results": 2
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "glob": "**/*",
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Filesystem API: list_directory and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: list_directory"
+  },
+  {
+    "id": "coding_upstream_inspired_code_list_files_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "List up to ten example/research-mcp filenames matching src/*auth*.py; return names, not contents.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_list_files",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": ".",
+      "glob": "src/*auth*.py",
+      "max_results": 10
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": ".",
+      "glob": "src/*auth*.py",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Filesystem API: search_files glob matching and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: search_files glob matching"
+  },
+  {
+    "id": "coding_upstream_inspired_code_list_files_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Which Python test files exist under tests in example/research-mcp? List filenames; do not search inside them.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_list_files",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "glob": "*.py"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "glob": "*.py",
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Filesystem API: list_directory and search_files and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: list_directory and search_files"
+  },
+  {
+    "id": "coding_upstream_inspired_code_read_file_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Open the current src/payments.py file in example/research-mcp and return the whole text.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_read_file",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "src/payments.py"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "src/payments.py",
+      "start_line": 1,
+      "end_line": 5,
+      "total_lines": 5,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Filesystem API: read_text_file and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: read_text_file"
+  },
+  {
+    "id": "coding_upstream_inspired_code_read_file_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Starting at line 4, read the remainder of tests/test_auth.py in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_read_file",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "tests/test_auth.py",
+      "start_line": 4
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests/test_auth.py",
+      "start_line": 4,
+      "end_line": 13,
+      "total_lines": 13,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Filesystem API: read_text_file partial reads and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: read_text_file partial reads"
+  },
+  {
+    "id": "coding_upstream_inspired_code_read_file_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Read lines 2 through 4 of README.md in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_read_file",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "start_line": 2,
+      "end_line": 4
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "start_line": 2,
+      "end_line": 4,
+      "total_lines": 5,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Filesystem API: read_text_file partial reads and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: read_text_file partial reads"
+  },
+  {
+    "id": "coding_upstream_inspired_code_read_file_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Show the current line 4 of tests/test_payments.py in example/research-mcp, not an older commit patch.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_read_file",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "tests/test_payments.py",
+      "start_line": 4,
+      "end_line": 4
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests/test_payments.py",
+      "start_line": 4,
+      "end_line": 4,
+      "total_lines": 6,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Filesystem API: read_text_file and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/filesystem/README.md#tools",
+    "inspiration_reference": "Filesystem API: read_text_file"
+  },
+  {
+    "id": "coding_upstream_inspired_code_search_text_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Find the fixed text `def ` in every Python file in example/research-mcp, preserving case.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_search_text",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "pattern": "def ",
+      "path_glob": "**/*.py",
+      "case_sensitive": true
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "pattern": "def ",
+      "path_glob": "**/*.py",
+      "case_sensitive": true,
+      "count": 7,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Guide: recursive search and fixed strings and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "BurntSushi/ripgrep",
+    "inspiration_url": "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#recursive-search",
+    "inspiration_reference": "Guide: recursive search and fixed strings"
+  },
+  {
+    "id": "coding_upstream_inspired_code_search_text_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Search src/*.py in example/research-mcp for AUTHENTICATE without regard to case.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_search_text",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "pattern": "AUTHENTICATE",
+      "path_glob": "src/*.py",
+      "case_sensitive": false
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "pattern": "AUTHENTICATE",
+      "path_glob": "src/*.py",
+      "case_sensitive": false,
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Guide: glob filtering and case-insensitive search and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "BurntSushi/ripgrep",
+    "inspiration_url": "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#manual-filtering-globs",
+    "inspiration_reference": "Guide: glob filtering and case-insensitive search"
+  },
+  {
+    "id": "coding_upstream_inspired_code_search_text_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Return at most two exact-case matching lines for offline-demo-token across example/research-mcp Python files.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_search_text",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "pattern": "offline-demo-token",
+      "path_glob": "**/*.py",
+      "case_sensitive": true,
+      "max_results": 2
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "pattern": "offline-demo-token",
+      "path_glob": "**/*.py",
+      "case_sensitive": true,
+      "count": 2,
+      "truncated": true
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Guide: fixed strings, glob filtering, and bounded results and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "BurntSushi/ripgrep",
+    "inspiration_url": "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#common-options",
+    "inspiration_reference": "Guide: fixed strings, glob filtering, and bounded results"
+  },
+  {
+    "id": "coding_upstream_inspired_code_search_text_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Within tests/test_auth.py in example/research-mcp, locate lines containing the literal test_; search contents, not filenames.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_search_text",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "pattern": "test_",
+      "path_glob": "tests/test_auth.py",
+      "case_sensitive": true
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "pattern": "test_",
+      "path_glob": "tests/test_auth.py",
+      "case_sensitive": true,
+      "count": 3,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Guide: literal search within one file and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "BurntSushi/ripgrep",
+    "inspiration_url": "https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#basics",
+    "inspiration_reference": "Guide: literal search within one file"
+  },
+  {
+    "id": "coding_upstream_inspired_git_log_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show the three most recent commits reachable in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_log",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "max_count": 3
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": null,
+      "count": 3
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Git MCP API: git_log and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_log"
+  },
+  {
+    "id": "coding_upstream_inspired_git_log_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "List at most three commits that touched the tests directory in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_log",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "max_count": 3
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "count": 3
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Git MCP API: git_log; local path filtering and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_log; local path filtering"
+  },
+  {
+    "id": "coding_upstream_inspired_git_log_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Retrieve the history of src/__init__.py in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_log",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "src/__init__.py"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "src/__init__.py",
+      "count": 1
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Git MCP API: git_log; local path filtering and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_log; local path filtering"
+  },
+  {
+    "id": "coding_upstream_inspired_git_log_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Give only the latest commit affecting README.md in example/research-mcp; do not open its patch.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_log",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "max_count": 1
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "count": 1
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Git MCP API: git_log and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_log"
+  },
+  {
+    "id": "coding_upstream_inspired_git_show_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Inspect commit fb6a267 in example/research-mcp, including metadata and its patch.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_show",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "revision": "fb6a267"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "requested_revision": "fb6a267",
+      "subject": "Add invoice total calculation",
+      "path": null,
+      "changed_files": [
+        "README.md",
+        "src/payments.py",
+        "tests/test_payments.py"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Git MCP API: git_show and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_show"
+  },
+  {
+    "id": "coding_upstream_inspired_git_show_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show the commit currently named by main in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_show",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "revision": "main"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "requested_revision": "main",
+      "subject": "Normalize authentication tokens",
+      "path": null,
+      "changed_files": [
+        "src/auth.py",
+        "tests/test_auth.py"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Git MCP API: git_show and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_show"
+  },
+  {
+    "id": "coding_upstream_inspired_git_show_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Open HEAD~2 in example/research-mcp but restrict the commit patch to README.md.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_show",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "revision": "HEAD~2",
+      "path": "README.md"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "requested_revision": "HEAD~2",
+      "subject": "Initialize authentication fixture",
+      "path": "README.md",
+      "changed_files": [
+        "README.md"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Git MCP API: git_show; local path filtering and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_show; local path filtering"
+  },
+  {
+    "id": "coding_upstream_inspired_git_show_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Inspect HEAD~1 itself in example/research-mcp and show only its README.md change, rather than comparing revisions.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_show",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "revision": "HEAD~1",
+      "path": "README.md"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "requested_revision": "HEAD~1",
+      "subject": "Add invoice total calculation",
+      "path": "README.md",
+      "changed_files": [
+        "README.md"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Git MCP API: git_show and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_show"
+  },
+  {
+    "id": "coding_upstream_inspired_git_diff_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show the zero-context diff from HEAD~2 to HEAD in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_diff",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "base": "HEAD~2",
+      "head": "HEAD",
+      "context_lines": 0
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": null,
+      "context_lines": 0,
+      "changed_files": [
+        "README.md",
+        "src/auth.py",
+        "src/payments.py",
+        "tests/test_auth.py",
+        "tests/test_payments.py"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Git MCP API: git_diff and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_diff"
+  },
+  {
+    "id": "coding_upstream_inspired_git_diff_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Compare HEAD~2 with HEAD only under tests in example/research-mcp, with two context lines.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_diff",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "base": "HEAD~2",
+      "head": "HEAD",
+      "path": "tests",
+      "context_lines": 2
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "context_lines": 2,
+      "changed_files": [
+        "tests/test_auth.py",
+        "tests/test_payments.py"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Git MCP API: git_diff and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_diff"
+  },
+  {
+    "id": "coding_upstream_inspired_git_diff_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Check the patch from main to WORKTREE under src in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_diff",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "base": "main",
+      "head": "WORKTREE",
+      "path": "src"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "src",
+      "context_lines": 3,
+      "changed_files": [],
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Git MCP API: git_diff and unstaged diff behavior and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_diff and unstaged diff behavior"
+  },
+  {
+    "id": "coding_upstream_inspired_git_diff_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Reverse-compare HEAD to HEAD~1 for src/auth.py in example/research-mcp with no context.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_diff",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "base": "HEAD",
+      "head": "HEAD~1",
+      "path": "src/auth.py",
+      "context_lines": 0
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "src/auth.py",
+      "context_lines": 0,
+      "changed_files": [
+        "src/auth.py"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Git MCP API: git_diff and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_diff"
+  },
+  {
+    "id": "coding_upstream_inspired_git_status_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show example/research-mcp worktree and index status, including untracked files.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_status",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "include_untracked": true
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": null,
+      "branch": "main",
+      "detached": false,
+      "clean": true,
+      "include_untracked": true,
+      "count": 0,
+      "total_count": 0,
+      "truncated": false
+    },
+    "perturbation_type": "upstream_usage_adaptation",
+    "notes": "Generated from Git MCP API: git_status and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_status"
+  },
+  {
+    "id": "coding_upstream_inspired_git_status_002",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Summarize status under tests in example/research-mcp, capped at two entries.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_status",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "max_entries": 2
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "tests",
+      "branch": "main",
+      "detached": false,
+      "clean": true,
+      "include_untracked": true,
+      "count": 0,
+      "total_count": 0,
+      "truncated": false
+    },
+    "perturbation_type": "developer_workflow",
+    "notes": "Generated from Git MCP API: git_status; local path filtering and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_status; local path filtering"
+  },
+  {
+    "id": "coding_upstream_inspired_git_status_003",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Check src status in example/research-mcp, exclude untracked files, and cap output at three entries.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_status",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "src",
+      "include_untracked": false,
+      "max_entries": 3
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "src",
+      "branch": "main",
+      "detached": false,
+      "clean": true,
+      "include_untracked": false,
+      "count": 0,
+      "total_count": 0,
+      "truncated": false
+    },
+    "perturbation_type": "argument_composition",
+    "notes": "Generated from Git MCP API: git_status; local bounded options and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_status; local bounded options"
+  },
+  {
+    "id": "coding_upstream_inspired_git_status_004",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Before diffing anything, report README.md's current status in example/research-mcp without untracked files, at most one entry.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_status",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "include_untracked": false,
+      "max_entries": 1
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "branch": "main",
+      "detached": false,
+      "clean": true,
+      "include_untracked": false,
+      "count": 0,
+      "total_count": 0,
+      "truncated": false
+    },
+    "perturbation_type": "confusable_operation",
+    "notes": "Generated from Git MCP API: git_status and adapted to the deterministic LayerMCP fixture.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture",
+    "query_origin": "generated_from_upstream_documentation",
+    "inspiration_repository": "modelcontextprotocol/servers",
+    "inspiration_url": "https://github.com/modelcontextprotocol/servers/blob/main/src/git/README.md#tools",
+    "inspiration_reference": "Git MCP API: git_status"
+  }
+]
+

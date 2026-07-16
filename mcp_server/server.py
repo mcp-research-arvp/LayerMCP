@@ -8,6 +8,15 @@ from mcp.server.fastmcp import FastMCP
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mcp_server.coding_tools import (
+    code_list_files,
+    code_read_file,
+    code_search_text,
+    git_diff,
+    git_log,
+    git_show,
+    git_status,
+)
 from mcp_server.enterprise_tools import (
     check_policy,
     create_support_ticket,
@@ -86,6 +95,13 @@ mcp.tool()(modify_user_address)
 mcp.tool()(return_delivered_order_items)
 mcp.tool()(exchange_delivered_order_items)
 mcp.tool()(transfer_to_human_agents)
+mcp.tool()(code_list_files)
+mcp.tool()(code_read_file)
+mcp.tool()(code_search_text)
+mcp.tool()(git_log)
+mcp.tool()(git_show)
+mcp.tool()(git_diff)
+mcp.tool()(git_status)
 
 
 def main() -> None:

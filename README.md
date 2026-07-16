@@ -146,6 +146,8 @@ LayerMCP/
 │   └── evaluate.py
 ├── mcp_server/
 │   ├── __init__.py
+│   ├── coding_state.py
+│   ├── coding_tools.py
 │   ├── server.py
 │   └── tool_impls.py
 ├── models/
@@ -163,6 +165,7 @@ LayerMCP/
 ### Prerequisites
 
 - **Git** and **Python 3.10+**
+- **ripgrep** for `code_search_text`
 - Enough RAM/VRAM to load the router you choose
 - Optional `HF_TOKEN` for faster Hugging Face downloads and higher rate limits
 
@@ -328,17 +331,25 @@ $env:LAYERMCP_GEMMA4_CHECKPOINT = "path\to\gemma-4"
 
 ### 5. Current MCP Tools
 
-The server currently exposes:
+The server exposes deterministic offline tools across mathematics, enterprise,
+Retail, and coding domains. The coding tool catalog is:
 
-- `calculator`
-- `customer_lookup`
-- `github_search`
+- `code_list_files` — list bounded regular files by repository path and glob
+- `code_read_file` — read a bounded UTF-8 line range
+- `code_search_text` — fixed-string lexical search backed by ripgrep
+- `git_log` — retrieve history reachable from the pinned fixture snapshot
+- `git_show` — inspect one reachable commit and its patch
+- `git_diff` — compare reachable commits or local branches, or inspect the worktree
+- `git_status` — inspect bounded branch, index, worktree, and untracked state
 
-These are deterministic offline fixtures for research and testing:
+All coding tools use the allowlisted repository ID `example/research-mcp`. The
+repository is created lazily from deterministic files and three fixed commits.
+Paths are repository-relative, `.git` access and symlinks are rejected, Git
+revisions are restricted to the pinned history, and outputs are capped. These
+seven tools are read-only.
 
-- `calculator` safely evaluates simple arithmetic
-- `customer_lookup` returns deterministic mock customer data
-- `github_search` returns deterministic mock GitHub-style results without calling the live GitHub API
+The older `github_search` and `read_code_file` fixtures remain registered for
+backward compatibility with existing benchmark files.
 
 ### 6. Benchmark Format
 

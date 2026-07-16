@@ -1,0 +1,244 @@
+[
+  {
+    "id": "coding_smoke_code_list_files_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "In example/research-mcp, list all repository files.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_list_files",
+    "expected_args": {
+      "repo_id": "example/research-mcp"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": ".",
+      "glob": "**/*",
+      "count": 6,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded repository file listing.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "coding_smoke_code_read_file_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Read README.md from example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_read_file",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": "README.md",
+      "start_line": 1,
+      "end_line": 5,
+      "total_lines": 5
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded file reads.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "coding_smoke_code_search_text_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Search example/research-mcp for the fixed text normalize_token.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "code_search_text",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "pattern": "normalize_token"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "pattern": "normalize_token",
+      "path_glob": null,
+      "case_sensitive": false,
+      "count": 2
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for lexical repository search.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "coding_smoke_git_log_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Return only the newest commit from the history of example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_log",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "max_count": 1
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "path": null,
+      "count": 1
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded commit history.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "coding_smoke_git_show_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Inspect the HEAD commit and its changes in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_show",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "revision": "HEAD"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "requested_revision": "HEAD",
+      "subject": "Normalize authentication tokens",
+      "changed_files": [
+        "src/auth.py",
+        "tests/test_auth.py"
+      ],
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for commit inspection.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "coding_smoke_git_diff_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Compare HEAD~1 with HEAD in example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_diff",
+    "expected_args": {
+      "repo_id": "example/research-mcp",
+      "base": "HEAD~1",
+      "head": "HEAD"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "changed_files": [
+        "src/auth.py",
+        "tests/test_auth.py"
+      ],
+      "context_lines": 3,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for revision-to-revision diffs.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "coding_smoke_git_status_001",
+    "domain": "coding",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Show the repository status for example/research-mcp.",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_tool": "git_status",
+    "expected_args": {
+      "repo_id": "example/research-mcp"
+    },
+    "expected_answer": {
+      "repo_id": "example/research-mcp",
+      "branch": "main",
+      "detached": false,
+      "clean": true,
+      "include_untracked": true,
+      "count": 0,
+      "total_count": 0
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for repository status.",
+    "fixture_id": "example/research-mcp",
+    "fixture_version": "coding_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  }
+]

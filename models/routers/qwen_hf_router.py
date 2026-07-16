@@ -6,9 +6,15 @@ from functools import lru_cache
 from typing import Any, Sequence
 
 import torch
-from models.model_loader import resolve_model_name, load_model_components
 
-MODEL_NAME = resolve_model_name()
+from models.model_loader import load_model_components, resolve_model_name
+
+MODEL_ID = resolve_model_name()
+MODEL_NAME = MODEL_ID
+ROUTER_ID = "qwen_hf_router"
+ROUTER_BACKEND = "huggingface_transformers"
+ARCHITECTURE_SOURCE = "huggingface_transformers"
+WEIGHT_SOURCE = "huggingface_hub_or_local_cache"
 HALLUCINATED_TOOL = "hallucinated_tool"
 PROMPT_TEMPLATE = "tool_call_json_v1"
 
@@ -22,7 +28,7 @@ class ToolCallPrediction:
 
 @lru_cache(maxsize=1)
 def _load_model_components():
-    components = load_model_components(MODEL_NAME)
+    components = load_model_components(MODEL_ID)
     return components.tokenizer, components.model
 
 

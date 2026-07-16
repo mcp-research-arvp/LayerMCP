@@ -28,3 +28,7 @@ weights/
 *.bin
 *.pt
 *.pth
+
+# Local public datasets and generated candidate-analysis outputs.
+data/raw/
+data/processed/

@@ -20,6 +20,8 @@ dist/
 
 results/
 *.log
+slurm_logs/
+job*.sh
 
 # Local model checkpoints and heavyweight downloaded weights.
 checkpoints/

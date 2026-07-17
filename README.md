@@ -151,6 +151,7 @@ LayerMCP/
 │   │   ├── tool_routing_finance_controlled.json
 │   │   ├── tool_routing_finance_public_derived.json
 │   │   ├── tool_routing_finance_smoke.json
+│   │   ├── tool_routing_finance_tatqa_public_derived.json
 │   │   └── tool_routing_finance_upstream_inspired.json
 │   └── tool_routing.json
 ├── evaluation/
@@ -379,9 +380,10 @@ The finance tool catalog is:
 - `finance_get_market_time_series` — retrieve a bounded synthetic daily series
 
 The main finance fixture uses fictional companies and synthetic filings, XBRL,
-PDF tables, and market snapshots. It is offline and read-only. A separate,
-pinned MIT-licensed FinQA adaptation supplies 15 executable public-derived table
-queries. See `benchmark/finance/README.md` for the exact runtime boundaries and
+PDF tables, and market snapshots. It is offline and read-only. Two pinned
+paper-dataset adaptations supply 30 executable public-derived table queries: 15
+from FinQA and 15 from the CC BY 4.0 TAT-QA test-gold release. See
+`benchmark/finance/README.md` for the exact runtime boundaries, attribution, and
 provenance.
 
 ### 6. Benchmark Format
@@ -400,6 +402,7 @@ The finance-specific datasets are:
 - `benchmark/finance/tool_routing_finance_controlled.json` — 50 balanced controlled examples
 - `benchmark/finance/tool_routing_finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
 - `benchmark/finance/tool_routing_finance_public_derived.json` — 15 executable public-test adaptations from FinQA
+- `benchmark/finance/tool_routing_finance_tatqa_public_derived.json` — 15 exact TAT-QA test-gold questions with executable SQL adaptations
 
 See `benchmark/finance/README.md` for their data boundaries, upstream mappings,
 provenance, and run commands.

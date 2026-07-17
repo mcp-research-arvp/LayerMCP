@@ -31,6 +31,8 @@ BENCHMARK_PATHS = {
     / "tool_routing_finance_upstream_inspired.json",
     "public": FINANCE_BENCHMARK_ROOT
     / "tool_routing_finance_public_derived.json",
+    "tatqa_public": FINANCE_BENCHMARK_ROOT
+    / "tool_routing_finance_tatqa_public_derived.json",
 }
 FINANCE_TOOL_MENU = [
     "finance_lookup_company",
@@ -88,6 +90,7 @@ class FinanceBenchmarkTests(unittest.TestCase):
             "controlled": 50,
             "upstream": 40,
             "public": 15,
+            "tatqa_public": 15,
         }
         for name, path in BENCHMARK_PATHS.items():
             with self.subTest(dataset=name):
@@ -110,6 +113,12 @@ class FinanceBenchmarkTests(unittest.TestCase):
             )
         self.assertEqual(
             Counter(row["expected_tool"] for row in self.datasets["public"]),
+            Counter({"finance_query_table": 15}),
+        )
+        self.assertEqual(
+            Counter(
+                row["expected_tool"] for row in self.datasets["tatqa_public"]
+            ),
             Counter({"finance_query_table": 15}),
         )
 
@@ -195,6 +204,90 @@ class FinanceBenchmarkTests(unittest.TestCase):
             self.assertEqual(row["provenance_type"], "public_dataset_adaptation")
             source_indices.append(row["source_row_index"])
         self.assertEqual(len(source_indices), len(set(source_indices)))
+
+    def test_public_tatqa_rows_are_exact_paper_queries_with_pinned_provenance(
+        self,
+    ) -> None:
+        rows = self.datasets["tatqa_public"]
+        expected_source_coordinates = [
+            (3, 3, 21, "cac10d43fde9e07342fa7144876e77e7"),
+            (6, 5, 41, "3bff27eb2944cb199f863d6eb50bb06d"),
+            (8, 3, 51, "62afbd1d4e987a0cb3193b11523d0dfd"),
+            (9, 3, 57, "25d2e81cd8e2d8ab81c5796d6e89c4ec"),
+            (12, 4, 76, "fc99efc2ca485dc3677f3e998dea801b"),
+            (25, 3, 153, "4cc89377aa421d8d6eece5a7dce4de2d"),
+            (29, 3, 177, "a79311cf198fe3c0b698543ae20ca9b9"),
+            (33, 5, 203, "6769cc0cee475e77d8eb292b9bdefd81"),
+            (36, 5, 222, "7f5203a09a509ad96e94ca5d3d7cb647"),
+            (43, 4, 263, "5745196398b3689e34ad6098849b0269"),
+            (47, 5, 288, "6cf8ec5b621c2ad7848f6a65ac0063d5"),
+            (56, 2, 339, "f6647f46037f82005ef3f04cda1052d3"),
+            (57, 2, 345, "bd11d656bda1738c42b39479ace8fe80"),
+            (63, 4, 383, "53f5f57955697fb79d7a20d605a5abd5"),
+            (30, 5, 185, "7e2290f656cbeef6d9a61c02767b752c"),
+        ]
+        self.assertEqual(
+            [
+                (
+                    row["source_context_index"],
+                    row["source_question_index"],
+                    row["source_flat_question_index"],
+                    row["source_id"],
+                )
+                for row in rows
+            ],
+            expected_source_coordinates,
+        )
+        self.assertEqual(
+            [row["id"] for row in rows],
+            [
+                f"finance_public_tatqa_query_table_{index:03d}"
+                for index in range(1, 16)
+            ],
+        )
+
+        for row in rows:
+            self.assertEqual(row["source"], "public_finance_paper_derived")
+            self.assertEqual(row["source_dataset"], "TAT-QA")
+            self.assertEqual(row["source_repository"], "NExTplusplus/TAT-QA")
+            self.assertEqual(row["source_split"], "test_gold")
+            self.assertEqual(
+                row["source_revision"],
+                "870accc41953dcde885aabeb963d94aabdc0fbc3",
+            )
+            self.assertEqual(row["source_license"], "CC BY 4.0")
+            self.assertEqual(
+                row["source_paper_url"],
+                "https://aclanthology.org/2021.acl-long.254/",
+            )
+            self.assertEqual(
+                row["source_paper_doi"], "10.18653/v1/2021.acl-long.254"
+            )
+            self.assertEqual(
+                row["query_origin"], "official_research_dataset_question"
+            )
+            self.assertEqual(
+                row["provenance_type"],
+                "research_paper_dataset_adaptation",
+            )
+            self.assertEqual(
+                row["fixture_dataset_id"], "tatqa-public-test-gold-v1"
+            )
+            self.assertEqual(
+                row["fixture_file"],
+                "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+            )
+            self.assertEqual(
+                row["expected_args"]["dataset_id"],
+                "tatqa-public-test-gold-v1",
+            )
+            self.assertEqual(
+                row["expected_answer"]["dataset_id"],
+                "tatqa-public-test-gold-v1",
+            )
+            self.assertTrue(row["source_derivation"])
+            self.assertTrue(row["source_tree_derivation"])
+            self.assertIn("source_answer", row)
 
 
 if __name__ == "__main__":

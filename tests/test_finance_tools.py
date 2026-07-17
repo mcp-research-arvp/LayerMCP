@@ -111,8 +111,45 @@ class FinanceToolTests(unittest.TestCase):
         self.assertTrue(all(company["fictional"] for company in state["companies"]))
         self.assertEqual(
             state["table_datasets"],
-            ["annual_metrics", "finqa-public-test-v1", "quarterly_metrics"],
+            [
+                "annual_metrics",
+                "finqa-public-test-v1",
+                "quarterly_metrics",
+                "tatqa-public-test-gold-v1",
+            ],
         )
+
+    def test_tatqa_public_table_fixture_has_pinned_provenance(self) -> None:
+        result = finance_query_table(
+            "tatqa-public-test-gold-v1",
+            "SELECT COUNT(*) AS cell_count, "
+            "COUNT(DISTINCT source_table_uid) AS table_count FROM data",
+        )
+        self.assertEqual(result["columns"], ["cell_count", "table_count"])
+        self.assertEqual(result["rows"], [[594, 15]])
+        self.assertEqual(
+            result["provenance"]["classification"],
+            "allowlisted_fixture_table",
+        )
+        dataset = result["provenance"]["dataset"]
+        self.assertEqual(dataset["source_dataset"], "TAT-QA")
+        self.assertEqual(dataset["source_repository"], "NExTplusplus/TAT-QA")
+        self.assertEqual(dataset["source_split"], "test_gold")
+        self.assertEqual(
+            dataset["source_revision"],
+            "870accc41953dcde885aabeb963d94aabdc0fbc3",
+        )
+        self.assertEqual(
+            dataset["source_sha256"],
+            "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+        )
+        self.assertEqual(dataset["license"], "CC BY 4.0")
+        self.assertEqual(
+            dataset["source_paper_url"],
+            "https://aclanthology.org/2021.acl-long.254/",
+        )
+        self.assertFalse(dataset["synthetic"])
+        self.assert_fixture_provenance(result)
 
     def test_filing_retrieval_tools(self) -> None:
         lookup = finance_lookup_company("Layer Manufacturing")

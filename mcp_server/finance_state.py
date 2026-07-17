@@ -417,15 +417,29 @@ FINANCE_TABLES: dict[str, dict[str, Any]] = {
 }
 
 
-_FINQA_PUBLIC_FIXTURE_PATH = (
+_PUBLIC_TABLE_FIXTURE_ROOT = (
     Path(__file__).resolve().parents[1]
     / "benchmark"
     / "finance"
     / "fixtures"
-    / "finqa_public_test_cells.json"
 )
-_FINQA_PUBLIC_TABLE = json.loads(_FINQA_PUBLIC_FIXTURE_PATH.read_text(encoding="utf-8"))
-FINANCE_TABLES[_FINQA_PUBLIC_TABLE["dataset_id"]] = _FINQA_PUBLIC_TABLE
+
+
+def _load_public_table_fixtures() -> None:
+    """Register each checked-in public table fixture by its declared dataset ID."""
+    for fixture_path in sorted(_PUBLIC_TABLE_FIXTURE_ROOT.glob("*_cells.json")):
+        table = json.loads(fixture_path.read_text(encoding="utf-8"))
+        dataset_id = table.get("dataset_id")
+        if not isinstance(dataset_id, str) or not dataset_id.strip():
+            raise ValueError(
+                f"Finance table fixture {fixture_path.name} has no valid dataset_id."
+            )
+        if dataset_id in FINANCE_TABLES:
+            raise ValueError(f"Duplicate finance table dataset_id: {dataset_id}")
+        FINANCE_TABLES[dataset_id] = table
+
+
+_load_public_table_fixtures()
 
 
 _PDF_DOCUMENTS: dict[str, dict[str, Any]] = {

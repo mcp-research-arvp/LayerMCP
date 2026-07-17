@@ -1,0 +1,289 @@
+{
+  "repo_id": "codesearchnet-public-v1",
+  "fixture_version": "coding_codesearchnet_fixture_v1",
+  "description": "Declarative repository fixture containing 15 unique Python relevance-3 query/annotation pairs from CodeSearchNet. This is a bounded lexical routing fixture, not a reproduction of semantic retrieval or NDCG.",
+  "files": {
+    "README.md": "# CodeSearchNet Public Routing Fixture\n\nThis deterministic fixture contains 15 selected CodeSearchNet published queries and their unique Python relevance-3 annotation records.\n\nNo target repository source code is copied. Published GitHub URLs are retained only as annotation evidence and provenance. This fixture supports bounded, case-sensitive fixed-string lookup; it does not reproduce semantic code retrieval, ranking, or NDCG.\n\nSource revision: bb121a53a559e99a6849409355ee5c83803f2e87\nLicense: MIT; the pinned notice is preserved in benchmark/coding/fixtures/CODESEARCHNET_LICENSE.txt.\n",
+    "resources/queries_selected.txt": "k means clustering\nwrite csv\nget executable path\nhttpclient post json\nhow to make the checkbox checked\nsocket recv timeout\nhow to extract zip file recursively\nget current ip address\nreplace in file\nencode url\nget current process id\nrandomly extract x items from a list\nparse binary file to custom class\ngroup by count\nlinear regression\n",
+    "resources/annotationStore_selected.jsonl": "{\"source_query_index_zero_based\":20,\"source_annotation_index_zero_based\":1635,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"k means clustering\",\"github_url\":\"https://github.com/oscarbranson/latools/blob/cd25a650cfee318152f234d992708511f7047fbe/latools/filtering/clustering.py#L35-L56\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"k means clustering\",\"GitHubUrl\":\"https://github.com/oscarbranson/latools/blob/cd25a650cfee318152f234d992708511f7047fbe/latools/filtering/clustering.py#L35-L56\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":13,\"source_annotation_index_zero_based\":1666,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"write csv\",\"github_url\":\"https://github.com/sentinel-hub/sentinelhub-py/blob/08a83b7f1e289187159a643336995d8369860fea/sentinelhub/io_utils.py#L258-L271\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"write csv\",\"GitHubUrl\":\"https://github.com/sentinel-hub/sentinelhub-py/blob/08a83b7f1e289187159a643336995d8369860fea/sentinelhub/io_utils.py#L258-L271\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":28,\"source_annotation_index_zero_based\":1680,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"get executable path\",\"github_url\":\"https://github.com/ethereum/pyethereum/blob/b704a5c6577863edc539a1ec3d2620a443b950fb/ethereum/tools/_solidity.py#L24-L43\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"get executable path\",\"GitHubUrl\":\"https://github.com/ethereum/pyethereum/blob/b704a5c6577863edc539a1ec3d2620a443b950fb/ethereum/tools/_solidity.py#L24-L43\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":29,\"source_annotation_index_zero_based\":1721,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"httpclient post json\",\"github_url\":\"https://github.com/rckclmbr/pyportify/blob/696a1caad8a47b191f3bec44cc8fc3c437779512/pyportify/google.py#L98-L112\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"httpclient post json\",\"GitHubUrl\":\"https://github.com/rckclmbr/pyportify/blob/696a1caad8a47b191f3bec44cc8fc3c437779512/pyportify/google.py#L98-L112\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":43,\"source_annotation_index_zero_based\":1801,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"how to make the checkbox checked\",\"github_url\":\"https://github.com/Shapeways/coyote_framework/blob/cb29899b984a21d56bf65d0b1d907073948fe16c/coyote_framework/webdriver/webdriverwrapper/WebElementWrapper.py#L655-L660\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"how to make the checkbox checked\",\"GitHubUrl\":\"https://github.com/Shapeways/coyote_framework/blob/cb29899b984a21d56bf65d0b1d907073948fe16c/coyote_framework/webdriver/webdriverwrapper/WebElementWrapper.py#L655-L660\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":12,\"source_annotation_index_zero_based\":1832,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"socket recv timeout\",\"github_url\":\"https://github.com/anthonynguyen/pyrcon/blob/278cba95dd4d53a347d37acfce556ad375370e15/pyrcon/rcon.py#L97-L122\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"socket recv timeout\",\"GitHubUrl\":\"https://github.com/anthonynguyen/pyrcon/blob/278cba95dd4d53a347d37acfce556ad375370e15/pyrcon/rcon.py#L97-L122\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":74,\"source_annotation_index_zero_based\":1929,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"how to extract zip file recursively\",\"github_url\":\"https://github.com/bokeh/bokeh/blob/dc8cf49e4e4302fd38537ad089ece81fbcca4737/examples/app/stocks/download_sample_data.py#L27-L61\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"how to extract zip file recursively\",\"GitHubUrl\":\"https://github.com/bokeh/bokeh/blob/dc8cf49e4e4302fd38537ad089ece81fbcca4737/examples/app/stocks/download_sample_data.py#L27-L61\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":25,\"source_annotation_index_zero_based\":1952,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"get current ip address\",\"github_url\":\"https://github.com/UpCloudLtd/upcloud-python-api/blob/954b0ad7c4b932b2be31a95d88975f6b0eeac8ed/upcloud_api/cloud_manager/ip_address_mixin.py#L16-L23\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"get current ip address\",\"GitHubUrl\":\"https://github.com/UpCloudLtd/upcloud-python-api/blob/954b0ad7c4b932b2be31a95d88975f6b0eeac8ed/upcloud_api/cloud_manager/ip_address_mixin.py#L16-L23\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":19,\"source_annotation_index_zero_based\":2028,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"replace in file\",\"github_url\":\"https://github.com/HeliumEdu/heliumcli/blob/f6c6cc0ed3c335f956afa77eab0228ae23bb5d47/heliumcli/actions/init.py#L86-L97\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"replace in file\",\"GitHubUrl\":\"https://github.com/HeliumEdu/heliumcli/blob/f6c6cc0ed3c335f956afa77eab0228ae23bb5d47/heliumcli/actions/init.py#L86-L97\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":39,\"source_annotation_index_zero_based\":2071,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"encode url\",\"github_url\":\"https://github.com/fred49/linshare-api/blob/be646c25aa8ba3718abb6869c620b157d53d6e41/linshareapi/admin/upgradetasks.py#L177-L191\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"encode url\",\"GitHubUrl\":\"https://github.com/fred49/linshare-api/blob/be646c25aa8ba3718abb6869c620b157d53d6e41/linshareapi/admin/upgradetasks.py#L177-L191\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":57,\"source_annotation_index_zero_based\":2144,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"get current process id\",\"github_url\":\"https://github.com/Pajinek/vhm/blob/e323e99855fd5c40fd61fba87c2646a1165505ed/tools/vhmlib/manager.py#L103-L111\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"get current process id\",\"GitHubUrl\":\"https://github.com/Pajinek/vhm/blob/e323e99855fd5c40fd61fba87c2646a1165505ed/tools/vhmlib/manager.py#L103-L111\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":79,\"source_annotation_index_zero_based\":2259,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"randomly extract x items from a list\",\"github_url\":\"https://github.com/Erotemic/utool/blob/3b27e1f4e6e6fb23cd8744af7b7195b57d99e03a/utool/util_list.py#L2155-L2189\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"randomly extract x items from a list\",\"GitHubUrl\":\"https://github.com/Erotemic/utool/blob/3b27e1f4e6e6fb23cd8744af7b7195b57d99e03a/utool/util_list.py#L2155-L2189\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":24,\"source_annotation_index_zero_based\":2264,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"parse binary file to custom class\",\"github_url\":\"https://github.com/python-xlib/python-xlib/blob/8901e831737e79fe5645f48089d70e1d1046d2f2/Xlib/ext/xinput.py#L382-L387\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"parse binary file to custom class\",\"GitHubUrl\":\"https://github.com/python-xlib/python-xlib/blob/8901e831737e79fe5645f48089d70e1d1046d2f2/Xlib/ext/xinput.py#L382-L387\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":8,\"source_annotation_index_zero_based\":2344,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"group by count\",\"github_url\":\"https://github.com/letuananh/chirptext/blob/ce60b47257b272a587c8703ea1f86cd1a45553a7/chirptext/leutile.py#L178-L184\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"group by count\",\"GitHubUrl\":\"https://github.com/letuananh/chirptext/blob/ce60b47257b272a587c8703ea1f86cd1a45553a7/chirptext/leutile.py#L178-L184\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n{\"source_query_index_zero_based\":11,\"source_annotation_index_zero_based\":2398,\"source_annotation_pair_multiplicity\":1,\"language\":\"Python\",\"query\":\"linear regression\",\"github_url\":\"https://github.com/ulf1/oxyba/blob/b3043116050de275124365cb11e7df91fb40169d/oxyba/linreg_mle.py#L2-L59\",\"relevance\":3,\"notes\":\"\",\"source_annotation_record\":{\"Language\":\"Python\",\"Query\":\"linear regression\",\"GitHubUrl\":\"https://github.com/ulf1/oxyba/blob/b3043116050de275124365cb11e7df91fb40169d/oxyba/linreg_mle.py#L2-L59\",\"Relevance\":\"3\",\"Notes\":\"\"}}\n"
+  },
+  "records": [
+    {
+      "source_query_index_zero_based": 20,
+      "source_annotation_index_zero_based": 1635,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "k means clustering",
+      "github_url": "https://github.com/oscarbranson/latools/blob/cd25a650cfee318152f234d992708511f7047fbe/latools/filtering/clustering.py#L35-L56",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "k means clustering",
+        "GitHubUrl": "https://github.com/oscarbranson/latools/blob/cd25a650cfee318152f234d992708511f7047fbe/latools/filtering/clustering.py#L35-L56",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 13,
+      "source_annotation_index_zero_based": 1666,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "write csv",
+      "github_url": "https://github.com/sentinel-hub/sentinelhub-py/blob/08a83b7f1e289187159a643336995d8369860fea/sentinelhub/io_utils.py#L258-L271",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "write csv",
+        "GitHubUrl": "https://github.com/sentinel-hub/sentinelhub-py/blob/08a83b7f1e289187159a643336995d8369860fea/sentinelhub/io_utils.py#L258-L271",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 28,
+      "source_annotation_index_zero_based": 1680,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "get executable path",
+      "github_url": "https://github.com/ethereum/pyethereum/blob/b704a5c6577863edc539a1ec3d2620a443b950fb/ethereum/tools/_solidity.py#L24-L43",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "get executable path",
+        "GitHubUrl": "https://github.com/ethereum/pyethereum/blob/b704a5c6577863edc539a1ec3d2620a443b950fb/ethereum/tools/_solidity.py#L24-L43",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 29,
+      "source_annotation_index_zero_based": 1721,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "httpclient post json",
+      "github_url": "https://github.com/rckclmbr/pyportify/blob/696a1caad8a47b191f3bec44cc8fc3c437779512/pyportify/google.py#L98-L112",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "httpclient post json",
+        "GitHubUrl": "https://github.com/rckclmbr/pyportify/blob/696a1caad8a47b191f3bec44cc8fc3c437779512/pyportify/google.py#L98-L112",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 43,
+      "source_annotation_index_zero_based": 1801,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "how to make the checkbox checked",
+      "github_url": "https://github.com/Shapeways/coyote_framework/blob/cb29899b984a21d56bf65d0b1d907073948fe16c/coyote_framework/webdriver/webdriverwrapper/WebElementWrapper.py#L655-L660",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "how to make the checkbox checked",
+        "GitHubUrl": "https://github.com/Shapeways/coyote_framework/blob/cb29899b984a21d56bf65d0b1d907073948fe16c/coyote_framework/webdriver/webdriverwrapper/WebElementWrapper.py#L655-L660",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 12,
+      "source_annotation_index_zero_based": 1832,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "socket recv timeout",
+      "github_url": "https://github.com/anthonynguyen/pyrcon/blob/278cba95dd4d53a347d37acfce556ad375370e15/pyrcon/rcon.py#L97-L122",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "socket recv timeout",
+        "GitHubUrl": "https://github.com/anthonynguyen/pyrcon/blob/278cba95dd4d53a347d37acfce556ad375370e15/pyrcon/rcon.py#L97-L122",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 74,
+      "source_annotation_index_zero_based": 1929,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "how to extract zip file recursively",
+      "github_url": "https://github.com/bokeh/bokeh/blob/dc8cf49e4e4302fd38537ad089ece81fbcca4737/examples/app/stocks/download_sample_data.py#L27-L61",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "how to extract zip file recursively",
+        "GitHubUrl": "https://github.com/bokeh/bokeh/blob/dc8cf49e4e4302fd38537ad089ece81fbcca4737/examples/app/stocks/download_sample_data.py#L27-L61",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 25,
+      "source_annotation_index_zero_based": 1952,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "get current ip address",
+      "github_url": "https://github.com/UpCloudLtd/upcloud-python-api/blob/954b0ad7c4b932b2be31a95d88975f6b0eeac8ed/upcloud_api/cloud_manager/ip_address_mixin.py#L16-L23",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "get current ip address",
+        "GitHubUrl": "https://github.com/UpCloudLtd/upcloud-python-api/blob/954b0ad7c4b932b2be31a95d88975f6b0eeac8ed/upcloud_api/cloud_manager/ip_address_mixin.py#L16-L23",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 19,
+      "source_annotation_index_zero_based": 2028,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "replace in file",
+      "github_url": "https://github.com/HeliumEdu/heliumcli/blob/f6c6cc0ed3c335f956afa77eab0228ae23bb5d47/heliumcli/actions/init.py#L86-L97",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "replace in file",
+        "GitHubUrl": "https://github.com/HeliumEdu/heliumcli/blob/f6c6cc0ed3c335f956afa77eab0228ae23bb5d47/heliumcli/actions/init.py#L86-L97",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 39,
+      "source_annotation_index_zero_based": 2071,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "encode url",
+      "github_url": "https://github.com/fred49/linshare-api/blob/be646c25aa8ba3718abb6869c620b157d53d6e41/linshareapi/admin/upgradetasks.py#L177-L191",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "encode url",
+        "GitHubUrl": "https://github.com/fred49/linshare-api/blob/be646c25aa8ba3718abb6869c620b157d53d6e41/linshareapi/admin/upgradetasks.py#L177-L191",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 57,
+      "source_annotation_index_zero_based": 2144,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "get current process id",
+      "github_url": "https://github.com/Pajinek/vhm/blob/e323e99855fd5c40fd61fba87c2646a1165505ed/tools/vhmlib/manager.py#L103-L111",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "get current process id",
+        "GitHubUrl": "https://github.com/Pajinek/vhm/blob/e323e99855fd5c40fd61fba87c2646a1165505ed/tools/vhmlib/manager.py#L103-L111",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 79,
+      "source_annotation_index_zero_based": 2259,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "randomly extract x items from a list",
+      "github_url": "https://github.com/Erotemic/utool/blob/3b27e1f4e6e6fb23cd8744af7b7195b57d99e03a/utool/util_list.py#L2155-L2189",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "randomly extract x items from a list",
+        "GitHubUrl": "https://github.com/Erotemic/utool/blob/3b27e1f4e6e6fb23cd8744af7b7195b57d99e03a/utool/util_list.py#L2155-L2189",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 24,
+      "source_annotation_index_zero_based": 2264,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "parse binary file to custom class",
+      "github_url": "https://github.com/python-xlib/python-xlib/blob/8901e831737e79fe5645f48089d70e1d1046d2f2/Xlib/ext/xinput.py#L382-L387",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "parse binary file to custom class",
+        "GitHubUrl": "https://github.com/python-xlib/python-xlib/blob/8901e831737e79fe5645f48089d70e1d1046d2f2/Xlib/ext/xinput.py#L382-L387",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 8,
+      "source_annotation_index_zero_based": 2344,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "group by count",
+      "github_url": "https://github.com/letuananh/chirptext/blob/ce60b47257b272a587c8703ea1f86cd1a45553a7/chirptext/leutile.py#L178-L184",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "group by count",
+        "GitHubUrl": "https://github.com/letuananh/chirptext/blob/ce60b47257b272a587c8703ea1f86cd1a45553a7/chirptext/leutile.py#L178-L184",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    },
+    {
+      "source_query_index_zero_based": 11,
+      "source_annotation_index_zero_based": 2398,
+      "source_annotation_pair_multiplicity": 1,
+      "language": "Python",
+      "query": "linear regression",
+      "github_url": "https://github.com/ulf1/oxyba/blob/b3043116050de275124365cb11e7df91fb40169d/oxyba/linreg_mle.py#L2-L59",
+      "relevance": 3,
+      "notes": "",
+      "source_annotation_record": {
+        "Language": "Python",
+        "Query": "linear regression",
+        "GitHubUrl": "https://github.com/ulf1/oxyba/blob/b3043116050de275124365cb11e7df91fb40169d/oxyba/linreg_mle.py#L2-L59",
+        "Relevance": "3",
+        "Notes": ""
+      }
+    }
+  ],
+  "provenance": {
+    "source_dataset": "CodeSearchNet Challenge human evaluation",
+    "source_repository": "github/CodeSearchNet",
+    "source_revision": "bb121a53a559e99a6849409355ee5c83803f2e87",
+    "verified_repository_tip": "106e827405c968597da938f6b373d30183918869",
+    "source_query_file": "resources/queries.csv",
+    "source_query_url": "https://github.com/github/CodeSearchNet/blob/bb121a53a559e99a6849409355ee5c83803f2e87/resources/queries.csv",
+    "source_query_sha256": "037509c717c2e164721f0fd3ea45cb05f36669551af643f53930a92b76b146cf",
+    "source_annotation_file": "resources/annotationStore.csv",
+    "source_annotation_url": "https://github.com/github/CodeSearchNet/blob/bb121a53a559e99a6849409355ee5c83803f2e87/resources/annotationStore.csv",
+    "source_annotation_sha256": "0340af32b551ceadb74fec147f97642b7fedf3ff039e38fb86baff49ee899846",
+    "source_license": "MIT",
+    "source_license_url": "https://github.com/github/CodeSearchNet/blob/bb121a53a559e99a6849409355ee5c83803f2e87/LICENSE",
+    "source_license_sha256": "5ba1fd8a344040f2698ed3234aeb8f4b3e85211aa54a37048021f3eb0043be22",
+    "local_license_file": "benchmark/coding/fixtures/CODESEARCHNET_LICENSE.txt",
+    "attribution_file": "benchmark/coding/fixtures/CODESEARCHNET_ATTRIBUTION.md",
+    "source_paper_url": "https://arxiv.org/abs/1909.09436",
+    "query_origin": "codesearchnet_published_query",
+    "provenance_type": "research_dataset_adaptation",
+    "selection": "Fifteen exact published queries paired with unique Python annotations whose relevance is 3; all indices are zero-based and exclude headers.",
+    "adaptation": "Only selected MIT-licensed CodeSearchNet query and annotation records are normalized. No target source code is copied. The fixture evaluates lexical routing and annotation lookup, not semantic retrieval or NDCG."
+  }
+}

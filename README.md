@@ -141,8 +141,10 @@ repo structure is the local MCP tool-routing prototype below.
 LayerMCP/
 ├── benchmark/
 │   ├── coding/
+│   │   ├── fixtures/
 │   │   ├── README.md
 │   │   ├── tool_routing_coding_controlled.json
+│   │   ├── tool_routing_coding_codesearchnet_public_derived.json
 │   │   ├── tool_routing_coding_smoke.json
 │   │   └── tool_routing_coding_upstream_inspired.json
 │   ├── finance/
@@ -357,11 +359,20 @@ Retail, coding, and finance domains. The coding tool catalog is:
 - `git_diff` — compare reachable commits or local branches, or inspect the worktree
 - `git_status` — inspect bounded branch, index, worktree, and untracked state
 
-All coding tools use the allowlisted repository ID `example/research-mcp`. The
-repository is created lazily from deterministic files and three fixed commits.
+The generated coding datasets use the allowlisted repository ID
+`example/research-mcp`. That repository is created lazily from deterministic
+files and three fixed commits.
 Paths are repository-relative, `.git` access and symlinks are rejected, Git
 revisions are restricted to the pinned history, and outputs are capped. These
 seven tools are read-only.
+
+A second allowlisted repository, `codesearchnet-public-v1`, contains a narrow
+MIT-licensed adaptation of 15 exact CodeSearchNet human-evaluation queries and
+their selected annotation records. It contains no target source code and is
+explicitly a lexical tool-routing fixture rather than a reproduction of the
+paper's semantic retrieval evaluation. Benchmark prompts wrap the exact source
+queries in self-contained repository-search instructions and preserve the
+verbatim text separately as `original_query`.
 
 The older `github_search` and `read_code_file` fixtures remain registered for
 backward compatibility with existing benchmark files.
@@ -394,6 +405,7 @@ datasets are:
 - `benchmark/coding/tool_routing_coding_smoke.json` — 7 direct examples, one per coding tool
 - `benchmark/coding/tool_routing_coding_controlled.json` — 35 balanced controlled examples
 - `benchmark/coding/tool_routing_coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
+- `benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
 
 See `benchmark/coding/README.md` for their scope, provenance, and run commands.
 The finance-specific datasets are:

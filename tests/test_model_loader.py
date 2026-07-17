@@ -235,6 +235,23 @@ class RouterRegistryTests(unittest.TestCase):
                 Path("custom/llama"),
             )
 
+
+class QwenLocalShardingTests(unittest.TestCase):
+    def test_qwen_layer_devices_split_evenly(self) -> None:
+        from models.architectures.qwen36_pytorch.model import _split_layer_devices
+
+        devices = _split_layer_devices(
+            num_hidden_layers=6,
+            device="cpu",
+            device_map=["cuda:0", "cuda:1"],
+        )
+
+        self.assertEqual(len(devices), 6)
+        self.assertEqual(
+            [str(device) for device in devices],
+            ["cuda:0", "cuda:0", "cuda:0", "cuda:1", "cuda:1", "cuda:1"],
+        )
+
     def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
         from models.routers.qwen36_local_router import _extract_tool_name
 

@@ -9,6 +9,7 @@ import torch
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CHECKPOINT_PATH = PROJECT_ROOT / "checkpoints" / "qwen-3.6"
 CHECKPOINT_ENV_VAR = "LAYERMCP_QWEN36_CHECKPOINT"
+DEVICE_MAP_ENV_VAR = "LAYERMCP_QWEN36_DEVICE_MAP"
 
 
 @dataclass
@@ -27,6 +28,7 @@ class Config:
         if torch.backends.mps.is_available()
         else "cpu"
     )
+    device_map: str | None = os.environ.get(DEVICE_MAP_ENV_VAR)
     temperature: float = 0.0
     top_p: float = 0.8
     top_k: int = 20

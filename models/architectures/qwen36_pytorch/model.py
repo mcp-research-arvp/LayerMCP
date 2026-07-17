@@ -238,18 +238,55 @@ class LinearAttnCache:
         self.has_state = False
 
 
-def build_caches(configs: ModelConfigs, batch_size, n_ctx, device, dtype):
+def _split_layer_devices(
+    num_hidden_layers: int,
+    device: str | torch.device,
+    device_map: list[str | torch.device] | tuple[str | torch.device, ...] | None = None,
+) -> list[torch.device]:
+    if not device_map:
+        return [torch.device(device) for _ in range(num_hidden_layers)]
+
+    devices = [torch.device(item) for item in device_map]
+    if not devices:
+        raise ValueError("device_map must contain at least one device.")
+
+    return [
+        devices[min(layer_idx * len(devices) // num_hidden_layers, len(devices) - 1)]
+        for layer_idx in range(num_hidden_layers)
+    ]
+
+
+def _module_device(module: nn.Module) -> torch.device:
+    return next(module.parameters()).device
+
+
+def _move_cache_to_device(cache, device: torch.device):
+    if cache is None:
+        return None
+    if isinstance(cache, FullAttnCache):
+        cache.k = cache.k.to(device)
+        cache.v = cache.v.to(device)
+        return cache
+    if isinstance(cache, LinearAttnCache):
+        cache.conv_state = cache.conv_state.to(device)
+        cache.recurrent_state = cache.recurrent_state.to(device)
+        return cache
+    return cache
+
+
+def build_caches(configs: ModelConfigs, batch_size, n_ctx, device, dtype, layer_devices=None):
     """Return a per-layer list of the appropriate cache object."""
+    devices = layer_devices or [torch.device(device) for _ in range(configs.num_hidden_layers)]
     conv_dim = (
         configs.linear_key_head_dim * configs.linear_num_key_heads * 2
         + configs.linear_value_head_dim * configs.linear_num_value_heads
     )
     caches = []
-    for layer_type in configs.layer_types:
+    for layer_type, layer_device in zip(configs.layer_types, devices):
         if layer_type == "full_attention":
             caches.append(
                 FullAttnCache(
-                    batch_size, n_ctx, configs.num_key_value_heads, configs.head_dim, device, dtype
+                    batch_size, n_ctx, configs.num_key_value_heads, configs.head_dim, layer_device, dtype
                 )
             )
         else:
@@ -261,7 +298,7 @@ def build_caches(configs: ModelConfigs, batch_size, n_ctx, device, dtype):
                     configs.linear_num_value_heads,
                     configs.linear_key_head_dim,
                     configs.linear_value_head_dim,
-                    device,
+                    layer_device,
                     dtype,
                 )
             )
@@ -692,23 +729,32 @@ class Qwen35DecoderLayer(nn.Module):
 # Backbone + LM head
 # =============================================================================
 class Qwen35TextModel(nn.Module):
-    def __init__(self, configs: ModelConfigs, device=None, dtype=None):
+    def __init__(self, configs: ModelConfigs, device=None, dtype=None, layer_devices=None):
         super().__init__()
         self.configs = configs
-        self.embed_tokens = nn.Embedding(configs.vocab_size, configs.hidden_size, device=device, dtype=dtype)
+        self.layer_devices = layer_devices or [torch.device(device) for _ in range(configs.num_hidden_layers)]
+        self.embed_device = self.layer_devices[0]
+        self.final_device = self.layer_devices[-1]
+        self.embed_tokens = nn.Embedding(configs.vocab_size, configs.hidden_size, device=self.embed_device, dtype=dtype)
         self.layers = nn.ModuleList(
-            [Qwen35DecoderLayer(configs, i, device, dtype) for i in range(configs.num_hidden_layers)]
+            [
+                Qwen35DecoderLayer(configs, i, self.layer_devices[i], dtype)
+                for i in range(configs.num_hidden_layers)
+            ]
         )
-        self.norm = Qwen35RMSNorm(configs.hidden_size, eps=configs.rms_norm_eps, device=device)
-        self.rotary_emb = RotaryEmbedding(configs, device=device)
+        self.norm = Qwen35RMSNorm(configs.hidden_size, eps=configs.rms_norm_eps, device=self.final_device)
+        self.rotary_emb = RotaryEmbedding(configs, device=self.embed_device)
 
     def forward(self, input_ids, caches=None, position_ids=None):
         caches = caches or [None] * len(self.layers)
+        input_ids = input_ids.to(self.embed_device)
         hidden_states = self.embed_tokens(input_ids)
 
         batch_size, seq_len = input_ids.shape
         if position_ids is None:
-            position_ids = torch.arange(seq_len, device=input_ids.device)[None, :]
+            position_ids = torch.arange(seq_len, device=self.embed_device)[None, :]
+        else:
+            position_ids = position_ids.to(self.embed_device)
 
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
@@ -716,34 +762,47 @@ class Qwen35TextModel(nn.Module):
         attention_mask = None
         if seq_len > 1:
             min_val = torch.finfo(hidden_states.dtype).min
-            mask = torch.full((seq_len, seq_len), min_val, device=input_ids.device, dtype=hidden_states.dtype)
+            mask = torch.full((seq_len, seq_len), min_val, device=self.embed_device, dtype=hidden_states.dtype)
             mask = torch.triu(mask, diagonal=1)
             attention_mask = mask[None, None, :, :]
 
         for layer, cache in zip(self.layers, caches):
+            layer_device = _module_device(layer)
+            hidden_states = hidden_states.to(layer_device)
+            layer_position_embeddings = tuple(item.to(layer_device) for item in position_embeddings)
+            layer_attention_mask = attention_mask.to(layer_device) if attention_mask is not None else None
+            cache = _move_cache_to_device(cache, layer_device)
             hidden_states = layer(
                 hidden_states,
-                position_embeddings=position_embeddings,
-                attention_mask=attention_mask,
+                position_embeddings=layer_position_embeddings,
+                attention_mask=layer_attention_mask,
                 cache=cache,
             )
+        hidden_states = hidden_states.to(self.final_device)
         return self.norm(hidden_states)
 
 
 class Transformer(nn.Module):
-    def __init__(self, configs: ModelConfigs, device=None, dtype=torch.bfloat16):
+    def __init__(self, configs: ModelConfigs, device=None, dtype=torch.bfloat16, device_map=None):
         super().__init__()
         self.configs = configs
-        self.model = Qwen35TextModel(configs, device, dtype)
-        self.lm_head = nn.Linear(configs.hidden_size, configs.vocab_size, bias=False, device=device, dtype=dtype)
+        self.layer_devices = _split_layer_devices(configs.num_hidden_layers, device, device_map)
+        self.model = Qwen35TextModel(configs, device, dtype, layer_devices=self.layer_devices)
+        self.final_device = self.layer_devices[-1]
+        self.lm_head = nn.Linear(configs.hidden_size, configs.vocab_size, bias=False, device=self.final_device, dtype=dtype)
 
     def forward(self, input_ids, caches=None, position_ids=None):
         hidden = self.model(input_ids, caches=caches, position_ids=position_ids)
+        hidden = hidden.to(self.final_device)
         return self.lm_head(hidden).float()
 
     # ------------------------------------------------------------------ #
     @staticmethod
-    def from_checkpoint(path: str, device: str | torch.device = "cpu") -> "Transformer":
+    def from_checkpoint(
+        path: str,
+        device: str | torch.device = "cpu",
+        device_map: list[str | torch.device] | tuple[str | torch.device, ...] | None = None,
+    ) -> "Transformer":
         device = torch.device(device)
 
         with open(os.path.join(path, "config.json"), "r") as f:
@@ -756,7 +815,8 @@ class Transformer(nn.Module):
 
         # Index the checkpoint first so we can adapt the module tree to the
         # actual tensor layout (fused experts, presence of a shared expert).
-        ckpt = Checkpoint(path, device)
+        ckpt_device = torch.device("cpu") if device_map else device
+        ckpt = Checkpoint(path, ckpt_device)
         available = ckpt.keys()
 
         if cfg.num_experts > 0:
@@ -775,7 +835,9 @@ class Transformer(nn.Module):
                 f"shared_expert={cfg.use_shared_expert}, sparse layers={n_moe}/{cfg.num_hidden_layers}"
             )
 
-        model = Transformer(cfg, device=device, dtype=dtype).to(device)
+        model = Transformer(cfg, device=device, dtype=dtype, device_map=device_map)
+        if not device_map:
+            model = model.to(device)
         model.eval()
 
         with torch.no_grad():
@@ -815,7 +877,7 @@ class Transformer(nn.Module):
                     raise RuntimeError(
                         f"shape mismatch for {name}: checkpoint {tuple(t.shape)} vs model {tuple(param.shape)}"
                     )
-                param.copy_(t.to(device=device, dtype=param.dtype))
+                param.copy_(t.to(device=param.device, dtype=param.dtype))
 
         return model
 
@@ -858,5 +920,4 @@ def _parse_hf_config(raw: dict) -> ModelConfigs:
         mlp_only_layers=text.get("mlp_only_layers", None),
         shared_expert_intermediate_size=text.get("shared_expert_intermediate_size", 0) or 0,
     )
-
 

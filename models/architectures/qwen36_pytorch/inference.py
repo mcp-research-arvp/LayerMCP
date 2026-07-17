@@ -13,6 +13,15 @@ def debug_print(*args: Any, **kwargs: Any) -> None:
         print("[DEBUG]", *args, **kwargs)
 
 
+def _parse_device_map(raw: str | None) -> list[torch.device] | None:
+    if raw is None or not raw.strip():
+        return None
+    devices = [torch.device(item.strip()) for item in raw.split(",") if item.strip()]
+    if not devices:
+        return None
+    return devices
+
+
 def get_tokenizer(checkpoint: str):
     """
     Load the Qwen3.5 tokenizer. Prefers HF `AutoTokenizer`; falls back to the
@@ -88,15 +97,22 @@ class TokenGenerator:
         device: torch.device = Config.device,
     ):
         self.device = device
+        self.device_map = _parse_device_map(Config.device_map)
 
         if TokenGenerator._model is None:
             debug_print(f"Loading model weights from {checkpoint}...")
             start = time.time()
-            TokenGenerator._model = Transformer.from_checkpoint(checkpoint, device=device)
+            TokenGenerator._model = Transformer.from_checkpoint(
+                checkpoint,
+                device=device,
+                device_map=self.device_map,
+            )
             print(f"\u2713 Model weights loaded in {time.time() - start:.2f}s")
         else:
             print("Model weights already loaded. Reusing existing instance.")
         self.model: Transformer = TokenGenerator._model
+        self.input_device = self.model.model.embed_device
+        self.layer_devices = self.model.layer_devices
 
         if TokenGenerator._tokenizer is None:
             print("Loading tokenizer...")
@@ -170,7 +186,14 @@ class TokenGenerator:
 
         cache_start = time.time()
         param_dtype = next(self.model.parameters()).dtype
-        caches = build_caches(cfg, batch_size=1, n_ctx=cache_size, device=self.device, dtype=param_dtype)
+        caches = build_caches(
+            cfg,
+            batch_size=1,
+            n_ctx=cache_size,
+            device=self.device,
+            dtype=param_dtype,
+            layer_devices=self.layer_devices,
+        )
         print(f"\u2713 Caches initialised in {time.time() - cache_start:.2f}s")
 
         tokens = list(prompt_tokens)
@@ -179,8 +202,8 @@ class TokenGenerator:
         # --- Prefill ---
         print(f"Starting prefill phase (processing {len(tokens)} tokens)...")
         prefill_start = time.time()
-        input_tensor = torch.as_tensor([tokens], dtype=torch.long, device=self.device)
-        position_ids = torch.arange(len(tokens), device=self.device)[None, :]
+        input_tensor = torch.as_tensor([tokens], dtype=torch.long, device=self.input_device)
+        position_ids = torch.arange(len(tokens), device=self.input_device)[None, :]
         logits = self.model(input_tensor, caches=caches, position_ids=position_ids)[:, -1, :].squeeze(0)
         print(f"\u2713 Prefill complete in {time.time() - prefill_start:.2f}s")
 
@@ -194,8 +217,8 @@ class TokenGenerator:
             iter_start = time.time()
 
             if num_generated > 0:
-                input_tensor = torch.as_tensor([[predicted_token]], dtype=torch.long, device=self.device)
-                position_ids = torch.as_tensor([[cur_pos]], dtype=torch.long, device=self.device)
+                input_tensor = torch.as_tensor([[predicted_token]], dtype=torch.long, device=self.input_device)
+                position_ids = torch.as_tensor([[cur_pos]], dtype=torch.long, device=self.input_device)
                 logits = self.model(input_tensor, caches=caches, position_ids=position_ids)[:, -1, :].squeeze(0)
                 cur_pos += 1
 
@@ -262,5 +285,4 @@ class TokenGenerator:
             out.append(token)
         text = _decode(self.tokenizer, out)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
-
 

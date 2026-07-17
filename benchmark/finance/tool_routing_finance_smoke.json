@@ -1,0 +1,378 @@
+[
+  {
+    "id": "finance_smoke_finance_lookup_company_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Look up Layer Manufacturing Concepts, Inc. by ticker LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "LMCP"
+    },
+    "expected_answer": {
+      "query": "LMCP",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for company resolution by ticker.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_search_filings_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Find Layer Manufacturing Concepts, Inc.'s fiscal 2024 Form 10-K filing; return at most one result.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "form_type": "10-K",
+      "fiscal_year": 2024,
+      "max_results": 1
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded filing search.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_get_filing_section_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Retrieve the Risk Factors section from filing LMCP-2024-10K.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "risk_factors"
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "risk_factors",
+      "form_type": "10-K",
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for filing-section retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_get_company_facts_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Get up to five 2024 Revenue facts in USD for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "concept": "Revenue",
+      "unit": "USD",
+      "fiscal_year": 2024,
+      "max_results": 5
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for filtered company facts.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_get_financial_statement_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Return LMCP's FY 2024 income statement.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY"
+    },
+    "expected_answer": {
+      "ticker": "LMCP",
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 5
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for structured financial statements.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_parse_xbrl_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Parse Revenue and NetIncomeLoss from XBRL filing LMCP-2024-10K, with at most ten facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "concepts": [
+        "Revenue",
+        "NetIncomeLoss"
+      ],
+      "max_facts": 10
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded XBRL concept parsing.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_query_table_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "In quarterly_metrics, use SQL to list ticker and revenue from data ordered by ticker, fiscal year, and fiscal period; return at most ten rows.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, revenue FROM data ORDER BY ticker, fiscal_year, fiscal_period",
+      "max_rows": 10
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "revenue"
+      ],
+      "row_count": 9,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for read-only SQL over an allowlisted table.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_extract_pdf_tables_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Extract at most two tables from page 42 of the LMCP 2024 annual-report PDF using lattice mode.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42",
+      "flavor": "lattice",
+      "max_tables": 2
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42",
+      "requested_flavor": "lattice",
+      "table_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded PDF-table extraction.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_get_market_quote_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Retrieve the market quote for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "as_of": "2025-01-10",
+      "price": 42.75,
+      "volume": 151000
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for a deterministic market quote.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_smoke_finance_get_market_time_series_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Return at most five daily LMCP price points from 2025-01-02 through 2025-01-08.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "LMCP",
+      "start_date": "2025-01-02",
+      "end_date": "2025-01-08",
+      "interval": "daily",
+      "max_points": 5
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "start_date": "2025-01-02",
+      "end_date": "2025-01-08",
+      "point_count": 5,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Smoke coverage for bounded, date-filtered market history.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  }
+]

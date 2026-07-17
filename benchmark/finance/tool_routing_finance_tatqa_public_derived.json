@@ -1,0 +1,1687 @@
+[
+  {
+    "id": "finance_public_tatqa_query_table_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the increase / (decrease) in wireless capital expenditure from 2018 to 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 3 AND table_column_index = 2 THEN numeric_value END)), 5) AS result FROM data WHERE source_table_uid = '1424e718ab72e7d0bc792bbed0f42df6'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          234.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Difference between the 2019 and 2018 wireless capital-expenditure cells.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 3,
+    "source_question_index": 3,
+    "source_flat_question_index": 21,
+    "source_table_uid": "1424e718ab72e7d0bc792bbed0f42df6",
+    "source_id": "cac10d43fde9e07342fa7144876e77e7",
+    "source_derivation": "1,320 - 1,086",
+    "source_answer": 234,
+    "source_tree_derivation": [
+      "-",
+      "1320",
+      "1086"
+    ],
+    "source_question_record": {
+      "uid": "cac10d43fde9e07342fa7144876e77e7",
+      "order": 4,
+      "question": "What was the increase / (decrease) in wireless capital expenditure from 2018 to 2019?",
+      "answer": 234,
+      "derivation": "1,320 - 1,086",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "million",
+      "tree_derivation": [
+        "-",
+        "1320",
+        "1086"
+      ],
+      "facts": [
+        "1320",
+        "1086"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            3,
+            1
+          ]
+        },
+        {
+          "table": [
+            3,
+            2
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What is the 2019 actual group operating profit expressed as a ratio of the 2019 target group operating profit?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN table_row_index = 1 AND table_column_index = 1 THEN numeric_value END) / MAX(CASE WHEN table_row_index = 1 AND table_column_index = 3 THEN numeric_value END)), 2) AS result FROM data WHERE source_table_uid = '5e5f8b76df669b1a32df3074c2c551be'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          1.03
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Ratio of actual to target 2019 group operating profit.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 6,
+    "source_question_index": 5,
+    "source_flat_question_index": 41,
+    "source_table_uid": "5e5f8b76df669b1a32df3074c2c551be",
+    "source_id": "3bff27eb2944cb199f863d6eb50bb06d",
+    "source_derivation": "277.3/270.3",
+    "source_answer": 1.03,
+    "source_tree_derivation": [
+      "/",
+      "277.3",
+      "270.3"
+    ],
+    "source_question_record": {
+      "uid": "3bff27eb2944cb199f863d6eb50bb06d",
+      "order": 8,
+      "question": "What is the 2019 actual group operating profit expressed as a ratio of the 2019 target group operating profit?",
+      "answer": 1.03,
+      "derivation": "277.3/270.3",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "",
+      "tree_derivation": [
+        "/",
+        "277.3",
+        "270.3"
+      ],
+      "facts": [
+        "277.3",
+        "270.3"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            1,
+            1
+          ]
+        },
+        {
+          "table": [
+            1,
+            3
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What is the NEOs' total salary?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND(((((MAX(CASE WHEN table_row_index = 2 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END)) + MAX(CASE WHEN table_row_index = 4 AND table_column_index = 1 THEN numeric_value END)) + MAX(CASE WHEN table_row_index = 5 AND table_column_index = 1 THEN numeric_value END)) + MAX(CASE WHEN table_row_index = 6 AND table_column_index = 1 THEN numeric_value END)), 5) AS result FROM data WHERE source_table_uid = 'dbab56c6c9ced463d8eb498d67c8bc9c'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          3140000.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Sum of the five NEO base-salary cells.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 8,
+    "source_question_index": 3,
+    "source_flat_question_index": 51,
+    "source_table_uid": "dbab56c6c9ced463d8eb498d67c8bc9c",
+    "source_id": "62afbd1d4e987a0cb3193b11523d0dfd",
+    "source_derivation": "1,000,000+650,000+440,000+450,000+600,000",
+    "source_answer": 3140000,
+    "source_tree_derivation": [
+      "+",
+      "+",
+      "+",
+      "+",
+      "1000000",
+      "650000",
+      "440000",
+      "450000",
+      "600000"
+    ],
+    "source_question_record": {
+      "uid": "62afbd1d4e987a0cb3193b11523d0dfd",
+      "order": 4,
+      "question": "What is the NEOs' total salary?",
+      "answer": 3140000,
+      "derivation": "1,000,000+650,000+440,000+450,000+600,000",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "",
+      "tree_derivation": [
+        "+",
+        "+",
+        "+",
+        "+",
+        "1000000",
+        "650000",
+        "440000",
+        "450000",
+        "600000"
+      ],
+      "facts": [
+        "1000000",
+        "450000",
+        "440000",
+        "650000",
+        "600000"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            2,
+            1
+          ]
+        },
+        {
+          "table": [
+            5,
+            1
+          ]
+        },
+        {
+          "table": [
+            4,
+            1
+          ]
+        },
+        {
+          "table": [
+            3,
+            1
+          ]
+        },
+        {
+          "table": [
+            6,
+            1
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the change in gross profit between May 2019 and August 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN table_row_index = 4 AND table_column_index = 1 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 4 AND table_column_index = 2 THEN numeric_value END)), 5) AS result FROM data WHERE source_table_uid = 'f4e5e687e6185cabde6d70a4d37f729f'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          51279.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Difference between August and May 2019 gross profit.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 9,
+    "source_question_index": 3,
+    "source_flat_question_index": 57,
+    "source_table_uid": "f4e5e687e6185cabde6d70a4d37f729f",
+    "source_id": "25d2e81cd8e2d8ab81c5796d6e89c4ec",
+    "source_derivation": "495,078-443,799",
+    "source_answer": 51279,
+    "source_tree_derivation": [
+      "-",
+      "495078",
+      "443799"
+    ],
+    "source_question_record": {
+      "uid": "25d2e81cd8e2d8ab81c5796d6e89c4ec",
+      "order": 4,
+      "question": "What was the change in gross profit between May 2019 and August 2019?",
+      "answer": 51279,
+      "derivation": "495,078-443,799",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "thousand",
+      "tree_derivation": [
+        "-",
+        "495078",
+        "443799"
+      ],
+      "facts": [
+        "443799",
+        "495078"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            4,
+            2
+          ]
+        },
+        {
+          "table": [
+            4,
+            1
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the change in stock-based compensation between 2018 and 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN table_row_index = 4 AND table_column_index = 1 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 4 AND table_column_index = 2 THEN numeric_value END)), 5) AS result FROM data WHERE source_table_uid = '5ce1713d9128f3759369b6274e111c33'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          -217.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Year-over-year change in stock-based compensation.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 12,
+    "source_question_index": 4,
+    "source_flat_question_index": 76,
+    "source_table_uid": "5ce1713d9128f3759369b6274e111c33",
+    "source_id": "fc99efc2ca485dc3677f3e998dea801b",
+    "source_derivation": "525-742",
+    "source_answer": -217,
+    "source_tree_derivation": [
+      "-",
+      "525",
+      "742"
+    ],
+    "source_question_record": {
+      "uid": "fc99efc2ca485dc3677f3e998dea801b",
+      "order": 6,
+      "question": "What was the change in stock-based compensation between 2018 and 2019?",
+      "answer": -217,
+      "derivation": "525-742",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "thousand",
+      "tree_derivation": [
+        "-",
+        "525",
+        "742"
+      ],
+      "facts": [
+        "525",
+        "742"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            4,
+            1
+          ]
+        },
+        {
+          "table": [
+            4,
+            2
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_006",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What is the average cash dividends declared per share for fiscal years 2017 to 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((((MAX(CASE WHEN table_row_index = 12 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 12 AND table_column_index = 2 THEN numeric_value END)) + MAX(CASE WHEN table_row_index = 12 AND table_column_index = 3 THEN numeric_value END)) / 3), 2) AS result FROM data WHERE source_table_uid = 'a38d13377f754ca4beb5ed5cc9b5c1ec'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          1.53
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Three-year average of cash dividends declared per share.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 25,
+    "source_question_index": 3,
+    "source_flat_question_index": 153,
+    "source_table_uid": "a38d13377f754ca4beb5ed5cc9b5c1ec",
+    "source_id": "4cc89377aa421d8d6eece5a7dce4de2d",
+    "source_derivation": "(1.28+ 1.28+ 2.04)/3",
+    "source_answer": 1.53,
+    "source_tree_derivation": [
+      "/",
+      "+",
+      "+",
+      "1.28",
+      "1.28",
+      "2.04",
+      "3"
+    ],
+    "source_question_record": {
+      "uid": "4cc89377aa421d8d6eece5a7dce4de2d",
+      "order": 4,
+      "question": "What is the average cash dividends declared per share for fiscal years 2017 to 2019?",
+      "answer": 1.53,
+      "derivation": "(1.28+ 1.28+ 2.04)/3",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "",
+      "tree_derivation": [
+        "/",
+        "+",
+        "+",
+        "1.28",
+        "1.28",
+        "2.04",
+        "3"
+      ],
+      "facts": [
+        "1.28",
+        "2.04"
+      ],
+      "consts": [
+        "3"
+      ],
+      "mappings": [
+        {
+          "table": [
+            12,
+            1
+          ]
+        },
+        {
+          "table": [
+            12,
+            3
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_007",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the average Provision for (benefit from) income taxes for 2018 and 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND(((MAX(CASE WHEN table_row_index = 4 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 4 AND table_column_index = 2 THEN numeric_value END)) / 2), 5) AS result FROM data WHERE source_table_uid = 'eedaff83a4efeb4d5ea9cfcc7664b56e'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          5093.5
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Average of the 2019 benefit and 2018 provision for income taxes.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 29,
+    "source_question_index": 3,
+    "source_flat_question_index": 177,
+    "source_table_uid": "eedaff83a4efeb4d5ea9cfcc7664b56e",
+    "source_id": "a79311cf198fe3c0b698543ae20ca9b9",
+    "source_derivation": "(-8,280 + 18,467) / 2",
+    "source_answer": 5093.5,
+    "source_tree_derivation": [
+      "/",
+      "+",
+      "-8280",
+      "18467",
+      "2"
+    ],
+    "source_question_record": {
+      "uid": "a79311cf198fe3c0b698543ae20ca9b9",
+      "order": 4,
+      "question": "What was the average Provision for (benefit from) income taxes for 2018 and 2019?",
+      "answer": 5093.5,
+      "derivation": "(-8,280 + 18,467) / 2",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "thousand",
+      "tree_derivation": [
+        "/",
+        "+",
+        "-8280",
+        "18467",
+        "2"
+      ],
+      "facts": [
+        "-8280",
+        "18467"
+      ],
+      "consts": [
+        "2"
+      ],
+      "mappings": [
+        {
+          "table": [
+            4,
+            1
+          ]
+        },
+        {
+          "table": [
+            4,
+            2
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_008",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What percentage of the decrease in total revenue is from the loss in Zyla (Oxaydo)?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((((MAX(CASE WHEN table_row_index = 4 AND table_column_index = 2 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 4 AND table_column_index = 1 THEN numeric_value END)) / (MAX(CASE WHEN table_row_index = 6 AND table_column_index = 2 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 6 AND table_column_index = 1 THEN numeric_value END))) * 100), 2) AS result FROM data WHERE source_table_uid = '22be2fdb6d29626851b25f7a53fada57'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          92.11
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Zyla revenue decrease as a percentage of the total revenue decrease.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 33,
+    "source_question_index": 5,
+    "source_flat_question_index": 203,
+    "source_table_uid": "22be2fdb6d29626851b25f7a53fada57",
+    "source_id": "6769cc0cee475e77d8eb292b9bdefd81",
+    "source_derivation": "((386 - 351) / (410 - 372) ) * 100",
+    "source_answer": 92.11,
+    "source_tree_derivation": [
+      "*",
+      "/",
+      "-",
+      "386",
+      "351",
+      "-",
+      "410",
+      "372",
+      "100"
+    ],
+    "source_question_record": {
+      "uid": "6769cc0cee475e77d8eb292b9bdefd81",
+      "order": 8,
+      "question": "What percentage of the decrease in total revenue is from the loss in Zyla (Oxaydo)?",
+      "answer": 92.11,
+      "derivation": "((386 - 351) / (410 - 372) ) * 100",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "percent",
+      "tree_derivation": [
+        "*",
+        "/",
+        "-",
+        "386",
+        "351",
+        "-",
+        "410",
+        "372",
+        "100"
+      ],
+      "facts": [
+        "386",
+        "351",
+        "410",
+        "372"
+      ],
+      "consts": [
+        "100"
+      ],
+      "mappings": [
+        {
+          "table": [
+            4,
+            2
+          ]
+        },
+        {
+          "table": [
+            4,
+            1
+          ]
+        },
+        {
+          "table": [
+            6,
+            2
+          ]
+        },
+        {
+          "table": [
+            6,
+            1
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_009",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the average total employee expenditure across 2018 and 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND(((MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 3 AND table_column_index = 2 THEN numeric_value END)) / 2), 5) AS result FROM data WHERE source_table_uid = 'd33382e9889d93bb77bc18a7d5c2358e'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          366.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Two-year average of total employee expenditure.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 36,
+    "source_question_index": 5,
+    "source_flat_question_index": 222,
+    "source_table_uid": "d33382e9889d93bb77bc18a7d5c2358e",
+    "source_id": "7f5203a09a509ad96e94ca5d3d7cb647",
+    "source_derivation": "(370.1+361.9)/2",
+    "source_answer": 366,
+    "source_tree_derivation": [
+      "/",
+      "+",
+      "370.1",
+      "361.9",
+      "2"
+    ],
+    "source_question_record": {
+      "uid": "7f5203a09a509ad96e94ca5d3d7cb647",
+      "order": 8,
+      "question": "What was the average total employee expenditure across 2018 and 2019?",
+      "answer": 366,
+      "derivation": "(370.1+361.9)/2",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "million",
+      "tree_derivation": [
+        "/",
+        "+",
+        "370.1",
+        "361.9",
+        "2"
+      ],
+      "facts": [
+        "361.9",
+        "370.1"
+      ],
+      "consts": [
+        "2"
+      ],
+      "mappings": [
+        {
+          "table": [
+            3,
+            2
+          ]
+        },
+        {
+          "table": [
+            3,
+            1
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_010",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the average PSAs granted for 2017-2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((((MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 3 AND table_column_index = 3 THEN numeric_value END)) + MAX(CASE WHEN table_row_index = 3 AND table_column_index = 5 THEN numeric_value END)) / 3), 5) AS result FROM data WHERE source_table_uid = 'f1e5a9243865198ceddc74bd6a0b10b5'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          136218.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Three-year average of PSAs granted, treating the displayed dash as zero.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 43,
+    "source_question_index": 4,
+    "source_flat_question_index": 263,
+    "source_table_uid": "f1e5a9243865198ceddc74bd6a0b10b5",
+    "source_id": "5745196398b3689e34ad6098849b0269",
+    "source_derivation": "(371,672 + 0 + 36,982) / 3",
+    "source_answer": 136218,
+    "source_tree_derivation": [
+      "/",
+      "+",
+      "+",
+      "371672",
+      "0",
+      "36982",
+      "3"
+    ],
+    "source_question_record": {
+      "uid": "5745196398b3689e34ad6098849b0269",
+      "order": 6,
+      "question": "What was the average PSAs granted for 2017-2019?",
+      "answer": 136218,
+      "derivation": "(371,672 + 0 + 36,982) / 3",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "",
+      "tree_derivation": [
+        "/",
+        "+",
+        "+",
+        "371672",
+        "0",
+        "36982",
+        "3"
+      ],
+      "facts": [
+        "371672",
+        "36982"
+      ],
+      "consts": [
+        "0",
+        "3"
+      ],
+      "mappings": [
+        {
+          "table": [
+            3,
+            1
+          ]
+        },
+        {
+          "table": [
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_011",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the percentage change in Dividend Paid per Ordinary Share in € in 2016 from 2015?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((((MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 2 AND table_column_index = 1 THEN numeric_value END)) / MAX(CASE WHEN table_row_index = 2 AND table_column_index = 1 THEN numeric_value END)) * 100), 1) AS result FROM data WHERE source_table_uid = '504d01c4bb83fc6d346c56fee69948cc'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          8.7
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Percentage change in euro dividend per ordinary share from 2015 to 2016.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 47,
+    "source_question_index": 5,
+    "source_flat_question_index": 288,
+    "source_table_uid": "504d01c4bb83fc6d346c56fee69948cc",
+    "source_id": "6cf8ec5b621c2ad7848f6a65ac0063d5",
+    "source_derivation": "((1.25-1.15)/1.15) * 100",
+    "source_answer": 8.7,
+    "source_tree_derivation": [
+      "*",
+      "/",
+      "-",
+      "1.25",
+      "1.15",
+      "1.15",
+      "100"
+    ],
+    "source_question_record": {
+      "uid": "6cf8ec5b621c2ad7848f6a65ac0063d5",
+      "order": 8,
+      "question": "What was the percentage change in Dividend Paid per Ordinary Share in € in 2016 from 2015?",
+      "answer": 8.7,
+      "derivation": "((1.25-1.15)/1.15) * 100",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "percent",
+      "tree_derivation": [
+        "*",
+        "/",
+        "-",
+        "1.25",
+        "1.15",
+        "1.15",
+        "100"
+      ],
+      "facts": [
+        "1.15",
+        "1.25"
+      ],
+      "consts": [
+        "100"
+      ],
+      "mappings": [
+        {
+          "table": [
+            2,
+            1
+          ]
+        },
+        {
+          "table": [
+            3,
+            1
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_012",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "How much was the difference in net increase(decrease) in cash and cash equivalents from 2017 to 2018? ",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN table_row_index = 5 AND table_column_index = 3 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 5 AND table_column_index = 2 THEN numeric_value END)), 5) AS result FROM data WHERE source_table_uid = '1cc3d0517b2508eb255a753e58210447'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          1958.1
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Difference between the 2017 increase and 2018 decrease in cash equivalents.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 56,
+    "source_question_index": 2,
+    "source_flat_question_index": 339,
+    "source_table_uid": "1cc3d0517b2508eb255a753e58210447",
+    "source_id": "f6647f46037f82005ef3f04cda1052d3",
+    "source_derivation": "1,294.8-(-663.3)",
+    "source_answer": 1958.1,
+    "source_tree_derivation": [
+      "-",
+      "1294.8",
+      "-663.3"
+    ],
+    "source_question_record": {
+      "uid": "f6647f46037f82005ef3f04cda1052d3",
+      "order": 5,
+      "question": "How much was the difference in net increase(decrease) in cash and cash equivalents from 2017 to 2018? ",
+      "answer": 1958.1,
+      "derivation": "1,294.8-(-663.3)",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "million",
+      "tree_derivation": [
+        "-",
+        "1294.8",
+        "-663.3"
+      ],
+      "facts": [
+        "-663.3",
+        "1294.8"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            5,
+            2
+          ]
+        },
+        {
+          "table": [
+            5,
+            3
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_013",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the total amount spent on restructuring expenses across 2018 and 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 3 AND table_column_index = 4 THEN numeric_value END)), 5) AS result FROM data WHERE source_table_uid = '160a79e59f966afa764e2aff7e470e2d'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          1031.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Total restructuring expense across 2018 and 2019.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 57,
+    "source_question_index": 2,
+    "source_flat_question_index": 345,
+    "source_table_uid": "160a79e59f966afa764e2aff7e470e2d",
+    "source_id": "bd11d656bda1738c42b39479ace8fe80",
+    "source_derivation": "443 + 588  ",
+    "source_answer": 1031,
+    "source_tree_derivation": [
+      "+",
+      "443",
+      "588"
+    ],
+    "source_question_record": {
+      "uid": "bd11d656bda1738c42b39479ace8fe80",
+      "order": 5,
+      "question": "What was the total amount spent on restructuring expenses across 2018 and 2019?",
+      "answer": 1031,
+      "derivation": "443 + 588  ",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "million",
+      "tree_derivation": [
+        "+",
+        "443",
+        "588"
+      ],
+      "facts": [
+        "443",
+        "588"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            3,
+            1
+          ]
+        },
+        {
+          "table": [
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_014",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What is the ratio of senior notes due 2020 and 2021 to total debt in 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND(((MAX(CASE WHEN table_row_index = 2 AND table_column_index = 1 THEN numeric_value END) + MAX(CASE WHEN table_row_index = 3 AND table_column_index = 1 THEN numeric_value END)) / MAX(CASE WHEN table_row_index = 13 AND table_column_index = 1 THEN numeric_value END)), 2) AS result FROM data WHERE source_table_uid = '1291daaa275e574a7fd08db3068b388a'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          0.21
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Ratio of the 2020 and 2021 senior notes to 2019 total debt.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 63,
+    "source_question_index": 4,
+    "source_flat_question_index": 383,
+    "source_table_uid": "1291daaa275e574a7fd08db3068b388a",
+    "source_id": "53f5f57955697fb79d7a20d605a5abd5",
+    "source_derivation": "(600+500)/5,275.3 ",
+    "source_answer": 0.21,
+    "source_tree_derivation": [
+      "/",
+      "+",
+      "600",
+      "500",
+      "5275.3"
+    ],
+    "source_question_record": {
+      "uid": "53f5f57955697fb79d7a20d605a5abd5",
+      "order": 6,
+      "question": "What is the ratio of senior notes due 2020 and 2021 to total debt in 2019?",
+      "answer": 0.21,
+      "derivation": "(600+500)/5,275.3 ",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "",
+      "tree_derivation": [
+        "/",
+        "+",
+        "600",
+        "500",
+        "5275.3"
+      ],
+      "facts": [
+        "5275.3",
+        "500",
+        "600"
+      ],
+      "consts": [],
+      "mappings": [
+        {
+          "table": [
+            13,
+            1
+          ]
+        },
+        {
+          "table": [
+            3,
+            0
+          ]
+        },
+        {
+          "table": [
+            2,
+            0
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  },
+  {
+    "id": "finance_public_tatqa_query_table_015",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_paper_derived",
+    "query_origin": "official_research_dataset_question",
+    "query": "What was the percentage change in adjusted EBITDA between 2018 and 2019?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "sql": "SELECT ROUND((((MAX(CASE WHEN table_row_index = 12 AND table_column_index = 1 THEN numeric_value END) - MAX(CASE WHEN table_row_index = 12 AND table_column_index = 2 THEN numeric_value END)) / MAX(CASE WHEN table_row_index = 12 AND table_column_index = 2 THEN numeric_value END)) * 100), 2) AS result FROM data WHERE source_table_uid = '8c6114af79ce7f7775b24ac57a2c7b64'"
+    },
+    "expected_answer": {
+      "dataset_id": "tatqa-public-test-gold-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          16.36
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Percentage change in adjusted EBITDA from 2018 to 2019.",
+    "source_dataset": "TAT-QA",
+    "source_repository": "NExTplusplus/TAT-QA",
+    "source_revision": "870accc41953dcde885aabeb963d94aabdc0fbc3",
+    "source_split": "test_gold",
+    "source_context_index": 30,
+    "source_question_index": 5,
+    "source_flat_question_index": 185,
+    "source_table_uid": "8c6114af79ce7f7775b24ac57a2c7b64",
+    "source_id": "7e2290f656cbeef6d9a61c02767b752c",
+    "source_derivation": "((108,307-93,081)/93,081) * 100",
+    "source_answer": 16.36,
+    "source_tree_derivation": [
+      "*",
+      "/",
+      "-",
+      "108307",
+      "93081",
+      "93081",
+      "100"
+    ],
+    "source_question_record": {
+      "uid": "7e2290f656cbeef6d9a61c02767b752c",
+      "order": 8,
+      "question": "What was the percentage change in adjusted EBITDA between 2018 and 2019?",
+      "answer": 16.36,
+      "derivation": "((108,307-93,081)/93,081) * 100",
+      "answer_type": "arithmetic",
+      "answer_from": "table",
+      "rel_paragraphs": [],
+      "req_comparison": false,
+      "scale": "percent",
+      "tree_derivation": [
+        "*",
+        "/",
+        "-",
+        "108307",
+        "93081",
+        "93081",
+        "100"
+      ],
+      "facts": [
+        "93081",
+        "108307"
+      ],
+      "consts": [
+        "100"
+      ],
+      "mappings": [
+        {
+          "table": [
+            12,
+            2
+          ]
+        },
+        {
+          "table": [
+            12,
+            1
+          ]
+        }
+      ]
+    },
+    "source_license": "CC BY 4.0",
+    "source_url": "https://github.com/NExTplusplus/TAT-QA/blob/870accc41953dcde885aabeb963d94aabdc0fbc3/dataset_raw/tatqa_dataset_test_gold.json",
+    "source_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "source_paper_url": "https://aclanthology.org/2021.acl-long.254/",
+    "source_paper_doi": "10.18653/v1/2021.acl-long.254",
+    "source_file_sha256": "c4d08418359c1d76468dec420ee748a37f48c06b63cb8ec2766f19d5d314b597",
+    "provenance_type": "research_paper_dataset_adaptation",
+    "fixture_dataset_id": "tatqa-public-test-gold-v1",
+    "fixture_file": "benchmark/finance/fixtures/tatqa_public_test_gold_cells.json",
+    "attribution_file": "benchmark/finance/fixtures/TATQA_ATTRIBUTION.md",
+    "adaptation_notes": "The query is the official TAT-QA test-gold question unchanged. The complete source table was normalized into coordinate-level cells; numeric_value removes presentation formatting while raw_value preserves the original cell. The SQL implements the official derivation and returns the published answer. This adaptation evaluates tool routing and bounded table-query argument generation, not the full TAT-QA hybrid QA task."
+  }
+]

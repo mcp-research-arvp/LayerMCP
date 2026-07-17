@@ -14,6 +14,15 @@ This folder contains JSON datasets for evaluating single-tool routing. Each reco
 | `enterprise/tool_routing_enterprise_v1.json` | 35 | enterprise automation | First controlled enterprise fixture suite. |
 | `enterprise/tool_routing_enterprise_v2_controlled.json` | 48 | enterprise automation | Controlled retail-style enterprise suite. |
 | `enterprise/tool_routing_enterprise_public_adapted.json` | 24 | enterprise automation | Public tau3 Retail-adapted enterprise suite. |
+| `coding/tool_routing_coding_smoke.json` | 7 | coding | Small direct coding tool smoke set. |
+| `coding/tool_routing_coding_controlled.json` | 35 | coding | Controlled coding routing set. |
+| `coding/tool_routing_coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
+| `coding/tool_routing_coding_codesearchnet_public_derived.json` | 15 | coding | Public CodeSearchNet-derived coding search set. |
+| `finance/tool_routing_finance_smoke.json` | 10 | finance | Small direct finance tool smoke set. |
+| `finance/tool_routing_finance_controlled.json` | 50 | finance | Controlled finance routing set. |
+| `finance/tool_routing_finance_upstream_inspired.json` | 40 | finance | Generated finance prompts adapted from upstream tool usage patterns. |
+| `finance/tool_routing_finance_public_derived.json` | 15 | finance | Public FinQA-derived finance table set. |
+| `finance/tool_routing_finance_tatqa_public_derived.json` | 15 | finance | Public TAT-QA-derived finance table set. |
 
 The root-level files are legacy mixed-domain benchmarks. The domain folders are the preferred place for new datasets.
 
@@ -66,6 +75,8 @@ tool_routing_enterprise_public_adapted.json
 
 Use `controlled` for examples written specifically to target a tool and argument schema. Use `public_derived` or `public_adapted` when the query came from, or was adapted from, a public dataset.
 
+It is also fine to use a clearer suffix when it identifies the purpose or source more precisely, such as `smoke`, `upstream_inspired`, `codesearchnet_public_derived`, or `tatqa_public_derived`. Prefer clarity over forcing every domain into one file.
+
 Avoid using `v1`, `v2`, or phase names as random subdivisions. If a version is needed, it should mean a real tool-suite or schema version, and the README in that domain folder should explain what changed.
 
 ## Four-Domain Baseline
@@ -77,5 +88,5 @@ The original four domains were:
 - `finance`
 - `coding`
 
-The older root-level benchmarks cover all four domains in one file. The newer direction is to keep each domain in its own folder, using the same schema and naming style across domains. At the moment, only `math/` and `enterprise/` have domain-specific folders.
+The older root-level benchmarks cover all four domains in one file. The newer direction is to keep each domain in its own folder, using the same core schema and clear source-oriented filenames across domains.
 

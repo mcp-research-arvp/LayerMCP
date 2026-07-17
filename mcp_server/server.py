@@ -8,12 +8,33 @@ from mcp.server.fastmcp import FastMCP
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mcp_server.coding_tools import (
+    code_list_files,
+    code_read_file,
+    code_search_text,
+    git_diff,
+    git_log,
+    git_show,
+    git_status,
+)
 from mcp_server.enterprise_tools import (
     check_policy,
     create_support_ticket,
     get_order,
     search_knowledge_base,
     update_order_status,
+)
+from mcp_server.finance_tools import (
+    finance_extract_pdf_tables,
+    finance_get_company_facts,
+    finance_get_filing_section,
+    finance_get_financial_statement,
+    finance_get_market_quote,
+    finance_get_market_time_series,
+    finance_lookup_company,
+    finance_parse_xbrl,
+    finance_query_table,
+    finance_search_filings,
 )
 from mcp_server.math_tools import (
     base_arithmetic,
@@ -86,6 +107,23 @@ mcp.tool()(modify_user_address)
 mcp.tool()(return_delivered_order_items)
 mcp.tool()(exchange_delivered_order_items)
 mcp.tool()(transfer_to_human_agents)
+mcp.tool()(code_list_files)
+mcp.tool()(code_read_file)
+mcp.tool()(code_search_text)
+mcp.tool()(git_log)
+mcp.tool()(git_show)
+mcp.tool()(git_diff)
+mcp.tool()(git_status)
+mcp.tool()(finance_lookup_company)
+mcp.tool()(finance_search_filings)
+mcp.tool()(finance_get_filing_section)
+mcp.tool()(finance_get_company_facts)
+mcp.tool()(finance_get_financial_statement)
+mcp.tool()(finance_parse_xbrl)
+mcp.tool()(finance_query_table)
+mcp.tool()(finance_extract_pdf_tables)
+mcp.tool()(finance_get_market_quote)
+mcp.tool()(finance_get_market_time_series)
 
 
 def main() -> None:

@@ -1,0 +1,842 @@
+[
+  {
+    "id": "finance_public_finqa_query_table_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "what is the net change in net revenue during 2015 for entergy corporation?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(MAX(CASE WHEN row_label = '2015 net revenue' THEN numeric_value END) - MAX(CASE WHEN row_label = '2014 net revenue' THEN numeric_value END), 5) AS result FROM data WHERE source_id = 'ETR/2016/page_23.pdf-2'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          94.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Single subtraction over the two net-revenue cells.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 0,
+    "source_id": "ETR/2016/page_23.pdf-2",
+    "source_program": "subtract(5829, 5735)",
+    "source_exe_answer": 94.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "what percentage of total facilities as measured in square feet are leased?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(MAX(CASE WHEN row_label = 'leased facilities2' AND column_label = 'total' THEN numeric_value END) / MAX(CASE WHEN row_label = 'total facilities' AND column_label = 'total' THEN numeric_value END), 5) AS result FROM data WHERE source_id = 'INTC/2015/page_41.pdf-4'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          0.14464
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Ratio of leased facilities to total facilities.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 1,
+    "source_id": "INTC/2015/page_41.pdf-4",
+    "source_program": "divide(8.1, 56.0)",
+    "source_exe_answer": 0.14464,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "did altria outperform the s&p 500?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT CASE WHEN MAX(CASE WHEN row_label = 'december 2016' AND column_label = 'altria group inc .' THEN numeric_value END) > MAX(CASE WHEN row_label = 'december 2016' AND column_label = 's&p 500' THEN numeric_value END) THEN 'yes' ELSE 'no' END AS result FROM data WHERE source_id = 'MO/2016/page_19.pdf-1'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          "yes"
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Comparison of Altria and S&P 500 values for December 2016.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 8,
+    "source_id": "MO/2016/page_19.pdf-1",
+    "source_program": "greater(286.61, 198.09)",
+    "source_exe_answer": "yes",
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "what was the change in unrecognized tax benefits from the end of 2014 to the end of 2015?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(MAX(CASE WHEN row_label = 'balance december 31' AND column_label = '2015' THEN numeric_value END) - MAX(CASE WHEN row_label = 'balance december 31' AND column_label = '2014' THEN numeric_value END), 5) AS result FROM data WHERE source_id = 'CMCSA/2015/page_112.pdf-2'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          -35.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Year-over-year change in the ending unrecognized-tax-benefit balance.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 9,
+    "source_id": "CMCSA/2015/page_112.pdf-2",
+    "source_program": "subtract(1136, 1171)",
+    "source_exe_answer": -35.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_derived",
+    "query": "what is the growth rate in the balance of standby letters of credit from 2006 to 2007?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND((MAX(CASE WHEN row_label = 'standby letters of credit' AND column_label = '2007' THEN numeric_value END) - MAX(CASE WHEN row_label = 'standby letters of credit' AND column_label = '2006' THEN numeric_value END)) / MAX(CASE WHEN row_label = 'standby letters of credit' AND column_label = '2006' THEN numeric_value END), 5) AS result FROM data WHERE source_id = 'STT/2007/page_111.pdf-3'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          -0.04365
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Two-step growth-rate calculation over the 2006 and 2007 balances.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 10,
+    "source_id": "STT/2007/page_111.pdf-3",
+    "source_program": "subtract(4711, 4926), divide(#0, 4926)",
+    "source_exe_answer": -0.04365,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_006",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "what was the greatest provision for income taxes , in millions?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_id = 'AAPL/2006/page_100.pdf-3' AND row_label = 'provision for income taxes'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          829.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Maximum across the provision-for-income-taxes row.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 32,
+    "source_id": "AAPL/2006/page_100.pdf-3",
+    "source_program": "table_max(provision for income taxes, none)",
+    "source_exe_answer": 829.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_007",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "as of december 31 , 2017 what was the value of the granted share awards",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(MAX(CASE WHEN row_label = 'granted' AND column_label = 'number of performance share awards' THEN numeric_value END) * MAX(CASE WHEN row_label = 'granted' AND column_label = 'weighted-averagegrant-datefair value' THEN numeric_value END), 5) AS result FROM data WHERE source_id = 'FBHS/2017/page_83.pdf-1'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          9294571.92
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Product of the granted award count and weighted-average fair value.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 42,
+    "source_id": "FBHS/2017/page_83.pdf-1",
+    "source_program": "multiply(160196, 58.02)",
+    "source_exe_answer": 9294571.92,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_008",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_derived",
+    "query": "what was the average cash flow from 2004 to 2006",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(AVG(numeric_value), 5) AS result FROM data WHERE source_id = 'K/2006/page_52.pdf-2' AND row_label = 'cash flow'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          892.3
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Average of the three annual cash-flow cells.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 44,
+    "source_id": "K/2006/page_52.pdf-2",
+    "source_program": "add(957.4, 769.1), add(950.4, #0), divide(#1, const_3)",
+    "source_exe_answer": 892.3,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_009",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "public_finance_derived",
+    "query": "what is the total value of securities issued and approved by security holders , ( in millions ) ?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(MAX(CASE WHEN row_label = 'equity compensation plans approved by security holders' AND column_label LIKE 'number of securities to be issued%' THEN numeric_value END) * MAX(CASE WHEN row_label = 'equity compensation plans approved by security holders' AND column_label LIKE 'weighted-average%' THEN numeric_value END) / 1000000, 5) AS result FROM data WHERE source_id = 'GPN/2014/page_92.pdf-1'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          31.32382
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Product of issued securities and exercise price, scaled to millions.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 45,
+    "source_id": "GPN/2014/page_92.pdf-1",
+    "source_program": "multiply(766801, 40.85), divide(#0, const_1000000)",
+    "source_exe_answer": 31.32382,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_010",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "in millions for the fourth quarters of 2017 and 2016 , what was the total tier 1 capital?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT SUM(numeric_value) AS result FROM data WHERE source_id = 'GS/2017/page_86.pdf-2' AND row_label = 'tier 1 capital'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          160035.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Sum of Tier 1 capital for the two reported quarters.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 78,
+    "source_id": "GS/2017/page_86.pdf-2",
+    "source_program": "add(78227, 81808)",
+    "source_exe_answer": 160035.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_011",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "considering the years 2014-2016 , what is the average operating income?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(AVG(numeric_value), 5) AS result FROM data WHERE source_id = 'APD/2016/page_40.pdf-2' AND row_label = 'operating income'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          822.06667
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Average operating income across 2014 through 2016.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 92,
+    "source_id": "APD/2016/page_40.pdf-2",
+    "source_program": "table_average(operating income, none)",
+    "source_exe_answer": 822.06667,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_012",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "considering the years 2016-2018 , what is the average ending balance for valuation allowances for deferred income tax assets?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT ROUND(AVG(numeric_value), 5) AS result FROM data WHERE source_id = 'EOG/2018/page_75.pdf-1' AND row_label = 'ending balance'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          338928.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Average ending valuation-allowance balance across 2016 through 2018.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 105,
+    "source_id": "EOG/2018/page_75.pdf-1",
+    "source_program": "table_average(ending balance, none)",
+    "source_exe_answer": 338928.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_013",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "in millions for 2017 and 2016 , what was the minimum balance of cash instruments?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT MIN(numeric_value) AS result FROM data WHERE source_id = 'GS/2017/page_132.pdf-2' AND row_label = 'cash instruments'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          15395.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Minimum cash-instruments balance across 2016 and 2017.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 172,
+    "source_id": "GS/2017/page_132.pdf-2",
+    "source_program": "table_min(cash instruments, none)",
+    "source_exe_answer": 15395.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_014",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "in millions for the years 2018 , 2017 , 2016 , what was the largest provision for credit losses?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_id = 'GS/2018/page_69.pdf-4' AND row_label = 'provision for credit losses'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          674.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Maximum provision for credit losses across 2016 through 2018.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 264,
+    "source_id": "GS/2018/page_69.pdf-4",
+    "source_program": "table_max(provision for credit losses, none)",
+    "source_exe_answer": 674.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  },
+  {
+    "id": "finance_public_finqa_query_table_015",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "public_finance_derived",
+    "query": "what was the total number of shares vested during the three year period?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "finqa-public-test-v1",
+      "sql": "SELECT SUM(numeric_value) AS result FROM data WHERE source_id = 'SLG/2011/page_91.pdf-3' AND row_label = 'vested during the year'"
+    },
+    "expected_answer": {
+      "dataset_id": "finqa-public-test-v1",
+      "columns": [
+        "result"
+      ],
+      "rows": [
+        [
+          639993.0
+        ]
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "none",
+    "notes": "Sum of shares vested during 2009 through 2011.",
+    "source_dataset": "FinQA",
+    "source_repository": "czyssrs/FinQA",
+    "source_revision": "0f16e2867befa6840783e58be38c9efb9229d742",
+    "source_split": "test",
+    "source_row_index": 347,
+    "source_id": "SLG/2011/page_91.pdf-3",
+    "source_program": "table_sum(vested during the year, none)",
+    "source_exe_answer": 639993.0,
+    "source_license": "MIT",
+    "source_copyright": "Copyright (c) 2021 Zhiyu Chen",
+    "source_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/dataset/test.json",
+    "source_license_url": "https://github.com/czyssrs/FinQA/blob/0f16e2867befa6840783e58be38c9efb9229d742/LICENSE",
+    "provenance_type": "public_dataset_adaptation",
+    "fixture_dataset_id": "finqa-public-test-v1",
+    "fixture_file": "benchmark/finance/fixtures/finqa_public_test_cells.json",
+    "adaptation_notes": "The query is the official public-test question unchanged. Its source table was normalized into row_label, column_label, raw_value, and numeric_value cells; the SQL implements the official FinQA program and returns its execution answer. This row evaluates finance tool routing and table-query argument generation, not the full FinQA retrieval or program-generation task."
+  }
+]

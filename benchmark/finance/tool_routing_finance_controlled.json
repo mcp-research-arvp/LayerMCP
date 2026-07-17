@@ -1,0 +1,1840 @@
+[
+  {
+    "id": "finance_controlled_finance_lookup_company_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Look up the company record for ticker LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "LMCP"
+    },
+    "expected_answer": {
+      "query": "LMCP",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Company lookup by ticker.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_lookup_company_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Find the company named Layer Manufacturing Concepts, Inc.; return company matches, not filings.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "Layer Manufacturing Concepts, Inc."
+    },
+    "expected_answer": {
+      "query": "Layer Manufacturing Concepts, Inc.",
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Company-name resolution versus filing search.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_lookup_company_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Search company identifiers for CIK 0001900002 and return only one match.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "0001900002",
+      "max_results": 1
+    },
+    "expected_answer": {
+      "query": "0001900002",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. CIK lookup with a one-result bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_lookup_company_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Which fixture company trades under TBLR? Retrieve up to two company records.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "TBLR",
+      "max_results": 2
+    },
+    "expected_answer": {
+      "query": "TBLR",
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Ticker resolution phrased as an identity question.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_lookup_company_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Before looking for its filings, resolve Tabular Cloud Labs, Inc. to a registered company and CIK.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_lookup_company",
+    "expected_args": {
+      "query": "Tabular Cloud Labs, Inc."
+    },
+    "expected_answer": {
+      "query": "Tabular Cloud Labs, Inc.",
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Requires company resolution before any filing workflow.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_search_filings_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "List filings for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "LMCP"
+    },
+    "expected_answer": {
+      "count": 3,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Unfiltered filing history.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_search_filings_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Retrieve LMCP Form 10-K filing records, not XBRL facts or document text.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "form_type": "10-K"
+    },
+    "expected_answer": {
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Form filtering versus content retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_search_filings_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Find CIK 0001900001's fiscal 2023 Form 10-K and return at most one filing.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "0001900001",
+      "form_type": "10-K",
+      "fiscal_year": 2023,
+      "max_results": 1
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. CIK, form, year, and result bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_search_filings_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show the quarterly filing record for Layer Manufacturing Concepts, Inc. for fiscal 2024.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "Layer Manufacturing Concepts, Inc.",
+      "form_type": "10-Q",
+      "fiscal_year": 2024
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Quarterly filing metadata requested by company name.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_search_filings_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "I need the filing index entry—not a filing section—for Tabular Cloud Labs, Inc.'s fiscal 2025 quarterly report, with at most two results.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_search_filings",
+    "expected_args": {
+      "company_identifier": "Tabular Cloud Labs, Inc.",
+      "form_type": "10-Q",
+      "fiscal_year": 2025,
+      "max_results": 2
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Filing metadata distinguished from filing contents.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_filing_section_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Retrieve the Business section from LMCP-2024-10K.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "business"
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "business",
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Direct bounded section retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_filing_section_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Read the Risk Factors text in LMCP-2024-10K rather than extracting XBRL facts; cap it at 4,000 characters.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "risk_factors",
+      "max_chars": 4000
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "risk_factors",
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Prose section retrieval versus structured facts.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_filing_section_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return at most 1,000 characters of Management's Discussion and Analysis from TBLR-2025-Q1-10Q.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "TBLR-2025-Q1-10Q",
+      "section": "management_discussion_and_analysis",
+      "max_chars": 1000
+    },
+    "expected_answer": {
+      "accession_number": "TBLR-2025-Q1-10Q",
+      "section": "management_discussion_and_analysis",
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Canonical MD&A section and character bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_filing_section_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Pull the financial-statements narrative from LMCP-2024-10K, limited to 1,500 characters.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "financial_statements",
+      "max_chars": 1500
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "section": "financial_statements",
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Narrative section request expressed informally.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_filing_section_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "I already know the filing ID TBLR-2024-10K; open its Risk Factors passage, not the filing index or a parsed statement, and return at most 800 characters.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_filing_section",
+    "expected_args": {
+      "accession_number": "TBLR-2024-10K",
+      "section": "risk_factors",
+      "max_chars": 800
+    },
+    "expected_answer": {
+      "accession_number": "TBLR-2024-10K",
+      "section": "risk_factors",
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Section retrieval separated from metadata and statements.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_company_facts_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Retrieve company facts for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "LMCP"
+    },
+    "expected_answer": {
+      "count": 20,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Unfiltered company-facts retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_company_facts_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Find LMCP's Revenue facts rather than constructing a complete financial statement.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "concept": "Revenue"
+    },
+    "expected_answer": {
+      "count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Single-concept facts versus statement abstraction.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_company_facts_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return at most two TBLR NetIncomeLoss facts reported in USD for fiscal 2024.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "TBLR",
+      "concept": "NetIncomeLoss",
+      "unit": "USD",
+      "fiscal_year": 2024,
+      "max_results": 2
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Concept, unit, year, and result filters.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_company_facts_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Using CIK 0001900001, retrieve its 2024 Assets fact in USD and limit the result to one.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "0001900001",
+      "concept": "Assets",
+      "unit": "USD",
+      "fiscal_year": 2024,
+      "max_results": 1
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Company resolved by CIK with fact filters.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_company_facts_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Without returning a whole balance sheet, find up to three 2024 USD CashAndCashEquivalentsAtCarryingValue facts for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_company_facts",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "concept": "CashAndCashEquivalentsAtCarryingValue",
+      "unit": "USD",
+      "fiscal_year": 2024,
+      "max_results": 3
+    },
+    "expected_answer": {
+      "count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Isolated balance-sheet fact requested indirectly.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_financial_statement_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Get LMCP's income statement for fiscal 2024.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "statement": "income_statement",
+      "fiscal_year": 2024
+    },
+    "expected_answer": {
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 5
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Annual income-statement retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_financial_statement_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return LMCP's FY 2024 balance sheet, not an individual company fact.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "statement": "balance_sheet",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY"
+    },
+    "expected_answer": {
+      "statement": "balance_sheet",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 4
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Statement abstraction versus one fact.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_financial_statement_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Retrieve the Q3 fiscal 2024 income statement for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "LMCP",
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "Q3"
+    },
+    "expected_answer": {
+      "statement": "income_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "Q3",
+      "row_count": 5
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Quarter-specific statement arguments.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_financial_statement_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show the FY 2024 cash-flow statement for CIK 0001900002.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "0001900002",
+      "statement": "cash_flow_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY"
+    },
+    "expected_answer": {
+      "statement": "cash_flow_statement",
+      "fiscal_year": 2024,
+      "fiscal_period": "FY",
+      "row_count": 3
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Cash-flow statement requested by CIK.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_financial_statement_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "I need the structured Q1 2025 statement that balances what TBLR owns against what it owes, rather than isolated Assets facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_financial_statement",
+    "expected_args": {
+      "company_identifier": "TBLR",
+      "statement": "balance_sheet",
+      "fiscal_year": 2025,
+      "fiscal_period": "Q1"
+    },
+    "expected_answer": {
+      "statement": "balance_sheet",
+      "fiscal_year": 2025,
+      "fiscal_period": "Q1",
+      "row_count": 4
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Indirect wording for a quarterly balance sheet.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_parse_xbrl_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Parse the XBRL facts in LMCP-2024-10K.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K"
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 10,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Unfiltered XBRL instance parsing.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_parse_xbrl_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "From LMCP-2024-10K, parse Revenue XBRL facts rather than returning the filing's prose; limit to ten.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "concepts": [
+        "Revenue"
+      ],
+      "max_facts": 10
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Concept-filtered XBRL versus prose retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_parse_xbrl_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Extract only Revenue and NetIncomeLoss from LMCP-2024-10K, with at most two facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "concepts": [
+        "Revenue",
+        "NetIncomeLoss"
+      ],
+      "max_facts": 2
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Multiple concept filters and exact result bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_parse_xbrl_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Decode Assets and Liabilities from the inline XBRL in TBLR-2024-10K, capped at ten facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "TBLR-2024-10K",
+      "concepts": [
+        "Assets",
+        "Liabilities"
+      ],
+      "max_facts": 10
+    },
+    "expected_answer": {
+      "accession_number": "TBLR-2024-10K",
+      "fact_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Balance-sheet concepts expressed as XBRL decoding.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_parse_xbrl_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Do not retrieve the rendered balance sheet: inspect LMCP-2024-10K's tagged data for CashAndCashEquivalentsAtCarryingValue and return no more than five facts.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_parse_xbrl",
+    "expected_args": {
+      "accession_number": "LMCP-2024-10K",
+      "concepts": [
+        "CashAndCashEquivalentsAtCarryingValue"
+      ],
+      "max_facts": 5
+    },
+    "expected_answer": {
+      "accession_number": "LMCP-2024-10K",
+      "fact_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Tagged fact retrieval distinguished from statement rendering.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_query_table_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Run SELECT * FROM data ORDER BY ticker, fiscal_year, fiscal_period against quarterly_metrics.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT * FROM data ORDER BY ticker, fiscal_year, fiscal_period"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "row_count": 9,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Direct read-only SQL query.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_query_table_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Use the quarterly_metrics table—not filing retrieval—to list LMCP's fiscal period and revenue in fiscal-period order.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT fiscal_period, revenue FROM data WHERE ticker = 'LMCP' ORDER BY fiscal_period"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "fiscal_period",
+        "revenue"
+      ],
+      "row_count": 4,
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Local table lookup versus filing retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_query_table_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "In quarterly_metrics, calculate total revenue per ticker with SQL, order by ticker, and return at most two rows.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, SUM(revenue) AS total_revenue FROM data GROUP BY ticker ORDER BY ticker",
+      "max_rows": 2
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "total_revenue"
+      ],
+      "row_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Aggregation with grouping and a result bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_query_table_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "For each ticker in quarterly_metrics, work out average net income and arrange the results alphabetically by ticker.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, AVG(net_income) AS average_net_income FROM data GROUP BY ticker ORDER BY ticker"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "average_net_income"
+      ],
+      "row_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Aggregation expressed as a natural-language table task.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_query_table_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "Use SQL—not a market quote or filing lookup—to return only the highest-revenue metric row with its ticker, year, period, and revenue.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_query_table",
+    "expected_args": {
+      "dataset_id": "quarterly_metrics",
+      "sql": "SELECT ticker, fiscal_year, fiscal_period, revenue FROM data ORDER BY revenue DESC LIMIT 1"
+    },
+    "expected_answer": {
+      "dataset_id": "quarterly_metrics",
+      "columns": [
+        "ticker",
+        "fiscal_year",
+        "fiscal_period",
+        "revenue"
+      ],
+      "row_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. SQL ranking distinguished from retrieval tools; SQL LIMIT encodes the bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_extract_pdf_tables_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Extract all available tables from the LMCP 2024 annual-report PDF.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report"
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "all",
+      "requested_flavor": "lattice",
+      "table_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. All pre-extracted tables in one fixture document.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_extract_pdf_tables_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Use lattice extraction on page 42 of lmcp-2024-annual-report rather than reading a filing section.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42",
+      "flavor": "lattice"
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42",
+      "requested_flavor": "lattice",
+      "table_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. PDF table extraction versus filing prose.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_extract_pdf_tables_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "From page 8 of tblr-2025-q1-report, extract at most one table using stream mode.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "tblr-2025-q1-report",
+      "pages": "8",
+      "flavor": "stream",
+      "max_tables": 1
+    },
+    "expected_answer": {
+      "document_id": "tblr-2025-q1-report",
+      "pages": "8",
+      "requested_flavor": "stream",
+      "table_count": 1,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Page, flavor, and table-count arguments.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_extract_pdf_tables_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Pull no more than two tables from pages 42 and 45 of the LMCP annual-report PDF with lattice extraction.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42,45",
+      "flavor": "lattice",
+      "max_tables": 2
+    },
+    "expected_answer": {
+      "document_id": "lmcp-2024-annual-report",
+      "pages": "42,45",
+      "requested_flavor": "lattice",
+      "table_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Multiple PDF pages requested through a paraphrase.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_extract_pdf_tables_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "I need tabular cells, not prose or XBRL: scan pages 8 and 11 of tblr-2025-q1-report with stream extraction and return at most two tables.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_extract_pdf_tables",
+    "expected_args": {
+      "document_id": "tblr-2025-q1-report",
+      "pages": "8,11",
+      "flavor": "stream",
+      "max_tables": 2
+    },
+    "expected_answer": {
+      "document_id": "tblr-2025-q1-report",
+      "pages": "8,11",
+      "requested_flavor": "stream",
+      "table_count": 2,
+      "truncated": false
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Table extraction separated from prose and tagged facts.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_quote_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Get the market quote for LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "as_of": "2025-01-10",
+      "price": 42.75,
+      "volume": 151000
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Direct point quote.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_quote_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return TBLR's point-in-time quote, not its historical series.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "TBLR"
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "as_of": "2025-01-10",
+      "price": 28.6,
+      "volume": 241000
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Quote distinguished from time-series retrieval.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_quote_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Look up the current fixture quote for ticker LMCP.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "as_of": "2025-01-10",
+      "price": 42.75,
+      "volume": 151000
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Explicit ticker quote argument.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_quote_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "What price-and-volume quote does the market fixture report for Tabular Cloud Labs ticker TBLR?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "TBLR"
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "as_of": "2025-01-10",
+      "price": 28.6,
+      "volume": 241000
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Quote requested through company-name context.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_quote_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "I need one LMCP market snapshot; do not retrieve filings, company facts, or daily candles.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_quote",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "as_of": "2025-01-10",
+      "price": 42.75,
+      "volume": 151000
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Single market snapshot distinguished from document and series tools.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_time_series_001",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "easy",
+    "source": "controlled_synthetic",
+    "query": "Get LMCP's market time series.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "LMCP"
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "start_date": null,
+      "end_date": null,
+      "point_count": 7,
+      "truncated": false
+    },
+    "perturbation_type": "easy_direct",
+    "notes": "Direct request. Direct historical-series request.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_time_series_002",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Return at most three daily TBLR price points rather than a single quote.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "TBLR",
+      "interval": "daily",
+      "max_points": 3
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "interval": "daily",
+      "start_date": null,
+      "end_date": null,
+      "point_count": 3,
+      "truncated": true
+    },
+    "perturbation_type": "same_domain_distractor",
+    "notes": "Distinguishes this operation from a related finance tool. Bounded time series versus point quote.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_time_series_003",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Retrieve LMCP daily market data from 2025-01-03 through 2025-01-07, with at most five points.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "LMCP",
+      "start_date": "2025-01-03",
+      "end_date": "2025-01-07",
+      "interval": "daily",
+      "max_points": 5
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "start_date": "2025-01-03",
+      "end_date": "2025-01-07",
+      "point_count": 3,
+      "truncated": false
+    },
+    "perturbation_type": "parameter_specific",
+    "notes": "Exercises explicit optional arguments and bounds. Date range, interval, and point bound.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_time_series_004",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "query": "Show no more than four daily observations for TBLR between January 2 and January 10, 2025.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "TBLR",
+      "start_date": "2025-01-02",
+      "end_date": "2025-01-10",
+      "interval": "daily",
+      "max_points": 4
+    },
+    "expected_answer": {
+      "symbol": "TBLR",
+      "interval": "daily",
+      "start_date": "2025-01-02",
+      "end_date": "2025-01-10",
+      "point_count": 4,
+      "truncated": true
+    },
+    "perturbation_type": "paraphrase_robustness",
+    "notes": "Finance operation expressed through a natural paraphrase. Natural-language date range and output cap.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  },
+  {
+    "id": "finance_controlled_finance_get_market_time_series_005",
+    "domain": "finance",
+    "task_type": "single_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "query": "I need LMCP candles, not a point quote: start on 2025-01-06 and return at most two daily observations.",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series"
+    ],
+    "expected_tool": "finance_get_market_time_series",
+    "expected_args": {
+      "symbol": "LMCP",
+      "start_date": "2025-01-06",
+      "interval": "daily",
+      "max_points": 2
+    },
+    "expected_answer": {
+      "symbol": "LMCP",
+      "interval": "daily",
+      "start_date": "2025-01-06",
+      "end_date": null,
+      "point_count": 2,
+      "truncated": true
+    },
+    "perturbation_type": "difficult_indirect",
+    "notes": "Indirect request with explicit same-domain exclusions. Indirect historical-series wording with an open-ended date range.",
+    "fixture_id": "example/finance-research",
+    "fixture_version": "finance_fixture_v1",
+    "provenance_type": "controlled_fixture"
+  }
+]

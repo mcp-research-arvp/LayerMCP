@@ -5,9 +5,7 @@ import torch
 from .config import Config
 from .model import Transformer, build_caches
 from .schemas import ToolCall, ToolFunction, GenerationResult
-from typing import Optional, List, Any, Callable, Generator, Union, Tuple
-
-from models.architectures.constrained_decoding import constrained_argmax, generate_choice
+from typing import Optional, List, Any, Generator, Union, Tuple
 
 
 def debug_print(*args: Any, **kwargs: Any) -> None:
@@ -130,15 +128,23 @@ class TokenGenerator:
     def encode(self, text: str) -> List[int]:
         return _encode(self.tokenizer, text)
 
-    def apply_chat_template(self, prompt: str) -> List[int]:
+    def apply_chat_template(
+        self,
+        prompt: str,
+        tools: Optional[List[dict[str, Any]]] = None,
+    ) -> List[int]:
         """Wrap a user prompt with the Qwen chat template when available."""
         tok = self.tokenizer
         messages = [{"role": "user", "content": prompt}]
         if hasattr(tok, "apply_chat_template"):
             try:
-                out = tok.apply_chat_template(
-                    messages, add_generation_prompt=True, tokenize=True
-                )
+                template_kwargs = {
+                    "add_generation_prompt": True,
+                    "tokenize": True,
+                }
+                if tools:
+                    template_kwargs["tools"] = tools
+                out = tok.apply_chat_template(messages, **template_kwargs)
                 return _coerce_ids(out)
             except Exception as e:
                 debug_print(f"chat template failed ({e}); using raw encode")
@@ -156,7 +162,6 @@ class TokenGenerator:
         top_k: int = Config.top_k,
         max_tokens: int = Config.max_tokens,
         return_logprobs: bool = False,
-        allowed_tokens_fn: Callable[[tuple[int, ...]], set[int]] | None = None,
     ) -> Generator[Union[int, Tuple[int, float]], None, None]:
 
         cfg = self.model.configs
@@ -192,7 +197,6 @@ class TokenGenerator:
         num_generated = 0
         cur_pos = len(tokens)
         predicted_token = None
-        generated_tokens: list[int] = []
 
         while max_tokens == 0 or num_generated < max_tokens:
             iter_start = time.time()
@@ -203,15 +207,9 @@ class TokenGenerator:
                 logits = self.model(input_tensor, caches=caches, position_ids=position_ids)[:, -1, :].squeeze(0)
                 cur_pos += 1
 
-            if allowed_tokens_fn is not None:
-                predicted_token = constrained_argmax(
-                    logits, allowed_tokens_fn(tuple(generated_tokens))
-                )
-            else:
-                predicted_token = self._sample(logits, temperature, top_p, top_k)
+            predicted_token = self._sample(logits, temperature, top_p, top_k)
 
             tokens.append(predicted_token)
-            generated_tokens.append(predicted_token)
             num_generated += 1
 
             if return_logprobs:
@@ -272,7 +270,3 @@ class TokenGenerator:
             out.append(token)
         text = _decode(self.tokenizer, out)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
-
-    def generate_choice(self, prompt_tokens: List[int], choices: List[str]) -> str:
-        return generate_choice(self, prompt_tokens, choices, self.stop_tokens[0])
-

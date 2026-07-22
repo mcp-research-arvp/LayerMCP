@@ -9,8 +9,7 @@ from models.architectures.phi4_pytorch.schemas import (
     ToolFunction,
     GenerationResult,
 )
-from typing import Optional, List, Any, Callable, Generator, Union, Tuple
-from models.architectures.constrained_decoding import constrained_argmax, generate_choice
+from typing import Optional, List, Any, Generator, Union, Tuple
 from transformers import AutoTokenizer
 
 
@@ -145,7 +144,6 @@ class TokenGenerator:
         temperature: float = Config.temperature,
         max_tokens: int = Config.max_tokens,
         return_logprobs: bool = False,
-        allowed_tokens_fn: Callable[[tuple[int, ...]], set[int]] | None = None,
     ) -> Generator[Union[int, Tuple[int, float]], None, None]:
 
         batch_size = 1
@@ -198,7 +196,6 @@ class TokenGenerator:
         num_generated_tokens = 0
         is_debugging = Config.debug_mode
         predicted_token = None
-        generated_tokens: list[int] = []
 
         while max_tokens == 0 or num_generated_tokens < max_tokens:
             iter_start = time.time()
@@ -210,18 +207,13 @@ class TokenGenerator:
                 logits = self.model(input_tensor, caches=caches)[:, -1, :].squeeze(0)
 
             # Sample next token
-            if allowed_tokens_fn is not None:
-                predicted_token = constrained_argmax(
-                    logits, allowed_tokens_fn(tuple(generated_tokens))
-                )
-            elif temperature == 0.0:
+            if temperature == 0.0:
                 predicted_token = torch.argmax(logits, dim=-1).item()
             else:
                 probs = torch.softmax(logits * (1.0 / temperature), dim=-1)
                 predicted_token = torch.multinomial(probs, num_samples=1).item()
 
             tokens.append(predicted_token)
-            generated_tokens.append(predicted_token)
             num_generated_tokens += 1
 
             if return_logprobs:
@@ -263,8 +255,3 @@ class TokenGenerator:
         text = self.tokenizer.decode(out, skip_special_tokens=True)
         tool = parse_tool_call(text)
         return GenerationResult(text=text, tool_call=tool)
-
-    def generate_choice(self, prompt_tokens: List[int], choices: List[str]) -> str:
-        if not self.stop_tokens:
-            raise RuntimeError("Phi-4 tokenizer has no configured stop token.")
-        return generate_choice(self, prompt_tokens, choices, self.stop_tokens[0])

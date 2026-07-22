@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Generator, Optional, Union, Tuple
+from typing import Any, Generator, Optional, Union, Tuple
 
 import torch
 from transformers import AutoTokenizer
@@ -66,7 +66,6 @@ class TokenGenerator:
         temperature: float = Config.temperature,
         max_tokens: int = Config.max_tokens,
         return_logprobs: bool = False,
-        allowed_tokens_fn: Callable[[tuple[int, ...]], set[int]] | None = None,
     ) -> Generator[Union[int, Tuple[int, float]], None, None]:
         stop_tokens = stop_tokens or [self.eos_token_id]
         batch_size = 1
@@ -88,34 +87,17 @@ class TokenGenerator:
         input_tensor = torch.as_tensor([prompt_tokens], dtype=torch.long, device=self.device)
         logits = self.model(input_tensor, caches=caches)[:, -1, :].squeeze(0)
         predicted_token = None
-        generated_tokens: list[int] = []
 
         for _ in range(max_gen_tokens):
             if predicted_token is not None:
                 input_tensor = torch.as_tensor([[predicted_token]], dtype=torch.long, device=self.device)
                 logits = self.model(input_tensor, caches=caches)[:, -1, :].squeeze(0)
 
-            if allowed_tokens_fn is not None:
-                allowed_tokens = allowed_tokens_fn(tuple(generated_tokens))
-                if not allowed_tokens:
-                    raise RuntimeError("Token constraint returned no valid continuation.")
-                allowed = torch.as_tensor(
-                    sorted(allowed_tokens), dtype=torch.long, device=logits.device
-                )
-                allowed_logits = logits.index_select(0, allowed)
-                if temperature == 0.0:
-                    allowed_index = torch.argmax(allowed_logits, dim=-1)
-                else:
-                    probs = torch.softmax(allowed_logits / temperature, dim=-1)
-                    allowed_index = torch.multinomial(probs, num_samples=1).squeeze(0)
-                predicted_token = allowed[allowed_index].item()
-            elif temperature == 0.0:
+            if temperature == 0.0:
                 predicted_token = torch.argmax(logits, dim=-1).item()
             else:
                 probs = torch.softmax(logits / temperature, dim=-1)
                 predicted_token = torch.multinomial(probs, num_samples=1).item()
-
-            generated_tokens.append(predicted_token)
 
             if return_logprobs:
                 logprobs = torch.log_softmax(logits, dim=-1)
@@ -133,7 +115,6 @@ class TokenGenerator:
         stop_tokens: list[int] | None = None,
         temperature: float = Config.temperature,
         max_tokens: int = Config.max_tokens,
-        allowed_tokens_fn: Callable[[tuple[int, ...]], set[int]] | None = None,
     ) -> str:
         out = list(
             self.generate(
@@ -142,41 +123,6 @@ class TokenGenerator:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 return_logprobs=False,
-                allowed_tokens_fn=allowed_tokens_fn,
             )
         )
         return self.tokenizer.decode(out, skip_special_tokens=True)
-
-    def generate_choice(self, prompt_tokens: list[int], choices: list[str]) -> str:
-        """Greedily decode exactly one member of a finite string catalog."""
-        if not choices:
-            raise ValueError("choices must not be empty.")
-
-        tokenized_choices = {
-            choice: tuple(self.tokenizer.encode(choice, add_special_tokens=False))
-            for choice in choices
-        }
-        if any(not tokens for tokens in tokenized_choices.values()):
-            raise ValueError("choices must encode to at least one token.")
-
-        def allowed_tokens(generated: tuple[int, ...]) -> set[int]:
-            continuations: set[int] = set()
-            for tokens in tokenized_choices.values():
-                if tokens[: len(generated)] != generated:
-                    continue
-                if len(generated) == len(tokens):
-                    continuations.add(self.eos_token_id)
-                else:
-                    continuations.add(tokens[len(generated)])
-            return continuations
-
-        result = self.generate_text(
-            prompt_tokens=prompt_tokens,
-            stop_tokens=[self.eos_token_id],
-            temperature=0.0,
-            max_tokens=max(len(tokens) for tokens in tokenized_choices.values()) + 1,
-            allowed_tokens_fn=allowed_tokens,
-        ).strip()
-        if result not in tokenized_choices:
-            raise RuntimeError(f"Constrained decoding produced an invalid choice: {result!r}")
-        return result

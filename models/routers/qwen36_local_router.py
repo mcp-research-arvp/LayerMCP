@@ -5,13 +5,19 @@ import os
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 from models.architectures.qwen36_pytorch.config import (
     CHECKPOINT_ENV_VAR,
     DEFAULT_CHECKPOINT_PATH,
 )
 from models.routers.tool_catalog import format_tool_catalog
+from models.routers.structured_tool_call import (
+    ToolCallPrediction,
+    build_native_tools,
+    build_tool_call_prompt,
+    parse_tool_call,
+)
 
 MODEL_ID = "Qwen/Qwen3.6"
 MODEL_NAME = MODEL_ID
@@ -22,6 +28,7 @@ WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
 PROMPT_TEMPLATE = "tool_name_only_v1"
 SUPPORTS_TOOL_DESCRIPTIONS = True
+SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
 
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
@@ -99,6 +106,20 @@ def _extract_tool_name(response: str, available_tools: Sequence[str]) -> str:
 
 
 def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: Mapping[str, str] | None = None) -> str:
+    return choose_tool_call(
+        query,
+        available_tools,
+        tool_schemas=None,
+        tool_descriptions=tool_descriptions,
+    ).selected_tool
+
+
+def choose_tool_call(
+    query: str,
+    available_tools: Sequence[str],
+    tool_schemas: Mapping[str, Any] | None = None,
+    tool_descriptions: Mapping[str, str] | None = None,
+) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
         raise ValueError("query must not be empty.")
@@ -107,9 +128,24 @@ def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: M
         raise ValueError("available_tools must not be empty.")
 
     generator = _load_generator()
-    prompt_tokens = generator.apply_chat_template(_build_prompt(normalized_query, tool_catalog, tool_descriptions))
-    result = generator.generate_choice(
-        prompt_tokens,
-        [*tool_catalog, HALLUCINATED_TOOL],
+    prompt = build_tool_call_prompt(
+        normalized_query,
+        tool_catalog,
+        tool_schemas,
+        tool_descriptions,
     )
-    return _extract_tool_name(result, tool_catalog)
+    prompt_tokens = generator.apply_chat_template(
+        prompt,
+        tools=build_native_tools(
+            tool_catalog,
+            tool_schemas,
+            tool_descriptions,
+        ),
+    )
+    result = generator.generate_text(
+        prompt_tokens=prompt_tokens,
+        stop_tokens=generator.stop_tokens,
+        temperature=0.0,
+        max_tokens=128,
+    )
+    return parse_tool_call(result.text, tool_catalog, result.tool_call)

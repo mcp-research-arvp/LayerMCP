@@ -5,8 +5,7 @@ import torch
 from .config import Config
 from .model import Transformer
 from .schemas import ToolCall, ToolFunction, GenerationResult
-from typing import Optional, List, Any, Callable, Generator, Union, Tuple
-from models.architectures.constrained_decoding import constrained_argmax, generate_choice
+from typing import Optional, List, Any, Generator, Union, Tuple
 from transformers import AutoTokenizer
 
 
@@ -180,7 +179,6 @@ class TokenGenerator:
         top_p: float = Config.top_p,
         max_tokens: int = Config.max_tokens,
         return_logprobs: bool = False,
-        allowed_tokens_fn: Callable[[tuple[int, ...]], set[int]] | None = None,
     ) -> Generator[Union[int, Tuple[int, float]], None, None]:
 
         cfg = self.model.configs
@@ -208,20 +206,13 @@ class TokenGenerator:
         # ---- Decode ----
         num_generated = 0
         predicted = None
-        generated_tokens: list[int] = []
         while max_tokens == 0 or num_generated < max_tokens:
             if num_generated > 0:
                 input_tensor = torch.as_tensor([[predicted]], dtype=torch.long, device=self.device)
                 logits = self.model(input_tensor, caches=caches)[:, -1, :].squeeze(0)
 
-            if allowed_tokens_fn is not None:
-                predicted = constrained_argmax(
-                    logits, allowed_tokens_fn(tuple(generated_tokens))
-                )
-            else:
-                predicted = self._sample(logits, temperature, top_p)
+            predicted = self._sample(logits, temperature, top_p)
             tokens.append(predicted)
-            generated_tokens.append(predicted)
             num_generated += 1
 
             if return_logprobs:
@@ -266,7 +257,4 @@ class TokenGenerator:
         )]
         text = self.tokenizer.decode(out, skip_special_tokens=False)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
-
-    def generate_choice(self, prompt_tokens: List[int], choices: List[str]) -> str:
-        return generate_choice(self, prompt_tokens, choices, self.stop_tokens[0])
 

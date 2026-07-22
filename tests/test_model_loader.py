@@ -185,25 +185,6 @@ class RouterRegistryTests(unittest.TestCase):
         )
         self.assertNotIn("Numerically evaluate", prompt)
 
-    def test_choice_constraint_only_allows_catalog_prefixes(self) -> None:
-        from models.architectures.constrained_decoding import ChoiceConstraint
-
-        tokenizer = Mock()
-        tokenizer.encode.side_effect = lambda value, **_: {
-            "factor_expression": [10, 11],
-            "expand_expression": [20, 21],
-        }[value]
-        constraint = ChoiceConstraint(
-            tokenizer,
-            ["factor_expression", "expand_expression"],
-            stop_token=99,
-        )
-
-        self.assertEqual(constraint.allowed_tokens(()), {10, 20})
-        self.assertEqual(constraint.allowed_tokens((10,)), {11})
-        self.assertEqual(constraint.allowed_tokens((10, 11)), {99})
-        self.assertEqual(constraint.resolve([10, 11, 99]), "factor_expression")
-
     def test_registry_loads_named_router_modules(self) -> None:
         from models.routers.registry import load_router
 
@@ -296,12 +277,14 @@ class RouterRegistryTests(unittest.TestCase):
                 Path("custom/llama"),
             )
 
-    def test_llama31_router_constrains_generation_to_tool_catalog(self) -> None:
+    def test_llama31_router_returns_structured_tool_call(self) -> None:
         from models.routers import llama31_8b_local_router
 
         generator = Mock()
         generator.encode_chat.return_value = [1, 2, 3]
-        generator.generate_choice.return_value = "factor_expression"
+        generator.generate_text.return_value = (
+            '{"name":"factor_expression","arguments":{"expression":"t^2-49"}}'
+        )
 
         with patch.object(llama31_8b_local_router, "_load_generator", return_value=generator):
             selected = llama31_8b_local_router.choose_tool(
@@ -310,10 +293,7 @@ class RouterRegistryTests(unittest.TestCase):
             )
 
         self.assertEqual(selected, "factor_expression")
-        generator.generate_choice.assert_called_once_with(
-            [1, 2, 3],
-            ["calculator", "factor_expression", "expand_expression", "hallucinated_tool"],
-        )
+        generator.generate_text.assert_called_once()
 
     def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
         from models.routers.qwen36_local_router import _extract_tool_name
@@ -326,7 +306,7 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
-    def test_other_local_routers_constrain_generation_to_catalog(self) -> None:
+    def test_other_local_routers_return_structured_tool_calls(self) -> None:
         from models.routers import (
             gemma4_local_router,
             gpt_oss_local_router,
@@ -353,22 +333,29 @@ class RouterRegistryTests(unittest.TestCase):
         phi_generator.tokenizer.encode.return_value = [1]
         cases.append((phi4_local_router, phi_generator))
 
-        expected_choices = [
+        available_tools = [
             "calculator",
             "factor_expression",
             "expand_expression",
-            "hallucinated_tool",
         ]
         for router, generator in cases:
             with self.subTest(router=router.ROUTER_ID):
-                generator.generate_choice.return_value = "factor_expression"
+                generator.generate_text.return_value = SimpleNamespace(
+                    text=(
+                        '{"name":"factor_expression",'
+                        '"arguments":{"expression":"t^2-49"}}'
+                    ),
+                    tool_call=None,
+                )
                 with patch.object(router, "_load_generator", return_value=generator):
-                    selected = router.choose_tool(
+                    prediction = router.choose_tool_call(
                         "Factor t^2-49.",
-                        expected_choices[:-1],
+                        available_tools,
+                        {"factor_expression": {"type": "object"}},
                     )
-                self.assertEqual(selected, "factor_expression")
-                generator.generate_choice.assert_called_once_with([1], expected_choices)
+                self.assertEqual(prediction.selected_tool, "factor_expression")
+                self.assertEqual(prediction.selected_args, {"expression": "t^2-49"})
+                generator.generate_text.assert_called_once()
 
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path

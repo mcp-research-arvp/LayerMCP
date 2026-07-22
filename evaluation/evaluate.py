@@ -309,11 +309,27 @@ async def _evaluate_with_server(
 
                 start = time.perf_counter()
                 if hasattr(router, "choose_tool_call"):
-                    prediction = router.choose_tool_call(
-                        query,
-                        available_tools,
-                        {tool: tool_schemas.get(tool, {}) for tool in available_tools},
-                    )
+                    available_schemas = {
+                        tool: tool_schemas.get(tool, {}) for tool in available_tools
+                    }
+                    if getattr(
+                        router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False
+                    ):
+                        prediction = router.choose_tool_call(
+                            query,
+                            available_tools,
+                            available_schemas,
+                            {
+                                tool: tool_descriptions.get(tool, "")
+                                for tool in available_tools
+                            },
+                        )
+                    else:
+                        prediction = router.choose_tool_call(
+                            query,
+                            available_tools,
+                            available_schemas,
+                        )
                     selected_tool = prediction.selected_tool
                     selected_args = prediction.selected_args
                     raw_model_output = prediction.raw_output

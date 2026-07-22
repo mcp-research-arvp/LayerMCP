@@ -71,7 +71,8 @@ def _safe_eval(node: ast.AST) -> int | float:
 
 def calculator(expression: str) -> dict[str, Any]:
     """
-    Safely evaluate an arithmetic expression for research experiments.
+    Numerically evaluate an arithmetic expression and return its value. Use
+    this for requests that ask to compute, evaluate, or find a numeric value.
     """
     normalized = expression.strip()
     if not normalized:

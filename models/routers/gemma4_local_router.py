@@ -5,12 +5,14 @@ import os
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Mapping, Sequence
 
 from models.architectures.gemma4_pytorch.config import (
     CHECKPOINT_ENV_VAR,
     DEFAULT_CHECKPOINT_PATH,
 )
+from models.routers.tool_catalog import format_tool_catalog
+from models.routers.structured_tool_call import ToolCallPrediction, build_tool_call_prompt, parse_tool_call
 
 MODEL_ID = "google/gemma-4-26b-a4b-it"
 MODEL_NAME = MODEL_ID
@@ -20,6 +22,8 @@ ARCHITECTURE_SOURCE = "models.architectures.gemma4_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
 PROMPT_TEMPLATE = "tool_name_only_v1"
+SUPPORTS_TOOL_DESCRIPTIONS = True
+SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
 
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
@@ -46,8 +50,8 @@ def _load_generator(checkpoint_path: str | None = None):
     return TokenGenerator(checkpoint=str(resolved_checkpoint), device=Config.device)
 
 
-def _build_prompt(query: str, available_tools: Sequence[str]) -> str:
-    tool_lines = "\n".join(f"- {tool}" for tool in available_tools)
+def _build_prompt(query: str, available_tools: Sequence[str], tool_descriptions: Mapping[str, str] | None = None) -> str:
+    tool_lines = format_tool_catalog(available_tools, tool_descriptions)
     return f"""
 You are a tool routing model for an MCP research benchmark.
 
@@ -109,7 +113,11 @@ def _extract_tool_name(response: str, available_tools: Sequence[str]) -> str:
     return HALLUCINATED_TOOL
 
 
-def choose_tool(query: str, available_tools: Sequence[str]) -> str:
+def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: Mapping[str, str] | None = None) -> str:
+    return choose_tool_call(query, available_tools, None, tool_descriptions).selected_tool
+
+
+def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: Mapping[str, Any] | None = None, tool_descriptions: Mapping[str, str] | None = None) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
         raise ValueError("query must not be empty.")
@@ -120,16 +128,12 @@ def choose_tool(query: str, available_tools: Sequence[str]) -> str:
     generator = _load_generator()
     prompt_tokens = _encode_prompt(
         generator.tokenizer,
-        _build_prompt(normalized_query, tool_catalog),
+        build_tool_call_prompt(normalized_query, tool_catalog, tool_schemas, tool_descriptions),
     )
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.stop_tokens,
         temperature=0.0,
-        max_tokens=16,
+        max_tokens=128,
     )
-    if result.tool_call is not None:
-        candidate = result.tool_call.function.name.strip().lower()
-        if candidate in tool_catalog:
-            return candidate
-    return _extract_tool_name(result.text, tool_catalog)
+    return parse_tool_call(result.text, tool_catalog, result.tool_call)

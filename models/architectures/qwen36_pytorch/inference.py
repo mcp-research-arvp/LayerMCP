@@ -128,19 +128,32 @@ class TokenGenerator:
     def encode(self, text: str) -> List[int]:
         return _encode(self.tokenizer, text)
 
-    def apply_chat_template(self, prompt: str) -> List[int]:
+    def apply_chat_template(
+        self,
+        prompt: str,
+        tools: Optional[List[dict[str, Any]]] = None,
+        fallback_prompt: Optional[str] = None,
+    ) -> List[int]:
         """Wrap a user prompt with the Qwen chat template when available."""
         tok = self.tokenizer
         messages = [{"role": "user", "content": prompt}]
         if hasattr(tok, "apply_chat_template"):
             try:
-                out = tok.apply_chat_template(
-                    messages, add_generation_prompt=True, tokenize=True
-                )
+                template_kwargs = {
+                    "add_generation_prompt": True,
+                    "tokenize": True,
+                    "enable_thinking": False,
+                }
+                if tools:
+                    template_kwargs["tools"] = tools
+                out = tok.apply_chat_template(messages, **template_kwargs)
                 return _coerce_ids(out)
             except Exception as e:
                 debug_print(f"chat template failed ({e}); using raw encode")
-        text = f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+        text = (
+            f"<|im_start|>user\n{fallback_prompt or prompt}"
+            "<|im_end|>\n<|im_start|>assistant\n"
+        )
         return self.encode(text)
 
     # ------------------------------------------------------------------ #
@@ -262,5 +275,3 @@ class TokenGenerator:
             out.append(token)
         text = _decode(self.tokenizer, out)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
-
-

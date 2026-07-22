@@ -258,4 +258,3 @@ class TokenGenerator:
         text = self.tokenizer.decode(out, skip_special_tokens=False)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
 
-

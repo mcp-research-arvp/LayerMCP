@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from collections import Counter, defaultdict
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -231,6 +232,7 @@ def _summarize_tool_result(result: Any) -> str:
     return repr(first_item)
 
 
+@asynccontextmanager
 async def _run_server_session(server_path: Path):
     server = StdioServerParameters(
         command=sys.executable,
@@ -253,10 +255,8 @@ async def _call_tool_with_sample_isolation(
     if tool_name not in RETAIL_TOOL_NAMES:
         return await session.call_tool(tool_name, tool_args)
 
-    async for isolated_session in _run_server_session(server_path):
+    async with _run_server_session(server_path) as isolated_session:
         return await isolated_session.call_tool(tool_name, tool_args)
-
-    raise RuntimeError("Unable to start isolated Retail MCP session.")
 
 
 def _tool_schema(tool: Any) -> dict[str, Any]:
@@ -289,11 +289,15 @@ async def _evaluate_with_server(
     samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
     summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
 
-    async for session in _run_server_session(server_path):
+    async with _run_server_session(server_path) as session:
         listed_tools = await session.list_tools()
         live_tools = [tool.name for tool in listed_tools.tools]
         live_tool_set = set(live_tools)
         tool_schemas = {tool.name: _tool_schema(tool) for tool in listed_tools.tools}
+        tool_descriptions = {
+            tool.name: str(getattr(tool, "description", "") or "")
+            for tool in listed_tools.tools
+        }
 
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
 
@@ -305,16 +309,42 @@ async def _evaluate_with_server(
 
                 start = time.perf_counter()
                 if hasattr(router, "choose_tool_call"):
-                    prediction = router.choose_tool_call(
-                        query,
-                        available_tools,
-                        {tool: tool_schemas.get(tool, {}) for tool in available_tools},
-                    )
+                    available_schemas = {
+                        tool: tool_schemas.get(tool, {}) for tool in available_tools
+                    }
+                    if getattr(
+                        router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False
+                    ):
+                        prediction = router.choose_tool_call(
+                            query,
+                            available_tools,
+                            available_schemas,
+                            {
+                                tool: tool_descriptions.get(tool, "")
+                                for tool in available_tools
+                            },
+                        )
+                    else:
+                        prediction = router.choose_tool_call(
+                            query,
+                            available_tools,
+                            available_schemas,
+                        )
                     selected_tool = prediction.selected_tool
                     selected_args = prediction.selected_args
                     raw_model_output = prediction.raw_output
                 else:
-                    selected_tool = router.choose_tool(query, available_tools)
+                    if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
+                        selected_tool = router.choose_tool(
+                            query,
+                            available_tools,
+                            {
+                                tool: tool_descriptions.get(tool, "")
+                                for tool in available_tools
+                            },
+                        )
+                    else:
+                        selected_tool = router.choose_tool(query, available_tools)
                     selected_args = {}
                     raw_model_output = selected_tool
                 latency = time.perf_counter() - start
@@ -331,6 +361,8 @@ async def _evaluate_with_server(
                 print(f"Expected: {expected}")
                 print(f"Selected: {selected_tool}")
                 print(f"Selected args: {selected_args}")
+                if selected_tool == hallucinated_tool:
+                    print(f"Raw model output: {raw_model_output[:1000]!r}")
 
                 called_tool = None
                 tool_result = None
@@ -349,9 +381,16 @@ async def _evaluate_with_server(
                             selected_args,
                         )
                         executed_tool_calls += 1
-                        execution_success = True
                         tool_result = _summarize_tool_result(call_result)
-                        print(f"Tool call: {tool_result}")
+                        execution_success = not bool(
+                            getattr(call_result, "isError", False)
+                        )
+                        if execution_success:
+                            print(f"Tool call: {tool_result}")
+                        else:
+                            errors_count += 1
+                            tool_error = tool_result
+                            print(f"Tool call error: {tool_error}")
                     except Exception as exc:  # pragma: no cover - exercised by integration runs
                         errors_count += 1
                         tool_error = str(exc)

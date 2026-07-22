@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import warnings
 
 import torch
@@ -143,6 +143,48 @@ class SharedLoaderIntegrationTests(unittest.TestCase):
 
 
 class RouterRegistryTests(unittest.TestCase):
+    def test_local_router_prompt_distinguishes_numeric_and_symbolic_math(self) -> None:
+        from mcp_server.server import mcp
+        from models.routers.qwen36_local_router import _build_prompt
+
+        tool_names = ["calculator", "simplify_expression", "factor_expression"]
+        live_descriptions = {
+            name: mcp._tool_manager._tools[name].description for name in tool_names
+        }
+        prompt = _build_prompt(
+            "Compute 55^2 - 45^2.",
+            tool_names,
+            live_descriptions,
+        )
+
+        self.assertIn(
+            "calculator: Numerically evaluate an arithmetic expression",
+            prompt,
+        )
+        self.assertIn(
+            "Do not use this for a request that only asks for a numeric value",
+            prompt,
+        )
+        self.assertIn(
+            "factor_expression: Factor a symbolic expression",
+            prompt,
+        )
+
+    def test_local_router_prompt_prefers_live_mcp_description(self) -> None:
+        from models.routers.qwen36_local_router import _build_prompt
+
+        prompt = _build_prompt(
+            "Compute 2 + 2.",
+            ["calculator"],
+            {"calculator": "Live description supplied by the MCP server."},
+        )
+
+        self.assertIn(
+            "calculator: Live description supplied by the MCP server.",
+            prompt,
+        )
+        self.assertNotIn("Numerically evaluate", prompt)
+
     def test_registry_loads_named_router_modules(self) -> None:
         from models.routers.registry import load_router
 
@@ -235,6 +277,24 @@ class RouterRegistryTests(unittest.TestCase):
                 Path("custom/llama"),
             )
 
+    def test_llama31_router_returns_structured_tool_call(self) -> None:
+        from models.routers import llama31_8b_local_router
+
+        generator = Mock()
+        generator.encode_chat.return_value = [1, 2, 3]
+        generator.generate_text.return_value = (
+            '{"name":"factor_expression","arguments":{"expression":"t^2-49"}}'
+        )
+
+        with patch.object(llama31_8b_local_router, "_load_generator", return_value=generator):
+            selected = llama31_8b_local_router.choose_tool(
+                "Factor t^2-49.",
+                ["calculator", "factor_expression", "expand_expression"],
+            )
+
+        self.assertEqual(selected, "factor_expression")
+        generator.generate_text.assert_called_once()
+
     def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
         from models.routers.qwen36_local_router import _extract_tool_name
 
@@ -245,6 +305,81 @@ class RouterRegistryTests(unittest.TestCase):
             ),
             "calculator",
         )
+
+    def test_structured_parser_accepts_qwen_native_tool_call(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = """Reasoning complete.
+</think>
+<tool_call>
+<function=calculator>
+<parameter=expression>
+139 + 27 + 23 + 11
+</parameter>
+</function>
+</tool_call><|im_end|>"""
+
+        prediction = parse_tool_call(
+            response,
+            ["calculator", "simplify_expression"],
+        )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(
+            prediction.selected_args,
+            {"expression": "139 + 27 + 23 + 11"},
+        )
+
+    def test_other_local_routers_return_structured_tool_calls(self) -> None:
+        from models.routers import (
+            gemma4_local_router,
+            gpt_oss_local_router,
+            phi4_local_router,
+            qwen36_local_router,
+        )
+
+        cases = []
+
+        qwen_generator = Mock()
+        qwen_generator.apply_chat_template.return_value = [1]
+        cases.append((qwen36_local_router, qwen_generator))
+
+        gemma_generator = Mock()
+        gemma_generator.tokenizer.apply_chat_template.return_value = [1]
+        cases.append((gemma4_local_router, gemma_generator))
+
+        gpt_generator = Mock()
+        gpt_generator.tokenizer.encode.return_value = [1]
+        cases.append((gpt_oss_local_router, gpt_generator))
+
+        phi_generator = Mock()
+        phi_generator.tokenizer.chat_template = None
+        phi_generator.tokenizer.encode.return_value = [1]
+        cases.append((phi4_local_router, phi_generator))
+
+        available_tools = [
+            "calculator",
+            "factor_expression",
+            "expand_expression",
+        ]
+        for router, generator in cases:
+            with self.subTest(router=router.ROUTER_ID):
+                generator.generate_text.return_value = SimpleNamespace(
+                    text=(
+                        '{"name":"factor_expression",'
+                        '"arguments":{"expression":"t^2-49"}}'
+                    ),
+                    tool_call=None,
+                )
+                with patch.object(router, "_load_generator", return_value=generator):
+                    prediction = router.choose_tool_call(
+                        "Factor t^2-49.",
+                        available_tools,
+                        {"factor_expression": {"type": "object"}},
+                    )
+                self.assertEqual(prediction.selected_tool, "factor_expression")
+                self.assertEqual(prediction.selected_args, {"expression": "t^2-49"})
+                generator.generate_text.assert_called_once()
 
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path

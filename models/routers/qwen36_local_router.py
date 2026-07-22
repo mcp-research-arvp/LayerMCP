@@ -134,8 +134,14 @@ def choose_tool_call(
         tool_schemas,
         tool_descriptions,
     )
+    native_prompt = (
+        "This is a tool-routing benchmark. You must call exactly one of the "
+        "provided functions and must not answer the request directly, even if "
+        "you can solve it without a tool.\n\n"
+        f"User request:\n{normalized_query}"
+    )
     prompt_tokens = generator.apply_chat_template(
-        normalized_query,
+        native_prompt,
         tools=build_native_tools(
             tool_catalog,
             tool_schemas,
@@ -147,6 +153,6 @@ def choose_tool_call(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.stop_tokens,
         temperature=0.0,
-        max_tokens=1024,
+        max_tokens=256,
     )
     return parse_tool_call(result.text, tool_catalog, result.tool_call)

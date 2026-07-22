@@ -71,6 +71,31 @@ def _json_candidates(response: str) -> list[str]:
     return candidates
 
 
+def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
+    function_match = re.search(
+        r"<function=([^>\s]+)>\s*(.*?)\s*</function>",
+        response,
+        re.DOTALL,
+    )
+    if function_match is None:
+        return None
+
+    arguments: dict[str, Any] = {}
+    for parameter_match in re.finditer(
+        r"<parameter=([^>\s]+)>\s*(.*?)\s*</parameter>",
+        function_match.group(2),
+        re.DOTALL,
+    ):
+        key = parameter_match.group(1).strip()
+        raw_value = parameter_match.group(2).strip()
+        try:
+            value = json.loads(raw_value)
+        except json.JSONDecodeError:
+            value = raw_value
+        arguments[key] = value
+    return function_match.group(1).strip(), arguments
+
+
 def parse_tool_call(
     response: str,
     available_tools: Sequence[str],
@@ -90,6 +115,13 @@ def parse_tool_call(
                     arguments if isinstance(arguments, dict) else {},
                     response,
                 )
+
+    qwen_call = _parse_qwen_native_call(response)
+    if qwen_call is not None:
+        name, arguments = qwen_call
+        normalized = name.lower()
+        if normalized in catalog:
+            return ToolCallPrediction(normalized, arguments, response)
 
     for candidate in _json_candidates(response):
         try:

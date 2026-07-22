@@ -142,7 +142,7 @@ class TokenGenerator:
                 template_kwargs = {
                     "add_generation_prompt": True,
                     "tokenize": True,
-                    "enable_thinking": True,
+                    "enable_thinking": False,
                 }
                 if tools:
                     template_kwargs["tools"] = tools

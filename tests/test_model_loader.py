@@ -306,6 +306,30 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
+    def test_structured_parser_accepts_qwen_native_tool_call(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = """Reasoning complete.
+</think>
+<tool_call>
+<function=calculator>
+<parameter=expression>
+139 + 27 + 23 + 11
+</parameter>
+</function>
+</tool_call><|im_end|>"""
+
+        prediction = parse_tool_call(
+            response,
+            ["calculator", "simplify_expression"],
+        )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(
+            prediction.selected_args,
+            {"expression": "139 + 27 + 23 + 11"},
+        )
+
     def test_other_local_routers_return_structured_tool_calls(self) -> None:
         from models.routers import (
             gemma4_local_router,

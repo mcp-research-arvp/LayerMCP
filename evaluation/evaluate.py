@@ -294,6 +294,10 @@ async def _evaluate_with_server(
         live_tools = [tool.name for tool in listed_tools.tools]
         live_tool_set = set(live_tools)
         tool_schemas = {tool.name: _tool_schema(tool) for tool in listed_tools.tools}
+        tool_descriptions = {
+            tool.name: str(getattr(tool, "description", "") or "")
+            for tool in listed_tools.tools
+        }
 
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
 
@@ -314,7 +318,17 @@ async def _evaluate_with_server(
                     selected_args = prediction.selected_args
                     raw_model_output = prediction.raw_output
                 else:
-                    selected_tool = router.choose_tool(query, available_tools)
+                    if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
+                        selected_tool = router.choose_tool(
+                            query,
+                            available_tools,
+                            {
+                                tool: tool_descriptions.get(tool, "")
+                                for tool in available_tools
+                            },
+                        )
+                    else:
+                        selected_tool = router.choose_tool(query, available_tools)
                     selected_args = {}
                     raw_model_output = selected_tool
                 latency = time.perf_counter() - start

@@ -79,7 +79,8 @@ except ImportError:  # pragma: no cover - compatibility fallback
 
 def simplify_expression(expression: str) -> dict[str, Any]:
     """
-    Simplify a symbolic expression using SymPy.
+    Symbolically rewrite an expression into a simpler equivalent form using
+    SymPy. Do not use this for a request that only asks for a numeric value.
     """
     normalized = _normalize_expression(expression)
     parsed = _parse_expression(normalized)

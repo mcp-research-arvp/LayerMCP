@@ -143,6 +143,48 @@ class SharedLoaderIntegrationTests(unittest.TestCase):
 
 
 class RouterRegistryTests(unittest.TestCase):
+    def test_local_router_prompt_distinguishes_numeric_and_symbolic_math(self) -> None:
+        from mcp_server.server import mcp
+        from models.routers.qwen36_local_router import _build_prompt
+
+        tool_names = ["calculator", "simplify_expression", "factor_expression"]
+        live_descriptions = {
+            name: mcp._tool_manager._tools[name].description for name in tool_names
+        }
+        prompt = _build_prompt(
+            "Compute 55^2 - 45^2.",
+            tool_names,
+            live_descriptions,
+        )
+
+        self.assertIn(
+            "calculator: Numerically evaluate an arithmetic expression",
+            prompt,
+        )
+        self.assertIn(
+            "Do not use this for a request that only asks for a numeric value",
+            prompt,
+        )
+        self.assertIn(
+            "factor_expression: Factor a symbolic expression",
+            prompt,
+        )
+
+    def test_local_router_prompt_prefers_live_mcp_description(self) -> None:
+        from models.routers.qwen36_local_router import _build_prompt
+
+        prompt = _build_prompt(
+            "Compute 2 + 2.",
+            ["calculator"],
+            {"calculator": "Live description supplied by the MCP server."},
+        )
+
+        self.assertIn(
+            "calculator: Live description supplied by the MCP server.",
+            prompt,
+        )
+        self.assertNotIn("Numerically evaluate", prompt)
+
     def test_choice_constraint_only_allows_catalog_prefixes(self) -> None:
         from models.architectures.constrained_decoding import ChoiceConstraint
 

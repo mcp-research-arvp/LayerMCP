@@ -361,6 +361,8 @@ async def _evaluate_with_server(
                 print(f"Expected: {expected}")
                 print(f"Selected: {selected_tool}")
                 print(f"Selected args: {selected_args}")
+                if selected_tool == hallucinated_tool:
+                    print(f"Raw model output: {raw_model_output[:1000]!r}")
 
                 called_tool = None
                 tool_result = None

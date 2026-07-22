@@ -132,6 +132,7 @@ class TokenGenerator:
         self,
         prompt: str,
         tools: Optional[List[dict[str, Any]]] = None,
+        fallback_prompt: Optional[str] = None,
     ) -> List[int]:
         """Wrap a user prompt with the Qwen chat template when available."""
         tok = self.tokenizer
@@ -141,6 +142,7 @@ class TokenGenerator:
                 template_kwargs = {
                     "add_generation_prompt": True,
                     "tokenize": True,
+                    "enable_thinking": True,
                 }
                 if tools:
                     template_kwargs["tools"] = tools
@@ -148,7 +150,10 @@ class TokenGenerator:
                 return _coerce_ids(out)
             except Exception as e:
                 debug_print(f"chat template failed ({e}); using raw encode")
-        text = f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n"
+        text = (
+            f"<|im_start|>user\n{fallback_prompt or prompt}"
+            "<|im_end|>\n<|im_start|>assistant\n"
+        )
         return self.encode(text)
 
     # ------------------------------------------------------------------ #

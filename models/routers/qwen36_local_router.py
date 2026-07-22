@@ -135,17 +135,18 @@ def choose_tool_call(
         tool_descriptions,
     )
     prompt_tokens = generator.apply_chat_template(
-        prompt,
+        normalized_query,
         tools=build_native_tools(
             tool_catalog,
             tool_schemas,
             tool_descriptions,
         ),
+        fallback_prompt=prompt,
     )
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.stop_tokens,
         temperature=0.0,
-        max_tokens=128,
+        max_tokens=1024,
     )
     return parse_tool_call(result.text, tool_catalog, result.tool_call)

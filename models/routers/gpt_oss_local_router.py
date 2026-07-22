@@ -119,22 +119,8 @@ def choose_tool(query: str, available_tools: Sequence[str]) -> str:
     generator = _load_generator()
     prompt = _build_prompt(normalized_query, tool_catalog)
     prompt_tokens = generator.tokenizer.encode(prompt, allowed_special="all")
-    stop_tokens = [
-        generator.call_token,
-        generator.end_token,
-        generator.return_token,
-        generator.eot_token,
-    ]
-    result = generator.generate_text(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=stop_tokens,
-        temperature=0.0,
-        max_tokens=16,
+    result = generator.generate_choice(
+        prompt_tokens,
+        [*tool_catalog, HALLUCINATED_TOOL],
     )
-
-    if result.tool_call is not None:
-        tool_name = result.tool_call.function.name.strip().lower()
-        if tool_name in tool_catalog:
-            return tool_name
-
-    return _extract_tool_name(result.text, tool_catalog)
+    return _extract_tool_name(result, tool_catalog)

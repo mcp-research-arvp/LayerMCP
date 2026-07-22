@@ -5,7 +5,9 @@ import torch
 from .config import Config
 from .model import Transformer, build_caches
 from .schemas import ToolCall, ToolFunction, GenerationResult
-from typing import Optional, List, Any, Generator, Union, Tuple
+from typing import Optional, List, Any, Callable, Generator, Union, Tuple
+
+from models.architectures.constrained_decoding import constrained_argmax, generate_choice
 
 
 def debug_print(*args: Any, **kwargs: Any) -> None:
@@ -154,6 +156,7 @@ class TokenGenerator:
         top_k: int = Config.top_k,
         max_tokens: int = Config.max_tokens,
         return_logprobs: bool = False,
+        allowed_tokens_fn: Callable[[tuple[int, ...]], set[int]] | None = None,
     ) -> Generator[Union[int, Tuple[int, float]], None, None]:
 
         cfg = self.model.configs
@@ -189,6 +192,7 @@ class TokenGenerator:
         num_generated = 0
         cur_pos = len(tokens)
         predicted_token = None
+        generated_tokens: list[int] = []
 
         while max_tokens == 0 or num_generated < max_tokens:
             iter_start = time.time()
@@ -199,9 +203,15 @@ class TokenGenerator:
                 logits = self.model(input_tensor, caches=caches, position_ids=position_ids)[:, -1, :].squeeze(0)
                 cur_pos += 1
 
-            predicted_token = self._sample(logits, temperature, top_p, top_k)
+            if allowed_tokens_fn is not None:
+                predicted_token = constrained_argmax(
+                    logits, allowed_tokens_fn(tuple(generated_tokens))
+                )
+            else:
+                predicted_token = self._sample(logits, temperature, top_p, top_k)
 
             tokens.append(predicted_token)
+            generated_tokens.append(predicted_token)
             num_generated += 1
 
             if return_logprobs:
@@ -263,4 +273,6 @@ class TokenGenerator:
         text = _decode(self.tokenizer, out)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
 
+    def generate_choice(self, prompt_tokens: List[int], choices: List[str]) -> str:
+        return generate_choice(self, prompt_tokens, choices, self.stop_tokens[0])
 

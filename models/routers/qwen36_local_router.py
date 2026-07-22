@@ -106,14 +106,8 @@ def choose_tool(query: str, available_tools: Sequence[str]) -> str:
 
     generator = _load_generator()
     prompt_tokens = generator.apply_chat_template(_build_prompt(normalized_query, tool_catalog))
-    result = generator.generate_text(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=generator.stop_tokens,
-        temperature=0.0,
-        max_tokens=16,
+    result = generator.generate_choice(
+        prompt_tokens,
+        [*tool_catalog, HALLUCINATED_TOOL],
     )
-    if result.tool_call is not None:
-        candidate = result.tool_call.function.name.strip().lower()
-        if candidate in tool_catalog:
-            return candidate
-    return _extract_tool_name(result.text, tool_catalog)
+    return _extract_tool_name(result, tool_catalog)

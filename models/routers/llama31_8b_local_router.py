@@ -147,11 +147,9 @@ def choose_tool(query: str, available_tools: Sequence[str]) -> str:
     generator = _load_generator()
     prompt = _build_prompt(normalized_query, tool_catalog)
     prompt_tokens = generator.encode_chat([{"role": "user", "content": prompt}])
-    result = generator.generate_text(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=[generator.eos_token_id],
-        temperature=0.0,
-        max_tokens=16,
+    result = generator.generate_choice(
+        prompt_tokens,
+        [*tool_catalog, HALLUCINATED_TOOL],
     )
 
     return _extract_tool_name(result, tool_catalog)

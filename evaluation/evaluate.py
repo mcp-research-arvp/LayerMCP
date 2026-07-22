@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from collections import Counter, defaultdict
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -231,6 +232,7 @@ def _summarize_tool_result(result: Any) -> str:
     return repr(first_item)
 
 
+@asynccontextmanager
 async def _run_server_session(server_path: Path):
     server = StdioServerParameters(
         command=sys.executable,
@@ -253,10 +255,8 @@ async def _call_tool_with_sample_isolation(
     if tool_name not in RETAIL_TOOL_NAMES:
         return await session.call_tool(tool_name, tool_args)
 
-    async for isolated_session in _run_server_session(server_path):
+    async with _run_server_session(server_path) as isolated_session:
         return await isolated_session.call_tool(tool_name, tool_args)
-
-    raise RuntimeError("Unable to start isolated Retail MCP session.")
 
 
 def _tool_schema(tool: Any) -> dict[str, Any]:
@@ -289,7 +289,7 @@ async def _evaluate_with_server(
     samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
     summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
 
-    async for session in _run_server_session(server_path):
+    async with _run_server_session(server_path) as session:
         listed_tools = await session.list_tools()
         live_tools = [tool.name for tool in listed_tools.tools]
         live_tool_set = set(live_tools)
@@ -381,9 +381,16 @@ async def _evaluate_with_server(
                             selected_args,
                         )
                         executed_tool_calls += 1
-                        execution_success = True
                         tool_result = _summarize_tool_result(call_result)
-                        print(f"Tool call: {tool_result}")
+                        execution_success = not bool(
+                            getattr(call_result, "isError", False)
+                        )
+                        if execution_success:
+                            print(f"Tool call: {tool_result}")
+                        else:
+                            errors_count += 1
+                            tool_error = tool_result
+                            print(f"Tool call error: {tool_error}")
                     except Exception as exc:  # pragma: no cover - exercised by integration runs
                         errors_count += 1
                         tool_error = str(exc)

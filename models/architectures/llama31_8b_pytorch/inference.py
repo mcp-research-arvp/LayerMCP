@@ -43,13 +43,52 @@ class TokenGenerator:
             TokenGenerator._tokenizer = get_tokenizer(checkpoint)
         self.tokenizer = TokenGenerator._tokenizer
         self.eos_token_id = self.tokenizer.eos_token_id
+        self.stop_tokens = self._resolve_stop_tokens()
 
-    def encode_chat(self, messages: list[dict[str, str]]) -> list[int]:
-        encoded = self.tokenizer.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            tokenize=True,
-        )
+    def _resolve_stop_tokens(self) -> list[int]:
+        stop_tokens: list[int] = []
+        if isinstance(self.eos_token_id, int):
+            stop_tokens.append(self.eos_token_id)
+        elif isinstance(self.eos_token_id, (list, tuple)):
+            stop_tokens.extend(
+                token_id
+                for token_id in self.eos_token_id
+                if isinstance(token_id, int) and token_id not in stop_tokens
+            )
+
+        unk_token_id = getattr(self.tokenizer, "unk_token_id", None)
+        for token in ("<|eot_id|>", "<|eom_id|>"):
+            try:
+                token_id = self.tokenizer.convert_tokens_to_ids(token)
+            except Exception:
+                token_id = None
+            if (
+                isinstance(token_id, int)
+                and token_id >= 0
+                and token_id != unk_token_id
+                and token_id not in stop_tokens
+            ):
+                stop_tokens.append(token_id)
+        return stop_tokens
+
+    def encode_chat(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> list[int]:
+        template_kwargs: dict[str, Any] = {
+            "add_generation_prompt": True,
+            "tokenize": False,
+        }
+        if tools:
+            template_kwargs["tools"] = tools
+        try:
+            prompt = self.tokenizer.apply_chat_template(messages, **template_kwargs)
+        except (TypeError, ValueError):
+            template_kwargs.pop("tools", None)
+            prompt = self.tokenizer.apply_chat_template(messages, **template_kwargs)
+
+        encoded = self.tokenizer(prompt, return_tensors=None)["input_ids"]
         if hasattr(encoded, "keys") and "input_ids" in encoded:
             encoded = encoded["input_ids"]
         if isinstance(encoded, torch.Tensor):
@@ -67,7 +106,7 @@ class TokenGenerator:
         max_tokens: int = Config.max_tokens,
         return_logprobs: bool = False,
     ) -> Generator[Union[int, Tuple[int, float]], None, None]:
-        stop_tokens = stop_tokens or [self.eos_token_id]
+        stop_tokens = stop_tokens or self.stop_tokens
         batch_size = 1
         model_configs = self.model.configs
         max_gen_tokens = max_tokens if max_tokens > 0 else model_configs.max_position_embeddings
@@ -125,4 +164,4 @@ class TokenGenerator:
                 return_logprobs=False,
             )
         )
-        return self.tokenizer.decode(out, skip_special_tokens=True)
+        return self.tokenizer.decode(out, skip_special_tokens=False)

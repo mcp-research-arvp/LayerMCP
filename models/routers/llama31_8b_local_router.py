@@ -12,7 +12,12 @@ from models.architectures.llama31_8b_pytorch.config import (
     DEFAULT_CHECKPOINT_PATH,
 )
 from models.routers.tool_catalog import format_tool_catalog
-from models.routers.structured_tool_call import ToolCallPrediction, build_tool_call_prompt, parse_tool_call
+from models.routers.structured_tool_call import (
+    ToolCallPrediction,
+    build_native_tools,
+    build_tool_call_prompt,
+    parse_tool_call,
+)
 
 MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 MODEL_NAME = MODEL_ID
@@ -21,7 +26,7 @@ ROUTER_BACKEND = "local_llama31_8b_pytorch"
 ARCHITECTURE_SOURCE = "models.architectures.llama31_8b_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
-PROMPT_TEMPLATE = "tool_name_only_v1"
+PROMPT_TEMPLATE = "structured_tool_call_v1"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
 
@@ -154,10 +159,17 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
 
     generator = _load_generator()
     prompt = build_tool_call_prompt(normalized_query, tool_catalog, tool_schemas, tool_descriptions)
-    prompt_tokens = generator.encode_chat([{"role": "user", "content": prompt}])
+    prompt_tokens = generator.encode_chat(
+        [{"role": "user", "content": prompt}],
+        tools=build_native_tools(
+            tool_catalog,
+            tool_schemas,
+            tool_descriptions,
+        ),
+    )
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
-        stop_tokens=[generator.eos_token_id],
+        stop_tokens=generator.stop_tokens,
         temperature=0.0,
         max_tokens=128,
     )

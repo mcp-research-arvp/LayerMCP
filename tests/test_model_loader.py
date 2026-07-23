@@ -282,6 +282,7 @@ class RouterRegistryTests(unittest.TestCase):
 
         generator = Mock()
         generator.encode_chat.return_value = [1, 2, 3]
+        generator.stop_tokens = [128001, 128008, 128009]
         generator.generate_text.return_value = (
             '{"name":"factor_expression","arguments":{"expression":"t^2-49"}}'
         )
@@ -294,6 +295,79 @@ class RouterRegistryTests(unittest.TestCase):
 
         self.assertEqual(selected, "factor_expression")
         generator.generate_text.assert_called_once()
+
+    def test_llama31_parses_parameters_and_structural_tokens(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        responses = (
+            (
+                '<|python_tag|>{"name":"calculator",'
+                '"parameters":{"expression":"2+2"}}<|eom_id|>'
+            ),
+            (
+                '<|python_tag|>{"name":"calculator",'
+                '"parameters":"{\\"expression\\":\\"2+2\\"}"}<|eom_id|>'
+            ),
+        )
+        for response in responses:
+            with self.subTest(response=response):
+                prediction = parse_tool_call(response, ["calculator"])
+                self.assertEqual(prediction.selected_tool, "calculator")
+                self.assertEqual(prediction.selected_args, {"expression": "2+2"})
+                self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_structured_path_receives_live_tools(self) -> None:
+        from models.routers import llama31_8b_local_router
+
+        generator = Mock()
+        generator.encode_chat.return_value = [1, 2, 3]
+        generator.stop_tokens = [128001, 128008, 128009]
+        generator.generate_text.return_value = (
+            '<|python_tag|>{"name":"calculator",'
+            '"parameters":{"expression":"2+2"}}<|eom_id|>'
+        )
+        schema = {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
+
+        with patch.object(
+            llama31_8b_local_router,
+            "_load_generator",
+            return_value=generator,
+        ):
+            prediction = llama31_8b_local_router.choose_tool_call(
+                "Compute 2+2.",
+                ["calculator"],
+                {"calculator": schema},
+                {"calculator": "Evaluate arithmetic."},
+            )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        native_tools = generator.encode_chat.call_args.kwargs["tools"]
+        self.assertEqual(native_tools[0]["function"]["parameters"], schema)
+        self.assertEqual(
+            native_tools[0]["function"]["description"],
+            "Evaluate arithmetic.",
+        )
+        self.assertEqual(
+            generator.generate_text.call_args.kwargs["stop_tokens"],
+            generator.stop_tokens,
+        )
+
+    def test_llama31_rejects_unknown_structured_tool(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = (
+            '<|python_tag|>{"name":"invented_tool",'
+            '"parameters":{"expression":"2+2"}}<|eom_id|>'
+        )
+        prediction = parse_tool_call(response, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, "hallucinated_tool")
+        self.assertEqual(prediction.selected_args, {})
+        self.assertEqual(prediction.raw_output, response)
 
     def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
         from models.routers.qwen36_local_router import _extract_tool_name

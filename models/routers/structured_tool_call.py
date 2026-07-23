@@ -96,6 +96,30 @@ def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
     return function_match.group(1).strip(), arguments
 
 
+def _decode_arguments(arguments: Any) -> dict[str, Any]:
+    if isinstance(arguments, dict):
+        return arguments
+    if isinstance(arguments, str):
+        try:
+            decoded = json.loads(arguments)
+        except json.JSONDecodeError:
+            return {}
+        return decoded if isinstance(decoded, dict) else {}
+    return {}
+
+
+def _argument_payload(payload: Any) -> Any:
+    if isinstance(payload, Mapping):
+        for key in ("arguments", "parameters", "args"):
+            if key in payload:
+                return payload[key]
+        return {}
+    for attribute in ("arguments", "parameters", "args"):
+        if hasattr(payload, attribute):
+            return getattr(payload, attribute)
+    return {}
+
+
 def parse_tool_call(
     response: str,
     available_tools: Sequence[str],
@@ -106,13 +130,13 @@ def parse_tool_call(
     if native_tool_call is not None:
         function = getattr(native_tool_call, "function", native_tool_call)
         name = getattr(function, "name", None)
-        arguments = getattr(function, "arguments", {})
+        arguments = _argument_payload(function)
         if isinstance(name, str):
             normalized = name.strip().lower()
             if normalized in catalog:
                 return ToolCallPrediction(
                     normalized,
-                    arguments if isinstance(arguments, dict) else {},
+                    _decode_arguments(arguments),
                     response,
                 )
 
@@ -136,14 +160,14 @@ def parse_tool_call(
         if isinstance(function, dict):
             payload = function
         name = payload.get("name") or payload.get("tool") or payload.get("tool_name")
-        arguments = payload.get("arguments", payload.get("parameters", payload.get("args", {})))
+        arguments = _argument_payload(payload)
         if not isinstance(name, str):
             continue
         normalized = name.strip().lower()
         if normalized in catalog or normalized == HALLUCINATED_TOOL:
             return ToolCallPrediction(
                 normalized,
-                arguments if isinstance(arguments, dict) else {},
+                _decode_arguments(arguments),
                 response,
             )
 

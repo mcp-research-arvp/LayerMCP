@@ -251,9 +251,22 @@ def parse_tool_call(
         if isinstance(function, dict):
             payload = function
         name = payload.get("name") or payload.get("tool") or payload.get("tool_name")
-        arguments = _argument_payload(payload)
+        argument_key = next(
+            (
+                key
+                for key in ("arguments", "parameters", "args")
+                if key in payload
+            ),
+            None,
+        )
         if not isinstance(name, str):
             continue
+        # A serialized tool catalog also contains a `name`, but it is not a
+        # generated call. Structured calls must explicitly carry arguments,
+        # including the empty object used for no-argument tools.
+        if argument_key is None:
+            continue
+        arguments = payload[argument_key]
         normalized = name.strip().lower()
         decoded_arguments, argument_error = _decode_arguments(arguments)
         if normalized in catalog:

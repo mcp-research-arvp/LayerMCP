@@ -201,4 +201,9 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         temperature=0.0,
         max_tokens=128,
     )
-    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+    return parse_tool_call(
+        result.text,
+        tool_catalog,
+        result.tool_call,
+        tool_schemas=tool_schemas,
+    )

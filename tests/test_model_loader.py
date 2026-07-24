@@ -482,6 +482,52 @@ class RouterRegistryTests(unittest.TestCase):
             {"expression": "139 + 27 + 23 + 11"},
         )
 
+    def test_structured_parser_decodes_native_json_string_arguments(self) -> None:
+        from models.architectures.phi4_pytorch.schemas import ToolCall, ToolFunction
+        from models.routers.structured_tool_call import parse_tool_call
+
+        native_call = ToolCall(
+            function=ToolFunction(
+                name="calculator",
+                arguments='{"expression": "2+2"}',
+            )
+        )
+
+        prediction = parse_tool_call(
+            '{"name":"calculator","arguments":{"expression":"2+2"}}',
+            ["calculator"],
+            native_call,
+        )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.selected_args, {"expression": "2+2"})
+
+    def test_structured_parser_does_not_parse_tool_catalog_as_call(self) -> None:
+        from models.routers.structured_tool_call import (
+            PARSE_ERROR,
+            build_tool_call_prompt,
+            parse_tool_call,
+        )
+
+        prompt = build_tool_call_prompt(
+            "Compute 2+2.",
+            ["calculator"],
+            {
+                "calculator": {
+                    "type": "object",
+                    "properties": {"expression": {"type": "string"}},
+                    "required": ["expression"],
+                }
+            },
+            {"calculator": "Evaluate an arithmetic expression."},
+        )
+
+        prediction = parse_tool_call(prompt, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.selected_args, {})
+        self.assertEqual(prediction.parse_status, "parse_error")
+
     def test_other_local_routers_return_structured_tool_calls(self) -> None:
         from models.routers import (
             gemma4_local_router,

@@ -7,6 +7,8 @@ from typing import Any, Mapping, Sequence
 
 
 HALLUCINATED_TOOL = "hallucinated_tool"
+PARSE_ERROR = "parse_error"
+UNKNOWN_TOOL = "unknown_tool"
 
 
 @dataclass(frozen=True)
@@ -14,6 +16,9 @@ class ToolCallPrediction:
     selected_tool: str
     selected_args: dict[str, Any]
     raw_output: str
+    parse_status: str = "ok"
+    attempted_tool: str | None = None
+    diagnostic: str | None = None
 
 
 def build_native_tools(
@@ -63,12 +68,19 @@ def build_tool_call_prompt(
     )
 
 
-def _json_candidates(response: str) -> list[str]:
-    candidates = [response.strip()]
-    candidates.extend(re.findall(r"```(?:json)?\s*(.*?)```", response, re.DOTALL))
-    candidates.extend(re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>", response, re.DOTALL))
-    candidates.extend(re.findall(r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})", response, re.DOTALL))
-    return candidates
+def _json_payloads(response: str) -> list[Any]:
+    """Decode complete JSON values without regex-matching nested braces."""
+    decoder = json.JSONDecoder()
+    payloads: list[Any] = []
+    for index, character in enumerate(response):
+        if character not in "[{":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(response[index:])
+        except json.JSONDecodeError:
+            continue
+        payloads.append(payload)
+    return payloads
 
 
 def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
@@ -96,16 +108,18 @@ def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
     return function_match.group(1).strip(), arguments
 
 
-def _decode_arguments(arguments: Any) -> dict[str, Any]:
+def _decode_arguments(arguments: Any) -> tuple[dict[str, Any], str | None]:
     if isinstance(arguments, dict):
-        return arguments
+        return arguments, None
     if isinstance(arguments, str):
         try:
             decoded = json.loads(arguments)
         except json.JSONDecodeError:
-            return {}
-        return decoded if isinstance(decoded, dict) else {}
-    return {}
+            return {}, "arguments are not valid JSON"
+        if isinstance(decoded, dict):
+            return decoded, None
+        return {}, "decoded arguments must be a JSON object"
+    return {}, "arguments must be an object or a JSON-object string"
 
 
 def _argument_payload(payload: Any) -> Any:
@@ -120,10 +134,50 @@ def _argument_payload(payload: Any) -> Any:
     return {}
 
 
+def _argument_schema_error(
+    tool_name: str,
+    arguments: Mapping[str, Any],
+    tool_schemas: Mapping[str, Any] | None,
+) -> str | None:
+    if not tool_schemas:
+        return None
+    schema = tool_schemas.get(tool_name)
+    if not isinstance(schema, Mapping):
+        return None
+
+    required = schema.get("required", [])
+    if isinstance(required, Sequence) and not isinstance(required, (str, bytes)):
+        missing = [key for key in required if key not in arguments]
+        if missing:
+            return f"missing required arguments: {', '.join(map(str, missing))}"
+
+    properties = schema.get("properties", {})
+    if not isinstance(properties, Mapping):
+        return None
+    type_checks = {
+        "string": str,
+        "number": (int, float),
+        "integer": int,
+        "boolean": bool,
+        "object": Mapping,
+        "array": list,
+    }
+    for key, value in arguments.items():
+        property_schema = properties.get(key)
+        if not isinstance(property_schema, Mapping):
+            continue
+        expected_type = property_schema.get("type")
+        python_type = type_checks.get(expected_type)
+        if python_type is not None and not isinstance(value, python_type):
+            return f"argument {key!r} must have type {expected_type}"
+    return None
+
+
 def parse_tool_call(
     response: str,
     available_tools: Sequence[str],
     native_tool_call: Any = None,
+    tool_schemas: Mapping[str, Any] | None = None,
 ) -> ToolCallPrediction:
     catalog = {tool.lower() for tool in available_tools}
 
@@ -134,24 +188,61 @@ def parse_tool_call(
         if isinstance(name, str):
             normalized = name.strip().lower()
             if normalized in catalog:
+                decoded_arguments, argument_error = _decode_arguments(arguments)
+                schema_error = _argument_schema_error(
+                    normalized,
+                    decoded_arguments,
+                    tool_schemas,
+                )
                 return ToolCallPrediction(
                     normalized,
-                    _decode_arguments(arguments),
+                    decoded_arguments,
                     response,
+                    parse_status=(
+                        "invalid_arguments"
+                        if argument_error or schema_error
+                        else "ok"
+                    ),
+                    attempted_tool=normalized,
+                    diagnostic=argument_error or schema_error,
                 )
+            return ToolCallPrediction(
+                UNKNOWN_TOOL,
+                {},
+                response,
+                parse_status="unknown_tool",
+                attempted_tool=normalized,
+                diagnostic="tool name is not in the live MCP catalog",
+            )
 
     qwen_call = _parse_qwen_native_call(response)
     if qwen_call is not None:
         name, arguments = qwen_call
         normalized = name.lower()
         if normalized in catalog:
-            return ToolCallPrediction(normalized, arguments, response)
+            schema_error = _argument_schema_error(
+                normalized,
+                arguments,
+                tool_schemas,
+            )
+            return ToolCallPrediction(
+                normalized,
+                arguments,
+                response,
+                parse_status="invalid_arguments" if schema_error else "ok",
+                attempted_tool=normalized,
+                diagnostic=schema_error,
+            )
+        return ToolCallPrediction(
+            UNKNOWN_TOOL,
+            {},
+            response,
+            parse_status="unknown_tool",
+            attempted_tool=normalized,
+            diagnostic="tool name is not in the live MCP catalog",
+        )
 
-    for candidate in _json_candidates(response):
-        try:
-            payload = json.loads(candidate.strip())
-        except (json.JSONDecodeError, TypeError):
-            continue
+    for payload in _json_payloads(response):
         if isinstance(payload, list):
             payload = payload[0] if payload else None
         if not isinstance(payload, dict):
@@ -164,11 +255,46 @@ def parse_tool_call(
         if not isinstance(name, str):
             continue
         normalized = name.strip().lower()
-        if normalized in catalog or normalized == HALLUCINATED_TOOL:
+        decoded_arguments, argument_error = _decode_arguments(arguments)
+        if normalized in catalog:
+            schema_error = _argument_schema_error(
+                normalized,
+                decoded_arguments,
+                tool_schemas,
+            )
             return ToolCallPrediction(
                 normalized,
-                _decode_arguments(arguments),
+                decoded_arguments,
                 response,
+                parse_status=(
+                    "invalid_arguments"
+                    if argument_error or schema_error
+                    else "ok"
+                ),
+                attempted_tool=normalized,
+                diagnostic=argument_error or schema_error,
             )
+        if normalized == HALLUCINATED_TOOL:
+            return ToolCallPrediction(
+                HALLUCINATED_TOOL,
+                {},
+                response,
+                parse_status="no_tool_call",
+                attempted_tool=normalized,
+            )
+        return ToolCallPrediction(
+            UNKNOWN_TOOL,
+            {},
+            response,
+            parse_status="unknown_tool",
+            attempted_tool=normalized,
+            diagnostic="tool name is not in the live MCP catalog",
+        )
 
-    return ToolCallPrediction(HALLUCINATED_TOOL, {}, response)
+    return ToolCallPrediction(
+        PARSE_ERROR,
+        {},
+        response,
+        parse_status="parse_error",
+        diagnostic="no complete structured tool-call JSON object was decoded",
+    )

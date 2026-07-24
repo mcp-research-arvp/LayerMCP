@@ -75,6 +75,7 @@ class TokenGenerator:
         self,
         messages: list[dict[str, str]],
         tools: list[dict[str, Any]] | None = None,
+        fallback_messages: list[dict[str, str]] | None = None,
     ) -> list[int]:
         template_kwargs: dict[str, Any] = {
             "add_generation_prompt": True,
@@ -86,7 +87,10 @@ class TokenGenerator:
             prompt = self.tokenizer.apply_chat_template(messages, **template_kwargs)
         except (TypeError, ValueError):
             template_kwargs.pop("tools", None)
-            prompt = self.tokenizer.apply_chat_template(messages, **template_kwargs)
+            prompt = self.tokenizer.apply_chat_template(
+                fallback_messages or messages,
+                **template_kwargs,
+            )
 
         encoded = self.tokenizer(prompt, return_tensors=None)["input_ids"]
         if hasattr(encoded, "keys") and "input_ids" in encoded:

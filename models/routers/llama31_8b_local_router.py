@@ -158,14 +158,26 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         raise ValueError("available_tools must not be empty.")
 
     generator = _load_generator()
-    prompt = build_tool_call_prompt(normalized_query, tool_catalog, tool_schemas, tool_descriptions)
+    native_prompt = (
+        "You are an MCP client in a tool-routing benchmark. "
+        "Call exactly one of the tools supplied by the chat template. "
+        "Do not answer the request directly and do not explain the call.\n\n"
+        f"User query:\n{normalized_query}"
+    )
+    fallback_prompt = build_tool_call_prompt(
+        normalized_query,
+        tool_catalog,
+        tool_schemas,
+        tool_descriptions,
+    )
     prompt_tokens = generator.encode_chat(
-        [{"role": "user", "content": prompt}],
+        [{"role": "user", "content": native_prompt}],
         tools=build_native_tools(
             tool_catalog,
             tool_schemas,
             tool_descriptions,
         ),
+        fallback_messages=[{"role": "user", "content": fallback_prompt}],
     )
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
@@ -173,4 +185,8 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         temperature=0.0,
         max_tokens=128,
     )
-    return parse_tool_call(result, tool_catalog)
+    return parse_tool_call(
+        result,
+        tool_catalog,
+        tool_schemas=tool_schemas,
+    )

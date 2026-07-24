@@ -273,11 +273,22 @@ class TokenGenerator:
         text = self.tokenizer.decode_utf8(out)
         tool = None
         try:
-            messages = self.tokenizer.parse_messages_from_completion_tokens(
-                out,
-                Role.ASSISTANT,
-                strict=False,
+            parse_completion = (
+                self.tokenizer.parse_messages_from_completion_tokens
             )
+            try:
+                messages = parse_completion(
+                    out,
+                    Role.ASSISTANT,
+                    strict=False,
+                )
+            except TypeError as exc:
+                # Newer openai-harmony releases removed the ``strict``
+                # keyword. Retry only for that API-compatibility failure so
+                # TypeErrors raised while parsing are not silently hidden.
+                if "unexpected keyword argument 'strict'" not in str(exc):
+                    raise
+                messages = parse_completion(out, Role.ASSISTANT)
             for message in reversed(messages):
                 recipient = getattr(message, "recipient", None)
                 if not recipient:

@@ -406,6 +406,7 @@ datasets are:
 - `benchmark/coding/tool_routing_coding_controlled.json` — 35 balanced controlled examples
 - `benchmark/coding/tool_routing_coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
 - `benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
+- `benchmark/coding/tool_routing_coding_sweagent_multistep.json` — 1 exact SWE-bench issue with 3 ordered read-only actions from an official SWE-agent trajectory
 
 See `benchmark/coding/README.md` for their scope, provenance, and run commands.
 The finance-specific datasets are:

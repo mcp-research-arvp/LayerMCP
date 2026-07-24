@@ -15,12 +15,20 @@ read-only coding tools backed by deterministic, allowlisted repository fixtures.
 - `tool_routing_coding_codesearchnet_public_derived.json` contains 15
   self-contained search instructions wrapping exact human-evaluation queries
   from the CodeSearchNet Challenge.
+- `tool_routing_coding_sweagent_multistep.json` contains one exact SWE-bench
+  issue and three ordered read-only exploration actions from the official
+  SWE-agent demonstration trajectory.
 - `fixtures/codesearchnet_public_annotations.json` defines the offline
   annotation repository used by those 15 executable rows.
 - `fixtures/CODESEARCHNET_ATTRIBUTION.md` records the paper, pinned sources,
   hashes, MIT license, and the changes made for this repository.
 - `fixtures/CODESEARCHNET_LICENSE.txt` preserves the exact MIT notice from the
   pinned CodeSearchNet revision.
+- `fixtures/sweagent_marshmallow_1867.json` defines the bounded repository
+  excerpt needed to execute the selected trajectory actions.
+- `fixtures/SWEAGENT_MARSHMALLOW_1867_ATTRIBUTION.md` records the SWE-agent
+  paper, trajectory hash, repository commit, gold pull request, and adaptation
+  boundary.
 
 Every example exposes the same tool menu:
 
@@ -40,6 +48,12 @@ ID `codesearchnet-public-v1` and fixture version
 `coding_codesearchnet_fixture_v1`. Both fixtures are created deterministically
 by `mcp_server/coding_state.py`, so file contents and Git history remain stable
 across offline runs.
+
+The SWE-agent multi-step dataset uses repository ID
+`swebench-marshmallow-1867` and fixture version
+`coding_sweagent_marshmallow_1867_fixture_v1`. It preserves the issue text and
+trajectory actions exactly and maps them mechanically onto the existing
+read-only coding tools.
 
 ## Schema and Scoring
 
@@ -66,6 +80,11 @@ report whether the predicted call executes successfully. `expected_answer` is
 included for fixture validation and future answer-level scoring; it is not
 currently scored by `evaluation/evaluate.py`.
 
+For `multi_step_tool_routing`, the evaluator processes `expected_steps` in
+order, carries prior predicted calls and observations into the next routing
+prompt, and reports both per-step accuracy and complete ordered-sequence
+accuracy.
+
 ## Run
 
 From the repository root:
@@ -82,9 +101,27 @@ python evaluation/evaluate.py \
 
 python evaluation/evaluate.py \
   --dataset benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json
+
+python evaluation/evaluate.py \
+  --dataset benchmark/coding/tool_routing_coding_sweagent_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.
+
+## Public SWE-agent Trajectory
+
+The selected SWE-agent demonstration contains 14 actions for SWE-bench instance
+`marshmallow-code__marshmallow-1867`. The current LayerMCP coding catalog is
+read-only, so the multi-step benchmark retains the three reusable exploration
+actions: listing the repository, locating `fields.py`, and opening the relevant
+source window. Installation, temporary file creation, execution, edits,
+cleanup, and submission are recorded in the attribution boundary but are not
+misrepresented as supported calls.
+
+The trajectory is pinned to SWE-agent revision
+`3ea751c087f32b16e039a2233dd6eefecef325d5`, and the Marshmallow repository
+excerpt is pinned to base commit
+`bfd2593d4b416122e30cdefe0c72d322ef471611`.
 
 ## Upstream-Inspired Queries
 

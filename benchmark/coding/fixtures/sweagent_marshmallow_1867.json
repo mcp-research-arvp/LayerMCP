@@ -1,0 +1,64 @@
+{
+  "repo_id": "swebench-marshmallow-1867",
+  "fixture_version": "coding_sweagent_marshmallow_1867_fixture_v1",
+  "description": "Bounded read-only fixture for the exploration portion of the official SWE-agent demonstration trajectory for SWE-bench instance marshmallow-code__marshmallow-1867.",
+  "files": {
+    "AUTHORS.rst": "",
+    "CHANGELOG.rst": "",
+    "CODE_OF_CONDUCT.md": "",
+    "CONTRIBUTING.rst": "",
+    "LICENSE": "",
+    "MANIFEST.in": "",
+    "NOTICE": "",
+    "README.rst": "",
+    "RELEASING.md": "",
+    "azure-pipelines.yml": "",
+    "pyproject.toml": "",
+    "setup.cfg": "",
+    "setup.py": "",
+    "tox.ini": "",
+    "src/marshmallow/fields.py": {
+      "line_offset": 1458,
+      "content": "            self.WEEKS,\n        )\n\n        if precision not in units:\n            msg = 'The precision must be {} or \"{}\".'.format(\n                \", \".join([f'\"{each}\"' for each in units[:-1]]), units[-1]\n            )\n            raise ValueError(msg)\n\n        self.precision = precision\n        super().__init__(**kwargs)\n\n    def _serialize(self, value, attr, obj, **kwargs):\n        if value is None:\n            return None\n        base_unit = dt.timedelta(**{self.precision: 1})\n        return int(value.total_seconds() / base_unit.total_seconds())\n\n    def _deserialize(self, value, attr, data, **kwargs):\n        try:\n            value = int(value)\n        except (TypeError, ValueError) as error:\n            raise self.make_error(\"invalid\") from error\n\n        kwargs = {self.precision: value}\n\n        try:\n            return dt.timedelta(**kwargs)\n        except OverflowError as error:\n            raise self.make_error(\"invalid\") from error\n\n\nclass Mapping(Field):\n"
+    }
+  },
+  "source_issue": {
+    "instance_id": "marshmallow-code__marshmallow-1867",
+    "title": "TimeDelta serialization precision",
+    "text": "Hi there!\n\nI just found quite strange behaviour of `TimeDelta` field serialization\n\n```python3\nfrom marshmallow.fields import TimeDelta\nfrom datetime import timedelta\n\ntd_field = TimeDelta(precision=\"milliseconds\")\n\nobj = dict()\nobj[\"td_field\"] = timedelta(milliseconds=345)\n\nprint(td_field.serialize(\"td_field\", obj))\n```\n\nOutput of this snippet is `344`, but it seems that `345` is correct.\n\nLooks like a rounding issue here: https://github.com/marshmallow-code/marshmallow/blob/dev/src/marshmallow/fields.py#L1474"
+  },
+  "source_actions": [
+    {
+      "trajectory_step_index": 0,
+      "action": "ls -F",
+      "observation_kind": "repository_root_listing"
+    },
+    {
+      "trajectory_step_index": 7,
+      "action": "find_file \"fields.py\" src",
+      "observation_kind": "file_location"
+    },
+    {
+      "trajectory_step_index": 8,
+      "action": "open src/marshmallow/fields.py 1474",
+      "observation_kind": "source_window"
+    }
+  ],
+  "provenance": {
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "SWE-bench",
+    "source_repository": "https://github.com/SWE-agent/SWE-agent",
+    "source_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "trajectory_path": "trajectories/demonstrations/replay__marshmallow-code__marshmallow-1867__default__t-0.20__p-0.95__c-2.00__install-1___install_from_source/marshmallow-code__marshmallow-1867.traj",
+    "trajectory_sha256": "8856076ec31832f20aefa7f0a2714e3ad6bc752f14815d94d2e852e50213a459",
+    "repository": "marshmallow-code/marshmallow",
+    "repository_base_commit": "bfd2593d4b416122e30cdefe0c72d322ef471611",
+    "gold_pull_request": 1867,
+    "gold_merge_commit": "d2a0cdb73807b2b28217850ee54edc29171e49cb",
+    "source_license": "MIT",
+    "query_origin": "swebench_issue",
+    "trajectory_origin": "official_sweagent_demonstration",
+    "provenance_type": "research_trajectory_adaptation",
+    "adaptation": "The issue text and three read-only trajectory actions are preserved exactly. Only the action-to-LayerMCP-tool argument mapping and the bounded source fixture are adapted."
+  }
+}

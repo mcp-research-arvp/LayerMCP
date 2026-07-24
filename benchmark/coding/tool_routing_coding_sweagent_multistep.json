@@ -1,0 +1,110 @@
+[
+  {
+    "id": "coding_multistep_sweagent_marshmallow_1867",
+    "domain": "coding",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_coding_trajectory_derived",
+    "query": "TimeDelta serialization precision\nHi there!\n\nI just found quite strange behaviour of `TimeDelta` field serialization\n\n```python3\nfrom marshmallow.fields import TimeDelta\nfrom datetime import timedelta\n\ntd_field = TimeDelta(precision=\"milliseconds\")\n\nobj = dict()\nobj[\"td_field\"] = timedelta(milliseconds=345)\n\nprint(td_field.serialize(\"td_field\", obj))\n```\n\nOutput of this snippet is `344`, but it seems that `345` is correct.\n\nLooks like a rounding issue here: https://github.com/marshmallow-code/marshmallow/blob/dev/src/marshmallow/fields.py#L1474",
+    "available_tools": [
+      "code_list_files",
+      "code_read_file",
+      "code_search_text",
+      "git_log",
+      "git_show",
+      "git_diff",
+      "git_status"
+    ],
+    "expected_steps": [
+      {
+        "id": "trajectory_action_000",
+        "query": "ls -F",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": ".",
+          "glob": "**/*",
+          "max_results": 100
+        },
+        "expected_answer": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": ".",
+          "glob": "**/*",
+          "count": 15,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "ls -F"
+      },
+      {
+        "id": "trajectory_action_007",
+        "query": "find_file \"fields.py\" src",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src",
+          "glob": "**/fields.py",
+          "max_results": 10
+        },
+        "expected_answer": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src",
+          "glob": "**/fields.py",
+          "count": 1,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_000"
+        ],
+        "source_program": "find_file \"fields.py\" src"
+      },
+      {
+        "id": "trajectory_action_008",
+        "query": "open src/marshmallow/fields.py 1474",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src/marshmallow/fields.py",
+          "start_line": 1459,
+          "end_line": 1491
+        },
+        "expected_answer": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src/marshmallow/fields.py",
+          "content": "            self.WEEKS,\n        )\n\n        if precision not in units:\n            msg = 'The precision must be {} or \"{}\".'.format(\n                \", \".join([f'\"{each}\"' for each in units[:-1]]), units[-1]\n            )\n            raise ValueError(msg)\n\n        self.precision = precision\n        super().__init__(**kwargs)\n\n    def _serialize(self, value, attr, obj, **kwargs):\n        if value is None:\n            return None\n        base_unit = dt.timedelta(**{self.precision: 1})\n        return int(value.total_seconds() / base_unit.total_seconds())\n\n    def _deserialize(self, value, attr, data, **kwargs):\n        try:\n            value = int(value)\n        except (TypeError, ValueError) as error:\n            raise self.make_error(\"invalid\") from error\n\n        kwargs = {self.precision: value}\n\n        try:\n            return dt.timedelta(**kwargs)\n        except OverflowError as error:\n            raise self.make_error(\"invalid\") from error\n\n\nclass Mapping(Field):\n",
+          "start_line": 1459,
+          "end_line": 1491,
+          "total_lines": 1491,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_007"
+        ],
+        "source_program": "open src/marshmallow/fields.py 1474"
+      }
+    ],
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "SWE-bench",
+    "source_instance_id": "marshmallow-code__marshmallow-1867",
+    "source_repository": "marshmallow-code/marshmallow",
+    "source_repository_base_commit": "bfd2593d4b416122e30cdefe0c72d322ef471611",
+    "source_trajectory_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_trajectory_sha256": "8856076ec31832f20aefa7f0a2714e3ad6bc752f14815d94d2e852e50213a459",
+    "source_trajectory_action_count": 14,
+    "selected_read_only_action_count": 3,
+    "source_trajectory_step_indexes": [
+      0,
+      7,
+      8
+    ],
+    "source_license": "MIT",
+    "query_origin": "exact_swebench_issue",
+    "step_query_origin": "exact_official_sweagent_actions",
+    "tool_sequence_origin": "mechanical_action_to_mcp_tool_adaptation",
+    "fixture_id": "swebench-marshmallow-1867",
+    "fixture_version": "coding_sweagent_marshmallow_1867_fixture_v1",
+    "provenance_type": "public_research_trajectory_adaptation",
+    "perturbation_type": "paper_agent_trajectory",
+    "notes": "Exact issue text and read-only exploration actions from the official SWE-agent demonstration. Mutation and test-execution actions are intentionally out of scope for the current read-only coding tool catalog."
+  }
+]

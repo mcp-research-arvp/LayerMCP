@@ -19,7 +19,15 @@ def get_tokenizer(checkpoint: str = Config.checkpoint_path):
     Load the Gemma 4 tokenizer (SentencePiece + chat template) straight from
     the checkpoint directory. This replaces the GPT-OSS Harmony encoding.
     """
-    return AutoTokenizer.from_pretrained(checkpoint)
+    # The official Gemma 4 tokenizer_config.json currently represents
+    # extra_special_tokens as a list. Transformers 4.57 expects a mapping and
+    # otherwise fails while constructing GemmaTokenizerFast. Supply the named
+    # video token explicitly; the local architecture still uses only the text
+    # path, but retaining the token preserves the checkpoint vocabulary.
+    return AutoTokenizer.from_pretrained(
+        checkpoint,
+        extra_special_tokens={"video_token": "<|video|>"},
+    )
 
 
 # Gemma 4 tool-call control tokens (see convert_gemma4_weights._RESPONSE_TEMPLATE
@@ -257,4 +265,3 @@ class TokenGenerator:
         )]
         text = self.tokenizer.decode(out, skip_special_tokens=False)
         return GenerationResult(text=text, tool_call=parse_tool_call(text))
-

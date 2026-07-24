@@ -330,6 +330,21 @@ class RouterRegistryTests(unittest.TestCase):
             {"expression": "139 + 27 + 23 + 11"},
         )
 
+    def test_structured_parser_accepts_nested_json_before_turn_token(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        prediction = parse_tool_call(
+            '{"name":"check_policy","arguments":{"action":"refund",'
+            '"context":{"amount":50}}}<turn|>',
+            ["check_policy", "calculator"],
+        )
+
+        self.assertEqual(prediction.selected_tool, "check_policy")
+        self.assertEqual(
+            prediction.selected_args,
+            {"action": "refund", "context": {"amount": 50}},
+        )
+
     def test_other_local_routers_return_structured_tool_calls(self) -> None:
         from models.routers import (
             gemma4_local_router,

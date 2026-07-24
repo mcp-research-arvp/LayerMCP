@@ -415,6 +415,7 @@ The finance-specific datasets are:
 - `benchmark/finance/tool_routing_finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
 - `benchmark/finance/tool_routing_finance_public_derived.json` — 15 executable public-test adaptations from FinQA
 - `benchmark/finance/tool_routing_finance_tatqa_public_derived.json` — 15 exact TAT-QA test-gold questions with executable SQL adaptations
+- `benchmark/finance/tool_routing_finance_convfinqa_multistep.json` — 3 exact ConvFinQA conversations containing 12 ordered paper-authored turns
 
 See `benchmark/finance/README.md` for their data boundaries, upstream mappings,
 provenance, and run commands.

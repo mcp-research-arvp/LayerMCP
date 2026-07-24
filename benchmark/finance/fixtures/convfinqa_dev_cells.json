@@ -1,0 +1,120 @@
+{
+  "dataset_id": "convfinqa-dev-v1",
+  "description": "Normalized gold evidence cells for three exact multi-turn conversations from the official ConvFinQA development split.",
+  "columns": [
+    {
+      "name": "source_split",
+      "type": "TEXT"
+    },
+    {
+      "name": "source_row_index",
+      "type": "INTEGER"
+    },
+    {
+      "name": "conversation_id",
+      "type": "TEXT"
+    },
+    {
+      "name": "filename",
+      "type": "TEXT"
+    },
+    {
+      "name": "metric",
+      "type": "TEXT"
+    },
+    {
+      "name": "period",
+      "type": "TEXT"
+    },
+    {
+      "name": "numeric_value",
+      "type": "REAL"
+    },
+    {
+      "name": "evidence_key",
+      "type": "TEXT"
+    },
+    {
+      "name": "evidence_text",
+      "type": "TEXT"
+    }
+  ],
+  "rows": [
+    [
+      "dev",
+      0,
+      "Single_MRO/2007/page_134.pdf-1",
+      "MRO/2007/page_134.pdf",
+      "weighted average exercise price per share",
+      "2007",
+      60.94,
+      "table_1",
+      "the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;"
+    ],
+    [
+      "dev",
+      0,
+      "Single_MRO/2007/page_134.pdf-1",
+      "MRO/2007/page_134.pdf",
+      "weighted average exercise price per share",
+      "2005",
+      25.14,
+      "table_1",
+      "the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;"
+    ],
+    [
+      "dev",
+      2,
+      "Single_IPG/2009/page_85.pdf-3",
+      "IPG/2009/page_85.pdf",
+      "total expensed amounts for savings plans",
+      "2009",
+      35.1,
+      "text_14",
+      "amounts expensed for the savings plans for 2009 , 2008 and 2007 were $ 35.1 , $ 29.6 and $ 31.4 , respectively ."
+    ],
+    [
+      "dev",
+      2,
+      "Single_IPG/2009/page_85.pdf-3",
+      "IPG/2009/page_85.pdf",
+      "discretionary company contributions",
+      "2009",
+      3.8,
+      "text_15",
+      "expense includes a discretionary company contribution of $ 3.8 , $ 4.0 and $ 4.9 offset by participant forfeitures of $ 2.7 , $ 7.8 , $ 6.0 in 2009 , 2008 and 2007 , respectively ."
+    ],
+    [
+      "dev",
+      3,
+      "Single_UNP/2008/page_77.pdf-2",
+      "UNP/2008/page_77.pdf",
+      "equipment rents payable",
+      "2008",
+      93.0,
+      "table_6",
+      "millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;"
+    ],
+    [
+      "dev",
+      3,
+      "Single_UNP/2008/page_77.pdf-2",
+      "UNP/2008/page_77.pdf",
+      "equipment rents payable",
+      "2007",
+      103.0,
+      "table_6",
+      "millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;"
+    ]
+  ],
+  "provenance": {
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_repository": "https://github.com/czyssrs/ConvFinQA",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_archive": "data.zip",
+    "source_archive_sha256": "d764271fae60d81b62e6d58dfc481807ebc8cfbcd633811241723c4a2101072a",
+    "source_license": "MIT",
+    "adaptation": "Only the gold evidence cells needed by the selected exact conversations were normalized into the allowlisted SQLite fixture."
+  }
+}

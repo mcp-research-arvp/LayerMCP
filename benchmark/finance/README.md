@@ -54,6 +54,9 @@ projects or live clients for their services.
   adapted from the official FinQA public test split.
 - `tool_routing_finance_tatqa_public_derived.json` contains 15 exact questions
   selected from the official TAT-QA test-gold split and adapted to bounded SQL.
+- `tool_routing_finance_convfinqa_multistep.json` contains three exact
+  ConvFinQA development-split conversations (12 paper-authored turns) adapted
+  into ordered, executable retrieval-and-calculation workflows.
 - `fixtures/finqa_public_test_cells.json` contains the 201 normalized source
   cells needed to execute those 15 FinQA rows.
 - `fixtures/tatqa_public_test_gold_cells.json` contains the normalized source
@@ -61,6 +64,10 @@ projects or live clients for their services.
 - `fixtures/FINQA_LICENSE.txt` preserves the FinQA MIT notice.
 - `fixtures/TATQA_ATTRIBUTION.md` records the TAT-QA paper, pinned source, CC BY
   4.0 license, and the changes made for this repository.
+- `fixtures/convfinqa_dev_cells.json` contains the six normalized evidence
+  values needed by the selected ConvFinQA conversations.
+- `fixtures/CONVFINQA_ATTRIBUTION.md` and `fixtures/CONVFINQA_LICENSE.txt`
+  record the pinned ConvFinQA source, archive hash, paper, and MIT license.
 
 The three generated datasets use fixture ID `example/finance-research` and
 version `finance_fixture_v1`. The FinQA-derived dataset uses table ID
@@ -69,6 +76,12 @@ version `finance_fixture_v1`. The FinQA-derived dataset uses table ID
 table ID `tatqa-public-test-gold-v1` and pins revision
 `870accc41953dcde885aabeb963d94aabdc0fbc3`. Each revision is recorded in every
 corresponding benchmark row and in its fixture provenance.
+
+The ConvFinQA multi-step file uses table ID `convfinqa-dev-v1` and pins
+revision `cf3eed2d5984960bf06bb8145bcea5e80b0222a6`. Its conversation turns
+and gold programs are preserved exactly. Only the mapping from each gold
+program to the existing `finance_query_table` or `calculator` argument schema
+is a LayerMCP adaptation.
 
 ## Runtime Boundaries
 
@@ -94,6 +107,12 @@ Each benchmark row follows the evaluator's current schema:
 - `expected_tool` and `expected_args` are the routing and argument labels.
 - `expected_answer` is a partial semantic oracle verified against the tool.
 - `difficulty` and `perturbation_type` describe the controlled variation.
+
+A `multi_step_tool_routing` row instead provides an ordered `expected_steps`
+list. Each step contains the exact conversation turn, expected tool,
+arguments, partial expected answer, dependency IDs, and original paper
+program. The evaluator reports both per-step accuracy and complete ordered
+sequence accuracy.
 
 Generated upstream-inspired rows use
 `query_origin: generated_from_upstream_documentation` and include an inspiration

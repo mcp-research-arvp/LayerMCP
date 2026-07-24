@@ -1,0 +1,374 @@
+[
+  {
+    "id": "finance_multistep_convfinqa_dev_000",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "by how much did the weighted average exercise price per share increase from 2005 to 2007?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series",
+      "calculator"
+    ],
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the weighted average exercise price per share in 2007?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 0 AND metric = 'weighted average exercise price per share' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              60.94
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "60.94"
+      },
+      {
+        "id": "turn_002",
+        "query": "and what was it in 2005?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 0 AND metric = 'weighted average exercise price per share' AND period = '2005'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              25.14
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "25.14"
+      },
+      {
+        "id": "turn_003",
+        "query": "what was, then, the change over the years?",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "60.94 - 25.14"
+        },
+        "expected_answer": {
+          "result": 35.8
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(60.94, 25.14)"
+      },
+      {
+        "id": "turn_004",
+        "query": "what was the weighted average exercise price per share in 2005?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 0 AND metric = 'weighted average exercise price per share' AND period = '2005'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              25.14
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "25.14"
+      },
+      {
+        "id": "turn_005",
+        "query": "and how much does that change represent in relation to this 2005 weighted average exercise price?",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(60.94 - 25.14) / 25.14"
+        },
+        "expected_answer": {
+          "result": 1.424025457438345
+        },
+        "depends_on": [
+          "turn_003",
+          "turn_004"
+        ],
+        "source_program": "subtract(60.94, 25.14), divide(#0, 25.14)"
+      }
+    ],
+    "expected_final_answer": "142.4%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 0,
+    "source_conversation_id": "Single_MRO/2007/page_134.pdf-1",
+    "source_filename": "MRO/2007/page_134.pdf",
+    "source_original_program": "subtract(60.94, 25.14), divide(A0, 25.14)",
+    "source_execution_answers": [
+      60.94,
+      25.14,
+      35.8,
+      25.14,
+      1.42403
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact five-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_002",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what percentage of amounts expensed in 2009 came from discretionary company contributions?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series",
+      "calculator"
+    ],
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what is the ratio of discretionary company contributions to total expensed amounts for savings plans in 2009?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(CASE WHEN metric = 'discretionary company contributions' THEN numeric_value END) / MAX(CASE WHEN metric = 'total expensed amounts for savings plans' THEN numeric_value END) AS result FROM data WHERE source_row_index = 2 AND period = '2009'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              0.10826210826210825
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "divide(3.8, 35.1)"
+      },
+      {
+        "id": "turn_002",
+        "query": "what is that times 100?",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(3.8 / 35.1) * 100"
+        },
+        "expected_answer": {
+          "result": 10.826210826210826
+        },
+        "depends_on": [
+          "turn_001"
+        ],
+        "source_program": "divide(3.8, 35.1), multiply(#0, const_100)"
+      }
+    ],
+    "expected_final_answer": "10.83%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 2,
+    "source_conversation_id": "Single_IPG/2009/page_85.pdf-3",
+    "source_filename": "IPG/2009/page_85.pdf",
+    "source_original_program": "divide(3.8, 35.1), multiply(A0, const_100)",
+    "source_execution_answers": [
+      0.10826,
+      10.82621
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact two-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_003",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what was the percentage change in equipment rents payable from 2007 to 2008?",
+    "available_tools": [
+      "finance_lookup_company",
+      "finance_search_filings",
+      "finance_get_filing_section",
+      "finance_get_company_facts",
+      "finance_get_financial_statement",
+      "finance_parse_xbrl",
+      "finance_query_table",
+      "finance_extract_pdf_tables",
+      "finance_get_market_quote",
+      "finance_get_market_time_series",
+      "calculator"
+    ],
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the equipment rents payable in 2008?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 3 AND metric = 'equipment rents payable' AND period = '2008'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              93.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "93"
+      },
+      {
+        "id": "turn_002",
+        "query": "and in 2007?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 3 AND metric = 'equipment rents payable' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              103.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "103"
+      },
+      {
+        "id": "turn_003",
+        "query": "so what was the difference between the two years?",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "93 - 103"
+        },
+        "expected_answer": {
+          "result": -10
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(93, 103)"
+      },
+      {
+        "id": "turn_004",
+        "query": "and the value for 2007 again?",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 3 AND metric = 'equipment rents payable' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              103.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "103"
+      },
+      {
+        "id": "turn_005",
+        "query": "so what was the percentage change during this time?",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(93 - 103) / 103"
+        },
+        "expected_answer": {
+          "result": -0.0970873786407767
+        },
+        "depends_on": [
+          "turn_003",
+          "turn_004"
+        ],
+        "source_program": "subtract(93, 103), divide(#0, 103)"
+      }
+    ],
+    "expected_final_answer": "-10%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 3,
+    "source_conversation_id": "Single_UNP/2008/page_77.pdf-2",
+    "source_filename": "UNP/2008/page_77.pdf",
+    "source_original_program": "subtract(93, 103), divide(A0, 103)",
+    "source_execution_answers": [
+      93.0,
+      103.0,
+      -10.0,
+      103.0,
+      -0.09709
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact five-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  }
+]

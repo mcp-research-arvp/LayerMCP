@@ -12,8 +12,6 @@ import sys
 import time
 from typing import Any
 
-from mcp import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
 from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +39,17 @@ RETAIL_TOOL_NAMES = {
 
 
 @dataclass(frozen=True)
+class BenchmarkStep:
+    id: str
+    query: str
+    expected_tool: str
+    expected_args: dict[str, Any]
+    expected_answer: Any
+    depends_on: tuple[str, ...]
+    source_program: str | None
+
+
+@dataclass(frozen=True)
 class BenchmarkSample:
     id: str
     domain: str
@@ -54,6 +63,44 @@ class BenchmarkSample:
     expected_answer: Any
     perturbation_type: str
     notes: str
+    expected_steps: tuple[BenchmarkStep, ...]
+
+
+def _normalize_step(
+    step: dict[str, Any],
+    *,
+    sample_index: int,
+    step_index: int,
+) -> BenchmarkStep:
+    if not isinstance(step, dict):
+        raise ValueError(
+            f"Sample {sample_index} expected_steps[{step_index}] must be an object."
+        )
+    expected_args = step.get("expected_args", {})
+    if not isinstance(expected_args, dict):
+        raise ValueError(
+            f"Sample {sample_index} expected_steps[{step_index}].expected_args "
+            "must be an object."
+        )
+    depends_on = step.get("depends_on", [])
+    if not isinstance(depends_on, list) or not all(
+        isinstance(item, str) for item in depends_on
+    ):
+        raise ValueError(
+            f"Sample {sample_index} expected_steps[{step_index}].depends_on "
+            "must be a list of strings."
+        )
+    return BenchmarkStep(
+        id=str(step.get("id") or f"step_{step_index + 1:03d}"),
+        query=str(step["query"]),
+        expected_tool=str(step["expected_tool"]),
+        expected_args=expected_args,
+        expected_answer=step.get("expected_answer"),
+        depends_on=tuple(depends_on),
+        source_program=(
+            str(step["source_program"]) if step.get("source_program") is not None else None
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -65,6 +112,29 @@ class SampleScore:
 
 
 def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
+    raw_steps = sample.get("expected_steps", [])
+    if not isinstance(raw_steps, list):
+        raise ValueError(f"Sample {index} expected_steps must be a list.")
+    expected_steps = tuple(
+        _normalize_step(step, sample_index=index, step_index=step_index)
+        for step_index, step in enumerate(raw_steps)
+    )
+    completed_step_ids: set[str] = set()
+    for step in expected_steps:
+        if step.id in completed_step_ids:
+            raise ValueError(f"Sample {index} repeats expected step ID {step.id!r}.")
+        unknown_dependencies = set(step.depends_on) - completed_step_ids
+        if unknown_dependencies:
+            raise ValueError(
+                f"Sample {index} step {step.id!r} depends on unknown or future "
+                f"steps: {sorted(unknown_dependencies)!r}."
+            )
+        completed_step_ids.add(step.id)
+    if sample.get("task_type") == "multi_step_tool_routing" and len(expected_steps) < 2:
+        raise ValueError(
+            f"Sample {index} multi_step_tool_routing requires at least two steps."
+        )
+
     expected_args = sample.get("expected_args")
     if expected_args is None:
         expected_args = sample.get("tool_args", {})
@@ -82,6 +152,10 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
 
     sample_id = sample.get("id") or f"sample_{index + 1:04d}"
 
+    expected_tool = sample.get("expected_tool")
+    if expected_tool is None and expected_steps:
+        expected_tool = expected_steps[0].expected_tool
+
     return BenchmarkSample(
         id=str(sample_id),
         domain=str(sample.get("domain", "unknown")),
@@ -90,11 +164,12 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         source=str(sample.get("source", "unspecified")),
         query=str(sample["query"]),
         available_tools=available_tools,
-        expected_tool=str(sample["expected_tool"]),
+        expected_tool=str(expected_tool),
         expected_args=expected_args,
         expected_answer=sample.get("expected_answer"),
         perturbation_type=str(sample.get("perturbation_type", "none")),
         notes=str(sample.get("notes", "")),
+        expected_steps=expected_steps,
     )
 
 
@@ -234,6 +309,9 @@ def _summarize_tool_result(result: Any) -> str:
 
 @asynccontextmanager
 async def _run_server_session(server_path: Path):
+    from mcp import ClientSession
+    from mcp.client.stdio import StdioServerParameters, stdio_client
+
     server = StdioServerParameters(
         command=sys.executable,
         args=[str(server_path)],
@@ -266,6 +344,313 @@ def _tool_schema(tool: Any) -> dict[str, Any]:
     return schema if isinstance(schema, dict) else {}
 
 
+def _predict_tool_call(
+    router: Any,
+    query: str,
+    available_tools: list[str],
+    tool_schemas: dict[str, dict[str, Any]],
+    tool_descriptions: dict[str, str],
+) -> tuple[str, dict[str, Any], str]:
+    if hasattr(router, "choose_tool_call"):
+        available_schemas = {
+            tool: tool_schemas.get(tool, {}) for tool in available_tools
+        }
+        if getattr(router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False):
+            prediction = router.choose_tool_call(
+                query,
+                available_tools,
+                available_schemas,
+                {
+                    tool: tool_descriptions.get(tool, "")
+                    for tool in available_tools
+                },
+            )
+        else:
+            prediction = router.choose_tool_call(
+                query,
+                available_tools,
+                available_schemas,
+            )
+        return (
+            prediction.selected_tool,
+            prediction.selected_args,
+            prediction.raw_output,
+        )
+
+    if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
+        selected_tool = router.choose_tool(
+            query,
+            available_tools,
+            {
+                tool: tool_descriptions.get(tool, "")
+                for tool in available_tools
+            },
+        )
+    else:
+        selected_tool = router.choose_tool(query, available_tools)
+    return selected_tool, {}, selected_tool
+
+
+def _multistep_query(
+    sample: BenchmarkSample,
+    step: BenchmarkStep,
+    history: list[dict[str, Any]],
+) -> str:
+    parts = [
+        f"Overall task: {sample.query}",
+        f"Current step: {step.query}",
+    ]
+    if history:
+        parts.append(
+            "Prior steps:\n"
+            + "\n".join(
+                json.dumps(item, ensure_ascii=True, sort_keys=True)
+                for item in history
+            )
+        )
+    parts.append("Choose and call the one tool needed for the current step.")
+    return "\n\n".join(parts)
+
+
+async def _evaluate_multistep_with_server(
+    dataset: list[BenchmarkSample],
+    benchmark_path: Path,
+    server_path: Path,
+    call_predicted_tools: bool,
+    router_name: str,
+) -> None:
+    from models.routers.registry import load_router
+
+    if not dataset or not all(sample.expected_steps for sample in dataset):
+        raise ValueError(
+            "Multi-step evaluation requires expected_steps on every dataset sample."
+        )
+
+    router = load_router(router_name)
+    hallucinated_tool = router.HALLUCINATED_TOOL
+    model_name = router.MODEL_NAME
+    prompt_template = router.PROMPT_TEMPLATE
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    RESULTS_DIR.mkdir(exist_ok=True)
+    samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
+    summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
+
+    workflow_records: list[dict[str, Any]] = []
+    step_records: list[dict[str, Any]] = []
+    latencies: list[float] = []
+    executed_tool_calls = 0
+    errors_count = 0
+
+    async with _run_server_session(server_path) as session:
+        listed_tools = await session.list_tools()
+        live_tools = [tool.name for tool in listed_tools.tools]
+        live_tool_set = set(live_tools)
+        tool_schemas = {
+            tool.name: _tool_schema(tool) for tool in listed_tools.tools
+        }
+        tool_descriptions = {
+            tool.name: str(getattr(tool, "description", "") or "")
+            for tool in listed_tools.tools
+        }
+
+        print(f"Discovered MCP tools: {', '.join(live_tools)}")
+
+        with samples_path.open("w", encoding="utf-8") as sample_handle:
+            for sample in tqdm(dataset):
+                available_tools = sample.available_tools or live_tools
+                history: list[dict[str, Any]] = []
+                workflow_steps: list[dict[str, Any]] = []
+
+                for step_index, step in enumerate(sample.expected_steps):
+                    query = _multistep_query(sample, step, history)
+                    start = time.perf_counter()
+                    selected_tool, selected_args, raw_model_output = (
+                        _predict_tool_call(
+                            router,
+                            query,
+                            available_tools,
+                            tool_schemas,
+                            tool_descriptions,
+                        )
+                    )
+                    latency = time.perf_counter() - start
+                    latencies.append(latency)
+
+                    no_tool_call = (
+                        selected_tool == hallucinated_tool
+                        or selected_tool not in live_tool_set
+                        or selected_tool not in available_tools
+                    )
+                    called_tool = None
+                    tool_result = None
+                    tool_error = None
+                    execution_success = False
+                    execution_attempted = False
+
+                    if call_predicted_tools and not no_tool_call:
+                        called_tool = selected_tool
+                        execution_attempted = True
+                        try:
+                            call_result = await _call_tool_with_sample_isolation(
+                                session,
+                                server_path,
+                                selected_tool,
+                                selected_args,
+                            )
+                            executed_tool_calls += 1
+                            tool_result = _summarize_tool_result(call_result)
+                            execution_success = not bool(
+                                getattr(call_result, "isError", False)
+                            )
+                            if not execution_success:
+                                errors_count += 1
+                                tool_error = tool_result
+                        except Exception as exc:  # pragma: no cover
+                            errors_count += 1
+                            tool_error = str(exc)
+
+                    score = _score_sample(
+                        expected_tool=step.expected_tool,
+                        selected_tool=None if no_tool_call else selected_tool,
+                        expected_args=step.expected_args,
+                        selected_args=selected_args,
+                        execution_success=execution_success,
+                        execution_attempted=execution_attempted,
+                    )
+                    step_record = {
+                        "sample_id": sample.id,
+                        "step_id": step.id,
+                        "step_index": step_index,
+                        "domain": sample.domain,
+                        "query": step.query,
+                        "routed_query": query,
+                        "expected_tool": step.expected_tool,
+                        "selected_tool": None if no_tool_call else selected_tool,
+                        "expected_args": step.expected_args,
+                        "selected_args": selected_args,
+                        "tool_selection_correct": score.tool_selection_correct,
+                        "argument_match_correct": score.argument_match_correct,
+                        "execution_success": score.execution_success,
+                        "failure_category": score.failure_category,
+                        "depends_on": list(step.depends_on),
+                        "source_program": step.source_program,
+                        "raw_model_output": raw_model_output,
+                        "latency_seconds": latency,
+                        "called_tool": called_tool,
+                        "tool_result": tool_result,
+                        "tool_error": tool_error,
+                    }
+                    step_records.append(step_record)
+                    workflow_steps.append(step_record)
+                    history.append(
+                        {
+                            "step_id": step.id,
+                            "query": step.query,
+                            "selected_tool": None if no_tool_call else selected_tool,
+                            "selected_args": selected_args,
+                            "tool_result": tool_result,
+                            "tool_error": tool_error,
+                        }
+                    )
+
+                workflow_record = {
+                    "sample_id": sample.id,
+                    "domain": sample.domain,
+                    "query": sample.query,
+                    "task_type": sample.task_type,
+                    "difficulty": sample.difficulty,
+                    "source": sample.source,
+                    "available_tools": available_tools,
+                    "sequence_tool_selection_correct": all(
+                        step["tool_selection_correct"] for step in workflow_steps
+                    ),
+                    "sequence_argument_match_correct": all(
+                        step["argument_match_correct"] for step in workflow_steps
+                    ),
+                    "sequence_execution_success": (
+                        call_predicted_tools
+                        and all(step["execution_success"] for step in workflow_steps)
+                    ),
+                    "steps": workflow_steps,
+                    "model_name": model_name,
+                    "router_id": getattr(router, "ROUTER_ID", router_name),
+                    "router_backend": getattr(
+                        router, "ROUTER_BACKEND", "unknown"
+                    ),
+                    "prompt_template": prompt_template,
+                }
+                workflow_records.append(workflow_record)
+                sample_handle.write(
+                    json.dumps(workflow_record, ensure_ascii=True) + "\n"
+                )
+
+    total_steps = len(step_records)
+    total_workflows = len(workflow_records)
+    summary = {
+        "timestamp": timestamp,
+        "benchmark_path": str(benchmark_path),
+        "model_name": model_name,
+        "router_id": getattr(router, "ROUTER_ID", router_name),
+        "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
+        "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
+        "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
+        "prompt_template": prompt_template,
+        "total_workflows": total_workflows,
+        "total_steps": total_steps,
+        "step_tool_selection_accuracy": (
+            sum(step["tool_selection_correct"] for step in step_records)
+            / total_steps
+            if total_steps
+            else 0.0
+        ),
+        "step_exact_argument_match_accuracy": (
+            sum(step["argument_match_correct"] for step in step_records)
+            / total_steps
+            if total_steps
+            else 0.0
+        ),
+        "workflow_tool_sequence_accuracy": (
+            sum(
+                workflow["sequence_tool_selection_correct"]
+                for workflow in workflow_records
+            )
+            / total_workflows
+            if total_workflows
+            else 0.0
+        ),
+        "workflow_exact_sequence_accuracy": (
+            sum(
+                workflow["sequence_argument_match_correct"]
+                for workflow in workflow_records
+            )
+            / total_workflows
+            if total_workflows
+            else 0.0
+        ),
+        "average_step_latency_seconds": (
+            sum(latencies) / len(latencies) if latencies else 0.0
+        ),
+        "executed_tool_calls": executed_tool_calls,
+        "errors_count": errors_count,
+    }
+    with summary_path.open("w", encoding="utf-8") as summary_handle:
+        json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+
+    print("\n===================")
+    print(f"Workflows: {total_workflows}")
+    print(f"Steps: {total_steps}")
+    print(
+        "Step tool-selection accuracy: "
+        f"{summary['step_tool_selection_accuracy']:.2%}"
+    )
+    print(
+        "Exact workflow-sequence accuracy: "
+        f"{summary['workflow_exact_sequence_accuracy']:.2%}"
+    )
+    print(f"Results: {samples_path}")
+    print(f"Summary: {summary_path}")
+
+
 async def _evaluate_with_server(
     dataset: list[BenchmarkSample],
     benchmark_path: Path,
@@ -273,6 +658,16 @@ async def _evaluate_with_server(
     call_predicted_tools: bool,
     router_name: str,
 ) -> None:
+    if any(sample.expected_steps for sample in dataset):
+        await _evaluate_multistep_with_server(
+            dataset,
+            benchmark_path,
+            server_path,
+            call_predicted_tools,
+            router_name,
+        )
+        return
+
     from models.routers.registry import load_router
 
     router = load_router(router_name)

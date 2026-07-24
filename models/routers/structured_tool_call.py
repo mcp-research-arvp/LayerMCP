@@ -110,6 +110,11 @@ def parse_tool_call(
         if isinstance(name, str):
             normalized = name.strip().lower()
             if normalized in catalog:
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        arguments = {}
                 return ToolCallPrediction(
                     normalized,
                     arguments if isinstance(arguments, dict) else {},

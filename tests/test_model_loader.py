@@ -349,7 +349,8 @@ class RouterRegistryTests(unittest.TestCase):
         cases.append((gemma4_local_router, gemma_generator))
 
         gpt_generator = Mock()
-        gpt_generator.tokenizer.encode.return_value = [1]
+        gpt_generator.render_tool_prompt.return_value = [1]
+        gpt_generator.assistant_action_stop_tokens = [2, 3]
         cases.append((gpt_oss_local_router, gpt_generator))
 
         phi_generator = Mock()
@@ -380,6 +381,44 @@ class RouterRegistryTests(unittest.TestCase):
                 self.assertEqual(prediction.selected_tool, "factor_expression")
                 self.assertEqual(prediction.selected_args, {"expression": "t^2-49"})
                 generator.generate_text.assert_called_once()
+
+    def test_gpt_oss_router_uses_dynamic_harmony_tool_definitions(self) -> None:
+        from models.routers import gpt_oss_local_router
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.return_value = SimpleNamespace(
+            text="",
+            tool_call=SimpleNamespace(
+                function=SimpleNamespace(
+                    name="calculator",
+                    arguments='{"expression":"2 + 2"}',
+                )
+            ),
+        )
+
+        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
+            prediction = gpt_oss_local_router.choose_tool_call(
+                "Compute 2 + 2.",
+                ["calculator", "factor_expression"],
+                {
+                    "calculator": {
+                        "type": "object",
+                        "properties": {"expression": {"type": "string"}},
+                        "required": ["expression"],
+                    }
+                },
+                {"calculator": "Evaluate arithmetic."},
+            )
+
+        rendered_tools = generator.render_tool_prompt.call_args.args[1]
+        self.assertEqual(
+            [tool["name"] for tool in rendered_tools],
+            ["calculator", "factor_expression"],
+        )
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
 
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path

@@ -12,7 +12,7 @@ from models.architectures.gpt_oss_pytorch.config import (
     DEFAULT_CHECKPOINT_PATH,
 )
 from models.routers.tool_catalog import format_tool_catalog
-from models.routers.structured_tool_call import ToolCallPrediction, build_tool_call_prompt, parse_tool_call
+from models.routers.structured_tool_call import ToolCallPrediction, parse_tool_call
 
 MODEL_ID = "openai/gpt-oss-20b"
 MODEL_NAME = MODEL_ID
@@ -125,12 +125,24 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         raise ValueError("available_tools must not be empty.")
 
     generator = _load_generator()
-    prompt = build_tool_call_prompt(normalized_query, tool_catalog, tool_schemas, tool_descriptions)
-    prompt_tokens = generator.tokenizer.encode(prompt, allowed_special="all")
+    schemas = tool_schemas or {}
+    descriptions = tool_descriptions or {}
+    native_tools = [
+        {
+            "name": name,
+            "description": " ".join(descriptions.get(name, "").split()),
+            "parameters": schemas.get(name) or {
+                "type": "object",
+                "properties": {},
+            },
+        }
+        for name in tool_catalog
+    ]
+    prompt_tokens = generator.render_tool_prompt(normalized_query, native_tools)
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
-        stop_tokens=[generator.call_token, generator.end_token, generator.return_token, generator.eot_token],
-        temperature=0.0,
+        stop_tokens=generator.assistant_action_stop_tokens,
+        temperature=1.0,
         max_tokens=128,
     )
     return parse_tool_call(result.text, tool_catalog, result.tool_call)

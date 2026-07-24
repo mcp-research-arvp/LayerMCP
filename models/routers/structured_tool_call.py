@@ -68,7 +68,22 @@ def _json_candidates(response: str) -> list[str]:
     candidates.extend(re.findall(r"```(?:json)?\s*(.*?)```", response, re.DOTALL))
     candidates.extend(re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>", response, re.DOTALL))
     candidates.extend(re.findall(r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})", response, re.DOTALL))
-    return candidates
+
+    # Model outputs can append an end-of-turn token after an otherwise valid
+    # JSON call, and tool arguments can contain arbitrarily nested objects.
+    # raw_decode finds each complete JSON value without requiring the entire
+    # response to be valid JSON, unlike the shallow-brace regex above.
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(response):
+        if character not in "[{":
+            continue
+        try:
+            _, end_index = decoder.raw_decode(response[index:])
+        except json.JSONDecodeError:
+            continue
+        candidates.append(response[index : index + end_index])
+
+    return list(dict.fromkeys(candidates))
 
 
 def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:

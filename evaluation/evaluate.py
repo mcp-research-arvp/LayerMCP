@@ -333,6 +333,9 @@ async def _evaluate_with_server(
                     selected_tool = prediction.selected_tool
                     selected_args = prediction.selected_args
                     raw_model_output = prediction.raw_output
+                    parse_status = getattr(prediction, "parse_status", "ok")
+                    attempted_tool = getattr(prediction, "attempted_tool", None)
+                    parse_diagnostic = getattr(prediction, "diagnostic", None)
                 else:
                     if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
                         selected_tool = router.choose_tool(
@@ -347,6 +350,9 @@ async def _evaluate_with_server(
                         selected_tool = router.choose_tool(query, available_tools)
                     selected_args = {}
                     raw_model_output = selected_tool
+                    parse_status = "legacy_router"
+                    attempted_tool = selected_tool
+                    parse_diagnostic = None
                 latency = time.perf_counter() - start
 
                 latencies.append(latency)
@@ -361,7 +367,10 @@ async def _evaluate_with_server(
                 print(f"Expected: {expected}")
                 print(f"Selected: {selected_tool}")
                 print(f"Selected args: {selected_args}")
-                if selected_tool == hallucinated_tool:
+                if parse_status not in {"ok", "legacy_router"}:
+                    print(f"Parse status: {parse_status}")
+                    if parse_diagnostic:
+                        print(f"Parse diagnostic: {parse_diagnostic}")
                     print(f"Raw model output: {raw_model_output[:1000]!r}")
 
                 called_tool = None
@@ -417,6 +426,9 @@ async def _evaluate_with_server(
                     "execution_success": score.execution_success,
                     "failure_category": score.failure_category,
                     "raw_model_output": raw_model_output,
+                    "parse_status": parse_status,
+                    "attempted_tool": attempted_tool,
+                    "parse_diagnostic": parse_diagnostic,
                     "task_type": sample.task_type,
                     "difficulty": sample.difficulty,
                     "source": sample.source,

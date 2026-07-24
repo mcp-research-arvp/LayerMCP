@@ -282,6 +282,7 @@ class RouterRegistryTests(unittest.TestCase):
 
         generator = Mock()
         generator.encode_chat.return_value = [1, 2, 3]
+        generator.stop_tokens = [128001, 128008, 128009]
         generator.generate_text.return_value = (
             '{"name":"factor_expression","arguments":{"expression":"t^2-49"}}'
         )
@@ -294,6 +295,157 @@ class RouterRegistryTests(unittest.TestCase):
 
         self.assertEqual(selected, "factor_expression")
         generator.generate_text.assert_called_once()
+
+    def test_llama31_parses_parameters_and_structural_tokens(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        responses = (
+            (
+                '<|python_tag|>{"name":"calculator",'
+                '"parameters":{"expression":"2+2"}}<|eom_id|>'
+            ),
+            (
+                '<|python_tag|>{"name":"calculator",'
+                '"parameters":"{\\"expression\\":\\"2+2\\"}"}<|eom_id|>'
+            ),
+        )
+        for response in responses:
+            with self.subTest(response=response):
+                prediction = parse_tool_call(response, ["calculator"])
+                self.assertEqual(prediction.selected_tool, "calculator")
+                self.assertEqual(prediction.selected_args, {"expression": "2+2"})
+                self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_structured_path_receives_live_tools(self) -> None:
+        from models.routers import llama31_8b_local_router
+
+        generator = Mock()
+        generator.encode_chat.return_value = [1, 2, 3]
+        generator.stop_tokens = [128001, 128008, 128009]
+        generator.generate_text.return_value = (
+            '<|python_tag|>{"name":"calculator",'
+            '"parameters":{"expression":"2+2"}}<|eom_id|>'
+        )
+        schema = {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
+
+        with patch.object(
+            llama31_8b_local_router,
+            "_load_generator",
+            return_value=generator,
+        ):
+            prediction = llama31_8b_local_router.choose_tool_call(
+                "Compute 2+2.",
+                ["calculator"],
+                {"calculator": schema},
+                {"calculator": "Evaluate arithmetic."},
+            )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        native_messages = generator.encode_chat.call_args.args[0]
+        fallback_messages = generator.encode_chat.call_args.kwargs[
+            "fallback_messages"
+        ]
+        native_tools = generator.encode_chat.call_args.kwargs["tools"]
+        self.assertNotIn("Available MCP tools", native_messages[0]["content"])
+        self.assertNotIn('"input_schema"', native_messages[0]["content"])
+        self.assertIn("Available MCP tools", fallback_messages[0]["content"])
+        self.assertIn('"input_schema"', fallback_messages[0]["content"])
+        self.assertEqual(native_tools[0]["function"]["parameters"], schema)
+        self.assertEqual(
+            native_tools[0]["function"]["description"],
+            "Evaluate arithmetic.",
+        )
+        self.assertEqual(
+            generator.generate_text.call_args.kwargs["stop_tokens"],
+            generator.stop_tokens,
+        )
+
+    def test_llama31_rejects_unknown_structured_tool(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = (
+            '<|python_tag|>{"name":"invented_tool",'
+            '"parameters":{"expression":"2+2"}}<|eom_id|>'
+        )
+        prediction = parse_tool_call(response, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, "unknown_tool")
+        self.assertEqual(prediction.parse_status, "unknown_tool")
+        self.assertEqual(prediction.attempted_tool, "invented_tool")
+        self.assertEqual(prediction.selected_args, {})
+        self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_malformed_json_is_a_parse_error(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = (
+            '<|python_tag|>{"name":"calculator",'
+            '"parameters":{"expression":"2+2"}<|eom_id|>'
+        )
+        prediction = parse_tool_call(response, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, "parse_error")
+        self.assertEqual(prediction.parse_status, "parse_error")
+        self.assertIsNone(prediction.attempted_tool)
+        self.assertIn("no complete structured", prediction.diagnostic)
+        self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_schema_failure_has_structured_metadata(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = '{"name":"calculator","parameters":{}}'
+        prediction = parse_tool_call(
+            response,
+            ["calculator"],
+            tool_schemas={
+                "calculator": {
+                    "type": "object",
+                    "properties": {"expression": {"type": "string"}},
+                    "required": ["expression"],
+                }
+            },
+        )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.parse_status, "invalid_arguments")
+        self.assertIn("missing required arguments", prediction.diagnostic)
+
+    def test_llama31_tokenizer_fallback_uses_serialized_tool_prompt(self) -> None:
+        from models.architectures.llama31_8b_pytorch.inference import TokenGenerator
+
+        tokenizer = Mock()
+        tokenizer.apply_chat_template.side_effect = [
+            TypeError("tools are unsupported"),
+            "rendered fallback",
+        ]
+        tokenizer.return_value = {"input_ids": [1, 2, 3]}
+        generator = TokenGenerator.__new__(TokenGenerator)
+        generator.tokenizer = tokenizer
+        native_messages = [{"role": "user", "content": "Route this query."}]
+        fallback_messages = [
+            {
+                "role": "user",
+                "content": "Available MCP tools: serialized fallback",
+            }
+        ]
+        tools = [{"type": "function", "function": {"name": "calculator"}}]
+
+        encoded = generator.encode_chat(
+            native_messages,
+            tools=tools,
+            fallback_messages=fallback_messages,
+        )
+
+        self.assertEqual(encoded, [1, 2, 3])
+        first_call, second_call = tokenizer.apply_chat_template.call_args_list
+        self.assertEqual(first_call.args[0], native_messages)
+        self.assertEqual(first_call.kwargs["tools"], tools)
+        self.assertEqual(second_call.args[0], fallback_messages)
+        self.assertNotIn("tools", second_call.kwargs)
 
     def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
         from models.routers.qwen36_local_router import _extract_tool_name

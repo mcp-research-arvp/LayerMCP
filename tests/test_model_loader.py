@@ -482,6 +482,24 @@ class RouterRegistryTests(unittest.TestCase):
             {"expression": "139 + 27 + 23 + 11"},
         )
 
+    def test_structured_parser_accepts_nested_json_before_turn_token(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        prediction = parse_tool_call(
+            '{"name":"check_policy","arguments":{"action":"refund",'
+            '"context":{"amount":50}}}<turn|>',
+            ["check_policy", "calculator"],
+        )
+
+        self.assertEqual(prediction.selected_tool, "check_policy")
+        self.assertEqual(
+            prediction.selected_args,
+            {"action": "refund", "context": {"amount": 50}},
+        )
+        self.assertEqual(prediction.parse_status, "ok")
+        self.assertEqual(prediction.attempted_tool, "check_policy")
+        self.assertIsNone(prediction.diagnostic)
+
     def test_structured_parser_decodes_native_json_string_arguments(self) -> None:
         from models.architectures.phi4_pytorch.schemas import ToolCall, ToolFunction
         from models.routers.structured_tool_call import parse_tool_call

@@ -420,6 +420,54 @@ class RouterRegistryTests(unittest.TestCase):
         self.assertEqual(prediction.selected_tool, "calculator")
         self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
 
+    def test_gpt_oss_router_retries_schema_invalid_arguments(self) -> None:
+        from models.routers import gpt_oss_local_router
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.side_effect = [
+            SimpleNamespace(
+                text="",
+                tool_call=SimpleNamespace(
+                    function=SimpleNamespace(
+                        name="simplify_expression",
+                        arguments="{}",
+                    )
+                ),
+            ),
+            SimpleNamespace(
+                text="",
+                tool_call=SimpleNamespace(
+                    function=SimpleNamespace(
+                        name="simplify_expression",
+                        arguments='{"expression":"(x**2-1)/(x-1)"}',
+                    )
+                ),
+            ),
+        ]
+
+        schema = {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
+        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
+            prediction = gpt_oss_local_router.choose_tool_call(
+                "Simplify (x^2-1)/(x-1).",
+                ["simplify_expression"],
+                {"simplify_expression": schema},
+            )
+
+        self.assertEqual(prediction.selected_tool, "simplify_expression")
+        self.assertEqual(
+            prediction.selected_args,
+            {"expression": "(x**2-1)/(x-1)"},
+        )
+        self.assertEqual(generator.generate_text.call_count, 2)
+        correction_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
+        self.assertIn("missing required argument", correction_prompt)
+
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path
 

@@ -43,6 +43,9 @@ class ToolFixtureTests(unittest.TestCase):
     def test_calculator_safe_arithmetic(self) -> None:
         self.assertEqual(calculator("2 + 3 * 4")["result"], 14)
 
+    def test_calculator_accepts_mathematical_exponent_notation(self) -> None:
+        self.assertEqual(calculator("55^2 - 45^2")["result"], 1000)
+
     def test_calculator_rejects_unsafe_expressions(self) -> None:
         with self.assertRaises(ValueError):
             calculator("__import__('os').system('echo unsafe')")

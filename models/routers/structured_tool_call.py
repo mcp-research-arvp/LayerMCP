@@ -16,6 +16,68 @@ class ToolCallPrediction:
     raw_output: str
 
 
+def validate_tool_arguments(
+    arguments: Mapping[str, Any],
+    schema: Mapping[str, Any] | None,
+) -> list[str]:
+    """Return basic JSON-Schema violations without depending on benchmark data."""
+    if not schema:
+        return []
+
+    errors: list[str] = []
+    required = schema.get("required", [])
+    if isinstance(required, list):
+        for name in required:
+            if isinstance(name, str) and name not in arguments:
+                errors.append(f"missing required argument {name!r}")
+
+    properties = schema.get("properties", {})
+    if not isinstance(properties, Mapping):
+        return errors
+
+    json_types: dict[str, tuple[type, ...]] = {
+        "string": (str,),
+        "number": (int, float),
+        "integer": (int,),
+        "boolean": (bool,),
+        "object": (dict,),
+        "array": (list,),
+        "null": (type(None),),
+    }
+    for name, value in arguments.items():
+        property_schema = properties.get(name)
+        if not isinstance(property_schema, Mapping):
+            if schema.get("additionalProperties") is False:
+                errors.append(f"unexpected argument {name!r}")
+            continue
+
+        expected = property_schema.get("type")
+        expected_types = expected if isinstance(expected, list) else [expected]
+        allowed = tuple(
+            python_type
+            for json_type in expected_types
+            for python_type in json_types.get(json_type, ())
+        )
+        # bool is an int subclass, but JSON Schema treats them as distinct.
+        type_matches = isinstance(value, allowed) if allowed else True
+        if any(
+            json_type in {"integer", "number"}
+            for json_type in expected_types
+        ) and isinstance(value, bool):
+            type_matches = False
+        if not type_matches:
+            errors.append(
+                f"argument {name!r} must have JSON type "
+                f"{json.dumps(expected, ensure_ascii=True)}"
+            )
+
+        enum = property_schema.get("enum")
+        if isinstance(enum, list) and value not in enum:
+            errors.append(f"argument {name!r} must be one of {enum!r}")
+
+    return errors
+
+
 def build_native_tools(
     available_tools: Sequence[str],
     tool_schemas: Mapping[str, Any] | None = None,

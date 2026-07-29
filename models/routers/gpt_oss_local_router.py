@@ -120,6 +120,40 @@ def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: M
     return choose_tool_call(query, available_tools, None, tool_descriptions).selected_tool
 
 
+def _build_native_tools(
+    tool_catalog: Sequence[str],
+    schemas: Mapping[str, Any],
+    descriptions: Mapping[str, str],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": name,
+            "description": " ".join(descriptions.get(name, "").split()),
+            "parameters": schemas.get(name) or {
+                "type": "object",
+                "properties": {},
+            },
+        }
+        for name in tool_catalog
+    ]
+
+
+def _generate_prediction(
+    generator: Any,
+    prompt_query: str,
+    tool_catalog: Sequence[str],
+    native_tools: list[dict[str, Any]],
+) -> ToolCallPrediction:
+    prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
+    result = generator.generate_text(
+        prompt_tokens=prompt_tokens,
+        stop_tokens=generator.assistant_action_stop_tokens,
+        temperature=1.0,
+        max_tokens=128,
+    )
+    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+
+
 def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: Mapping[str, Any] | None = None, tool_descriptions: Mapping[str, str] | None = None) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
@@ -132,26 +166,15 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
     generator = _load_generator()
     schemas = tool_schemas or {}
     descriptions = tool_descriptions or {}
-    native_tools = [
-        {
-            "name": name,
-            "description": " ".join(descriptions.get(name, "").split()),
-            "parameters": schemas.get(name) or {
-                "type": "object",
-                "properties": {},
-            },
-        }
-        for name in tool_catalog
-    ]
+    native_tools = _build_native_tools(tool_catalog, schemas, descriptions)
+
     def generate_prediction(prompt_query: str) -> ToolCallPrediction:
-        prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
-        result = generator.generate_text(
-            prompt_tokens=prompt_tokens,
-            stop_tokens=generator.assistant_action_stop_tokens,
-            temperature=1.0,
-            max_tokens=128,
+        return _generate_prediction(
+            generator,
+            prompt_query,
+            tool_catalog,
+            native_tools,
         )
-        return parse_tool_call(result.text, tool_catalog, result.tool_call)
 
     prediction = generate_prediction(normalized_query)
     selected_schema = schemas.get(prediction.selected_tool, {})
@@ -178,5 +201,50 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         raw_output=(
             f"{prediction.raw_output}\n"
             f"[schema-correction]\n{corrected.raw_output}"
+        ),
+    )
+
+
+def repair_tool_call(
+    query: str,
+    available_tools: Sequence[str],
+    previous_prediction: ToolCallPrediction,
+    tool_error: str,
+    tool_schemas: Mapping[str, Any] | None = None,
+    tool_descriptions: Mapping[str, str] | None = None,
+) -> ToolCallPrediction:
+    """Make one model-driven correction using an MCP execution error."""
+    normalized_query = query.strip()
+    normalized_error = tool_error.strip()
+    tool_catalog = tuple(tool.lower() for tool in available_tools)
+    if not normalized_query or not normalized_error or not tool_catalog:
+        return previous_prediction
+
+    schemas = tool_schemas or {}
+    descriptions = tool_descriptions or {}
+    native_tools = _build_native_tools(tool_catalog, schemas, descriptions)
+    correction_query = (
+        f"{normalized_query}\n\n"
+        "The previous function call failed.\n"
+        f"Failed function: {previous_prediction.selected_tool}\n"
+        "Failed arguments:\n"
+        f"{json.dumps(previous_prediction.selected_args, ensure_ascii=True)}\n"
+        f"Tool error:\n{normalized_error}\n"
+        "Call exactly one available function again with corrected arguments. "
+        "Use the original user request, the tool error, and the provided JSON "
+        "schemas. Do not repeat arguments that the tool error says are invalid."
+    )
+    corrected = _generate_prediction(
+        _load_generator(),
+        correction_query,
+        tool_catalog,
+        native_tools,
+    )
+    return ToolCallPrediction(
+        selected_tool=corrected.selected_tool,
+        selected_args=corrected.selected_args,
+        raw_output=(
+            f"{previous_prediction.raw_output}\n"
+            f"[execution-correction]\n{corrected.raw_output}"
         ),
     )

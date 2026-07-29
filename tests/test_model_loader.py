@@ -468,6 +468,48 @@ class RouterRegistryTests(unittest.TestCase):
         correction_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
         self.assertIn("missing required argument", correction_prompt)
 
+    def test_gpt_oss_router_repairs_call_from_execution_feedback(self) -> None:
+        from models.routers import gpt_oss_local_router
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.return_value = SimpleNamespace(
+            text="",
+            tool_call=SimpleNamespace(
+                function=SimpleNamespace(
+                    name="convert_units",
+                    arguments=(
+                        '{"value":6,"from_unit":"feet","to_unit":"meters"}'
+                    ),
+                )
+            ),
+        )
+        previous = ToolCallPrediction(
+            selected_tool="convert_units",
+            selected_args={"value": 6, "from_unit": "6", "to_unit": "6"},
+            raw_output="first call",
+        )
+
+        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
+            corrected = gpt_oss_local_router.repair_tool_call(
+                "Convert 6 feet to meters.",
+                ["convert_units"],
+                previous,
+                "unsupported unit conversion: 6 to 6",
+                {"convert_units": {"type": "object"}},
+            )
+
+        self.assertEqual(corrected.selected_tool, "convert_units")
+        self.assertEqual(
+            corrected.selected_args,
+            {"value": 6, "from_unit": "feet", "to_unit": "meters"},
+        )
+        repair_prompt = generator.render_tool_prompt.call_args.args[0]
+        self.assertIn("unsupported unit conversion", repair_prompt)
+        self.assertIn('"from_unit": "6"', repair_prompt)
+
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path
 

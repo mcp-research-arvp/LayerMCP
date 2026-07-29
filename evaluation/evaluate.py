@@ -388,9 +388,64 @@ async def _evaluate_with_server(
                         if execution_success:
                             print(f"Tool call: {tool_result}")
                         else:
-                            errors_count += 1
                             tool_error = tool_result
                             print(f"Tool call error: {tool_error}")
+                            if hasattr(router, "repair_tool_call"):
+                                repair_start = time.perf_counter()
+                                corrected = router.repair_tool_call(
+                                    query,
+                                    available_tools,
+                                    prediction,
+                                    tool_error,
+                                    available_schemas,
+                                    {
+                                        tool: tool_descriptions.get(tool, "")
+                                        for tool in available_tools
+                                    },
+                                )
+                                latency += time.perf_counter() - repair_start
+                                latencies[-1] = latency
+                                corrected_no_tool_call = (
+                                    corrected.selected_tool == hallucinated_tool
+                                    or corrected.selected_tool not in live_tool_set
+                                    or corrected.selected_tool not in available_tools
+                                )
+                                if not corrected_no_tool_call:
+                                    selected_tool = corrected.selected_tool
+                                    selected_args = corrected.selected_args
+                                    raw_model_output = corrected.raw_output
+                                    prediction = corrected
+                                    called_tool = selected_tool
+                                    print(
+                                        "Retrying tool call: "
+                                        f"{selected_tool} {selected_args}"
+                                    )
+                                    call_result = (
+                                        await _call_tool_with_sample_isolation(
+                                            session,
+                                            server_path,
+                                            selected_tool,
+                                            selected_args,
+                                        )
+                                    )
+                                    executed_tool_calls += 1
+                                    tool_result = _summarize_tool_result(
+                                        call_result
+                                    )
+                                    execution_success = not bool(
+                                        getattr(call_result, "isError", False)
+                                    )
+                                    if execution_success:
+                                        tool_error = None
+                                        print(f"Tool call: {tool_result}")
+                                    else:
+                                        tool_error = tool_result
+                                        print(
+                                            "Tool call retry error: "
+                                            f"{tool_error}"
+                                        )
+                            if not execution_success:
+                                errors_count += 1
                     except Exception as exc:  # pragma: no cover - exercised by integration runs
                         errors_count += 1
                         tool_error = str(exc)

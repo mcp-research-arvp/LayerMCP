@@ -73,6 +73,7 @@ def calculator(expression: str) -> dict[str, Any]:
     """
     Numerically evaluate an arithmetic expression and return its value. Use
     this for requests that ask to compute, evaluate, or find a numeric value.
+    Mathematical ``^`` and Python ``**`` exponent notation are both accepted.
     """
     normalized = expression.strip()
     if not normalized:
@@ -80,7 +81,9 @@ def calculator(expression: str) -> dict[str, Any]:
     if len(normalized) > 200:
         raise ValueError("Expression is too long.")
 
-    tree = ast.parse(normalized, mode="eval")
+    # In mathematical input, ^ conventionally means exponentiation. Python
+    # parses it as bitwise XOR, which is outside this arithmetic tool's grammar.
+    tree = ast.parse(normalized.replace("^", "**"), mode="eval")
     result = _safe_eval(tree)
 
     return {

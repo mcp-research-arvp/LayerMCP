@@ -12,7 +12,11 @@ from models.architectures.gpt_oss_pytorch.config import (
     DEFAULT_CHECKPOINT_PATH,
 )
 from models.routers.tool_catalog import format_tool_catalog
-from models.routers.structured_tool_call import ToolCallPrediction, parse_tool_call
+from models.routers.structured_tool_call import (
+    ToolCallPrediction,
+    parse_tool_call,
+    validate_tool_arguments,
+)
 
 MODEL_ID = "openai/gpt-oss-20b"
 MODEL_NAME = MODEL_ID
@@ -139,11 +143,40 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         }
         for name in tool_catalog
     ]
-    prompt_tokens = generator.render_tool_prompt(normalized_query, native_tools)
-    result = generator.generate_text(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=generator.assistant_action_stop_tokens,
-        temperature=1.0,
-        max_tokens=128,
+    def generate_prediction(prompt_query: str) -> ToolCallPrediction:
+        prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
+        result = generator.generate_text(
+            prompt_tokens=prompt_tokens,
+            stop_tokens=generator.assistant_action_stop_tokens,
+            temperature=1.0,
+            max_tokens=128,
+        )
+        return parse_tool_call(result.text, tool_catalog, result.tool_call)
+
+    prediction = generate_prediction(normalized_query)
+    selected_schema = schemas.get(prediction.selected_tool, {})
+    argument_errors = validate_tool_arguments(
+        prediction.selected_args,
+        selected_schema,
     )
-    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+    if not argument_errors:
+        return prediction
+
+    correction_query = (
+        f"{normalized_query}\n\n"
+        "The previous function call had invalid arguments:\n"
+        f"{json.dumps(prediction.selected_args, ensure_ascii=True)}\n"
+        "Validation errors:\n- "
+        + "\n- ".join(argument_errors)
+        + "\nCall exactly one available function again using arguments that "
+        "conform to its provided JSON schema."
+    )
+    corrected = generate_prediction(correction_query)
+    return ToolCallPrediction(
+        selected_tool=corrected.selected_tool,
+        selected_args=corrected.selected_args,
+        raw_output=(
+            f"{prediction.raw_output}\n"
+            f"[schema-correction]\n{corrected.raw_output}"
+        ),
+    )

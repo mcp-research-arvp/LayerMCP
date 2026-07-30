@@ -221,6 +221,31 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
+    def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        cases = [
+            (
+                "to=functions.calculator<|channel|><|constrain|>json"
+                '<|message|>{"expression":{"left":2,"right":2}}<|call|>',
+                {"expression": {"left": 2, "right": 2}},
+            ),
+            (
+                "We must call calculator.\n"
+                "to=functions<|channel|><|constrain|>json"
+                '<|message|>{"expression":"2 + 2"}<|call|>',
+                {"expression": "2 + 2"},
+            ),
+        ]
+        for response, expected_args in cases:
+            with self.subTest(response=response):
+                prediction = parse_tool_call(
+                    response,
+                    ["calculator", "github_search"],
+                )
+                self.assertEqual(prediction.selected_tool, "calculator")
+                self.assertEqual(prediction.selected_args, expected_args)
+
     def test_gpt_oss_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.gpt_oss_local_router import resolve_checkpoint_path
 

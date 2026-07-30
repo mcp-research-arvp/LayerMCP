@@ -49,31 +49,55 @@ def validate_tool_arguments(
         "array": (list,),
         "null": (type(None),),
     }
-    for name, value in arguments.items():
-        property_schema = properties.get(name)
-        if not isinstance(property_schema, Mapping):
-            if schema.get("additionalProperties") is False:
-                errors.append(f"unexpected argument {name!r}")
-            continue
 
-        expected = property_schema.get("type")
-        expected_types = expected if isinstance(expected, list) else [expected]
+    def value_matches_schema(value: Any, value_schema: Mapping[str, Any]) -> bool:
+        alternatives = value_schema.get("anyOf") or value_schema.get("oneOf")
+        if isinstance(alternatives, list):
+            usable = [
+                option for option in alternatives if isinstance(option, Mapping)
+            ]
+            return not usable or any(
+                value_matches_schema(value, option) for option in usable
+            )
+
+        expected_type = value_schema.get("type")
+        expected_types = (
+            expected_type if isinstance(expected_type, list) else [expected_type]
+        )
         allowed = tuple(
             python_type
             for json_type in expected_types
             for python_type in json_types.get(json_type, ())
         )
-        # bool is an int subclass, but JSON Schema treats them as distinct.
-        type_matches = isinstance(value, allowed) if allowed else True
+        if not allowed:
+            return True
         if any(
             json_type in {"integer", "number"}
             for json_type in expected_types
         ) and isinstance(value, bool):
-            type_matches = False
-        if not type_matches:
+            return False
+        return isinstance(value, allowed)
+
+    for name, value in arguments.items():
+        property_schema = properties.get(name)
+        if not isinstance(property_schema, Mapping):
+            # FastMCP/Pydantic rejects parameters absent from a function's
+            # declared properties even when the emitted schema omits the
+            # optional additionalProperties:false marker.
+            if properties or schema.get("additionalProperties") is False:
+                errors.append(f"unexpected argument {name!r}")
+            continue
+
+        expected = property_schema.get("type")
+        if not value_matches_schema(value, property_schema):
+            expected_description = (
+                property_schema.get("anyOf")
+                or property_schema.get("oneOf")
+                or expected
+            )
             errors.append(
                 f"argument {name!r} must have JSON type "
-                f"{json.dumps(expected, ensure_ascii=True)}"
+                f"{json.dumps(expected_description, ensure_ascii=True)}"
             )
 
         enum = property_schema.get("enum")

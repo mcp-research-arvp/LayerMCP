@@ -468,6 +468,57 @@ class RouterRegistryTests(unittest.TestCase):
         correction_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
         self.assertIn("missing required argument", correction_prompt)
 
+    def test_gpt_oss_router_reconsiders_hallucinated_tool_once(self) -> None:
+        from models.routers import gpt_oss_local_router
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.side_effect = [
+            SimpleNamespace(
+                text="hallucinated_tool",
+                tool_call=None,
+            ),
+            SimpleNamespace(
+                text="",
+                tool_call=SimpleNamespace(
+                    function=SimpleNamespace(
+                        name="finance_get_company_facts",
+                        arguments='{"company_identifier":"LMCP"}',
+                    )
+                ),
+            ),
+        ]
+
+        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
+            prediction = gpt_oss_local_router.choose_tool_call(
+                "Retrieve company facts for LMCP.",
+                ["finance_get_company_facts"],
+                {
+                    "finance_get_company_facts": {
+                        "type": "object",
+                        "properties": {
+                            "company_identifier": {"type": "string"},
+                        },
+                        "required": ["company_identifier"],
+                    }
+                },
+            )
+
+        self.assertEqual(
+            prediction.selected_tool,
+            "finance_get_company_facts",
+        )
+        self.assertEqual(
+            prediction.selected_args,
+            {"company_identifier": "LMCP"},
+        )
+        self.assertEqual(generator.generate_text.call_count, 2)
+        reconsideration_prompt = (
+            generator.render_tool_prompt.call_args_list[1].args[0]
+        )
+        self.assertIn("did not produce a valid call", reconsideration_prompt)
+
     def test_schema_validation_handles_optional_any_of_and_extra_args(self) -> None:
         from models.routers.structured_tool_call import validate_tool_arguments
 

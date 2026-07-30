@@ -176,6 +176,27 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         )
 
     prediction = generate_prediction(normalized_query)
+    if prediction.selected_tool == HALLUCINATED_TOOL:
+        no_call_query = (
+            f"{normalized_query}\n\n"
+            "The previous response did not produce a valid call to one of the "
+            "available functions.\n"
+            f"Previous response:\n{prediction.raw_output}\n"
+            "Reconsider the request using the provided function descriptions "
+            "and JSON schemas. Call exactly one available function when one "
+            "can perform the request. Use hallucinated_tool only when none of "
+            "the available functions applies."
+        )
+        reconsidered = generate_prediction(no_call_query)
+        prediction = ToolCallPrediction(
+            selected_tool=reconsidered.selected_tool,
+            selected_args=reconsidered.selected_args,
+            raw_output=(
+                f"{prediction.raw_output}\n"
+                f"[no-call-correction]\n{reconsidered.raw_output}"
+            ),
+        )
+
     selected_schema = schemas.get(prediction.selected_tool, {})
     argument_errors = validate_tool_arguments(
         prediction.selected_args,

@@ -128,9 +128,7 @@ class MathPublicBenchmarkV2Tests(unittest.TestCase):
         for sample in self.public_samples + self.controlled_samples:
             expected_tool = sample["expected_tool"]
             self.assertIn(expected_tool, registered_tools)
-            self.assertIn(expected_tool, sample["available_tools"])
-            if sample in self.public_samples:
-                self.assertEqual(sample["available_tools"], MATH_V2_MENU)
+            self.assertNotIn("available_tools", sample)
 
             function = TOOL_FUNCTIONS[expected_tool]
             inspect.signature(function).bind(**sample["expected_args"])

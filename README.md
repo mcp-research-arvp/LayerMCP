@@ -429,15 +429,6 @@ Each current-format benchmark item looks like:
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "In example/research-mcp, list all repository files.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp"
@@ -451,6 +442,9 @@ Each current-format benchmark item looks like:
   }
 ]
 ```
+
+Every row is evaluated against the full live tool registry returned by the MCP
+server.
 
 `expected_args` is the exact argument-generation label. With
 `--call-predicted-tools`, the evaluator executes the router's predicted tool and

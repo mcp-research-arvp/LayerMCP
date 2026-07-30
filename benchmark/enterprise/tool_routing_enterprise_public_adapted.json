@@ -6,20 +6,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "The caller provided only the email mei.kovacs@example.com. Resolve it to the retail user ID.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "find_user_id_by_email",
     "expected_args": {
       "email": "mei.kovacs@example.com"
@@ -40,20 +26,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Use yusuf.rossi@example.com to identify the customer before any return or cancellation work.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "find_user_id_by_email",
     "expected_args": {
       "email": "yusuf.rossi@example.com"
@@ -74,20 +46,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "The caller is Yusuf Rossi in ZIP 19122 and does not remember an email address; find the user ID.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "find_user_id_by_name_zip",
     "expected_args": {
       "first_name": "Yusuf",
@@ -110,20 +68,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Before checking orders, resolve Mei Kovacs at ZIP 28236 to a retail user ID.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "find_user_id_by_name_zip",
     "expected_args": {
       "first_name": "Mei",
@@ -146,20 +90,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "After identifying USER-YUSUF, retrieve the user record to see saved orders and payment methods.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "get_user_details",
     "expected_args": {
       "user_id": "USER-YUSUF"
@@ -180,20 +110,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Fetch USER-MEI's account details before deciding which order actions are possible.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "get_user_details",
     "expected_args": {
       "user_id": "USER-MEI"
@@ -214,20 +130,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Look up RET-2001 to confirm the order contents before an exchange.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "get_order_details",
     "expected_args": {
       "order_id": "RET-2001"
@@ -248,20 +150,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Check RET-1002 so we know whether it can be cancelled or changed.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "get_order_details",
     "expected_args": {
       "order_id": "RET-1002"
@@ -282,20 +170,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Inspect PROD-KEYBOARD variants before choosing a replacement keyboard.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "get_product_details",
     "expected_args": {
       "product_id": "PROD-KEYBOARD"
@@ -316,20 +190,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Check the catalog details for PROD-BOTTLE before deciding on a larger bottle option.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "get_product_details",
     "expected_args": {
       "product_id": "PROD-BOTTLE"
@@ -350,20 +210,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "The user no longer needs pending order RET-1002; cancel it for that reason.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "cancel_pending_order",
     "expected_args": {
       "order_id": "RET-1002",
@@ -385,20 +231,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Cancel RET-1001 as ordered by mistake before it ships.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "cancel_pending_order",
     "expected_args": {
       "order_id": "RET-1001",
@@ -420,20 +252,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "For pending RET-1001, replace ITEM-KB-LINEAR with ITEM-KB-CLICKY using GIFT-YUSUF.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "modify_pending_order_items",
     "expected_args": {
       "order_id": "RET-1001",
@@ -461,20 +279,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Update the unshipped lamp in RET-1002 from ITEM-LAMP-USB to ITEM-LAMP-BATTERY with CARD-YUSUF.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "modify_pending_order_items",
     "expected_args": {
       "order_id": "RET-1002",
@@ -502,20 +306,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Change pending order RET-1002 to be delivered to 123 Elm Street, Suite 641, Austin, TX, US 78712.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "modify_pending_order_address",
     "expected_args": {
       "order_id": "RET-1002",
@@ -542,20 +332,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Update only the order address on RET-1001 to 101 Highway, New York, NY, US 10001.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "modify_pending_order_address",
     "expected_args": {
       "order_id": "RET-1001",
@@ -582,20 +358,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Update USER-YUSUF's saved customer address to 101 Highway, New York, NY, US 10001.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "modify_user_address",
     "expected_args": {
       "user_id": "USER-YUSUF",
@@ -622,20 +384,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "The customer moved; set USER-MEI's profile address to 157 Oak Street, Suite 258, Phoenix, AZ, US 85033.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "modify_user_address",
     "expected_args": {
       "user_id": "USER-MEI",
@@ -662,20 +410,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Return ITEM-BOTTLE-500 from delivered RET-2001 and refund it to CARD-MEI.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "return_delivered_order_items",
     "expected_args": {
       "order_id": "RET-2001",
@@ -700,20 +434,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "The customer wants money back for ITEM-KB-LINEAR on delivered RET-2001, with credit to GIFT-MEI.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "return_delivered_order_items",
     "expected_args": {
       "order_id": "RET-2001",
@@ -738,20 +458,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "Exchange the delivered keyboard in RET-2001 from ITEM-KB-LINEAR to ITEM-KB-CLICKY using CARD-MEI.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "exchange_delivered_order_items",
     "expected_args": {
       "order_id": "RET-2001",
@@ -779,20 +485,6 @@
     "difficulty": "medium",
     "source": "public_adapted",
     "query": "For delivered RET-2001, exchange ITEM-BOTTLE-500 for ITEM-BOTTLE-1000 and use GIFT-MEI.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "exchange_delivered_order_items",
     "expected_args": {
       "order_id": "RET-2001",
@@ -820,20 +512,6 @@
     "difficulty": "hard",
     "source": "public_adapted",
     "query": "The user wants refunds moved to the opposite order's payment method, which is outside automated policy; escalate this.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "transfer_to_human_agents",
     "expected_args": {
       "summary": "user wants refunds moved to the opposite order's payment method"
@@ -854,20 +532,6 @@
     "difficulty": "hard",
     "source": "public_adapted",
     "query": "The caller urgently wants to undo a cancelled order despite policy; send the case to a human agent.",
-    "available_tools": [
-      "find_user_id_by_email",
-      "find_user_id_by_name_zip",
-      "get_user_details",
-      "get_order_details",
-      "get_product_details",
-      "cancel_pending_order",
-      "modify_pending_order_items",
-      "modify_pending_order_address",
-      "modify_user_address",
-      "return_delivered_order_items",
-      "exchange_delivered_order_items",
-      "transfer_to_human_agents"
-    ],
     "expected_tool": "transfer_to_human_agents",
     "expected_args": {
       "summary": "caller urgently wants to undo a cancelled order despite policy"

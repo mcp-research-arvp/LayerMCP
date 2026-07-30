@@ -64,10 +64,9 @@ class LogitLensHelperTests(unittest.TestCase):
     def test_forced_choice_prompt_construction(self) -> None:
         sample = {
             "query": "Convert 10 kilometers to miles.",
-            "available_tools": ["calculator", "unit_converter"],
             "expected_tool": "unit_converter",
         }
-        mapping = build_tool_label_mapping(sample["available_tools"])
+        mapping = build_tool_label_mapping(["calculator", "unit_converter"])
         prompt = build_forced_choice_prompt(sample, mapping)
         self.assertIn("A. calculator", prompt)
         self.assertIn("B. unit_converter", prompt)

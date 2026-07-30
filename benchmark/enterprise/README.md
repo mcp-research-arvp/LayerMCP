@@ -117,14 +117,15 @@ All enterprise files use the standard benchmark schema:
 - `difficulty`
 - `source`
 - `query`
-- `available_tools`
 - `expected_tool`
 - `expected_args`
 - `expected_answer`
 - `perturbation_type`
 - `notes`
 
-The public-adapted file also includes provenance fields. Tests in `tests/test_enterprise_v2_controlled_benchmark.py` enforce the v2 controlled/public schema, tool menu, and executable tool arguments.
+The public-adapted file also includes provenance fields. Tests in
+`tests/test_enterprise_v2_controlled_benchmark.py` enforce the v2
+controlled/public schema and executable tool arguments.
 
-New enterprise datasets should keep the same field names, use `enterprise_automation` as the domain, and only introduce a new version label when the tool menu or schema actually changes.
-
+New enterprise datasets should keep the same field names and use
+`enterprise_automation` as the domain.

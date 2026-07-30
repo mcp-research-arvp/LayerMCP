@@ -6,15 +6,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"k means clustering\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -93,15 +84,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"write csv\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -180,15 +162,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"get executable path\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -267,15 +240,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"httpclient post json\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -354,15 +318,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"how to make the checkbox checked\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -441,15 +396,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"socket recv timeout\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -528,15 +474,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"how to extract zip file recursively\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -615,15 +552,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"get current ip address\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -702,15 +630,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"replace in file\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -789,15 +708,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"encode url\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -876,15 +786,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"get current process id\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -963,15 +864,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"randomly extract x items from a list\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -1050,15 +942,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"parse binary file to custom class\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -1137,15 +1020,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"group by count\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",
@@ -1224,15 +1098,6 @@
     "difficulty": "medium",
     "source": "public_coding_research_derived",
     "query": "In repository codesearchnet-public-v1, search only resources/annotationStore_selected.jsonl for the exact text \"linear regression\". Match case exactly and return at most one result.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "codesearchnet-public-v1",

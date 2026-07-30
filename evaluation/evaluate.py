@@ -55,6 +55,7 @@ class BenchmarkSample:
     expected_answer: Any
     perturbation_type: str
     notes: str
+    model_context: str | None
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,69 @@ class SampleScore:
     argument_match_correct: bool
     execution_success: bool
     failure_category: str
+
+
+def _load_fixture_model_context(sample: dict[str, Any]) -> str | None:
+    """Load the source table identified by benchmark provenance fields."""
+    fixture_file = sample.get("fixture_file")
+    if not isinstance(fixture_file, str) or not fixture_file.strip():
+        return None
+
+    fixture_path = (PROJECT_ROOT / fixture_file).resolve()
+    benchmark_root = (PROJECT_ROOT / "benchmark").resolve()
+    if benchmark_root not in fixture_path.parents or not fixture_path.is_file():
+        raise ValueError(f"Invalid benchmark fixture_file: {fixture_file}")
+
+    with fixture_path.open("r", encoding="utf-8") as handle:
+        fixture = json.load(handle)
+    if not isinstance(fixture, dict):
+        return None
+    columns = fixture.get("columns")
+    rows = fixture.get("rows")
+    if not isinstance(columns, list) or not isinstance(rows, list):
+        return None
+
+    column_names = [
+        column.get("name")
+        for column in columns
+        if isinstance(column, dict) and isinstance(column.get("name"), str)
+    ]
+    if len(column_names) != len(columns):
+        return None
+
+    candidates: list[tuple[int, str, Any, list[list[Any]]]] = []
+    for key, value in sample.items():
+        if (
+            not key.startswith("source_")
+            or key not in column_names
+            or not isinstance(value, (str, int, float))
+        ):
+            continue
+        column_index = column_names.index(key)
+        matching_rows = [
+            row
+            for row in rows
+            if isinstance(row, list)
+            and len(row) == len(column_names)
+            and row[column_index] == value
+        ]
+        if matching_rows:
+            candidates.append((len(matching_rows), key, value, matching_rows))
+
+    if not candidates:
+        return None
+    _, selector_name, selector_value, matching_rows = min(
+        candidates,
+        key=lambda item: item[0],
+    )
+    context = {
+        "dataset_id": fixture.get("dataset_id"),
+        "description": fixture.get("description"),
+        "columns": column_names,
+        "selector": {selector_name: selector_value},
+        "rows": matching_rows,
+    }
+    return json.dumps(context, ensure_ascii=True, separators=(",", ":"))
 
 
 def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
@@ -96,6 +160,7 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         expected_answer=sample.get("expected_answer"),
         perturbation_type=str(sample.get("perturbation_type", "none")),
         notes=str(sample.get("notes", "")),
+        model_context=_load_fixture_model_context(sample),
     )
 
 
@@ -306,6 +371,13 @@ async def _evaluate_with_server(
             for sample in tqdm(dataset):
                 available_tools = sample.available_tools or live_tools
                 query = sample.query
+                model_query = query
+                if sample.model_context:
+                    model_query = (
+                        f"{query}\n\n"
+                        "Benchmark source-table context available to the "
+                        f"tools:\n{sample.model_context}"
+                    )
                 expected = sample.expected_tool
 
                 start = time.perf_counter()
@@ -317,7 +389,7 @@ async def _evaluate_with_server(
                         router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False
                     ):
                         prediction = router.choose_tool_call(
-                            query,
+                            model_query,
                             available_tools,
                             available_schemas,
                             {
@@ -327,7 +399,7 @@ async def _evaluate_with_server(
                         )
                     else:
                         prediction = router.choose_tool_call(
-                            query,
+                            model_query,
                             available_tools,
                             available_schemas,
                         )
@@ -337,7 +409,7 @@ async def _evaluate_with_server(
                 else:
                     if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
                         selected_tool = router.choose_tool(
-                            query,
+                            model_query,
                             available_tools,
                             {
                                 tool: tool_descriptions.get(tool, "")
@@ -345,7 +417,10 @@ async def _evaluate_with_server(
                             },
                         )
                     else:
-                        selected_tool = router.choose_tool(query, available_tools)
+                        selected_tool = router.choose_tool(
+                            model_query,
+                            available_tools,
+                        )
                     selected_args = {}
                     raw_model_output = selected_tool
                 latency = time.perf_counter() - start
@@ -423,7 +498,7 @@ async def _evaluate_with_server(
                             )
                             repair_start = time.perf_counter()
                             corrected = router.repair_tool_call(
-                                query,
+                                model_query,
                                 available_tools,
                                 prediction,
                                 tool_error,

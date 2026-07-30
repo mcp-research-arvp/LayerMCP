@@ -330,6 +330,41 @@ class RouterRegistryTests(unittest.TestCase):
             {"expression": "139 + 27 + 23 + 11"},
         )
 
+    def test_structured_parser_recovers_one_unambiguous_near_tool_name(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        native_call = SimpleNamespace(
+            function=SimpleNamespace(
+                name="calculate",
+                arguments='{"expression":"100^4"}',
+            )
+        )
+        prediction = parse_tool_call(
+            "",
+            ["calculator", "simplify_expression"],
+            native_call,
+        )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.selected_args, {"expression": "100^4"})
+
+    def test_structured_parser_rejects_ambiguous_or_distant_tool_name(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        native_call = SimpleNamespace(
+            function=SimpleNamespace(name="finance_get", arguments="{}")
+        )
+        prediction = parse_tool_call(
+            "",
+            [
+                "finance_get_company_facts",
+                "finance_get_financial_statement",
+            ],
+            native_call,
+        )
+
+        self.assertEqual(prediction.selected_tool, "hallucinated_tool")
+
     def test_other_local_routers_return_structured_tool_calls(self) -> None:
         from models.routers import (
             gemma4_local_router,
@@ -518,6 +553,46 @@ class RouterRegistryTests(unittest.TestCase):
             generator.render_tool_prompt.call_args_list[1].args[0]
         )
         self.assertIn("did not produce a valid call", reconsideration_prompt)
+
+    def test_gpt_oss_router_uses_larger_configurable_generation_budget(self) -> None:
+        from models.routers import gpt_oss_local_router
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.return_value = SimpleNamespace(
+            text="",
+            tool_call=SimpleNamespace(
+                function=SimpleNamespace(
+                    name="calculator",
+                    arguments='{"expression":"2+2"}',
+                )
+            ),
+        )
+
+        with (
+            patch.object(gpt_oss_local_router, "_load_generator", return_value=generator),
+            patch.dict(
+                "os.environ",
+                {"LAYERMCP_GPT_OSS_MAX_TOOL_TOKENS": "640"},
+            ),
+        ):
+            gpt_oss_local_router.choose_tool_call(
+                "Compute 2+2.",
+                ["calculator"],
+                {
+                    "calculator": {
+                        "type": "object",
+                        "properties": {"expression": {"type": "string"}},
+                        "required": ["expression"],
+                    }
+                },
+            )
+
+        self.assertEqual(
+            generator.generate_text.call_args.kwargs["max_tokens"],
+            640,
+        )
 
     def test_schema_validation_handles_optional_any_of_and_extra_args(self) -> None:
         from models.routers.structured_tool_call import validate_tool_arguments

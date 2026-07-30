@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 import json
 import re
 from typing import Any, Mapping, Sequence
@@ -14,6 +15,30 @@ class ToolCallPrediction:
     selected_tool: str
     selected_args: dict[str, Any]
     raw_output: str
+
+
+def _resolve_catalog_name(
+    name: str,
+    catalog: set[str],
+) -> str | None:
+    normalized = name.strip().lower()
+    if normalized in catalog:
+        return normalized
+    if normalized == HALLUCINATED_TOOL:
+        return normalized
+
+    ranked = sorted(
+        (
+            (SequenceMatcher(None, normalized, candidate).ratio(), candidate)
+            for candidate in catalog
+        ),
+        reverse=True,
+    )
+    if not ranked or ranked[0][0] < 0.82:
+        return None
+    if len(ranked) > 1 and ranked[0][0] - ranked[1][0] < 0.08:
+        return None
+    return ranked[0][1]
 
 
 def validate_tool_arguments(
@@ -194,8 +219,8 @@ def parse_tool_call(
         name = getattr(function, "name", None)
         arguments = getattr(function, "arguments", {})
         if isinstance(name, str):
-            normalized = name.strip().lower()
-            if normalized in catalog:
+            normalized = _resolve_catalog_name(name, catalog)
+            if normalized is not None and normalized != HALLUCINATED_TOOL:
                 if isinstance(arguments, str):
                     try:
                         arguments = json.loads(arguments)
@@ -210,8 +235,8 @@ def parse_tool_call(
     qwen_call = _parse_qwen_native_call(response)
     if qwen_call is not None:
         name, arguments = qwen_call
-        normalized = name.lower()
-        if normalized in catalog:
+        normalized = _resolve_catalog_name(name, catalog)
+        if normalized is not None and normalized != HALLUCINATED_TOOL:
             return ToolCallPrediction(normalized, arguments, response)
 
     for candidate in _json_candidates(response):
@@ -230,8 +255,8 @@ def parse_tool_call(
         arguments = payload.get("arguments", payload.get("parameters", payload.get("args", {})))
         if not isinstance(name, str):
             continue
-        normalized = name.strip().lower()
-        if normalized in catalog or normalized == HALLUCINATED_TOOL:
+        normalized = _resolve_catalog_name(name, catalog)
+        if normalized is not None:
             return ToolCallPrediction(
                 normalized,
                 arguments if isinstance(arguments, dict) else {},

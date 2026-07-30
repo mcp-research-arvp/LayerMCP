@@ -28,6 +28,8 @@ HALLUCINATED_TOOL = "hallucinated_tool"
 PROMPT_TEMPLATE = "tool_name_only_v1"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
+DEFAULT_MAX_TOOL_TOKENS = 512
+MAX_TOOL_TOKENS_ENV_VAR = "LAYERMCP_GPT_OSS_MAX_TOOL_TOKENS"
 
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
@@ -143,12 +145,28 @@ def _generate_prediction(
     tool_catalog: Sequence[str],
     native_tools: list[dict[str, Any]],
 ) -> ToolCallPrediction:
+    raw_max_tokens = os.environ.get(MAX_TOOL_TOKENS_ENV_VAR)
+    try:
+        max_tokens = (
+            int(raw_max_tokens)
+            if raw_max_tokens is not None
+            else DEFAULT_MAX_TOOL_TOKENS
+        )
+    except ValueError as exc:
+        raise ValueError(
+            f"{MAX_TOOL_TOKENS_ENV_VAR} must be an integer."
+        ) from exc
+    if not 64 <= max_tokens <= 2048:
+        raise ValueError(
+            f"{MAX_TOOL_TOKENS_ENV_VAR} must be between 64 and 2048."
+        )
+
     prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.assistant_action_stop_tokens,
         temperature=1.0,
-        max_tokens=128,
+        max_tokens=max_tokens,
     )
     return parse_tool_call(result.text, tool_catalog, result.tool_call)
 
@@ -183,9 +201,11 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
             "available functions.\n"
             f"Previous response:\n{prediction.raw_output}\n"
             "Reconsider the request using the provided function descriptions "
-            "and JSON schemas. Call exactly one available function when one "
-            "can perform the request. Use hallucinated_tool only when none of "
-            "the available functions applies."
+            "and JSON schemas. This is a tool-routing benchmark: do not answer "
+            "the request directly and do not ask a clarification question. "
+            "Call exactly one available function when one can perform the "
+            "request, using its exact function name. Use hallucinated_tool "
+            "only when none of the available functions applies."
         )
         reconsidered = generate_prediction(no_call_query)
         prediction = ToolCallPrediction(

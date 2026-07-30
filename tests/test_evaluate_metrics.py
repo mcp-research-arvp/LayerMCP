@@ -1,16 +1,39 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from evaluation.evaluate import (
     _build_aggregate_metrics,
     _exact_argument_match,
     _normalize_json,
     _score_sample,
+    load_benchmark,
 )
 
 
 class EvaluateMetricTests(unittest.TestCase):
+    def test_finance_fixture_context_is_loaded_without_gold_answer(self) -> None:
+        project_root = Path(__file__).resolve().parents[1]
+        samples = load_benchmark(
+            project_root
+            / "benchmark"
+            / "finance"
+            / "tool_routing_finance_tatqa_public_derived.json"
+        )
+        sample = next(
+            item
+            for item in samples
+            if item.id == "finance_public_tatqa_query_table_010"
+        )
+
+        self.assertIsNotNone(sample.model_context)
+        context = sample.model_context or ""
+        self.assertIn("tatqa-public-test-gold-v1", context)
+        self.assertIn("f1e5a9243865198ceddc74bd6a0b10b5", context)
+        self.assertIn("PSAs granted", context)
+        self.assertNotIn("136218", context)
+
     def test_correct_tool_and_correct_args(self) -> None:
         score = _score_sample(
             expected_tool="calculator",

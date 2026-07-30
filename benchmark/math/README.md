@@ -76,6 +76,37 @@ Breakdown by expected tool:
 | `modular_arithmetic` | 8 |
 | `base_arithmetic` | 5 |
 
+### `tool_routing_math_public_derived_expansion.json`
+
+- Records: 400
+- Sources: pinned DeepMind Mathematics Dataset and GSM8K
+- Domain: `mathematics`
+- Purpose: tool-balanced, executable public-derived single-step coverage.
+
+The file contains 100 GSM8K calculator rows and 300 deterministically generated
+DeepMind rows. Every record has a non-null expected answer, source revision,
+stable source coordinate, canonical source hash, license, and transformation
+notes. DeepMind records additionally store the module, generation seed, and
+accepted generated index. See
+`fixtures/PUBLIC_EXPANSION_ATTRIBUTION.md` and
+`build_public_expansion.py`.
+
+Breakdown by expected tool:
+
+| Tool | Records |
+| --- | ---: |
+| `calculator` | 120 |
+| `simplify_expression` | 25 |
+| `solve_equation` | 35 |
+| `factor_expression` | 15 |
+| `expand_expression` | 25 |
+| `differentiate_expression` | 40 |
+| `convert_units` | 40 |
+| `integer_factorization` | 25 |
+| `gcd_lcm` | 25 |
+| `modular_arithmetic` | 20 |
+| `base_arithmetic` | 30 |
+
 This public-derived set currently does not include `convert_units` or `differentiate_expression` examples because the selected public MATH records were focused on arithmetic, algebra, number theory, and base arithmetic.
 
 Difficulty comes from the public source levels:

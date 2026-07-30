@@ -111,6 +111,21 @@ Difficulty breakdown:
 | `medium` | 22 |
 | `hard` | 2 |
 
+### `tool_routing_enterprise_tau2_public_adapted.json`
+
+- Records: 127
+- Source: pinned tau2-bench retail tasks
+- Domain: `enterprise_automation`
+- Purpose: one executable public-adapted gold retail action per row.
+
+The source action name and intent are preserved, while tau2 entity IDs are
+explicitly mapped to valid entities in LayerMCP's bounded retail fixture.
+Every row records the source task/action IDs, split, original arguments,
+canonical task hash, license, transformation notes, entity-mapping notes, and a
+non-null expected-answer subset verified by deterministic double execution.
+See `fixtures/TAU2_RETAIL_ATTRIBUTION.md` and
+`build_tau2_retail_expansion.py`.
+
 ## Schema Notes
 
 All enterprise files use the standard benchmark schema:

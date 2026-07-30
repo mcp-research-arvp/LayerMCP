@@ -15,6 +15,12 @@ from mcp_server.server import mcp
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "enterprise" / "tool_routing_enterprise_v2_controlled.json"
 PUBLIC_ADAPTED_PATH = PROJECT_ROOT / "benchmark" / "enterprise" / "tool_routing_enterprise_public_adapted.json"
+TAU2_EXPANSION_PATH = (
+    PROJECT_ROOT
+    / "benchmark"
+    / "enterprise"
+    / "tool_routing_enterprise_tau2_public_adapted.json"
+)
 TAU3_TASKS_PATH = PROJECT_ROOT / "data" / "raw" / "tau3_retail" / "benchmark" / "tasks.json"
 
 FROZEN_RETAIL_TOOLS = {
@@ -45,6 +51,33 @@ PUBLIC_EXPECTED_ANSWER_PILOT = {
     "enterprise_public_adapted_return_delivered_order_items_001": "return_delivered_order_items",
     "enterprise_public_adapted_exchange_delivered_order_items_001": "exchange_delivered_order_items",
     "enterprise_public_adapted_transfer_to_human_agents_001": "transfer_to_human_agents",
+}
+TAU2_EXPANSION_COUNTS = {
+    "find_user_id_by_email": 10,
+    "find_user_id_by_name_zip": 12,
+    "get_user_details": 12,
+    "get_order_details": 15,
+    "get_product_details": 12,
+    "cancel_pending_order": 10,
+    "modify_pending_order_items": 10,
+    "modify_pending_order_address": 10,
+    "modify_user_address": 8,
+    "return_delivered_order_items": 12,
+    "exchange_delivered_order_items": 12,
+    "transfer_to_human_agents": 4,
+}
+TAU2_PROVENANCE_FIELDS = {
+    "source_dataset",
+    "source_revision",
+    "source_split",
+    "source_task_id",
+    "source_action_id",
+    "source_action",
+    "source_expected_args",
+    "source_hash",
+    "source_license",
+    "transformation_notes",
+    "entity_mapping_notes",
 }
 
 REQUIRED_FIELDS = {
@@ -215,6 +248,51 @@ class EnterprisePublicAdaptedBenchmarkTests(unittest.TestCase):
         for sample in self.samples:
             result = _run_registered_tool(sample.expected_tool, sample.expected_args)
             self.assertIsNotNone(result)
+
+
+class EnterpriseTau2PublicAdaptedExpansionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        with TAU2_EXPANSION_PATH.open("r", encoding="utf-8") as handle:
+            cls.raw_samples = json.load(handle)
+        cls.samples = load_benchmark(TAU2_EXPANSION_PATH)
+
+    def test_count_balance_schema_and_provenance(self) -> None:
+        self.assertEqual(len(self.raw_samples), 127)
+        self.assertEqual(len(self.samples), 127)
+        self.assertEqual(
+            Counter(sample["expected_tool"] for sample in self.raw_samples),
+            TAU2_EXPANSION_COUNTS,
+        )
+        ids = [sample["id"] for sample in self.raw_samples]
+        self.assertEqual(len(ids), len(set(ids)))
+        for sample in self.raw_samples:
+            self.assertTrue(REQUIRED_FIELDS.issubset(sample))
+            self.assertTrue(TAU2_PROVENANCE_FIELDS.issubset(sample))
+            self.assertEqual(sample["source"], "public_adapted")
+            self.assertEqual(sample["source_dataset"], "tau2_bench_retail")
+            self.assertIn(sample["source_split"], {"train", "test"})
+            self.assertEqual(len(sample["source_hash"]), 64)
+            self.assertEqual(sample["source_action"], sample["expected_tool"])
+            self.assertNotIn("available_tools", sample)
+            self.assertIsNotNone(sample["expected_answer"])
+            self.assertGreater(len(sample["entity_mapping_notes"]), 0)
+
+    def test_args_match_signatures_and_gold_results_are_deterministic(self) -> None:
+        for sample in self.raw_samples:
+            tool = mcp._tool_manager._tools[sample["expected_tool"]]
+            inspect.signature(tool.fn).bind(**sample["expected_args"])
+            first = _structured_result_value(
+                _run_registered_tool(sample["expected_tool"], sample["expected_args"])
+            )
+            second = _structured_result_value(
+                _run_registered_tool(sample["expected_tool"], sample["expected_args"])
+            )
+            self.assertEqual(first, second, sample["id"])
+            self.assertTrue(
+                _contains_expected_answer(first, sample["expected_answer"]),
+                sample["id"],
+            )
 
 
 if __name__ == "__main__":

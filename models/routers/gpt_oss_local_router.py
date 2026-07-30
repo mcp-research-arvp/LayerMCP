@@ -25,12 +25,11 @@ ROUTER_BACKEND = "local_gpt_oss_pytorch"
 ARCHITECTURE_SOURCE = "models.architectures.gpt_oss_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
-PROMPT_TEMPLATE = "tool_name_only_v1"
+PROMPT_TEMPLATE = "harmony_structured_context_sql_v2"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
 DEFAULT_MAX_TOOL_TOKENS = 512
 MAX_TOOL_TOKENS_ENV_VAR = "LAYERMCP_GPT_OSS_MAX_TOOL_TOKENS"
-
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
     if checkpoint_path is not None:
@@ -139,6 +138,37 @@ def _build_native_tools(
     ]
 
 
+def _finance_argument_errors(prediction: ToolCallPrediction) -> list[str]:
+    """Catch finance SQL mistakes that ordinary JSON Schema cannot express."""
+    if prediction.selected_tool != "finance_query_table":
+        return []
+
+    sql = prediction.selected_args.get("sql")
+    errors: list[str] = []
+    if not isinstance(sql, str):
+        return errors
+
+    # SQL without FROM is valid for constant arithmetic. When FROM is used,
+    # the fixture authorizer exposes only the table named `data`.
+    table_names = re.findall(
+        r"\b(?:from|join)\s+([`\"\[]?[^`\"\]\s,;()]+[`\"\]]?)",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    invalid_tables = [
+        name for name in table_names
+        if name.strip("`\"[]").lower() != "data"
+    ]
+    if invalid_tables:
+        errors.append(
+            "the only valid SQLite table is data; replace invalid table "
+            f"name(s) {invalid_tables!r} with data"
+        )
+    if not re.match(r"^\s*(?:with\b|select\b)", sql, flags=re.IGNORECASE):
+        errors.append("sql must be one read-only SELECT statement")
+    return errors
+
+
 def _generate_prediction(
     generator: Any,
     prompt_query: str,
@@ -222,6 +252,7 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         prediction.selected_args,
         selected_schema,
     )
+    argument_errors.extend(_finance_argument_errors(prediction))
     if not argument_errors:
         return prediction
 
@@ -289,6 +320,7 @@ def repair_tool_call(
         corrected.selected_args,
         schemas.get(corrected.selected_tool, {}),
     )
+    corrected_errors.extend(_finance_argument_errors(corrected))
     if corrected_errors:
         schema_correction_query = (
             f"{correction_query}\n\n"

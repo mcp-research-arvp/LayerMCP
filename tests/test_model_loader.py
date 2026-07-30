@@ -221,6 +221,38 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
+    def test_gpt_oss_finance_validation_rejects_invented_table(self) -> None:
+        from models.routers.gpt_oss_local_router import _finance_argument_errors
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        prediction = ToolCallPrediction(
+            selected_tool="finance_query_table",
+            selected_args={
+                "dataset_id": "finqa-public-test-v1",
+                "sql": "SELECT numeric_value FROM source_table",
+            },
+            raw_output="",
+        )
+
+        errors = _finance_argument_errors(prediction)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("only valid SQLite table is data", errors[0])
+
+    def test_gpt_oss_finance_validation_accepts_data_table(self) -> None:
+        from models.routers.gpt_oss_local_router import _finance_argument_errors
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        prediction = ToolCallPrediction(
+            selected_tool="finance_query_table",
+            selected_args={
+                "dataset_id": "finqa-public-test-v1",
+                "sql": "SELECT AVG(numeric_value) FROM data",
+            },
+            raw_output="",
+        )
+
+        self.assertEqual(_finance_argument_errors(prediction), [])
+
     def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
         from models.routers.structured_tool_call import parse_tool_call
 

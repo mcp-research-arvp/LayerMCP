@@ -188,6 +188,39 @@ def _exact_argument_match(selected_args: dict[str, Any], expected_args: dict[str
     return _normalize_json(selected_args) == _normalize_json(expected_args)
 
 
+def _result_matches_expected(actual: Any, expected: Any) -> bool:
+    """Compare expected result fields while allowing extra tool metadata."""
+    if expected is None:
+        return False
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(
+            key in actual and _result_matches_expected(actual[key], value)
+            for key, value in expected.items()
+        )
+    if isinstance(expected, list):
+        return (
+            isinstance(actual, list)
+            and len(actual) == len(expected)
+            and all(
+                _result_matches_expected(actual_item, expected_item)
+                for actual_item, expected_item in zip(actual, expected)
+            )
+        )
+    if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+        return abs(float(actual) - float(expected)) <= 1e-9
+    return actual == expected
+
+
+def _answer_match(tool_result: str | None, expected_answer: Any) -> bool:
+    if not tool_result or expected_answer is None:
+        return False
+    try:
+        actual = json.loads(tool_result)
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return _result_matches_expected(actual, expected_answer)
+
+
 def _score_sample(
     *,
     expected_tool: str,
@@ -258,6 +291,11 @@ def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "execution_success_rate": (
             sum(1 for record in records if record["execution_success"]) / total
+            if total
+            else 0.0
+        ),
+        "answer_match_accuracy": (
+            sum(1 for record in records if record.get("answer_match_correct")) / total
             if total
             else 0.0
         ),
@@ -375,8 +413,15 @@ async def _evaluate_with_server(
                 if sample.model_context:
                     model_query = (
                         f"{query}\n\n"
-                        "Benchmark source-table context available to the "
-                        f"tools:\n{sample.model_context}"
+                        "Use the following benchmark source-table context to "
+                        "construct the tool arguments. It contains the exact "
+                        "dataset ID, column names, source selector, and relevant "
+                        "rows. For finance_query_table, the only SQLite table "
+                        "name is data; use dataset_id only as the tool argument. "
+                        "Do not invent table names, source identifiers, or cell "
+                        "values. Compute the requested arithmetic in the SELECT "
+                        "so the query returns the final answer.\n"
+                        f"Source-table context:\n{sample.model_context}"
                     )
                 expected = sample.expected_tool
 
@@ -550,6 +595,11 @@ async def _evaluate_with_server(
                     execution_success=execution_success,
                     execution_attempted=execution_attempted,
                 )
+                answer_match_correct = (
+                    score.tool_selection_correct
+                    and execution_success
+                    and _answer_match(tool_result, sample.expected_answer)
+                )
                 record = {
                     "sample_id": sample.id,
                     "domain": sample.domain,
@@ -561,6 +611,7 @@ async def _evaluate_with_server(
                     "tool_selection_correct": score.tool_selection_correct,
                     "argument_match_correct": score.argument_match_correct,
                     "execution_success": score.execution_success,
+                    "answer_match_correct": answer_match_correct,
                     "failure_category": score.failure_category,
                     "raw_model_output": raw_model_output,
                     "task_type": sample.task_type,
@@ -609,6 +660,7 @@ async def _evaluate_with_server(
     print(f"Tool selection accuracy: {metrics['tool_selection_accuracy']:.2%}")
     print(f"Exact argument match accuracy: {metrics['exact_argument_match_accuracy']:.2%}")
     print(f"Execution success rate: {metrics['execution_success_rate']:.2%}")
+    print(f"Answer match accuracy: {metrics['answer_match_accuracy']:.2%}")
     print(f"No tool call rate: {metrics['no_tool_call_rate']:.2%}")
     print(f"Avg Latency: {avg_latency:.2f}s")
     print(f"Executed tool calls: {executed_tool_calls}")

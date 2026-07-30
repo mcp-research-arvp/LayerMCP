@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from evaluation.evaluate import (
+    _answer_match,
     _build_aggregate_metrics,
     _exact_argument_match,
     _normalize_json,
@@ -172,6 +173,22 @@ class EvaluateMetricTests(unittest.TestCase):
 
         self.assertEqual(_normalize_json(left), _normalize_json(right))
         self.assertTrue(_exact_argument_match(left, right))
+
+    def test_answer_match_allows_extra_tool_metadata(self) -> None:
+        actual = (
+            '{"dataset_id":"finqa-public-test-v1","engine":"sqlite3",'
+            '"columns":["result"],"rows":[[94.0]],"row_count":1,'
+            '"truncated":false}'
+        )
+        expected = {
+            "dataset_id": "finqa-public-test-v1",
+            "columns": ["result"],
+            "rows": [[94.0]],
+            "row_count": 1,
+            "truncated": False,
+        }
+
+        self.assertTrue(_answer_match(actual, expected))
 
 
 if __name__ == "__main__":

@@ -468,6 +468,40 @@ class RouterRegistryTests(unittest.TestCase):
         correction_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
         self.assertIn("missing required argument", correction_prompt)
 
+    def test_schema_validation_handles_optional_any_of_and_extra_args(self) -> None:
+        from models.routers.structured_tool_call import validate_tool_arguments
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "company_identifier": {"type": "string"},
+                "fiscal_year": {
+                    "anyOf": [{"type": "integer"}, {"type": "null"}],
+                    "default": None,
+                },
+            },
+            "required": ["company_identifier"],
+        }
+        self.assertEqual(
+            validate_tool_arguments(
+                {"company_identifier": "LMCP", "fiscal_year": 2024},
+                schema,
+            ),
+            [],
+        )
+        self.assertTrue(
+            validate_tool_arguments(
+                {"company_identifier": "LMCP", "fiscal_year": "FY2024"},
+                schema,
+            )
+        )
+        self.assertTrue(
+            validate_tool_arguments(
+                {"company_identifier": "LMCP", "unsupported": 2024},
+                schema,
+            )
+        )
+
     def test_gpt_oss_router_repairs_call_from_execution_feedback(self) -> None:
         from models.routers import gpt_oss_local_router
         from models.routers.structured_tool_call import ToolCallPrediction

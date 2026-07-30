@@ -389,8 +389,11 @@ async def _evaluate_with_server(
                             print(f"Tool call: {tool_result}")
                         else:
                             tool_error = tool_result
-                            print(f"Tool call error: {tool_error}")
                             if hasattr(router, "repair_tool_call"):
+                                print(
+                                    "Initial tool call failed; requesting "
+                                    f"one correction: {tool_error}"
+                                )
                                 repair_start = time.perf_counter()
                                 corrected = router.repair_tool_call(
                                     query,
@@ -446,6 +449,8 @@ async def _evaluate_with_server(
                                         )
                             if not execution_success:
                                 errors_count += 1
+                                if not hasattr(router, "repair_tool_call"):
+                                    print(f"Tool call error: {tool_error}")
                     except Exception as exc:  # pragma: no cover - exercised by integration runs
                         errors_count += 1
                         tool_error = str(exc)

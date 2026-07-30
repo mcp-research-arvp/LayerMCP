@@ -37,24 +37,6 @@ _CODE_FILES = {
 }
 
 
-def _normalize_arithmetic_notation(expression: str) -> str:
-    """Translate common display-math notation into the safe Python grammar."""
-    normalized = expression.strip()
-    if normalized.startswith("$") and normalized.endswith("$"):
-        normalized = normalized[1:-1].strip()
-    normalized = normalized.replace("\\left", "").replace("\\right", "")
-    normalized = normalized.replace("\\cdot", "*").replace("\\times", "*")
-    normalized = normalized.replace("×", "*").replace("÷", "/")
-    normalized = re.sub(
-        r"\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}",
-        r"((\1)/(\2))",
-        normalized,
-    )
-    normalized = re.sub(r"\^\s*\{([^{}]+)\}", r"**(\1)", normalized)
-    normalized = normalized.replace("^", "**")
-    return normalized
-
-
 def _safe_eval(node: ast.AST) -> int | float:
     if isinstance(node, ast.Expression):
         return _safe_eval(node.body)
@@ -99,9 +81,9 @@ def calculator(expression: str) -> dict[str, Any]:
     if len(normalized) > 200:
         raise ValueError("Expression is too long.")
 
-    # Normalize notation before parsing; _safe_eval still controls every AST
-    # node and operator that can execute.
-    tree = ast.parse(_normalize_arithmetic_notation(normalized), mode="eval")
+    # In mathematical input, ^ conventionally means exponentiation. Python
+    # parses it as bitwise XOR, which is outside this arithmetic tool's grammar.
+    tree = ast.parse(normalized.replace("^", "**"), mode="eval")
     result = _safe_eval(tree)
 
     return {

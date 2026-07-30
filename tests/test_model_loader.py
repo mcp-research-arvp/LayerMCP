@@ -804,6 +804,73 @@ class RouterRegistryTests(unittest.TestCase):
         self.assertIn("unsupported unit conversion", repair_prompt)
         self.assertIn('"from_unit": "6"', repair_prompt)
 
+    def test_execution_feedback_correction_is_schema_validated(self) -> None:
+        from models.routers import gpt_oss_local_router
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.side_effect = [
+            SimpleNamespace(
+                text="",
+                tool_call=SimpleNamespace(
+                    function=SimpleNamespace(
+                        name="finance_get_company_facts",
+                        arguments=(
+                            '{"company_identifier":"LMCP",'
+                            '"fiscal_year":"FY2024"}'
+                        ),
+                    )
+                ),
+            ),
+            SimpleNamespace(
+                text="",
+                tool_call=SimpleNamespace(
+                    function=SimpleNamespace(
+                        name="finance_get_company_facts",
+                        arguments=(
+                            '{"company_identifier":"LMCP",'
+                            '"fiscal_year":2024}'
+                        ),
+                    )
+                ),
+            ),
+        ]
+        previous = ToolCallPrediction(
+            selected_tool="finance_get_company_facts",
+            selected_args={"company_identifier": "LayerMCP"},
+            raw_output="first call",
+        )
+        schema = {
+            "type": "object",
+            "properties": {
+                "company_identifier": {"type": "string"},
+                "fiscal_year": {
+                    "anyOf": [{"type": "integer"}, {"type": "null"}],
+                },
+            },
+            "required": ["company_identifier"],
+        }
+
+        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
+            corrected = gpt_oss_local_router.repair_tool_call(
+                "Get LayerMCP company facts for fiscal 2024.",
+                ["finance_get_company_facts"],
+                previous,
+                "Unknown company_identifier. Available tickers: LMCP, TBLR",
+                {"finance_get_company_facts": schema},
+            )
+
+        self.assertEqual(
+            corrected.selected_args,
+            {"company_identifier": "LMCP", "fiscal_year": 2024},
+        )
+        self.assertEqual(generator.generate_text.call_count, 2)
+        second_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
+        self.assertIn("still violates its JSON schema", second_prompt)
+        self.assertIn("FY2024", second_prompt)
+
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path
 

@@ -328,21 +328,7 @@ def _format_in_base(value: int, base: int) -> str:
 def _rewrite_base_expression(expression: str, base: int) -> str:
     if not 2 <= base <= 36:
         raise ValueError("base must be between 2 and 36.")
-    normalized = expression.strip()
-    if normalized.startswith("$") and normalized.endswith("$"):
-        normalized = normalized[1:-1].strip()
-    normalized = normalized.replace("\\left", "").replace("\\right", "")
-    normalized = normalized.replace("\\cdot", "*").replace("\\times", "*")
-    normalized = normalized.replace("×", "*")
-
-    # Accept standard base labels such as 1011_2 and 1011_{2}. The separately
-    # supplied input_base remains authoritative, and mismatched labels fail.
-    labels = re.findall(r"_\{?(\d+)\}?", normalized)
-    if any(int(label) != base for label in labels):
-        raise ValueError("base label does not match input_base.")
-    normalized = re.sub(r"_\{?\d+\}?", "", normalized)
-
-    if not re.fullmatch(r"[0-9A-Za-z+\-*\s()]+", normalized):
+    if not re.fullmatch(r"[0-9A-Za-z+\-*\s()]+", expression):
         raise ValueError("base expression contains unsupported characters.")
 
     def replace_token(match: re.Match[str]) -> str:
@@ -352,7 +338,7 @@ def _rewrite_base_expression(expression: str, base: int) -> str:
         except ValueError as exc:
             raise ValueError(f"invalid base-{base} digit in {token}.") from exc
 
-    return re.sub(r"[0-9A-Za-z]+", replace_token, normalized)
+    return re.sub(r"[0-9A-Za-z]+", replace_token, expression)
 
 
 def base_arithmetic(

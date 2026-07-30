@@ -284,6 +284,63 @@ def _argument_schema_error(
     return None
 
 
+def _parse_harmony_native_call(
+    response: str,
+    catalog: set[str],
+) -> tuple[str, dict[str, Any]] | None:
+    """Parse GPT-OSS Harmony calls, including legacy API renderings.
+
+    Official Harmony commonly renders ``to=functions.<name>``. Some local
+    decoders instead expose ``to=<name> to=functions`` or only
+    ``to=functions`` after mentioning the function in commentary.
+    """
+    names: list[str] = []
+    names.extend(
+        re.findall(r"\bto=functions\.([a-zA-Z0-9_.\-]+)", response)
+    )
+    names.extend(re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", response))
+
+    normalized_name: str | None = None
+    for name in reversed(names):
+        if name.lower() == "functions":
+            continue
+        candidate = name.removeprefix("functions.")
+        resolved = _resolve_catalog_name(candidate, catalog)
+        if resolved is not None and resolved != HALLUCINATED_TOOL:
+            normalized_name = resolved
+            break
+
+    # Compatibility with local API output where the recipient is the fixed
+    # word "functions" and the actual function is present in commentary.
+    if normalized_name is None and "to=functions" in response:
+        mentioned = [
+            tool
+            for tool in catalog
+            if re.search(
+                rf"(?<![A-Za-z0-9_]){re.escape(tool)}(?![A-Za-z0-9_])",
+                response,
+            )
+        ]
+        if len(mentioned) == 1:
+            normalized_name = mentioned[0]
+
+    if normalized_name is None:
+        return None
+
+    arguments: dict[str, Any] = {}
+    marker = "<|message|>"
+    marker_index = response.rfind(marker)
+    if marker_index >= 0:
+        raw = response[marker_index + len(marker):].lstrip()
+        try:
+            payload, _ = json.JSONDecoder().raw_decode(raw)
+            if isinstance(payload, dict):
+                arguments = payload
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return normalized_name, arguments
+
+
 def parse_tool_call(
     response: str,
     available_tools: Sequence[str],
@@ -325,6 +382,19 @@ def parse_tool_call(
                 attempted_tool=normalized,
                 diagnostic="tool name is not in the live MCP catalog",
             )
+
+    harmony_call = _parse_harmony_native_call(response, catalog)
+    if harmony_call is not None:
+        name, arguments = harmony_call
+        schema_error = _argument_schema_error(name, arguments, tool_schemas)
+        return ToolCallPrediction(
+            name,
+            arguments,
+            response,
+            parse_status="invalid_arguments" if schema_error else "ok",
+            attempted_tool=name,
+            diagnostic=schema_error,
+        )
 
     qwen_call = _parse_qwen_native_call(response)
     if qwen_call is not None:

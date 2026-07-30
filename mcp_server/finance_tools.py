@@ -916,7 +916,22 @@ def finance_query_table(
     sql: str,
     max_rows: int = 100,
 ) -> dict[str, Any]:
-    """Run bounded read-only SQLite over one allowlisted in-memory table named data."""
+    """Query an offline finance benchmark table with bounded read-only SQLite.
+
+    The selected dataset is always exposed as exactly one SQLite table named
+    ``data``. SQL must therefore use ``FROM data`` (or a query that does not
+    need a FROM clause); never use the dataset ID, ``dataset``,
+    ``source_table``, or a source UID as a table name.
+
+    Allowed dataset IDs are ``finqa-public-test-v1`` and
+    ``tatqa-public-test-gold-v1`` (plus controlled test fixtures advertised by
+    the tool error). FinQA rows use source_split, source_row_index, source_id,
+    table_row_index, table_column_index, row_label, column_label, raw_value,
+    and numeric_value. TAT-QA rows use source_context_index, source_table_uid,
+    source_id, table_row_index, table_column_index, row_label, column_label,
+    raw_value, and numeric_value. Generate one read-only SELECT statement.
+    Use dataset_id only to select the dataset, not as a SQL identifier.
+    """
     normalized_dataset = _required_text(dataset_id, "dataset_id", maximum=100)
     query = _normalize_sql(sql)
     maximum = _bounded_integer(max_rows, "max_rows", 1, _MAX_SQL_ROWS)

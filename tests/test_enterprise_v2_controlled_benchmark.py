@@ -32,6 +32,21 @@ FROZEN_RETAIL_TOOLS = {
     "transfer_to_human_agents",
 }
 
+PUBLIC_EXPECTED_ANSWER_PILOT = {
+    "enterprise_public_adapted_find_user_id_by_email_001": "find_user_id_by_email",
+    "enterprise_public_adapted_find_user_id_by_name_zip_001": "find_user_id_by_name_zip",
+    "enterprise_public_adapted_get_user_details_001": "get_user_details",
+    "enterprise_public_adapted_get_order_details_001": "get_order_details",
+    "enterprise_public_adapted_get_product_details_001": "get_product_details",
+    "enterprise_public_adapted_cancel_pending_order_001": "cancel_pending_order",
+    "enterprise_public_adapted_modify_pending_order_items_001": "modify_pending_order_items",
+    "enterprise_public_adapted_modify_pending_order_address_001": "modify_pending_order_address",
+    "enterprise_public_adapted_modify_user_address_001": "modify_user_address",
+    "enterprise_public_adapted_return_delivered_order_items_001": "return_delivered_order_items",
+    "enterprise_public_adapted_exchange_delivered_order_items_001": "exchange_delivered_order_items",
+    "enterprise_public_adapted_transfer_to_human_agents_001": "transfer_to_human_agents",
+}
+
 REQUIRED_FIELDS = {
     "id",
     "domain",
@@ -58,6 +73,30 @@ PROVENANCE_FIELDS = {
 def _run_registered_tool(name: str, arguments: dict) -> object:
     reset_retail_state()
     return asyncio.run(mcp._tool_manager._tools[name].run(arguments))
+
+
+def _structured_result_value(value: object) -> object:
+    if isinstance(value, dict):
+        return value
+    return {"result": value}
+
+
+def _contains_expected_answer(actual: object, expected: object) -> bool:
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(
+            key in actual and _contains_expected_answer(actual[key], expected_value)
+            for key, expected_value in expected.items()
+        )
+    if isinstance(expected, list):
+        return (
+            isinstance(actual, list)
+            and len(actual) == len(expected)
+            and all(
+                _contains_expected_answer(actual_value, expected_value)
+                for actual_value, expected_value in zip(actual, expected)
+            )
+        )
+    return actual == expected
 
 
 class EnterpriseV2ControlledBenchmarkTests(unittest.TestCase):
@@ -136,6 +175,36 @@ class EnterprisePublicAdaptedBenchmarkTests(unittest.TestCase):
         counts = Counter(sample["expected_tool"] for sample in self.raw_samples)
         self.assertEqual(set(counts), FROZEN_RETAIL_TOOLS)
         self.assertTrue(all(count >= 1 for count in counts.values()))
+
+    def test_expected_answer_pilot_has_one_row_per_retail_tool(self) -> None:
+        populated = {
+            sample["id"]: sample
+            for sample in self.raw_samples
+            if sample["expected_answer"] is not None
+        }
+        self.assertEqual(set(populated), set(PUBLIC_EXPECTED_ANSWER_PILOT))
+        self.assertEqual(
+            {sample["expected_tool"] for sample in populated.values()},
+            FROZEN_RETAIL_TOOLS,
+        )
+        for sample_id, expected_tool in PUBLIC_EXPECTED_ANSWER_PILOT.items():
+            self.assertEqual(populated[sample_id]["expected_tool"], expected_tool)
+
+    def test_expected_answer_pilot_matches_deterministic_gold_execution(self) -> None:
+        samples_by_id = {sample["id"]: sample for sample in self.raw_samples}
+        for sample_id in PUBLIC_EXPECTED_ANSWER_PILOT:
+            sample = samples_by_id[sample_id]
+            first = _structured_result_value(
+                _run_registered_tool(sample["expected_tool"], sample["expected_args"])
+            )
+            second = _structured_result_value(
+                _run_registered_tool(sample["expected_tool"], sample["expected_args"])
+            )
+            self.assertEqual(first, second, sample_id)
+            self.assertTrue(
+                _contains_expected_answer(first, sample["expected_answer"]),
+                sample_id,
+            )
 
     def test_expected_args_match_registered_tool_signatures(self) -> None:
         for sample in self.samples:

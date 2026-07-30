@@ -100,6 +100,10 @@ Each v2 retail tool has 2 public-adapted examples. Records include provenance fi
 - `source_action`
 - `provenance_type`
 
+One hand-audited row per retail tool (12 rows total) includes a concise
+`expected_answer` subset verified against deterministic gold-tool execution.
+The remaining public-adapted rows retain `expected_answer: null`.
+
 Difficulty breakdown:
 
 | Difficulty | Records |

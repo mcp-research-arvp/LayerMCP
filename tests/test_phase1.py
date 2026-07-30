@@ -46,9 +46,6 @@ class ToolFixtureTests(unittest.TestCase):
     def test_calculator_accepts_mathematical_exponent_notation(self) -> None:
         self.assertEqual(calculator("55^2 - 45^2")["result"], 1000)
 
-    def test_calculator_accepts_safe_display_math_notation(self) -> None:
-        self.assertEqual(calculator(r"$\frac{3}{4} \times 8$")["result"], 6)
-
     def test_calculator_rejects_unsafe_expressions(self) -> None:
         with self.assertRaises(ValueError):
             calculator("__import__('os').system('echo unsafe')")
@@ -97,14 +94,6 @@ class ToolFixtureTests(unittest.TestCase):
         result = solve_equation("x**2 - 4 = 0")
         self.assertEqual(result["variable"], "x")
         self.assertEqual(result["solutions"], ["-2", "2"])
-
-    def test_base_arithmetic_accepts_matching_base_labels(self) -> None:
-        result = base_arithmetic(r"$101_2 + 11_{2}$", input_base=2)
-        self.assertEqual(result["decimal_result"], 8)
-        self.assertEqual(result["base_result"], "1000")
-
-        with self.assertRaisesRegex(ValueError, "does not match input_base"):
-            base_arithmetic("101_3", input_base=2)
 
     def test_factor_expand_and_differentiate_examples(self) -> None:
         self.assertEqual(

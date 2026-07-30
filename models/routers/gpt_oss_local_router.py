@@ -228,10 +228,15 @@ def repair_tool_call(
         f"Failed function: {previous_prediction.selected_tool}\n"
         "Failed arguments:\n"
         f"{json.dumps(previous_prediction.selected_args, ensure_ascii=True)}\n"
+        "Failed function JSON schema:\n"
+        f"{json.dumps(schemas.get(previous_prediction.selected_tool, {}), ensure_ascii=True)}\n"
         f"Tool error:\n{normalized_error}\n"
         "Call exactly one available function again with corrected arguments. "
         "Use the original user request, the tool error, and the provided JSON "
-        "schemas. Do not repeat arguments that the tool error says are invalid."
+        "schemas. Do not repeat arguments that the tool error says are invalid. "
+        "When the error reports unsupported syntax or an invalid value, rewrite "
+        "that argument into the format required by the function instead of "
+        "copying the failed value."
     )
     corrected = _generate_prediction(
         _load_generator(),
@@ -239,6 +244,36 @@ def repair_tool_call(
         tool_catalog,
         native_tools,
     )
+    corrected_errors = validate_tool_arguments(
+        corrected.selected_args,
+        schemas.get(corrected.selected_tool, {}),
+    )
+    if corrected_errors:
+        schema_correction_query = (
+            f"{correction_query}\n\n"
+            "The corrected call still violates its JSON schema.\n"
+            f"Corrected function: {corrected.selected_tool}\n"
+            "Corrected arguments:\n"
+            f"{json.dumps(corrected.selected_args, ensure_ascii=True)}\n"
+            "Schema validation errors:\n- "
+            + "\n- ".join(corrected_errors)
+            + "\nCall exactly one available function with schema-valid arguments."
+        )
+        second_correction = _generate_prediction(
+            _load_generator(),
+            schema_correction_query,
+            tool_catalog,
+            native_tools,
+        )
+        corrected = ToolCallPrediction(
+            selected_tool=second_correction.selected_tool,
+            selected_args=second_correction.selected_args,
+            raw_output=(
+                f"{corrected.raw_output}\n"
+                f"[execution-schema-correction]\n"
+                f"{second_correction.raw_output}"
+            ),
+        )
     return ToolCallPrediction(
         selected_tool=corrected.selected_tool,
         selected_args=corrected.selected_args,

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Build the pinned tau2 retail single-step public-adapted expansion."""
+"""Build deduplicated tau2-native retail single-step benchmark rows."""
 
 from __future__ import annotations
 
 import argparse
 from collections import Counter
 import hashlib
+import inspect
 import json
 import os
 from pathlib import Path
@@ -21,28 +22,33 @@ DEFAULT_OUTPUT = (
     / "enterprise"
     / "tool_routing_enterprise_tau2_public_adapted.json"
 )
+PROVENANCE_PATH = (
+    PROJECT_ROOT / "mcp_server" / "fixtures" / "tau2_retail_provenance.json"
+)
 TAU2_REVISION = "363133ada1936491fb5bcec33cd62c3518a99f65"
-TARGET_COUNTS = {
-    "find_user_id_by_email": 10,
-    "find_user_id_by_name_zip": 12,
-    "get_user_details": 12,
-    "get_order_details": 15,
-    "get_product_details": 12,
-    "cancel_pending_order": 10,
-    "modify_pending_order_items": 10,
-    "modify_pending_order_address": 10,
-    "modify_user_address": 8,
-    "return_delivered_order_items": 12,
-    "exchange_delivered_order_items": 12,
-    "transfer_to_human_agents": 4,
+SUPPORTED_TOOLS = {
+    "find_user_id_by_email",
+    "find_user_id_by_name_zip",
+    "get_user_details",
+    "get_order_details",
+    "get_product_details",
+    "cancel_pending_order",
+    "modify_pending_order_items",
+    "modify_pending_order_address",
+    "modify_user_address",
+    "return_delivered_order_items",
+    "exchange_delivered_order_items",
+    "transfer_to_human_agents",
 }
+EXCLUDED_ACTIONS = {"get_item_details", "modify_pending_order_payment"}
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def _sha256_json(value: Any) -> str:
-    encoded = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
 def _require_revision(path: Path) -> None:
@@ -58,212 +64,34 @@ def _retail_functions() -> tuple[
 ]:
     sys.path.insert(0, str(PROJECT_ROOT))
     from mcp_server.retail_state import reset_retail_state
-    from mcp_server.retail_tools import (
-        cancel_pending_order,
-        exchange_delivered_order_items,
-        find_user_id_by_email,
-        find_user_id_by_name_zip,
-        get_order_details,
-        get_product_details,
-        get_user_details,
-        modify_pending_order_address,
-        modify_pending_order_items,
-        modify_user_address,
-        return_delivered_order_items,
-        transfer_to_human_agents,
-    )
+    from mcp_server import retail_tools
 
     return {
-        "find_user_id_by_email": find_user_id_by_email,
-        "find_user_id_by_name_zip": find_user_id_by_name_zip,
-        "get_user_details": get_user_details,
-        "get_order_details": get_order_details,
-        "get_product_details": get_product_details,
-        "cancel_pending_order": cancel_pending_order,
-        "modify_pending_order_items": modify_pending_order_items,
-        "modify_pending_order_address": modify_pending_order_address,
-        "modify_user_address": modify_user_address,
-        "return_delivered_order_items": return_delivered_order_items,
-        "exchange_delivered_order_items": exchange_delivered_order_items,
-        "transfer_to_human_agents": transfer_to_human_agents,
+        name: getattr(retail_tools, name) for name in sorted(SUPPORTED_TOOLS)
     }, reset_retail_state
-
-
-def _profiles(tool: str) -> list[dict[str, Any]]:
-    profiles: dict[str, list[dict[str, Any]]] = {
-        "find_user_id_by_email": [
-            {"email": "yusuf.rossi@example.com"},
-            {"email": "mei.kovacs@example.com"},
-        ],
-        "find_user_id_by_name_zip": [
-            {
-                "first_name": "Yusuf",
-                "last_name": "Rossi",
-                "zip": "19122",
-            },
-            {
-                "first_name": "Mei",
-                "last_name": "Kovacs",
-                "zip": "28236",
-            },
-        ],
-        "get_user_details": [
-            {"user_id": "USER-YUSUF"},
-            {"user_id": "USER-MEI"},
-        ],
-        "get_order_details": [
-            {"order_id": "RET-1001"},
-            {"order_id": "RET-1002"},
-            {"order_id": "RET-1004"},
-            {"order_id": "RET-2001"},
-            {"order_id": "RET-2002"},
-        ],
-        "get_product_details": [
-            {"product_id": "PROD-KEYBOARD"},
-            {"product_id": "PROD-BOTTLE"},
-            {"product_id": "PROD-LAMP"},
-        ],
-        "cancel_pending_order": [
-            {"order_id": "RET-1001", "reason": "no longer needed"},
-            {"order_id": "RET-1002", "reason": "ordered by mistake"},
-        ],
-        "modify_pending_order_items": [
-            {
-                "order_id": "RET-1001",
-                "item_ids": ["ITEM-KB-LINEAR"],
-                "new_item_ids": ["ITEM-KB-CLICKY"],
-                "payment_method_id": "GIFT-YUSUF",
-            },
-            {
-                "order_id": "RET-1001",
-                "item_ids": ["ITEM-BOTTLE-500"],
-                "new_item_ids": ["ITEM-BOTTLE-1000"],
-                "payment_method_id": "CARD-YUSUF",
-            },
-            {
-                "order_id": "RET-1002",
-                "item_ids": ["ITEM-LAMP-USB"],
-                "new_item_ids": ["ITEM-LAMP-BATTERY"],
-                "payment_method_id": "GIFT-YUSUF",
-            },
-        ],
-        "modify_pending_order_address": [
-            {
-                "order_id": "RET-1001",
-                "address1": "101 Highway",
-                "address2": "",
-                "city": "New York",
-                "state": "NY",
-                "country": "US",
-                "zip": "10001",
-            },
-            {
-                "order_id": "RET-1002",
-                "address1": "123 Elm Street",
-                "address2": "Suite 641",
-                "city": "Austin",
-                "state": "TX",
-                "country": "US",
-                "zip": "78712",
-            },
-        ],
-        "modify_user_address": [
-            {
-                "user_id": "USER-YUSUF",
-                "address1": "101 Highway",
-                "address2": "",
-                "city": "New York",
-                "state": "NY",
-                "country": "US",
-                "zip": "10001",
-            },
-            {
-                "user_id": "USER-MEI",
-                "address1": "157 Oak Street",
-                "address2": "Suite 258",
-                "city": "Phoenix",
-                "state": "AZ",
-                "country": "US",
-                "zip": "85033",
-            },
-        ],
-        "return_delivered_order_items": [
-            {
-                "order_id": "RET-2001",
-                "item_ids": ["ITEM-BOTTLE-500"],
-                "payment_method_id": "CARD-MEI",
-            },
-            {
-                "order_id": "RET-2001",
-                "item_ids": ["ITEM-KB-LINEAR"],
-                "payment_method_id": "CARD-MEI",
-            },
-            {
-                "order_id": "RET-2001",
-                "item_ids": ["ITEM-KB-LINEAR", "ITEM-BOTTLE-500"],
-                "payment_method_id": "GIFT-MEI",
-            },
-        ],
-        "exchange_delivered_order_items": [
-            {
-                "order_id": "RET-2001",
-                "item_ids": ["ITEM-KB-LINEAR"],
-                "new_item_ids": ["ITEM-KB-CLICKY"],
-                "payment_method_id": "CARD-MEI",
-            },
-            {
-                "order_id": "RET-2001",
-                "item_ids": ["ITEM-BOTTLE-500"],
-                "new_item_ids": ["ITEM-BOTTLE-1000"],
-                "payment_method_id": "CARD-MEI",
-            },
-        ],
-        "transfer_to_human_agents": [],
-    }
-    return profiles[tool]
-
-
-def _local_args(
-    tool: str,
-    index: int,
-    source_task: dict[str, Any],
-) -> dict[str, Any]:
-    if tool == "transfer_to_human_agents":
-        reason = source_task["user_scenario"]["instructions"]["reason_for_call"]
-        return {
-            "summary": (
-                f"tau2 retail task {source_task['id']} requires human assistance: "
-                f"{reason}"
-            )
-        }
-    profiles = _profiles(tool)
-    return dict(profiles[index % len(profiles)])
 
 
 def _query(tool: str, args: dict[str, Any]) -> str:
     if tool == "find_user_id_by_email":
-        return f"Resolve retail customer email {args['email']} to the user ID."
+        return f"Find the retail user ID associated with {args['email']}."
     if tool == "find_user_id_by_name_zip":
         return (
-            f"Find the retail user ID for {args['first_name']} {args['last_name']} "
-            f"in ZIP {args['zip']}."
+            f"Find the retail user ID for {args['first_name']} "
+            f"{args['last_name']} in ZIP {args['zip']}."
         )
     if tool == "get_user_details":
-        return f"Retrieve the complete retail customer record for {args['user_id']}."
+        return f"Retrieve the retail customer record for {args['user_id']}."
     if tool == "get_order_details":
-        return f"Retrieve retail order {args['order_id']} and its current status and contents."
+        return f"Retrieve the current details for retail order {args['order_id']}."
     if tool == "get_product_details":
-        return f"Inspect the available variants for retail product {args['product_id']}."
+        return f"Retrieve inventory and variant details for product {args['product_id']}."
     if tool == "cancel_pending_order":
-        return (
-            f"Cancel pending order {args['order_id']} because it is "
-            f"{args['reason']}."
-        )
+        return f"Cancel pending order {args['order_id']} because it is {args['reason']}."
     if tool == "modify_pending_order_items":
         return (
             f"In pending order {args['order_id']}, replace "
             f"{', '.join(args['item_ids'])} with {', '.join(args['new_item_ids'])} "
-            f"using {args['payment_method_id']} for any price difference."
+            f"using payment method {args['payment_method_id']}."
         )
     if tool == "modify_pending_order_address":
         return (
@@ -280,16 +108,16 @@ def _query(tool: str, args: dict[str, Any]) -> str:
     if tool == "return_delivered_order_items":
         return (
             f"Return {', '.join(args['item_ids'])} from delivered order "
-            f"{args['order_id']} and refund {args['payment_method_id']}."
+            f"{args['order_id']} to payment method {args['payment_method_id']}."
         )
     if tool == "exchange_delivered_order_items":
         return (
             f"Exchange {', '.join(args['item_ids'])} in delivered order "
             f"{args['order_id']} for {', '.join(args['new_item_ids'])}, using "
-            f"{args['payment_method_id']} for the difference."
+            f"payment method {args['payment_method_id']}."
         )
     if tool == "transfer_to_human_agents":
-        return f'Escalate this retail request with the exact summary: "{args["summary"]}"'
+        return f'Escalate this retail request with the summary: "{args["summary"]}"'
     raise KeyError(tool)
 
 
@@ -299,12 +127,12 @@ def _structured(value: object) -> object:
 
 def _expected_subset(tool: str, value: object) -> object:
     result = _structured(value)
-    if tool.startswith("find_user_id_"):
+    if tool.startswith("find_user_id_") or tool == "transfer_to_human_agents":
         return result
     assert isinstance(result, dict)
     fields = {
-        "get_user_details": ("user_id", "email", "order_ids"),
-        "get_order_details": ("order_id", "user_id", "status", "total"),
+        "get_user_details": ("user_id", "email", "orders"),
+        "get_order_details": ("order_id", "user_id", "status", "items"),
         "get_product_details": ("product_id", "name", "variants"),
         "cancel_pending_order": (
             "order_id",
@@ -315,17 +143,10 @@ def _expected_subset(tool: str, value: object) -> object:
         "modify_pending_order_items": (
             "order_id",
             "status",
-            "modified_items",
-            "modification_payment_method_id",
-            "modification_price_difference",
-            "total",
+            "items",
+            "payment_history",
         ),
-        "modify_pending_order_address": (
-            "order_id",
-            "status",
-            "address_modified",
-            "address",
-        ),
+        "modify_pending_order_address": ("order_id", "status", "address"),
         "modify_user_address": ("user_id", "address"),
         "return_delivered_order_items": (
             "order_id",
@@ -341,11 +162,6 @@ def _expected_subset(tool: str, value: object) -> object:
             "exchange_payment_method_id",
             "exchange_price_difference",
         ),
-        "transfer_to_human_agents": (
-            "transfer_requested",
-            "summary",
-            "status",
-        ),
     }[tool]
     return {field: result[field] for field in fields}
 
@@ -359,37 +175,56 @@ def build(raw_root: Path) -> list[dict[str, Any]]:
         (retail_root / "split_tasks.json").read_text(encoding="utf-8")
     )
     split_by_id = {
-        task_id: split
+        str(task_id): split
         for split in ("train", "test")
         for task_id in splits[split]
     }
-    selected: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {
-        tool: [] for tool in TARGET_COUNTS
-    }
-    for task in tasks:
-        for action in task["evaluation_criteria"]["actions"]:
-            tool = action["name"]
-            if tool in selected and len(selected[tool]) < TARGET_COUNTS[tool]:
-                selected[tool].append((task, action))
-    for tool, target in TARGET_COUNTS.items():
-        if len(selected[tool]) != target:
-            raise RuntimeError(f"Found only {len(selected[tool])}/{target} {tool} actions")
-
+    provenance = json.loads(PROVENANCE_PATH.read_text(encoding="utf-8"))
+    fixture_hash = provenance["derived_fixture_sha256"]
     functions, reset_state = _retail_functions()
+
     rows: list[dict[str, Any]] = []
-    for tool, pairs in selected.items():
-        for index, (task, action) in enumerate(pairs):
-            args = _local_args(tool, index, task)
-            reset_state()
-            first = functions[tool](**args)
-            reset_state()
-            second = functions[tool](**args)
+    seen_calls: set[tuple[str, str]] = set()
+    rejected: Counter[str] = Counter()
+    per_tool_index: Counter[str] = Counter()
+    for task in tasks:
+        task_id = str(task["id"])
+        for action_index, action in enumerate(
+            task.get("evaluation_criteria", {}).get("actions", [])
+        ):
+            tool = action["name"]
+            if tool in EXCLUDED_ACTIONS or tool not in SUPPORTED_TOOLS:
+                rejected[tool] += 1
+                continue
+            args = action["arguments"]
+            call_key = (tool, _canonical_json(args))
+            if call_key in seen_calls:
+                continue
+            try:
+                inspect.signature(functions[tool]).bind(**args)
+                reset_state()
+                first = functions[tool](**args)
+                reset_state()
+                second = functions[tool](**args)
+            except (TypeError, ValueError, KeyError):
+                rejected[f"{tool}:not_standalone_executable"] += 1
+                continue
             if first != second:
-                raise RuntimeError(f"Nondeterministic result for {task['id']} {action['action_id']}")
-            source_args = action["arguments"]
+                raise RuntimeError(
+                    f"Nondeterministic result for task {task_id}, action {action_index}"
+                )
+
+            seen_calls.add(call_key)
+            per_tool_index[tool] += 1
+            source_action_id = action.get(
+                "action_id", f"{task_id}_{action_index}"
+            )
             rows.append(
                 {
-                    "id": f"enterprise_tau2_{tool}_{index + 1:03d}",
+                    "id": (
+                        f"enterprise_tau2_{tool}_"
+                        f"{per_tool_index[tool]:03d}"
+                    ),
                     "domain": "enterprise_automation",
                     "task_type": "single_tool_routing",
                     "difficulty": "medium",
@@ -400,36 +235,39 @@ def build(raw_root: Path) -> list[dict[str, Any]]:
                     "expected_answer": _expected_subset(tool, first),
                     "perturbation_type": "public_task_action_adaptation",
                     "notes": (
-                        "One tau2 retail gold action adapted to the bounded "
-                        "LayerMCP retail fixture."
+                        "One deduplicated tau2 retail gold action represented as "
+                        "an independently executable single-tool query."
                     ),
                     "source_dataset": "tau2_bench_retail",
                     "source_revision": TAU2_REVISION,
-                    "source_split": split_by_id[str(task["id"])],
-                    "source_task_id": str(task["id"]),
-                    "source_action_id": action["action_id"],
+                    "source_split": split_by_id[task_id],
+                    "source_task_id": task_id,
+                    "source_action_index": action_index,
+                    "source_action_id": source_action_id,
                     "source_action": tool,
-                    "source_expected_args": source_args,
+                    "source_expected_args": args,
                     "source_hash": _sha256_json(task),
+                    "fixture_hash": fixture_hash,
                     "source_license": "MIT",
                     "transformation_notes": (
-                        "The source action name and intent are preserved. The "
-                        "standalone query is a concise LayerMCP adaptation of the "
-                        "action within its original dialogue workflow."
+                        "The gold action name and native tau2 arguments are "
+                        "unchanged. The surrounding workflow was rewritten as a "
+                        "concise standalone request; only calls executable from "
+                        "a fresh pinned tau2 retail state were retained."
                     ),
                     "entity_mapping_notes": (
-                        "tau2 entity identifiers are not present in the bounded "
-                        "LayerMCP retail fixture. Source arguments "
-                        f"{json.dumps(source_args, sort_keys=True)} were mapped to "
-                        f"local arguments {json.dumps(args, sort_keys=True)}."
+                        "No entity remapping was applied; expected_args contain "
+                        "native tau2 identifiers and values."
                     ),
                 }
             )
     reset_state()
-    if len(rows) != 127:
-        raise RuntimeError(f"Expected 127 rows, built {len(rows)}")
-    if Counter(row["expected_tool"] for row in rows) != Counter(TARGET_COUNTS):
-        raise RuntimeError("Unexpected expected-tool distribution")
+    if not rows:
+        raise RuntimeError("No tau2-native rows were built")
+    if len(rows) != len(seen_calls):
+        raise RuntimeError("Generated rows are not unique by tool and arguments")
+    print("Excluded:", dict(sorted(rejected.items())))
+    print("Counts:", dict(sorted(Counter(r["expected_tool"] for r in rows).items())))
     return rows
 
 

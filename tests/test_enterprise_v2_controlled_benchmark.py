@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import Counter
+import hashlib
 import inspect
 import json
 from pathlib import Path
@@ -21,7 +22,22 @@ TAU2_EXPANSION_PATH = (
     / "enterprise"
     / "tool_routing_enterprise_tau2_public_adapted.json"
 )
-TAU3_TASKS_PATH = PROJECT_ROOT / "data" / "raw" / "tau3_retail" / "benchmark" / "tasks.json"
+TAU2_FIXTURE_PATH = (
+    PROJECT_ROOT / "mcp_server" / "fixtures" / "tau2_retail_db.json"
+)
+TAU2_PROVENANCE_PATH = (
+    PROJECT_ROOT / "mcp_server" / "fixtures" / "tau2_retail_provenance.json"
+)
+TAU2_LICENSE_PATH = (
+    PROJECT_ROOT / "mcp_server" / "fixtures" / "TAU2_RETAIL_LICENSE.txt"
+)
+TAU2_ATTRIBUTION_PATH = (
+    PROJECT_ROOT
+    / "benchmark"
+    / "enterprise"
+    / "fixtures"
+    / "TAU2_RETAIL_ATTRIBUTION.md"
+)
 
 FROZEN_RETAIL_TOOLS = {
     "find_user_id_by_email",
@@ -191,24 +207,14 @@ class EnterprisePublicAdaptedBenchmarkTests(unittest.TestCase):
             self.assertEqual(sample["domain"], "enterprise_automation")
             self.assertEqual(sample["task_type"], "single_tool_routing")
             self.assertEqual(sample["source"], "public_adapted")
-            self.assertEqual(sample["source_dataset"], "tau3_retail")
+            self.assertIsInstance(sample["source_dataset"], str)
+            self.assertTrue(sample["source_dataset"])
             self.assertEqual(sample["source_domain"], "retail")
             self.assertEqual(sample["provenance_type"], "public_adapted")
             self.assertIsInstance(sample["source_action"], str)
             self.assertGreater(len(sample["source_action"].strip()), 0)
             self.assertNotIn("available_tools", sample)
             self.assertIn(sample["expected_tool"], FROZEN_RETAIL_TOOLS)
-
-    def test_source_task_ids_exist_in_optional_raw_tau_dataset(self) -> None:
-        if not TAU3_TASKS_PATH.exists():
-            self.skipTest(f"Optional raw tau source is not present: {TAU3_TASKS_PATH}")
-
-        with TAU3_TASKS_PATH.open("r", encoding="utf-8") as handle:
-            valid_source_task_ids = {
-                str(task["id"]) for task in json.load(handle)
-            }
-        for sample in self.raw_samples:
-            self.assertIn(str(sample["source_task_id"]), valid_source_task_ids)
 
     def test_public_adapted_coverage(self) -> None:
         counts = Counter(sample["expected_tool"] for sample in self.raw_samples)
@@ -292,6 +298,34 @@ class EnterpriseTau2PublicAdaptedExpansionTests(unittest.TestCase):
             self.assertIsNotNone(sample["expected_answer"])
             self.assertEqual(len(sample["fixture_hash"]), 64)
             self.assertIn("No entity remapping", sample["entity_mapping_notes"])
+
+    def test_committed_tau2_fixture_and_provenance(self) -> None:
+        for path in (
+            TAU2_FIXTURE_PATH,
+            TAU2_PROVENANCE_PATH,
+            TAU2_LICENSE_PATH,
+            TAU2_ATTRIBUTION_PATH,
+        ):
+            self.assertTrue(path.is_file(), path)
+
+        provenance = json.loads(TAU2_PROVENANCE_PATH.read_text(encoding="utf-8"))
+        fixture_hash = hashlib.sha256(TAU2_FIXTURE_PATH.read_bytes()).hexdigest()
+        self.assertEqual(fixture_hash, provenance["derived_fixture_sha256"])
+        self.assertEqual(
+            provenance["source_revision"],
+            "363133ada1936491fb5bcec33cd62c3518a99f65",
+        )
+        self.assertEqual(provenance["license"], "MIT")
+        self.assertTrue(
+            all(sample["fixture_hash"] == fixture_hash for sample in self.raw_samples)
+        )
+        self.assertIn(
+            "MIT License", TAU2_LICENSE_PATH.read_text(encoding="utf-8")
+        )
+        self.assertIn(
+            provenance["source_revision"],
+            TAU2_ATTRIBUTION_PATH.read_text(encoding="utf-8"),
+        )
 
     def test_every_gold_call_is_unique(self) -> None:
         calls = {

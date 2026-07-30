@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 import json
 import re
 from typing import Any, Mapping, Sequence
@@ -19,6 +20,30 @@ class ToolCallPrediction:
     parse_status: str = "ok"
     attempted_tool: str | None = None
     diagnostic: str | None = None
+
+
+def _resolve_catalog_name(
+    name: str,
+    catalog: set[str],
+) -> str | None:
+    normalized = name.strip().lower()
+    if normalized in catalog:
+        return normalized
+    if normalized == HALLUCINATED_TOOL:
+        return normalized
+
+    ranked = sorted(
+        (
+            (SequenceMatcher(None, normalized, candidate).ratio(), candidate)
+            for candidate in catalog
+        ),
+        reverse=True,
+    )
+    if not ranked or ranked[0][0] < 0.82:
+        return None
+    if len(ranked) > 1 and ranked[0][0] - ranked[1][0] < 0.08:
+        return None
+    return ranked[0][1]
 
 
 def validate_tool_arguments(
@@ -272,8 +297,8 @@ def parse_tool_call(
         name = getattr(function, "name", None)
         arguments = _argument_payload(function)
         if isinstance(name, str):
-            normalized = name.strip().lower()
-            if normalized in catalog:
+            normalized = _resolve_catalog_name(name, catalog)
+            if normalized is not None and normalized != HALLUCINATED_TOOL:
                 decoded_arguments, argument_error = _decode_arguments(arguments)
                 schema_error = _argument_schema_error(
                     normalized,
@@ -304,8 +329,8 @@ def parse_tool_call(
     qwen_call = _parse_qwen_native_call(response)
     if qwen_call is not None:
         name, arguments = qwen_call
-        normalized = name.lower()
-        if normalized in catalog:
+        normalized = _resolve_catalog_name(name, catalog)
+        if normalized is not None and normalized != HALLUCINATED_TOOL:
             schema_error = _argument_schema_error(
                 normalized,
                 arguments,
@@ -319,14 +344,6 @@ def parse_tool_call(
                 attempted_tool=normalized,
                 diagnostic=schema_error,
             )
-        return ToolCallPrediction(
-            UNKNOWN_TOOL,
-            {},
-            response,
-            parse_status="unknown_tool",
-            attempted_tool=normalized,
-            diagnostic="tool name is not in the live MCP catalog",
-        )
 
     for payload in _json_payloads(response):
         if isinstance(payload, list):
@@ -353,9 +370,9 @@ def parse_tool_call(
         if argument_key is None:
             continue
         arguments = payload[argument_key]
-        normalized = name.strip().lower()
+        normalized = _resolve_catalog_name(name, catalog)
         decoded_arguments, argument_error = _decode_arguments(arguments)
-        if normalized in catalog:
+        if normalized is not None and normalized != HALLUCINATED_TOOL:
             schema_error = _argument_schema_error(
                 normalized,
                 decoded_arguments,

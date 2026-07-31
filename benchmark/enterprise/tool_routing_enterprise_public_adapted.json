@@ -10,7 +10,9 @@
     "expected_args": {
       "email": "mei.kovacs@example.com"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "result": "USER-MEI"
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from a tau3 Retail task that begins with email-based identity lookup.",
     "source_dataset": "tau3_retail",
@@ -52,7 +54,9 @@
       "last_name": "Rossi",
       "zip": "19122"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "result": "USER-YUSUF"
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail identity lookup by name and ZIP.",
     "source_dataset": "tau3_retail",
@@ -94,7 +98,15 @@
     "expected_args": {
       "user_id": "USER-YUSUF"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "user_id": "USER-YUSUF",
+      "email": "yusuf.rossi@example.com",
+      "order_ids": [
+        "RET-1001",
+        "RET-1002",
+        "RET-1004"
+      ]
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail tasks that inspect user state after ID lookup.",
     "source_dataset": "tau3_retail",
@@ -134,7 +146,12 @@
     "expected_args": {
       "order_id": "RET-2001"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "order_id": "RET-2001",
+      "user_id": "USER-MEI",
+      "status": "delivered",
+      "total": 140.0
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail tasks that inspect an order before exchange.",
     "source_dataset": "tau3_retail",
@@ -174,7 +191,39 @@
     "expected_args": {
       "product_id": "PROD-KEYBOARD"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "product_id": "PROD-KEYBOARD",
+      "name": "Mechanical Keyboard",
+      "variants": [
+        {
+          "item_id": "ITEM-KB-LINEAR",
+          "options": {
+            "color": "black",
+            "switch": "linear"
+          },
+          "price": 120.0,
+          "available": true
+        },
+        {
+          "item_id": "ITEM-KB-CLICKY",
+          "options": {
+            "color": "black",
+            "switch": "clicky"
+          },
+          "price": 135.0,
+          "available": true
+        },
+        {
+          "item_id": "ITEM-KB-SILENT",
+          "options": {
+            "color": "white",
+            "switch": "silent"
+          },
+          "price": 150.0,
+          "available": false
+        }
+      ]
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail exchange tasks that inspect product variants.",
     "source_dataset": "tau3_retail",
@@ -215,7 +264,23 @@
       "order_id": "RET-1002",
       "reason": "no longer needed"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "order_id": "RET-1002",
+      "status": "cancelled",
+      "cancel_reason": "no longer needed",
+      "payment_history": [
+        {
+          "transaction_type": "payment",
+          "amount": 45.0,
+          "payment_method_id": "GIFT-YUSUF"
+        },
+        {
+          "transaction_type": "refund",
+          "amount": 45.0,
+          "payment_method_id": "GIFT-YUSUF"
+        }
+      ]
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail pending-order cancellation actions.",
     "source_dataset": "tau3_retail",
@@ -263,7 +328,20 @@
       ],
       "payment_method_id": "GIFT-YUSUF"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "order_id": "RET-1001",
+      "status": "pending (item modified)",
+      "modified_items": [
+        {
+          "old_item_id": "ITEM-KB-LINEAR",
+          "new_item_id": "ITEM-KB-CLICKY",
+          "price_difference": 15.0
+        }
+      ],
+      "modification_payment_method_id": "GIFT-YUSUF",
+      "modification_price_difference": 15.0,
+      "total": 155.0
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail pending item modification actions.",
     "source_dataset": "tau3_retail",
@@ -316,7 +394,19 @@
       "country": "US",
       "zip": "78712"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "order_id": "RET-1002",
+      "status": "pending",
+      "address_modified": true,
+      "address": {
+        "address1": "123 Elm Street",
+        "address2": "Suite 641",
+        "city": "Austin",
+        "state": "TX",
+        "country": "US",
+        "zip": "78712"
+      }
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail pending order address modification.",
     "source_dataset": "tau3_retail",
@@ -368,7 +458,17 @@
       "country": "US",
       "zip": "10001"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "user_id": "USER-YUSUF",
+      "address": {
+        "address1": "101 Highway",
+        "address2": "",
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      }
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail user address modification tasks.",
     "source_dataset": "tau3_retail",
@@ -418,7 +518,14 @@
       ],
       "payment_method_id": "CARD-MEI"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "order_id": "RET-2001",
+      "status": "return requested",
+      "return_items": [
+        "ITEM-BOTTLE-500"
+      ],
+      "return_payment_method_id": "CARD-MEI"
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail delivered item return actions.",
     "source_dataset": "tau3_retail",
@@ -469,7 +576,18 @@
       ],
       "payment_method_id": "CARD-MEI"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "order_id": "RET-2001",
+      "status": "exchange requested",
+      "exchange_items": [
+        "ITEM-KB-LINEAR"
+      ],
+      "exchange_new_items": [
+        "ITEM-KB-CLICKY"
+      ],
+      "exchange_payment_method_id": "CARD-MEI",
+      "exchange_price_difference": 15.0
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail delivered exchange tasks.",
     "source_dataset": "tau3_retail",
@@ -516,7 +634,11 @@
     "expected_args": {
       "summary": "user wants refunds moved to the opposite order's payment method"
     },
-    "expected_answer": null,
+    "expected_answer": {
+      "transfer_requested": true,
+      "summary": "user wants refunds moved to the opposite order's payment method",
+      "status": "pending_human_agent"
+    },
     "perturbation_type": "public_task_adaptation",
     "notes": "Adapted from tau3 Retail human-transfer criteria for unsupported refund routing.",
     "source_dataset": "tau3_retail",

@@ -1,0 +1,12 @@
+{
+  "derived_fixture_path": "mcp_server/fixtures/tau2_retail_db.json",
+  "derived_fixture_sha256": "660c72ef6d1ef6a9ad1a886c5835c5794075de452c6a0848a44b4377d5815262",
+  "license": "MIT",
+  "source_path": "data/tau2/domains/retail/db.json",
+  "source_revision": "363133ada1936491fb5bcec33cd62c3518a99f65",
+  "source_sha256": "413a65160adbdb5fde0ffc0015c49b6d70250b10c18128de169b597af7766765",
+  "transformation": "Parsed the pinned source JSON and serialized the same retail records with sorted keys and two-space indentation; no entities or IDs changed.",
+  "transformation_script": "mcp_server/fixtures/build_tau2_retail_fixture.py",
+  "transformation_version": "1",
+  "upstream_repository": "https://github.com/sierra-research/tau2-bench"
+}

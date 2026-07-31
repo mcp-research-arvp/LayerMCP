@@ -6,6 +6,7 @@ from typing import Any
 
 from mcp_server.retail_state import get_retail_state
 
+
 _CANCEL_REASONS = {"no longer needed", "ordered by mistake"}
 
 
@@ -39,211 +40,132 @@ def _state() -> dict[str, Any]:
 
 
 def _get_user(user_id: str) -> dict[str, Any]:
-    normalized = _normalize(user_id, "user_id").upper()
-    users = _state()["users"]
-    if normalized not in users:
-        raise ValueError("user_id must be one of: " + ", ".join(sorted(users)))
-    return users[normalized]
+    user_id = _normalize(user_id, "user_id")
+    try:
+        return _state()["users"][user_id]
+    except KeyError as exc:
+        raise ValueError(f"User {user_id} not found") from exc
 
 
 def _get_order(order_id: str) -> dict[str, Any]:
-    normalized = _normalize(order_id, "order_id").upper()
-    orders = _state()["orders"]
-    if normalized not in orders:
-        raise ValueError("order_id must be one of: " + ", ".join(sorted(orders)))
-    return orders[normalized]
+    order_id = _normalize(order_id, "order_id")
+    try:
+        return _state()["orders"][order_id]
+    except KeyError as exc:
+        raise ValueError(f"Order {order_id} not found") from exc
 
 
 def _get_product(product_id: str) -> dict[str, Any]:
-    normalized = _normalize(product_id, "product_id").upper()
-    products = _state()["products"]
-    if normalized not in products:
-        raise ValueError("product_id must be one of: " + ", ".join(sorted(products)))
-    return products[normalized]
+    product_id = _normalize(product_id, "product_id")
+    try:
+        return _state()["products"][product_id]
+    except KeyError as exc:
+        raise ValueError(f"Product {product_id} not found") from exc
 
 
 def _find_variant(item_id: str) -> tuple[str, dict[str, Any]]:
-    normalized = _normalize(item_id, "item_id").upper()
+    item_id = _normalize(item_id, "item_id")
     for product_id, product in _state()["products"].items():
-        variants = product["variants"]
-        if normalized in variants:
-            return product_id, variants[normalized]
-    raise ValueError(f"item_id not found: {item_id}")
+        if item_id in product["variants"]:
+            return product_id, product["variants"][item_id]
+    raise ValueError(f"Item {item_id} not found")
 
 
-def _get_payment_method(user: dict[str, Any], payment_method_id: str) -> dict[str, Any]:
-    normalized = _normalize(payment_method_id, "payment_method_id").upper()
-    payment_methods = user["payment_methods"]
-    if normalized not in payment_methods:
-        raise ValueError("payment_method_id does not belong to the order user.")
-    return payment_methods[normalized]
-
-
-def _is_pending_status(status: str) -> bool:
-    return "pending" in status
-
-
-def _payment_summary(payment_method: dict[str, Any]) -> dict[str, Any]:
-    summary = {
-        "payment_method_id": payment_method["payment_method_id"],
-        "type": payment_method["type"],
-    }
-    if payment_method["type"] == "credit_card":
-        summary["brand"] = payment_method["brand"]
-        summary["last_four"] = payment_method["last_four"]
-    if payment_method["type"] == "gift_card":
-        summary["balance"] = payment_method["balance"]
-    return summary
-
-
-def _order_total(order: dict[str, Any]) -> float:
-    return round(sum(item["price"] for item in order["items"]), 2)
+def _get_payment_method(
+    user: dict[str, Any], payment_method_id: str
+) -> dict[str, Any]:
+    payment_method_id = _normalize(payment_method_id, "payment_method_id")
+    try:
+        return user["payment_methods"][payment_method_id]
+    except KeyError as exc:
+        raise ValueError(
+            f"Payment method {payment_method_id} does not belong to the order user"
+        ) from exc
 
 
 def _validate_item_counts(order: dict[str, Any], item_ids: list[str]) -> list[str]:
     if not item_ids:
         raise ValueError("item_ids must not be empty.")
-    normalized = [_normalize(item_id, "item_id").upper() for item_id in item_ids]
+    normalized = [_normalize(item_id, "item_id") for item_id in item_ids]
     order_counts = Counter(item["item_id"] for item in order["items"])
     requested_counts = Counter(normalized)
     for item_id, count in requested_counts.items():
         if count > order_counts[item_id]:
-            raise ValueError(f"requested item is not present in the order: {item_id}")
+            raise ValueError(f"Number of {item_id} not found")
     return normalized
 
 
-def _replace_one_item(order: dict[str, Any], old_item_id: str, new_variant: dict[str, Any], product_id: str) -> float:
-    for index, item in enumerate(order["items"]):
-        if item["item_id"] == old_item_id:
-            old_price = item["price"]
-            order["items"][index] = {
-                "name": _state()["products"][product_id]["name"],
-                "product_id": product_id,
-                "item_id": new_variant["item_id"],
-                "price": new_variant["price"],
-                "options": deepcopy(new_variant["options"]),
-            }
-            return round(new_variant["price"] - old_price, 2)
-    raise ValueError(f"requested item is not present in the order: {old_item_id}")
-
-
-def _apply_price_difference(payment_method: dict[str, Any], price_difference: float) -> None:
-    if payment_method["type"] != "gift_card":
-        return
-    if price_difference > payment_method["balance"]:
-        raise ValueError("gift card balance is insufficient for the price difference.")
-    payment_method["balance"] = round(payment_method["balance"] - price_difference, 2)
-
-
-def _refund_to_payment_method(payment_method: dict[str, Any], amount: float) -> None:
-    if payment_method["type"] == "gift_card":
-        payment_method["balance"] = round(payment_method["balance"] + amount, 2)
+def _is_gift_card(payment_method: dict[str, Any]) -> bool:
+    return payment_method["source"] == "gift_card"
 
 
 def find_user_id_by_email(email: str) -> str:
-    """
-    Find a Retail fixture user ID by email address.
-    """
-    normalized_email = _normalize(email, "email").lower()
-    for user in _state()["users"].values():
-        if user["email"].lower() == normalized_email:
-            return user["user_id"]
+    """Find a tau2 retail user ID by email address."""
+    email = _normalize(email, "email")
+    for user_id, user in _state()["users"].items():
+        if user["email"].lower() == email.lower():
+            return user_id
     raise ValueError("User not found")
 
 
 def find_user_id_by_name_zip(first_name: str, last_name: str, zip: str) -> str:
-    """
-    Find a Retail fixture user ID by first name, last name, and ZIP code.
-    """
-    normalized_first = _normalize(first_name, "first_name").lower()
-    normalized_last = _normalize(last_name, "last_name").lower()
-    normalized_zip = _normalize(zip, "zip")
-    for user in _state()["users"].values():
-        name = user["name"]
+    """Find a tau2 retail user ID by first name, last name, and ZIP code."""
+    first_name = _normalize(first_name, "first_name")
+    last_name = _normalize(last_name, "last_name")
+    zip = _normalize(zip, "zip")
+    for user_id, user in _state()["users"].items():
         if (
-            name["first_name"].lower() == normalized_first
-            and name["last_name"].lower() == normalized_last
-            and user["address"]["zip"] == normalized_zip
+            user["name"]["first_name"].lower() == first_name.lower()
+            and user["name"]["last_name"].lower() == last_name.lower()
+            and user["address"]["zip"] == zip
         ):
-            return user["user_id"]
+            return user_id
     raise ValueError("User not found")
 
 
 def get_user_details(user_id: str) -> dict[str, Any]:
-    """
-    Return Retail fixture user profile details, payment summaries, and order IDs.
-    """
-    user = _get_user(user_id)
-    return {
-        "user_id": user["user_id"],
-        "name": deepcopy(user["name"]),
-        "email": user["email"],
-        "address": deepcopy(user["address"]),
-        "payment_methods": [
-            _payment_summary(payment_method)
-            for payment_method in user["payment_methods"].values()
-        ],
-        "order_ids": list(user["order_ids"]),
-        "source": "retail-fixture",
-    }
+    """Return a tau2 retail user, including payment methods and order IDs."""
+    return deepcopy(_get_user(user_id))
 
 
 def get_order_details(order_id: str) -> dict[str, Any]:
-    """
-    Return Retail fixture order status, items, address, payments, and mutation metadata.
-    """
-    order = _get_order(order_id)
-    result = deepcopy(order)
-    result["total"] = _order_total(order)
-    result["source"] = "retail-fixture"
-    return result
+    """Return the native tau2 retail order representation."""
+    return deepcopy(_get_order(order_id))
 
 
 def get_product_details(product_id: str) -> dict[str, Any]:
-    """
-    Return Retail fixture product variants, options, availability, and prices.
-    """
-    product = _get_product(product_id)
-    return {
-        "product_id": product["product_id"],
-        "name": product["name"],
-        "variants": [
-            deepcopy(variant)
-            for variant in product["variants"].values()
-        ],
-        "source": "retail-fixture",
-    }
+    """Return the native tau2 retail product and keyed variants."""
+    return deepcopy(_get_product(product_id))
 
 
 def cancel_pending_order(order_id: str, reason: str) -> dict[str, Any]:
-    """
-    Cancel a pending Retail fixture order and record refunds.
-    """
+    """Cancel a pending tau2 retail order and record its refunds."""
     order = _get_order(order_id)
-    normalized_reason = _normalize(reason, "reason").lower()
+    reason = _normalize(reason, "reason")
     if order["status"] != "pending":
-        raise ValueError("only pending orders can be cancelled.")
-    if normalized_reason not in _CANCEL_REASONS:
-        raise ValueError("reason must be one of: no longer needed, ordered by mistake.")
+        raise ValueError("Non-pending order cannot be cancelled")
+    if reason not in _CANCEL_REASONS:
+        raise ValueError("Invalid reason")
 
     user = _get_user(order["user_id"])
     refunds = []
-    for payment in list(order["payment_history"]):
-        if payment["transaction_type"] != "payment":
-            continue
-        payment_method = _get_payment_method(user, payment["payment_method_id"])
+    for payment in order["payment_history"]:
         refund = {
             "transaction_type": "refund",
             "amount": payment["amount"],
             "payment_method_id": payment["payment_method_id"],
         }
         refunds.append(refund)
-        _refund_to_payment_method(payment_method, payment["amount"])
+        payment_method = _get_payment_method(user, payment["payment_method_id"])
+        if _is_gift_card(payment_method):
+            payment_method["balance"] = round(
+                payment_method["balance"] + payment["amount"], 2
+            )
 
     order["status"] = "cancelled"
-    order["cancel_reason"] = normalized_reason
+    order["cancel_reason"] = reason
     order["payment_history"].extend(refunds)
-    return get_order_details(order["order_id"])
+    return deepcopy(order)
 
 
 def modify_pending_order_items(
@@ -252,59 +174,60 @@ def modify_pending_order_items(
     new_item_ids: list[str],
     payment_method_id: str,
 ) -> dict[str, Any]:
-    """
-    Modify items in a pending Retail fixture order to available variants of the same products.
-    """
+    """Replace pending-order items with available variants of the same products."""
     order = _get_order(order_id)
     if order["status"] != "pending":
-        raise ValueError("only pending orders can have items modified.")
-    normalized_items = _validate_item_counts(order, item_ids)
-    normalized_new_items = [_normalize(item_id, "new_item_id").upper() for item_id in new_item_ids]
-    if len(normalized_items) != len(normalized_new_items):
-        raise ValueError("item_ids and new_item_ids must have the same length.")
+        raise ValueError("Non-pending order cannot be modified")
+    item_ids = _validate_item_counts(order, item_ids)
+    new_item_ids = [_normalize(item_id, "new_item_id") for item_id in new_item_ids]
+    if len(item_ids) != len(new_item_ids):
+        raise ValueError("The number of items to be exchanged should match")
 
+    replacements: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    price_difference = 0.0
+    for item_id, new_item_id in zip(item_ids, new_item_ids):
+        if item_id == new_item_id:
+            raise ValueError("The new item id should be different from the old item id")
+        old_item = next(
+            (item for item in order["items"] if item["item_id"] == item_id), None
+        )
+        if old_item is None:
+            raise ValueError(f"Item {item_id} not found")
+        product = _get_product(old_item["product_id"])
+        try:
+            new_variant = product["variants"][new_item_id]
+        except KeyError as exc:
+            raise ValueError(
+                f"Item {new_item_id} is not a variant of {old_item['product_id']}"
+            ) from exc
+        if not new_variant["available"]:
+            raise ValueError(f"New item {new_item_id} not found or available")
+        price_difference += new_variant["price"] - old_item["price"]
+        replacements.append((old_item, new_variant))
+
+    price_difference = round(price_difference, 2)
     user = _get_user(order["user_id"])
     payment_method = _get_payment_method(user, payment_method_id)
-    working_order = deepcopy(order)
-    modifications = []
-    total_difference = 0.0
+    if _is_gift_card(payment_method) and payment_method["balance"] < price_difference:
+        raise ValueError("Insufficient gift card balance to pay for the new item")
 
-    for old_item_id, new_item_id in zip(normalized_items, normalized_new_items):
-        if old_item_id == new_item_id:
-            raise ValueError("new_item_id must be different from the old item_id.")
-        old_item = next((item for item in working_order["items"] if item["item_id"] == old_item_id), None)
-        if old_item is None:
-            raise ValueError(f"requested item is not present in the order: {old_item_id}")
-        new_product_id, new_variant = _find_variant(new_item_id)
-        if new_product_id != old_item["product_id"]:
-            raise ValueError("replacement item must belong to the same product.")
-        if not new_variant["available"]:
-            raise ValueError("replacement item is not available.")
-        difference = _replace_one_item(working_order, old_item_id, new_variant, new_product_id)
-        total_difference = round(total_difference + difference, 2)
-        modifications.append(
-            {
-                "old_item_id": old_item_id,
-                "new_item_id": new_item_id,
-                "price_difference": difference,
-            }
+    order["payment_history"].append(
+        {
+            "transaction_type": "payment" if price_difference > 0 else "refund",
+            "amount": abs(price_difference),
+            "payment_method_id": payment_method_id,
+        }
+    )
+    if _is_gift_card(payment_method):
+        payment_method["balance"] = round(
+            payment_method["balance"] - price_difference, 2
         )
-
-    _apply_price_difference(payment_method, total_difference)
-    order.update(working_order)
+    for old_item, new_variant in replacements:
+        old_item["item_id"] = new_variant["item_id"]
+        old_item["price"] = new_variant["price"]
+        old_item["options"] = deepcopy(new_variant["options"])
     order["status"] = "pending (item modified)"
-    order["modified_items"] = modifications
-    order["modification_payment_method_id"] = payment_method["payment_method_id"]
-    order["modification_price_difference"] = total_difference
-    if total_difference:
-        order["payment_history"].append(
-            {
-                "transaction_type": "payment" if total_difference > 0 else "refund",
-                "amount": abs(total_difference),
-                "payment_method_id": payment_method["payment_method_id"],
-            }
-        )
-    return get_order_details(order["order_id"])
+    return deepcopy(order)
 
 
 def modify_pending_order_address(
@@ -316,15 +239,14 @@ def modify_pending_order_address(
     country: str,
     zip: str,
 ) -> dict[str, Any]:
-    """
-    Modify only the shipping address of a pending Retail fixture order.
-    """
+    """Modify the shipping address of a pending tau2 retail order."""
     order = _get_order(order_id)
-    if not _is_pending_status(order["status"]):
-        raise ValueError("only pending orders can have addresses modified.")
-    order["address"] = _address(address1, address2, city, state, country, zip)
-    order["address_modified"] = True
-    return get_order_details(order["order_id"])
+    if "pending" not in order["status"]:
+        raise ValueError("Non-pending order cannot be modified")
+    order["address"] = _address(
+        address1, address2, city, state, country, zip
+    )
+    return deepcopy(order)
 
 
 def modify_user_address(
@@ -336,12 +258,12 @@ def modify_user_address(
     country: str,
     zip: str,
 ) -> dict[str, Any]:
-    """
-    Modify only a Retail fixture user's default profile address.
-    """
+    """Modify a tau2 retail user's default address."""
     user = _get_user(user_id)
-    user["address"] = _address(address1, address2, city, state, country, zip)
-    return get_user_details(user["user_id"])
+    user["address"] = _address(
+        address1, address2, city, state, country, zip
+    )
+    return deepcopy(user)
 
 
 def return_delivered_order_items(
@@ -349,22 +271,22 @@ def return_delivered_order_items(
     item_ids: list[str],
     payment_method_id: str,
 ) -> dict[str, Any]:
-    """
-    Request return of items in a delivered Retail fixture order.
-    """
+    """Request a return of items from a delivered tau2 retail order."""
     order = _get_order(order_id)
     if order["status"] != "delivered":
-        raise ValueError("only delivered orders can be returned.")
-    normalized_items = _validate_item_counts(order, item_ids)
+        raise ValueError("Non-delivered order cannot be returned")
+    item_ids = _validate_item_counts(order, item_ids)
     user = _get_user(order["user_id"])
     payment_method = _get_payment_method(user, payment_method_id)
-    original_payment_method_id = order["payment_history"][0]["payment_method_id"]
-    if payment_method["type"] != "gift_card" and payment_method["payment_method_id"] != original_payment_method_id:
-        raise ValueError("payment method should be the original payment method or a gift card.")
+    if (
+        not _is_gift_card(payment_method)
+        and payment_method_id != order["payment_history"][0]["payment_method_id"]
+    ):
+        raise ValueError("Payment method should be the original payment method")
     order["status"] = "return requested"
-    order["return_items"] = sorted(normalized_items)
-    order["return_payment_method_id"] = payment_method["payment_method_id"]
-    return get_order_details(order["order_id"])
+    order["return_items"] = sorted(item_ids)
+    order["return_payment_method_id"] = payment_method_id
+    return deepcopy(order)
 
 
 def exchange_delivered_order_items(
@@ -373,59 +295,49 @@ def exchange_delivered_order_items(
     new_item_ids: list[str],
     payment_method_id: str,
 ) -> dict[str, Any]:
-    """
-    Request exchange of delivered Retail fixture items for available variants of the same products.
-    """
+    """Request an exchange for delivered tau2 retail items."""
     order = _get_order(order_id)
     if order["status"] != "delivered":
-        raise ValueError("only delivered orders can be exchanged.")
-    normalized_items = _validate_item_counts(order, item_ids)
-    normalized_new_items = [_normalize(item_id, "new_item_id").upper() for item_id in new_item_ids]
-    if len(normalized_items) != len(normalized_new_items):
-        raise ValueError("item_ids and new_item_ids must have the same length.")
+        raise ValueError("Non-delivered order cannot be exchanged")
+    item_ids = _validate_item_counts(order, item_ids)
+    new_item_ids = [_normalize(item_id, "new_item_id") for item_id in new_item_ids]
+    if len(item_ids) != len(new_item_ids):
+        raise ValueError("The number of items to be exchanged should match")
+
+    price_difference = 0.0
+    for item_id, new_item_id in zip(item_ids, new_item_ids):
+        old_item = next(
+            (item for item in order["items"] if item["item_id"] == item_id), None
+        )
+        if old_item is None:
+            raise ValueError(f"Item {item_id} not found")
+        product = _get_product(old_item["product_id"])
+        try:
+            new_variant = product["variants"][new_item_id]
+        except KeyError as exc:
+            raise ValueError(
+                f"Item {new_item_id} is not a variant of {old_item['product_id']}"
+            ) from exc
+        if not new_variant["available"]:
+            raise ValueError(f"New item {new_item_id} not found or available")
+        price_difference += new_variant["price"] - old_item["price"]
+    price_difference = round(price_difference, 2)
 
     user = _get_user(order["user_id"])
     payment_method = _get_payment_method(user, payment_method_id)
-    total_difference = 0.0
-    exchanges = []
-    for old_item_id, new_item_id in zip(normalized_items, normalized_new_items):
-        old_item = next((item for item in order["items"] if item["item_id"] == old_item_id), None)
-        if old_item is None:
-            raise ValueError(f"requested item is not present in the order: {old_item_id}")
-        new_product_id, new_variant = _find_variant(new_item_id)
-        if new_product_id != old_item["product_id"]:
-            raise ValueError("replacement item must belong to the same product.")
-        if not new_variant["available"]:
-            raise ValueError("replacement item is not available.")
-        difference = round(new_variant["price"] - old_item["price"], 2)
-        total_difference = round(total_difference + difference, 2)
-        exchanges.append(
-            {
-                "old_item_id": old_item_id,
-                "new_item_id": new_item_id,
-                "price_difference": difference,
-            }
+    if _is_gift_card(payment_method) and payment_method["balance"] < price_difference:
+        raise ValueError(
+            "Insufficient gift card balance to pay for the price difference"
         )
-
-    if payment_method["type"] == "gift_card" and payment_method["balance"] < total_difference:
-        raise ValueError("gift card balance is insufficient for the price difference.")
     order["status"] = "exchange requested"
-    order["exchange_items"] = sorted(normalized_items)
-    order["exchange_new_items"] = sorted(normalized_new_items)
-    order["exchange_payment_method_id"] = payment_method["payment_method_id"]
-    order["exchange_price_difference"] = total_difference
-    order["exchange_details"] = exchanges
-    return get_order_details(order["order_id"])
+    order["exchange_items"] = sorted(item_ids)
+    order["exchange_new_items"] = sorted(new_item_ids)
+    order["exchange_payment_method_id"] = payment_method_id
+    order["exchange_price_difference"] = price_difference
+    return deepcopy(order)
 
 
-def transfer_to_human_agents(summary: str) -> dict[str, Any]:
-    """
-    Return a deterministic Retail human-transfer request response.
-    """
-    normalized = _normalize(summary, "summary")
-    return {
-        "transfer_requested": True,
-        "summary": normalized,
-        "status": "pending_human_agent",
-        "source": "retail-fixture",
-    }
+def transfer_to_human_agents(summary: str) -> str:
+    """Transfer the retail request to a human agent."""
+    _normalize(summary, "summary")
+    return "Transfer successful"

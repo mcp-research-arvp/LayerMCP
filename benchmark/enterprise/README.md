@@ -7,7 +7,10 @@ This folder contains enterprise automation single-tool routing benchmarks. Each 
 `v1` and `v2` are tool-suite versions, not random dataset splits.
 
 - `v1` is the first small controlled enterprise fixture suite. It uses simple offline business tools such as customer lookup, order lookup, ticket routing, policy checks, and knowledge-base search.
-- `v2` is the newer retail-style enterprise suite. It uses a frozen set of 12 retail tools adapted from tau3 Retail-style workflows, including user lookup, order/product inspection, order edits, returns, exchanges, and human transfer.
+- `v2` is the newer retail-style enterprise suite. Its primary executable
+  benchmark uses 12 stable retail tool names backed by the pinned tau2 retail
+  database, including user lookup, order/product inspection, order edits,
+  returns, exchanges, and human transfer.
 
 For future files, prefer names that say both the source and the version, such as:
 
@@ -75,6 +78,10 @@ Difficulty breakdown:
 
 Each tool has 4 controlled examples. The examples cover direct wording, distractors, paraphrases, and indirect requests.
 
+These rows retain IDs from the retired small LayerMCP fixture and are kept for
+historical routing-only comparison. They are not the primary executable retail
+benchmark after the tau2-native migration.
+
 Difficulty breakdown:
 
 | Difficulty | Records |
@@ -100,12 +107,41 @@ Each v2 retail tool has 2 public-adapted examples. Records include provenance fi
 - `source_action`
 - `provenance_type`
 
+One hand-audited row per retail tool (12 rows total) includes a concise
+`expected_answer` subset verified against deterministic gold-tool execution.
+The remaining public-adapted rows retain `expected_answer: null`.
+
+These rows also retain retired small-fixture IDs and are preserved as
+historical routing-only data.
+
 Difficulty breakdown:
 
 | Difficulty | Records |
 | --- | ---: |
 | `medium` | 22 |
 | `hard` | 2 |
+
+### `tool_routing_enterprise_tau2_public_adapted.json`
+
+- Records: 293
+- Source: pinned tau2-bench retail tasks
+- Domain: `enterprise_automation`
+- Purpose: one deduplicated, independently executable tau2-native gold retail
+  action per row.
+
+The source action name, arguments, and native tau2 entity IDs are preserved;
+no entity remapping is applied. Every row records the source task/action IDs,
+action index, split, original arguments, canonical task hash, committed fixture
+hash, license, transformation notes, and a non-null expected-answer subset
+verified by deterministic double execution. Rows are unique by
+`expected_tool` plus canonical `expected_args`.
+See `fixtures/TAU2_RETAIL_ATTRIBUTION.md` and
+`build_tau2_retail_expansion.py`.
+
+The three `get_item_details` actions and one
+`modify_pending_order_payment` action are excluded because those low-coverage
+tools are not registered in LayerMCP. Thirteen tau2 `calculate` actions remain
+outside the retail tranche rather than being relabeled as retail tools.
 
 ## Schema Notes
 

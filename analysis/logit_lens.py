@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import string
 import sys
 from typing import Any, Mapping, Sequence
 
@@ -14,11 +15,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.model_loader import load_model_components, resolve_model_name
+from mcp_server.server import mcp
 
 DEFAULT_BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing_phase2_seed.json"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "results"
 DEFAULT_MODEL_NAME = resolve_model_name()
-LABELS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+LABELS = tuple(string.ascii_uppercase + string.ascii_lowercase)
 PROMPT_TEMPLATE = "forced_choice_label_v1"
 
 
@@ -32,13 +34,13 @@ def load_benchmark(path: Path) -> list[dict[str, Any]]:
     return data
 
 
-def build_tool_label_mapping(available_tools: Sequence[str]) -> dict[str, str]:
-    if not available_tools:
-        raise ValueError("available_tools must not be empty.")
-    if len(available_tools) > len(LABELS):
+def build_tool_label_mapping(tool_names: Sequence[str]) -> dict[str, str]:
+    if not tool_names:
+        raise ValueError("tool_names must not be empty.")
+    if len(tool_names) > len(LABELS):
         raise ValueError(f"At most {len(LABELS)} tools are supported.")
 
-    return {tool: LABELS[index] for index, tool in enumerate(available_tools)}
+    return {tool: LABELS[index] for index, tool in enumerate(tool_names)}
 
 
 def build_forced_choice_prompt(sample: Mapping[str, Any], tool_to_label: Mapping[str, str]) -> str:
@@ -191,15 +193,19 @@ def _label_logits_from_vector(logits: Any, label_token_ids: Mapping[str, int]) -
     }
 
 
-def analyze_sample(model: Any, tokenizer: Any, sample: Mapping[str, Any]) -> list[dict[str, Any]]:
+def analyze_sample(
+    model: Any,
+    tokenizer: Any,
+    sample: Mapping[str, Any],
+    tool_names: Sequence[str],
+) -> list[dict[str, Any]]:
     import torch
 
-    available_tools = sample["available_tools"]
-    tool_to_label = build_tool_label_mapping(available_tools)
+    tool_to_label = build_tool_label_mapping(tool_names)
     label_to_tool = {label: tool for tool, label in tool_to_label.items()}
     correct_tool = sample["expected_tool"]
     if correct_tool not in tool_to_label:
-        raise ValueError(f"Expected tool {correct_tool!r} is not in available_tools.")
+        raise ValueError(f"Expected tool {correct_tool!r} is not registered.")
 
     correct_label = tool_to_label[correct_tool]
     label_token_ids = get_label_token_ids(tokenizer, list(label_to_tool))
@@ -333,8 +339,9 @@ def run_analysis(args: argparse.Namespace) -> dict[str, Path]:
         model.eval()
 
     rows: list[dict[str, Any]] = []
+    tool_names = list(mcp._tool_manager._tools)
     for sample in samples:
-        rows.extend(analyze_sample(model, tokenizer, sample))
+        rows.extend(analyze_sample(model, tokenizer, sample, tool_names))
 
     paths = make_output_paths(args.output_dir)
     write_csv(rows, paths["csv"])

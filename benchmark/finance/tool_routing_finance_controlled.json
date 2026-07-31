@@ -6,18 +6,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Look up the company record for ticker LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "LMCP"
@@ -40,18 +28,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find the company named Layer Manufacturing Concepts, Inc.; return company matches, not filings.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "Layer Manufacturing Concepts, Inc."
@@ -74,18 +50,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Search company identifiers for CIK 0001900002 and return only one match.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "0001900002",
@@ -109,18 +73,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Which fixture company trades under TBLR? Retrieve up to two company records.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "TBLR",
@@ -144,18 +96,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Before looking for its filings, resolve Tabular Cloud Labs, Inc. to a registered company and CIK.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "Tabular Cloud Labs, Inc."
@@ -178,18 +118,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "List filings for LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "LMCP"
@@ -211,18 +139,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Retrieve LMCP Form 10-K filing records, not XBRL facts or document text.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -245,18 +161,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find CIK 0001900001's fiscal 2023 Form 10-K and return at most one filing.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "0001900001",
@@ -281,18 +185,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show the quarterly filing record for Layer Manufacturing Concepts, Inc. for fiscal 2024.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "Layer Manufacturing Concepts, Inc.",
@@ -316,18 +208,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need the filing index entry—not a filing section—for Tabular Cloud Labs, Inc.'s fiscal 2025 quarterly report, with at most two results.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "Tabular Cloud Labs, Inc.",
@@ -352,18 +232,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Retrieve the Business section from LMCP-2024-10K.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -387,18 +255,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Read the Risk Factors text in LMCP-2024-10K rather than extracting XBRL facts; cap it at 4,000 characters.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -423,18 +279,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most 1,000 characters of Management's Discussion and Analysis from TBLR-2025-Q1-10Q.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "TBLR-2025-Q1-10Q",
@@ -459,18 +303,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Pull the financial-statements narrative from LMCP-2024-10K, limited to 1,500 characters.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -495,18 +327,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I already know the filing ID TBLR-2024-10K; open its Risk Factors passage, not the filing index or a parsed statement, and return at most 800 characters.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "TBLR-2024-10K",
@@ -531,18 +351,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Retrieve company facts for LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "LMCP"
@@ -564,18 +372,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find LMCP's Revenue facts rather than constructing a complete financial statement.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -598,18 +394,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most two TBLR NetIncomeLoss facts reported in USD for fiscal 2024.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "TBLR",
@@ -635,18 +419,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Using CIK 0001900001, retrieve its 2024 Assets fact in USD and limit the result to one.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "0001900001",
@@ -672,18 +444,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Without returning a whole balance sheet, find up to three 2024 USD CashAndCashEquivalentsAtCarryingValue facts for LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -709,18 +469,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Get LMCP's income statement for fiscal 2024.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -746,18 +494,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return LMCP's FY 2024 balance sheet, not an individual company fact.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -784,18 +520,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Retrieve the Q3 fiscal 2024 income statement for LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -822,18 +546,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show the FY 2024 cash-flow statement for CIK 0001900002.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "0001900002",
@@ -860,18 +572,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need the structured Q1 2025 statement that balances what TBLR owns against what it owes, rather than isolated Assets facts.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "TBLR",
@@ -898,18 +598,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Parse the XBRL facts in LMCP-2024-10K.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K"
@@ -932,18 +620,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "From LMCP-2024-10K, parse Revenue XBRL facts rather than returning the filing's prose; limit to ten.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -970,18 +646,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Extract only Revenue and NetIncomeLoss from LMCP-2024-10K, with at most two facts.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -1009,18 +673,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Decode Assets and Liabilities from the inline XBRL in TBLR-2024-10K, capped at ten facts.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "TBLR-2024-10K",
@@ -1048,18 +700,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Do not retrieve the rendered balance sheet: inspect LMCP-2024-10K's tagged data for CashAndCashEquivalentsAtCarryingValue and return no more than five facts.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -1086,18 +726,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Run SELECT * FROM data ORDER BY ticker, fiscal_year, fiscal_period against quarterly_metrics.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -1121,18 +749,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Use the quarterly_metrics table—not filing retrieval—to list LMCP's fiscal period and revenue in fiscal-period order.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -1160,18 +776,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "In quarterly_metrics, calculate total revenue per ticker with SQL, order by ticker, and return at most two rows.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -1200,18 +804,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "For each ticker in quarterly_metrics, work out average net income and arrange the results alphabetically by ticker.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -1239,18 +831,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Use SQL—not a market quote or filing lookup—to return only the highest-revenue metric row with its ticker, year, period, and revenue.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -1280,18 +860,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Extract all available tables from the LMCP 2024 annual-report PDF.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "lmcp-2024-annual-report"
@@ -1316,18 +884,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Use lattice extraction on page 42 of lmcp-2024-annual-report rather than reading a filing section.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "lmcp-2024-annual-report",
@@ -1354,18 +910,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "From page 8 of tblr-2025-q1-report, extract at most one table using stream mode.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "tblr-2025-q1-report",
@@ -1393,18 +937,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Pull no more than two tables from pages 42 and 45 of the LMCP annual-report PDF with lattice extraction.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "lmcp-2024-annual-report",
@@ -1432,18 +964,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need tabular cells, not prose or XBRL: scan pages 8 and 11 of tblr-2025-q1-report with stream extraction and return at most two tables.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "tblr-2025-q1-report",
@@ -1471,18 +991,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Get the market quote for LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "LMCP"
@@ -1506,18 +1014,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return TBLR's point-in-time quote, not its historical series.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "TBLR"
@@ -1541,18 +1037,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Look up the current fixture quote for ticker LMCP.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "LMCP"
@@ -1576,18 +1060,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "What price-and-volume quote does the market fixture report for Tabular Cloud Labs ticker TBLR?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "TBLR"
@@ -1611,18 +1083,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need one LMCP market snapshot; do not retrieve filings, company facts, or daily candles.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "LMCP"
@@ -1646,18 +1106,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Get LMCP's market time series.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "LMCP"
@@ -1683,18 +1131,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most three daily TBLR price points rather than a single quote.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "TBLR",
@@ -1722,18 +1158,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Retrieve LMCP daily market data from 2025-01-03 through 2025-01-07, with at most five points.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "LMCP",
@@ -1763,18 +1187,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show no more than four daily observations for TBLR between January 2 and January 10, 2025.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "TBLR",
@@ -1804,18 +1216,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need LMCP candles, not a point quote: start on 2025-01-06 and return at most two daily observations.",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "LMCP",

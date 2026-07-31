@@ -6,18 +6,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "what is the net change in net revenue during 2015 for entergy corporation?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -62,18 +50,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "what percentage of total facilities as measured in square feet are leased?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -118,18 +94,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "did altria outperform the s&p 500?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -174,18 +138,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "what was the change in unrecognized tax benefits from the end of 2014 to the end of 2015?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -230,18 +182,6 @@
     "difficulty": "medium",
     "source": "public_finance_derived",
     "query": "what is the growth rate in the balance of standby letters of credit from 2006 to 2007?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -286,18 +226,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "what was the greatest provision for income taxes , in millions?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -342,18 +270,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "as of december 31 , 2017 what was the value of the granted share awards",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -398,18 +314,6 @@
     "difficulty": "medium",
     "source": "public_finance_derived",
     "query": "what was the average cash flow from 2004 to 2006",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -454,18 +358,6 @@
     "difficulty": "medium",
     "source": "public_finance_derived",
     "query": "what is the total value of securities issued and approved by security holders , ( in millions ) ?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -510,18 +402,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "in millions for the fourth quarters of 2017 and 2016 , what was the total tier 1 capital?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -566,18 +446,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "considering the years 2014-2016 , what is the average operating income?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -622,18 +490,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "considering the years 2016-2018 , what is the average ending balance for valuation allowances for deferred income tax assets?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -678,18 +534,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "in millions for 2017 and 2016 , what was the minimum balance of cash instruments?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -734,18 +578,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "in millions for the years 2018 , 2017 , 2016 , what was the largest provision for credit losses?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",
@@ -790,18 +622,6 @@
     "difficulty": "easy",
     "source": "public_finance_derived",
     "query": "what was the total number of shares vested during the three year period?",
-    "available_tools": [
-      "finance_lookup_company",
-      "finance_search_filings",
-      "finance_get_filing_section",
-      "finance_get_company_facts",
-      "finance_get_financial_statement",
-      "finance_parse_xbrl",
-      "finance_query_table",
-      "finance_extract_pdf_tables",
-      "finance_get_market_quote",
-      "finance_get_market_time_series"
-    ],
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "finqa-public-test-v1",

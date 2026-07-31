@@ -98,7 +98,6 @@ Both math files use the standard benchmark schema:
 - `difficulty`
 - `source`
 - `query`
-- `available_tools`
 - `expected_tool`
 - `expected_args`
 - `expected_answer`
@@ -112,4 +111,3 @@ tool_routing_math_<source>.json
 ```
 
 For example, use `tool_routing_math_controlled_v2.json` only if the version marks a real tool-suite or schema change.
-

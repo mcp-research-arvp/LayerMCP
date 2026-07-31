@@ -22,7 +22,7 @@ read-only coding tools backed by deterministic, allowlisted repository fixtures.
 - `fixtures/CODESEARCHNET_LICENSE.txt` preserves the exact MIT notice from the
   pinned CodeSearchNet revision.
 
-Every example exposes the same tool menu:
+The coding tools covered by these datasets are:
 
 ```text
 code_list_files
@@ -46,12 +46,14 @@ across offline runs.
 Each JSON record follows the evaluator's current benchmark schema:
 
 - `query` is the natural-language routing request.
-- `available_tools` is the candidate tool menu for that example.
 - `expected_tool` is the routing label.
 - `expected_args` is the exact argument-generation label.
 - `expected_answer` is a partial semantic oracle for checking the fixture output.
 - `difficulty` and `perturbation_type` identify the controlled variation.
 - `fixture_id`, `fixture_version`, and `provenance_type` record dataset provenance.
+
+During evaluation, each row is exposed to the full MCP tool registry rather than
+only the coding tools listed above.
 
 Rows in the upstream-inspired set also include `query_origin`,
 `inspiration_repository`, `inspiration_url`, and `inspiration_reference`. These

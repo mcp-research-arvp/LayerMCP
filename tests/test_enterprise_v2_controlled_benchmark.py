@@ -39,7 +39,6 @@ REQUIRED_FIELDS = {
     "difficulty",
     "source",
     "query",
-    "available_tools",
     "expected_tool",
     "expected_args",
     "expected_answer",
@@ -74,7 +73,7 @@ class EnterpriseV2ControlledBenchmarkTests(unittest.TestCase):
         self.assertEqual(set(counts), FROZEN_RETAIL_TOOLS)
         self.assertTrue(all(count == 4 for count in counts.values()))
 
-    def test_schema_and_tool_menu(self) -> None:
+    def test_schema_and_registry_compatibility(self) -> None:
         seen_ids: set[str] = set()
         for sample in self.raw_samples:
             self.assertTrue(REQUIRED_FIELDS.issubset(sample))
@@ -83,8 +82,8 @@ class EnterpriseV2ControlledBenchmarkTests(unittest.TestCase):
             self.assertEqual(sample["domain"], "enterprise_automation")
             self.assertEqual(sample["task_type"], "single_tool_routing")
             self.assertEqual(sample["source"], "controlled_synthetic")
-            self.assertEqual(set(sample["available_tools"]), FROZEN_RETAIL_TOOLS)
-            self.assertIn(sample["expected_tool"], sample["available_tools"])
+            self.assertNotIn("available_tools", sample)
+            self.assertIn(sample["expected_tool"], FROZEN_RETAIL_TOOLS)
 
     def test_expected_args_match_registered_tool_signatures(self) -> None:
         for sample in self.samples:
@@ -103,10 +102,8 @@ class EnterprisePublicAdaptedBenchmarkTests(unittest.TestCase):
         with PUBLIC_ADAPTED_PATH.open("r", encoding="utf-8") as handle:
             cls.raw_samples = json.load(handle)
         cls.samples = load_benchmark(PUBLIC_ADAPTED_PATH)
-        with TAU3_TASKS_PATH.open("r", encoding="utf-8") as handle:
-            cls.valid_source_task_ids = {str(task["id"]) for task in json.load(handle)}
 
-    def test_schema_provenance_and_tool_menu(self) -> None:
+    def test_schema_provenance_and_registry_compatibility(self) -> None:
         seen_ids: set[str] = set()
         for sample in self.raw_samples:
             self.assertTrue(REQUIRED_FIELDS.issubset(sample))
@@ -121,9 +118,19 @@ class EnterprisePublicAdaptedBenchmarkTests(unittest.TestCase):
             self.assertEqual(sample["provenance_type"], "public_adapted")
             self.assertIsInstance(sample["source_action"], str)
             self.assertGreater(len(sample["source_action"].strip()), 0)
-            self.assertIn(str(sample["source_task_id"]), self.valid_source_task_ids)
-            self.assertEqual(set(sample["available_tools"]), FROZEN_RETAIL_TOOLS)
+            self.assertNotIn("available_tools", sample)
             self.assertIn(sample["expected_tool"], FROZEN_RETAIL_TOOLS)
+
+    def test_source_task_ids_exist_in_optional_raw_tau_dataset(self) -> None:
+        if not TAU3_TASKS_PATH.exists():
+            self.skipTest(f"Optional raw tau source is not present: {TAU3_TASKS_PATH}")
+
+        with TAU3_TASKS_PATH.open("r", encoding="utf-8") as handle:
+            valid_source_task_ids = {
+                str(task["id"]) for task in json.load(handle)
+            }
+        for sample in self.raw_samples:
+            self.assertIn(str(sample["source_task_id"]), valid_source_task_ids)
 
     def test_public_adapted_coverage(self) -> None:
         counts = Counter(sample["expected_tool"] for sample in self.raw_samples)

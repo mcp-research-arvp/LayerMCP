@@ -90,10 +90,11 @@ corresponding benchmark row and in its fixture provenance.
 Each benchmark row follows the evaluator's current schema:
 
 - `query` is the natural-language routing request.
-- `available_tools` is the fixed candidate menu.
 - `expected_tool` and `expected_args` are the routing and argument labels.
 - `expected_answer` is a partial semantic oracle verified against the tool.
 - `difficulty` and `perturbation_type` describe the controlled variation.
+
+During evaluation, each row is exposed to the full MCP tool registry.
 
 Generated upstream-inspired rows use
 `query_origin: generated_from_upstream_documentation` and include an inspiration

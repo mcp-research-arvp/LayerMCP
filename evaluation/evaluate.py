@@ -48,7 +48,6 @@ class BenchmarkSample:
     difficulty: str
     source: str
     query: str
-    available_tools: list[str] | None
     expected_tool: str
     expected_args: dict[str, Any]
     expected_answer: Any
@@ -73,13 +72,6 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
     if not isinstance(expected_args, dict):
         raise ValueError(f"Sample {index} expected_args/tool_args must be an object.")
 
-    available_tools = sample.get("available_tools")
-    if available_tools is not None:
-        if not isinstance(available_tools, list) or not all(
-            isinstance(tool, str) for tool in available_tools
-        ):
-            raise ValueError(f"Sample {index} available_tools must be a list of strings.")
-
     sample_id = sample.get("id") or f"sample_{index + 1:04d}"
 
     return BenchmarkSample(
@@ -89,7 +81,6 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         difficulty=str(sample.get("difficulty", "unspecified")),
         source=str(sample.get("source", "unspecified")),
         query=str(sample["query"]),
-        available_tools=available_tools,
         expected_tool=str(sample["expected_tool"]),
         expected_args=expected_args,
         expected_answer=sample.get("expected_answer"),
@@ -266,6 +257,80 @@ def _tool_schema(tool: Any) -> dict[str, Any]:
     return schema if isinstance(schema, dict) else {}
 
 
+def _validate_expected_tools(
+    dataset: list[BenchmarkSample],
+    live_tool_set: set[str],
+) -> None:
+    missing = sorted(
+        {
+            sample.expected_tool
+            for sample in dataset
+            if sample.expected_tool not in live_tool_set
+        }
+    )
+    if missing:
+        raise ValueError(
+            "Benchmark expected_tool values are not registered by the MCP server: "
+            + ", ".join(missing)
+        )
+
+
+def _route_sample(
+    router: Any,
+    sample: BenchmarkSample,
+    live_tools: list[str],
+    tool_schemas: dict[str, dict[str, Any]],
+    tool_descriptions: dict[str, str],
+) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
+    if hasattr(router, "choose_tool_call"):
+        if getattr(router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False):
+            prediction = router.choose_tool_call(
+                sample.query,
+                live_tools,
+                tool_schemas,
+                tool_descriptions,
+            )
+        else:
+            prediction = router.choose_tool_call(
+                sample.query,
+                live_tools,
+                tool_schemas,
+            )
+        return (
+            prediction.selected_tool,
+            prediction.selected_args,
+            prediction.raw_output,
+            getattr(prediction, "parse_status", "ok"),
+            getattr(prediction, "attempted_tool", None),
+            getattr(prediction, "diagnostic", None),
+        )
+
+    if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
+        selected_tool = router.choose_tool(
+            sample.query,
+            live_tools,
+            tool_descriptions,
+        )
+    else:
+        selected_tool = router.choose_tool(sample.query, live_tools)
+    return selected_tool, {}, selected_tool, "legacy_router", selected_tool, None
+
+
+def _is_no_tool_call(
+    selected_tool: str | None,
+    hallucinated_tool: str,
+    live_tool_set: set[str],
+) -> bool:
+    return selected_tool == hallucinated_tool or selected_tool not in live_tool_set
+
+
+def _tool_pool_metadata(live_tools: list[str]) -> dict[str, Any]:
+    return {
+        "tool_pool": "full_mcp_registry",
+        "tool_count": len(live_tools),
+    }
+
+
 async def _evaluate_with_server(
     dataset: list[BenchmarkSample],
     benchmark_path: Path,
@@ -274,11 +339,6 @@ async def _evaluate_with_server(
     router_name: str,
 ) -> None:
     from models.routers.registry import load_router
-
-    router = load_router(router_name)
-    hallucinated_tool = router.HALLUCINATED_TOOL
-    model_name = router.MODEL_NAME
-    prompt_template = router.PROMPT_TEMPLATE
 
     latencies: list[float] = []
     executed_tool_calls = 0
@@ -298,69 +358,44 @@ async def _evaluate_with_server(
             tool.name: str(getattr(tool, "description", "") or "")
             for tool in listed_tools.tools
         }
+        _validate_expected_tools(dataset, live_tool_set)
+
+        router = load_router(router_name)
+        hallucinated_tool = router.HALLUCINATED_TOOL
+        model_name = router.MODEL_NAME
+        prompt_template = router.PROMPT_TEMPLATE
+        tool_pool_metadata = _tool_pool_metadata(live_tools)
 
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
 
         with samples_path.open("w", encoding="utf-8") as sample_handle:
             for sample in tqdm(dataset):
-                available_tools = sample.available_tools or live_tools
                 query = sample.query
                 expected = sample.expected_tool
 
                 start = time.perf_counter()
-                if hasattr(router, "choose_tool_call"):
-                    available_schemas = {
-                        tool: tool_schemas.get(tool, {}) for tool in available_tools
-                    }
-                    if getattr(
-                        router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False
-                    ):
-                        prediction = router.choose_tool_call(
-                            query,
-                            available_tools,
-                            available_schemas,
-                            {
-                                tool: tool_descriptions.get(tool, "")
-                                for tool in available_tools
-                            },
-                        )
-                    else:
-                        prediction = router.choose_tool_call(
-                            query,
-                            available_tools,
-                            available_schemas,
-                        )
-                    selected_tool = prediction.selected_tool
-                    selected_args = prediction.selected_args
-                    raw_model_output = prediction.raw_output
-                    parse_status = getattr(prediction, "parse_status", "ok")
-                    attempted_tool = getattr(prediction, "attempted_tool", None)
-                    parse_diagnostic = getattr(prediction, "diagnostic", None)
-                else:
-                    if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
-                        selected_tool = router.choose_tool(
-                            query,
-                            available_tools,
-                            {
-                                tool: tool_descriptions.get(tool, "")
-                                for tool in available_tools
-                            },
-                        )
-                    else:
-                        selected_tool = router.choose_tool(query, available_tools)
-                    selected_args = {}
-                    raw_model_output = selected_tool
-                    parse_status = "legacy_router"
-                    attempted_tool = selected_tool
-                    parse_diagnostic = None
+                (
+                    selected_tool,
+                    selected_args,
+                    raw_model_output,
+                    parse_status,
+                    attempted_tool,
+                    parse_diagnostic,
+                ) = _route_sample(
+                    router,
+                    sample,
+                    live_tools,
+                    tool_schemas,
+                    tool_descriptions,
+                )
                 latency = time.perf_counter() - start
 
                 latencies.append(latency)
 
-                no_tool_call = (
-                    selected_tool == hallucinated_tool
-                    or selected_tool not in live_tool_set
-                    or selected_tool not in available_tools
+                no_tool_call = _is_no_tool_call(
+                    selected_tool,
+                    hallucinated_tool,
+                    live_tool_set,
                 )
 
                 print(f"\nQuery: {query}")
@@ -432,7 +467,7 @@ async def _evaluate_with_server(
                     "task_type": sample.task_type,
                     "difficulty": sample.difficulty,
                     "source": sample.source,
-                    "available_tools": available_tools,
+                    **tool_pool_metadata,
                     "latency_seconds": latency,
                     "model_name": model_name,
                     "router_id": getattr(router, "ROUTER_ID", router_name),
@@ -462,6 +497,7 @@ async def _evaluate_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        **tool_pool_metadata,
         "average_latency_seconds": avg_latency,
         "executed_tool_calls": executed_tool_calls,
         "errors_count": errors_count,

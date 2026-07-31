@@ -6,15 +6,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "In example/research-mcp, list all repository files.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp"
@@ -39,15 +30,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Read README.md from example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_read_file",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -73,15 +55,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Search example/research-mcp for the fixed text normalize_token.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -107,15 +80,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Return only the newest commit from the history of example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_log",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -139,15 +103,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Inspect the HEAD commit and its changes in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_show",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -176,15 +131,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Compare HEAD~1 with HEAD in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_diff",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -213,15 +159,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Show the repository status for example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_status",
     "expected_args": {
       "repo_id": "example/research-mcp"

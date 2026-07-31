@@ -36,12 +36,14 @@ New datasets should use the same core fields:
 - `difficulty`: simple level label for analysis.
 - `source`: how the example was created, such as `controlled_synthetic`, `public_math_derived`, or `public_adapted`.
 - `query`: natural-language user request.
-- `available_tools`: tools shown to the router for that example.
 - `expected_tool`: correct tool name.
 - `expected_args`: correct JSON arguments for the selected tool.
 - `expected_answer`: expected tool output when known, or `null` if the output is stateful or not fixed.
 - `perturbation_type`: what kind of routing challenge the example tests.
 - `notes`: short human-readable provenance or rationale.
+
+The evaluator exposes every row to the full live tool registry returned by MCP
+`list_tools()`. Benchmark rows do not define their own candidate tool menus.
 
 Public or adapted datasets should also include provenance fields when available:
 
@@ -89,4 +91,3 @@ The original four domains were:
 - `coding`
 
 The older root-level benchmarks cover all four domains in one file. The newer direction is to keep each domain in its own folder, using the same core schema and clear source-oriented filenames across domains.
-

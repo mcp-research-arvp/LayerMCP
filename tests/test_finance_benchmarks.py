@@ -96,7 +96,7 @@ class FinanceBenchmarkTests(unittest.TestCase):
             with self.subTest(dataset=name):
                 self.assertEqual(len(load_benchmark(path)), expected_lengths[name])
 
-    def test_ids_menus_and_balanced_tool_counts(self) -> None:
+    def test_ids_registry_compatibility_and_balanced_tool_counts(self) -> None:
         all_rows = [row for rows in self.datasets.values() for row in rows]
         ids = [row["id"] for row in all_rows]
         self.assertEqual(len(ids), len(set(ids)))
@@ -125,8 +125,8 @@ class FinanceBenchmarkTests(unittest.TestCase):
         for row in all_rows:
             self.assertEqual(row["domain"], "finance")
             self.assertEqual(row["task_type"], "single_tool_routing")
-            self.assertEqual(row["available_tools"], FINANCE_TOOL_MENU)
-            self.assertIn(row["expected_tool"], row["available_tools"])
+            self.assertNotIn("available_tools", row)
+            self.assertIn(row["expected_tool"], FINANCE_TOOL_MENU)
 
     def test_all_arguments_bind_and_expected_answers_execute(self) -> None:
         for dataset, rows in self.datasets.items():

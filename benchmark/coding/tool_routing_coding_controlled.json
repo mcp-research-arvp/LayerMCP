@@ -6,15 +6,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "In example/research-mcp, list all repository files.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp"
@@ -39,15 +30,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "For example/research-mcp, list Python files under the src path using the glob *.py; do not read their contents.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -74,15 +56,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "List files under tests in example/research-mcp that match exactly test_auth.py.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -109,15 +82,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most one file from example/research-mcp matching tests/*.py.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -145,15 +109,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need filenames, not matching source lines: which files under tests in example/research-mcp have payments in the filename?",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_list_files",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -180,15 +135,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Read README.md from example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_read_file",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -214,15 +160,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "In example/research-mcp, read only lines 4 through 5 of src/auth.py.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_read_file",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -251,15 +188,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show lines 4 to 6 from tests/test_payments.py in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_read_file",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -287,15 +215,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Open the empty module src/__init__.py in example/research-mcp and return its contents.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_read_file",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -322,15 +241,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Without searching history, retrieve the current authenticate function body at lines 8-9 of src/auth.py in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_read_file",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -359,15 +269,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Search example/research-mcp for the fixed text normalize_token.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -393,15 +294,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Case-sensitively search only src/*.py in example/research-mcp for the text price.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -429,15 +321,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find exact-case occurrences of offline-demo-token in tests/*.py within example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -465,15 +348,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Look through README.md in example/research-mcp for INVOICE, ignoring letter case.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -501,15 +375,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Which source line in tests/test_auth.py of example/research-mcp contains the exact phrase 'not authenticate'? Search contents rather than reading a guessed line range.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "code_search_text",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -537,15 +402,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Return only the newest commit from the history of example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_log",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -569,15 +425,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show the commit history affecting src/auth.py in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_log",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -601,15 +448,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "How many commits touched src/payments.py in example/research-mcp? Retrieve that path's log.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_log",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -633,15 +471,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Review the history for README.md in example/research-mcp, rather than showing one particular commit.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_log",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -665,15 +494,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Before inspecting a patch, list at most two commits that changed tests/test_auth.py in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_log",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -698,15 +518,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Inspect the HEAD commit and its changes in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_show",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -735,15 +546,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show the commit one revision before HEAD in example/research-mcp, including its patch.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_show",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -773,15 +575,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Inspect HEAD~2 in example/research-mcp, restricted to src/auth.py.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_show",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -810,15 +603,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "What did the latest commit do specifically to tests/test_auth.py in example/research-mcp?",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_show",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -847,15 +631,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Do not compare two revisions: open HEAD~1 itself in example/research-mcp and show only its src/payments.py change.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_show",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -884,15 +659,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Compare HEAD~1 with HEAD in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_diff",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -921,15 +687,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Diff HEAD~1 against HEAD for only src/auth.py in example/research-mcp, with one context line.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_diff",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -960,15 +717,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "In example/research-mcp, compare HEAD~2 to HEAD~1 only for src/payments.py.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_diff",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -998,15 +746,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Check whether local branch main differs from HEAD in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_diff",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -1033,15 +772,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need the patch between committed HEAD and the current WORKTREE in example/research-mcp, not merely a cleanliness summary.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_diff",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -1069,15 +799,6 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Show the repository status for example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_status",
     "expected_args": {
       "repo_id": "example/research-mcp"
@@ -1104,15 +825,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Report status only for the src path in example/research-mcp.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_status",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -1138,15 +850,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Check example/research-mcp status but exclude untracked files.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_status",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -1172,15 +875,6 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Is README.md currently clean in example/research-mcp? Use repository status.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_status",
     "expected_args": {
       "repo_id": "example/research-mcp",
@@ -1206,15 +900,6 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Before reviewing any commit patch, summarize the current example/research-mcp worktree with at most one status entry.",
-    "available_tools": [
-      "code_list_files",
-      "code_read_file",
-      "code_search_text",
-      "git_log",
-      "git_show",
-      "git_diff",
-      "git_status"
-    ],
     "expected_tool": "git_status",
     "expected_args": {
       "repo_id": "example/research-mcp",

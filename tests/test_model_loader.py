@@ -221,181 +221,19 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
-    def test_gpt_oss_finance_validation_rejects_invented_table(self) -> None:
-        from models.routers.gpt_oss_local_router import _finance_argument_errors
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        prediction = ToolCallPrediction(
-            selected_tool="finance_query_table",
-            selected_args={
-                "dataset_id": "finqa-public-test-v1",
-                "sql": "SELECT numeric_value FROM source_table",
-            },
-            raw_output="",
-        )
-
-        errors = _finance_argument_errors(prediction)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("only valid SQLite table is data", errors[0])
-
-    def test_gpt_oss_finance_validation_accepts_data_table(self) -> None:
-        from models.routers.gpt_oss_local_router import _finance_argument_errors
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        prediction = ToolCallPrediction(
-            selected_tool="finance_query_table",
-            selected_args={
-                "dataset_id": "finqa-public-test-v1",
-                "sql": "SELECT AVG(numeric_value) AS result FROM data",
-            },
-            raw_output="",
-        )
-
-        self.assertEqual(_finance_argument_errors(prediction), [])
-
-    def test_gpt_oss_finance_validation_rejects_repeated_constant_rows(self) -> None:
-        from models.routers.gpt_oss_local_router import _finance_argument_errors
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        prediction = ToolCallPrediction(
-            selected_tool="finance_query_table",
-            selected_args={
-                "dataset_id": "tatqa-public-test-gold-v1",
-                "sql": "SELECT 1100.0 / 5275.3 AS result FROM data",
-            },
-            raw_output="",
-        )
-
-        errors = _finance_argument_errors(prediction)
-        self.assertTrue(any("omit FROM data" in error for error in errors))
-
-    def test_gpt_oss_finance_validation_accepts_constant_scalar(self) -> None:
-        from models.routers.gpt_oss_local_router import _finance_argument_errors
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        prediction = ToolCallPrediction(
-            selected_tool="finance_query_table",
-            selected_args={
-                "dataset_id": "tatqa-public-test-gold-v1",
-                "sql": "SELECT ROUND(1100.0 / 5275.3, 5) AS result",
-            },
-            raw_output="",
-        )
-
-        self.assertEqual(_finance_argument_errors(prediction), [])
-
-    def test_gpt_oss_guidance_is_router_local(self) -> None:
+    def test_gpt_oss_native_tools_use_supplied_metadata_only(self) -> None:
         from models.routers.gpt_oss_local_router import _build_native_tools
 
         tools = _build_native_tools(
-            ["finance_query_table", "modular_arithmetic"],
-            {},
-            {
-                "finance_query_table": "Run bounded SQL.",
-                "modular_arithmetic": "Compute modular arithmetic.",
-            },
+            ["lookup"],
+            {"lookup": {"type": "object", "properties": {"key": {"type": "string"}}}},
+            {"lookup": "Look up an item."},
         )
 
-        self.assertIn("table named data", tools[0]["description"])
-        self.assertIn("operation='pow'", tools[1]["description"])
-
-    def test_gpt_oss_normalizes_math_and_retail_arguments(self) -> None:
-        from models.routers.gpt_oss_local_router import (
-            _normalize_gpt_oss_prediction,
-        )
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        cases = [
-            (
-                "What is the units digit of 3^2004?",
-                ToolCallPrediction(
-                    "modular_arithmetic",
-                    {
-                        "expression": "3**2004",
-                        "modulus": 10,
-                        "operation": "mod",
-                    },
-                    "",
-                ),
-                ["modular_arithmetic"],
-                "modular_arithmetic",
-                {
-                    "expression": "3",
-                    "modulus": 10,
-                    "operation": "pow",
-                    "exponent": 2004,
-                },
-            ),
-            (
-                r"Find 4^{-1} modulo 35.",
-                ToolCallPrediction(
-                    "modular_arithmetic",
-                    {
-                        "expression": "4^-1",
-                        "modulus": 35,
-                        "operation": "mod",
-                    },
-                    "",
-                ),
-                ["modular_arithmetic"],
-                "modular_arithmetic",
-                {"expression": "4", "modulus": 35, "operation": "inverse"},
-            ),
-            (
-                "Retrieve the user record for USER-MEI.",
-                ToolCallPrediction(
-                    "find_user_id_by_email",
-                    {"email": "USER-MEI"},
-                    "",
-                ),
-                ["find_user_id_by_email", "get_user_details"],
-                "get_user_details",
-                {"user_id": "USER-MEI"},
-            ),
-            (
-                "Cancel RET-1002 because it is no longer required.",
-                ToolCallPrediction(
-                    "cancel_pending_order",
-                    {
-                        "order_id": "RET-1002",
-                        "reason": "User no longer requires this order.",
-                    },
-                    "",
-                ),
-                ["cancel_pending_order"],
-                "cancel_pending_order",
-                {"order_id": "RET-1002", "reason": "no longer needed"},
-            ),
-        ]
-
-        for query, prediction, tools, expected_tool, expected_args in cases:
-            with self.subTest(query=query):
-                normalized = _normalize_gpt_oss_prediction(
-                    query, prediction, tools
-                )
-                self.assertEqual(normalized.selected_tool, expected_tool)
-                self.assertEqual(normalized.selected_args, expected_args)
-
-    def test_gpt_oss_recovers_truncated_base_arithmetic_call(self) -> None:
-        from models.routers.gpt_oss_local_router import (
-            _normalize_gpt_oss_prediction,
-        )
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        normalized = _normalize_gpt_oss_prediction(
-            r"What is $2343_6+15325_6$? Express your answer in base $6$.",
-            ToolCallPrediction("hallucinated_tool", {}, "truncated reasoning"),
-            ["base_arithmetic"],
-        )
-
-        self.assertEqual(normalized.selected_tool, "base_arithmetic")
+        self.assertEqual(tools[0]["description"], "Look up an item.")
         self.assertEqual(
-            normalized.selected_args,
-            {
-                "expression": "2343 + 15325",
-                "input_base": 6,
-                "output_base": 6,
-            },
+            tools[0]["parameters"],
+            {"type": "object", "properties": {"key": {"type": "string"}}},
         )
 
     def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
@@ -756,7 +594,7 @@ class RouterRegistryTests(unittest.TestCase):
         )
         self.assertIn("did not produce a valid call", reconsideration_prompt)
 
-    def test_gpt_oss_router_uses_larger_configurable_generation_budget(self) -> None:
+    def test_gpt_oss_router_uses_generator_generation_defaults(self) -> None:
         from models.routers import gpt_oss_local_router
 
         generator = Mock()
@@ -772,12 +610,10 @@ class RouterRegistryTests(unittest.TestCase):
             ),
         )
 
-        with (
-            patch.object(gpt_oss_local_router, "_load_generator", return_value=generator),
-            patch.dict(
-                "os.environ",
-                {"LAYERMCP_GPT_OSS_MAX_TOOL_TOKENS": "640"},
-            ),
+        with patch.object(
+            gpt_oss_local_router,
+            "_load_generator",
+            return_value=generator,
         ):
             gpt_oss_local_router.choose_tool_call(
                 "Compute 2+2.",
@@ -792,8 +628,11 @@ class RouterRegistryTests(unittest.TestCase):
             )
 
         self.assertEqual(
-            generator.generate_text.call_args.kwargs["max_tokens"],
-            640,
+            generator.generate_text.call_args.kwargs,
+            {
+                "prompt_tokens": [1],
+                "stop_tokens": [2],
+            },
         )
 
     def test_schema_validation_handles_optional_any_of_and_extra_args(self) -> None:

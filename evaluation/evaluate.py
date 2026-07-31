@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import sys
 import time
@@ -63,6 +64,38 @@ class SampleScore:
     failure_category: str
 
 
+@dataclass(frozen=True)
+class OutcomeMatch:
+    matched: bool
+    diagnostic: str | None
+
+
+@dataclass(frozen=True)
+class ToolResultExtraction:
+    value: Any
+    diagnostic: str | None
+
+
+@dataclass(frozen=True)
+class FinalOutcomeScore:
+    correct: bool | None
+    status: str
+    matcher: str | None
+    diagnostic: str | None
+
+
+FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
+NUMERIC_REL_TOL = 1e-9
+NUMERIC_ABS_TOL = 1e-6
+_SYMBOLIC_MATH_FIELDS = {
+    "simplified",
+    "factored",
+    "expanded",
+    "derivative",
+    "solutions",
+}
+
+
 def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
     expected_args = sample.get("expected_args")
     if expected_args is None:
@@ -111,6 +144,185 @@ def _normalize_json(value: Any) -> str:
 
 def _exact_argument_match(selected_args: dict[str, Any], expected_args: dict[str, Any]) -> bool:
     return _normalize_json(selected_args) == _normalize_json(expected_args)
+
+
+def _symbolically_equivalent(actual: Any, expected: Any) -> bool:
+    if not isinstance(actual, (str, int, float)) or isinstance(actual, bool):
+        return False
+    if not isinstance(expected, (str, int, float)) or isinstance(expected, bool):
+        return False
+
+    try:
+        import sympy
+
+        actual_expression = sympy.sympify(str(actual).replace("^", "**"))
+        expected_expression = sympy.sympify(str(expected).replace("^", "**"))
+        return bool(sympy.simplify(actual_expression - expected_expression) == 0)
+    except Exception:
+        return False
+
+
+def _match_expected_answer(
+    actual: Any,
+    expected: Any,
+    *,
+    domain: str,
+    path: str = "$",
+    symbolic_math_value: bool = False,
+) -> OutcomeMatch:
+    if isinstance(expected, dict):
+        if not isinstance(actual, dict):
+            return OutcomeMatch(
+                False,
+                f"{path}: expected an object, got {type(actual).__name__}",
+            )
+        for key, expected_value in expected.items():
+            child_path = f"{path}.{key}"
+            if key not in actual:
+                return OutcomeMatch(False, f"{child_path}: expected key is missing")
+            match = _match_expected_answer(
+                actual[key],
+                expected_value,
+                domain=domain,
+                path=child_path,
+                symbolic_math_value=(
+                    domain == "mathematics" and key in _SYMBOLIC_MATH_FIELDS
+                ),
+            )
+            if not match.matched:
+                return match
+        return OutcomeMatch(True, None)
+
+    if isinstance(expected, list):
+        if not isinstance(actual, list):
+            return OutcomeMatch(
+                False,
+                f"{path}: expected an array, got {type(actual).__name__}",
+            )
+        if len(actual) != len(expected):
+            return OutcomeMatch(
+                False,
+                f"{path}: expected {len(expected)} items, got {len(actual)}",
+            )
+        for index, (actual_item, expected_item) in enumerate(zip(actual, expected)):
+            match = _match_expected_answer(
+                actual_item,
+                expected_item,
+                domain=domain,
+                path=f"{path}[{index}]",
+                symbolic_math_value=symbolic_math_value,
+            )
+            if not match.matched:
+                return match
+        return OutcomeMatch(True, None)
+
+    if isinstance(expected, bool):
+        if isinstance(actual, bool) and actual == expected:
+            return OutcomeMatch(True, None)
+        return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
+
+    if symbolic_math_value and _symbolically_equivalent(actual, expected):
+        return OutcomeMatch(True, None)
+
+    if isinstance(expected, int) and not isinstance(expected, bool):
+        if isinstance(actual, int) and not isinstance(actual, bool):
+            if actual == expected:
+                return OutcomeMatch(True, None)
+            return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
+        if isinstance(actual, float) and math.isclose(
+            actual,
+            expected,
+            rel_tol=NUMERIC_REL_TOL,
+            abs_tol=NUMERIC_ABS_TOL,
+        ):
+            return OutcomeMatch(True, None)
+        return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
+
+    if isinstance(expected, float):
+        if (
+            isinstance(actual, (int, float))
+            and not isinstance(actual, bool)
+            and math.isclose(
+                actual,
+                expected,
+                rel_tol=NUMERIC_REL_TOL,
+                abs_tol=NUMERIC_ABS_TOL,
+            )
+        ):
+            return OutcomeMatch(True, None)
+        return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
+
+    if type(actual) is type(expected) and actual == expected:
+        return OutcomeMatch(True, None)
+    return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
+
+
+def _score_final_outcome(
+    *,
+    expected_answer: Any,
+    tool_result_value: Any,
+    result_extraction_diagnostic: str | None,
+    domain: str,
+    call_predicted_tools: bool,
+    no_tool_call: bool,
+    execution_success: bool,
+) -> FinalOutcomeScore:
+    if expected_answer is None:
+        return FinalOutcomeScore(
+            None,
+            "missing_expected_answer",
+            None,
+            "Benchmark row does not provide expected_answer.",
+        )
+    if not call_predicted_tools:
+        return FinalOutcomeScore(
+            None,
+            "execution_disabled",
+            None,
+            "Predicted-tool execution is disabled.",
+        )
+    if no_tool_call:
+        return FinalOutcomeScore(
+            False,
+            "no_tool_call",
+            FINAL_OUTCOME_MATCHER,
+            "No registered predicted tool was available to execute.",
+        )
+    if not execution_success:
+        return FinalOutcomeScore(
+            False,
+            "execution_error",
+            FINAL_OUTCOME_MATCHER,
+            "The predicted tool did not execute successfully.",
+        )
+    if result_extraction_diagnostic is not None:
+        return FinalOutcomeScore(
+            False,
+            "result_extraction_error",
+            FINAL_OUTCOME_MATCHER,
+            result_extraction_diagnostic,
+        )
+
+    match = _match_expected_answer(
+        tool_result_value,
+        expected_answer,
+        domain=domain,
+    )
+    return FinalOutcomeScore(
+        match.matched,
+        "correct" if match.matched else "mismatch",
+        FINAL_OUTCOME_MATCHER,
+        match.diagnostic,
+    )
+
+
+def _final_outcome_record_fields(score: FinalOutcomeScore) -> dict[str, Any]:
+    return {
+        "final_outcome_correct": score.correct,
+        "final_outcome_status": score.status,
+        "final_outcome_matcher": score.matcher,
+        "final_outcome_diagnostic": score.diagnostic,
+    }
 
 
 def _score_sample(
@@ -169,6 +381,16 @@ def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
         selected = record["selected_tool"] or "no_tool_call"
         confusion[record["expected_tool"]][selected] += 1
 
+    final_outcome_gold_samples = sum(
+        1 for record in records if record.get("expected_answer") is not None
+    )
+    final_outcome_scored_samples = sum(
+        1 for record in records if record.get("final_outcome_correct") is not None
+    )
+    final_outcome_correct_samples = sum(
+        1 for record in records if record.get("final_outcome_correct") is True
+    )
+
     return {
         "total_samples": total,
         "tool_selection_accuracy": (
@@ -190,6 +412,17 @@ def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
             sum(1 for record in records if record["failure_category"] == "no_tool_call") / total
             if total
             else 0.0
+        ),
+        "final_outcome_accuracy": (
+            final_outcome_correct_samples / final_outcome_scored_samples
+            if final_outcome_scored_samples
+            else None
+        ),
+        "final_outcome_correct_samples": final_outcome_correct_samples,
+        "final_outcome_scored_samples": final_outcome_scored_samples,
+        "final_outcome_gold_samples": final_outcome_gold_samples,
+        "final_outcome_gold_coverage": (
+            final_outcome_gold_samples / total if total else 0.0
         ),
         "per_tool_accuracy": {
             tool: (
@@ -221,6 +454,27 @@ def _summarize_tool_result(result: Any) -> str:
         return text
 
     return repr(first_item)
+
+
+def _extract_structured_tool_result(result: Any) -> ToolResultExtraction:
+    structured = getattr(result, "structuredContent", None)
+    if structured is not None:
+        return ToolResultExtraction(structured, None)
+
+    content = getattr(result, "content", None) or []
+    for item in content:
+        text = getattr(item, "text", None)
+        if not isinstance(text, str):
+            continue
+        try:
+            return ToolResultExtraction(json.loads(text), None)
+        except json.JSONDecodeError:
+            return ToolResultExtraction(text, None)
+
+    return ToolResultExtraction(
+        None,
+        "MCP tool result contained neither structuredContent nor text content.",
+    )
 
 
 @asynccontextmanager
@@ -410,6 +664,8 @@ async def _evaluate_with_server(
 
                 called_tool = None
                 tool_result = None
+                tool_result_value = None
+                result_extraction_diagnostic = None
                 tool_error = None
                 execution_success = False
                 execution_attempted = False
@@ -426,6 +682,9 @@ async def _evaluate_with_server(
                         )
                         executed_tool_calls += 1
                         tool_result = _summarize_tool_result(call_result)
+                        extracted_result = _extract_structured_tool_result(call_result)
+                        tool_result_value = extracted_result.value
+                        result_extraction_diagnostic = extracted_result.diagnostic
                         execution_success = not bool(
                             getattr(call_result, "isError", False)
                         )
@@ -448,6 +707,15 @@ async def _evaluate_with_server(
                     execution_success=execution_success,
                     execution_attempted=execution_attempted,
                 )
+                final_outcome = _score_final_outcome(
+                    expected_answer=sample.expected_answer,
+                    tool_result_value=tool_result_value,
+                    result_extraction_diagnostic=result_extraction_diagnostic,
+                    domain=sample.domain,
+                    call_predicted_tools=call_predicted_tools,
+                    no_tool_call=no_tool_call,
+                    execution_success=execution_success,
+                )
                 record = {
                     "sample_id": sample.id,
                     "domain": sample.domain,
@@ -455,6 +723,7 @@ async def _evaluate_with_server(
                     "expected_tool": expected,
                     "selected_tool": None if no_tool_call else selected_tool,
                     "expected_args": sample.expected_args,
+                    "expected_answer": sample.expected_answer,
                     "selected_args": selected_args,
                     "tool_selection_correct": score.tool_selection_correct,
                     "argument_match_correct": score.argument_match_correct,
@@ -481,7 +750,9 @@ async def _evaluate_with_server(
                     "prompt_template": prompt_template,
                     "called_tool": called_tool,
                     "tool_result": tool_result,
+                    "tool_result_value": tool_result_value,
                     "tool_error": tool_error,
+                    **_final_outcome_record_fields(final_outcome),
                 }
                 records.append(record)
                 sample_handle.write(json.dumps(record, ensure_ascii=True) + "\n")
@@ -512,6 +783,16 @@ async def _evaluate_with_server(
     print(f"Exact argument match accuracy: {metrics['exact_argument_match_accuracy']:.2%}")
     print(f"Execution success rate: {metrics['execution_success_rate']:.2%}")
     print(f"No tool call rate: {metrics['no_tool_call_rate']:.2%}")
+    final_outcome_accuracy = metrics["final_outcome_accuracy"]
+    print(
+        "Final outcome accuracy: "
+        + (
+            f"{final_outcome_accuracy:.2%}"
+            if final_outcome_accuracy is not None
+            else "not scored"
+        )
+    )
+    print(f"Final outcome gold coverage: {metrics['final_outcome_gold_coverage']:.2%}")
     print(f"Avg Latency: {avg_latency:.2f}s")
     print(f"Executed tool calls: {executed_tool_calls}")
     print(f"Results: {samples_path}")

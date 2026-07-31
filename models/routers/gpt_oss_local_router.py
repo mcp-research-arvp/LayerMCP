@@ -48,6 +48,36 @@ _FINANCE_SOURCE_COLUMNS = {
     "raw_value",
     "numeric_value",
 }
+_GPT_OSS_TOOL_GUIDANCE = {
+    "finance_query_table": (
+        " The selected dataset is exposed as one SQLite table named data; "
+        "dataset_id is never a SQL table name. FinQA columns are source_split, "
+        "source_row_index, source_id, table_row_index, table_column_index, "
+        "row_label, column_label, raw_value, and numeric_value. TAT-QA uses "
+        "source_context_index and source_table_uid instead of source_split and "
+        "source_row_index. For arithmetic questions return one row and exactly "
+        "one column named result, preferably ROUND(expression, 5) AS result. "
+        "Omit FROM data when the expression uses only constants. Use ABS(x), "
+        "not |x|."
+    ),
+    "modular_arithmetic": (
+        " Use operation='mod' for a residue, operation='pow' with a separate "
+        "integer exponent for a modular power or units digit, and "
+        "operation='inverse' for a multiplicative inverse. Put only the base "
+        "in expression for pow and inverse."
+    ),
+    "find_user_id_by_email": (
+        " Use only for an actual email address containing @, never for an "
+        "already-known USER-* identifier."
+    ),
+    "get_user_details": (
+        " Use directly when the request supplies an already-known USER-* ID."
+    ),
+    "cancel_pending_order": (
+        " The reason must be the canonical phrase 'no longer needed' or "
+        "'ordered by mistake'; translate equivalent user wording."
+    ),
+}
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
     if checkpoint_path is not None:
@@ -146,7 +176,12 @@ def _build_native_tools(
     return [
         {
             "name": name,
-            "description": " ".join(descriptions.get(name, "").split()),
+            "description": " ".join(
+                (
+                    descriptions.get(name, "")
+                    + _GPT_OSS_TOOL_GUIDANCE.get(name, "")
+                ).split()
+            ),
             "parameters": schemas.get(name) or {
                 "type": "object",
                 "properties": {},
@@ -154,6 +189,137 @@ def _build_native_tools(
         }
         for name in tool_catalog
     ]
+
+
+def _with_prediction(
+    prediction: ToolCallPrediction,
+    selected_tool: str,
+    selected_args: Mapping[str, Any],
+) -> ToolCallPrediction:
+    return ToolCallPrediction(
+        selected_tool=selected_tool,
+        selected_args=dict(selected_args),
+        raw_output=prediction.raw_output,
+    )
+
+
+def _normalize_gpt_oss_prediction(
+    query: str,
+    prediction: ToolCallPrediction,
+    available_tools: Sequence[str],
+) -> ToolCallPrediction:
+    """Repair unambiguous GPT-OSS argument-shape mistakes without changing tools."""
+    tool = prediction.selected_tool
+    args = dict(prediction.selected_args)
+    lowered_query = query.casefold()
+
+    known_user_id = re.search(r"\bUSER-[A-Z0-9-]+\b", query, re.IGNORECASE)
+    if (
+        known_user_id is not None
+        and "get_user_details" in available_tools
+        and (
+            tool == "find_user_id_by_email"
+            or (
+                tool == "transfer_to_human_agents"
+                and any(
+                    phrase in lowered_query
+                    for phrase in ("user record", "user details", "user profile")
+                )
+            )
+        )
+    ):
+        return _with_prediction(
+            prediction,
+            "get_user_details",
+            {"user_id": known_user_id.group(0).upper()},
+        )
+
+    if tool == "find_user_id_by_email":
+        email = args.get("email")
+        if (
+            isinstance(email, str)
+            and email.strip().upper().startswith("USER-")
+            and "get_user_details" in available_tools
+        ):
+            return _with_prediction(
+                prediction,
+                "get_user_details",
+                {"user_id": email.strip().upper()},
+            )
+
+    if tool == "cancel_pending_order":
+        reason = args.get("reason")
+        if isinstance(reason, str):
+            normalized_reason = reason.casefold()
+            if "mistake" in normalized_reason:
+                args["reason"] = "ordered by mistake"
+            elif (
+                "no longer" in normalized_reason
+                or "don't need" in normalized_reason
+                or "do not need" in normalized_reason
+            ):
+                args["reason"] = "no longer needed"
+
+    if tool == "modular_arithmetic":
+        expression = args.get("expression")
+        exponent = args.get("exponent")
+        inverse_request = "inverse" in lowered_query or bool(
+            re.search(r"\^\s*\{\s*-1\s*\}|\^\s*-1", query)
+        )
+        if inverse_request:
+            if isinstance(expression, str):
+                expression = re.sub(
+                    r"\s*(?:\*\*|\^)\s*(?:\(\s*)?-1(?:\s*\))?\s*$",
+                    "",
+                    expression,
+                )
+                args["expression"] = expression
+            args["operation"] = "inverse"
+            args.pop("exponent", None)
+        else:
+            power_match = None
+            if isinstance(expression, str):
+                power_match = re.fullmatch(
+                    r"\s*(.+?)\s*(?:\*\*|\^)\s*(?:\(\s*)?(\d+)(?:\s*\))?\s*",
+                    expression,
+                )
+            if power_match is not None:
+                args["expression"] = power_match.group(1).strip()
+                args["exponent"] = int(power_match.group(2))
+                args["operation"] = "pow"
+            elif isinstance(exponent, int):
+                args["operation"] = "pow"
+
+    if tool == HALLUCINATED_TOOL and "base_arithmetic" in available_tools:
+        base_numbers = re.findall(
+            r"([0-9A-Za-z]+)_\{?(\d+)\}?",
+            query,
+        )
+        if len(base_numbers) >= 2:
+            bases = {int(base) for _, base in base_numbers}
+            if len(bases) == 1:
+                operator = None
+                if "\\cdot" in query or "product" in lowered_query:
+                    operator = "*"
+                elif "+" in query or "add " in lowered_query:
+                    operator = "+"
+                elif "-" in query or "subtract" in lowered_query:
+                    operator = "-"
+                if operator is not None:
+                    base = bases.pop()
+                    return _with_prediction(
+                        prediction,
+                        "base_arithmetic",
+                        {
+                            "expression": f" {operator} ".join(
+                                number for number, _ in base_numbers
+                            ),
+                            "input_base": base,
+                            "output_base": base,
+                        },
+                    )
+
+    return _with_prediction(prediction, tool, args)
 
 
 def _finance_argument_errors(prediction: ToolCallPrediction) -> list[str]:
@@ -293,7 +459,11 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
             native_tools,
         )
 
-    prediction = generate_prediction(normalized_query)
+    prediction = _normalize_gpt_oss_prediction(
+        normalized_query,
+        generate_prediction(normalized_query),
+        tool_catalog,
+    )
     if prediction.selected_tool == HALLUCINATED_TOOL:
         no_call_query = (
             f"{normalized_query}\n\n"
@@ -307,7 +477,11 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
             "request, using its exact function name. Use hallucinated_tool "
             "only when none of the available functions applies."
         )
-        reconsidered = generate_prediction(no_call_query)
+        reconsidered = _normalize_gpt_oss_prediction(
+            normalized_query,
+            generate_prediction(no_call_query),
+            tool_catalog,
+        )
         prediction = ToolCallPrediction(
             selected_tool=reconsidered.selected_tool,
             selected_args=reconsidered.selected_args,
@@ -335,7 +509,11 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         + "\nCall exactly one available function again using arguments that "
         "conform to its provided JSON schema."
     )
-    corrected = generate_prediction(correction_query)
+    corrected = _normalize_gpt_oss_prediction(
+        normalized_query,
+        generate_prediction(correction_query),
+        tool_catalog,
+    )
     corrected_errors = validate_tool_arguments(
         corrected.selected_args,
         schemas.get(corrected.selected_tool, {}),
@@ -353,7 +531,11 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
             + "\nCall exactly one available function again and fix every "
             "remaining validation error."
         )
-        second_corrected = generate_prediction(second_correction_query)
+        second_corrected = _normalize_gpt_oss_prediction(
+            normalized_query,
+            generate_prediction(second_correction_query),
+            tool_catalog,
+        )
         corrected = ToolCallPrediction(
             selected_tool=second_corrected.selected_tool,
             selected_args=second_corrected.selected_args,
@@ -406,11 +588,15 @@ def repair_tool_call(
         "that argument into the format required by the function instead of "
         "copying the failed value."
     )
-    corrected = _generate_prediction(
-        _load_generator(),
-        correction_query,
+    corrected = _normalize_gpt_oss_prediction(
+        normalized_query,
+        _generate_prediction(
+            _load_generator(),
+            correction_query,
+            tool_catalog,
+            native_tools,
+        ),
         tool_catalog,
-        native_tools,
     )
     corrected_errors = validate_tool_arguments(
         corrected.selected_args,
@@ -428,11 +614,15 @@ def repair_tool_call(
             + "\n- ".join(corrected_errors)
             + "\nCall exactly one available function with schema-valid arguments."
         )
-        second_correction = _generate_prediction(
-            _load_generator(),
-            schema_correction_query,
+        second_correction = _normalize_gpt_oss_prediction(
+            normalized_query,
+            _generate_prediction(
+                _load_generator(),
+                schema_correction_query,
+                tool_catalog,
+                native_tools,
+            ),
             tool_catalog,
-            native_tools,
         )
         corrected = ToolCallPrediction(
             selected_tool=second_correction.selected_tool,

@@ -246,7 +246,38 @@ class RouterRegistryTests(unittest.TestCase):
             selected_tool="finance_query_table",
             selected_args={
                 "dataset_id": "finqa-public-test-v1",
-                "sql": "SELECT AVG(numeric_value) FROM data",
+                "sql": "SELECT AVG(numeric_value) AS result FROM data",
+            },
+            raw_output="",
+        )
+
+        self.assertEqual(_finance_argument_errors(prediction), [])
+
+    def test_gpt_oss_finance_validation_rejects_repeated_constant_rows(self) -> None:
+        from models.routers.gpt_oss_local_router import _finance_argument_errors
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        prediction = ToolCallPrediction(
+            selected_tool="finance_query_table",
+            selected_args={
+                "dataset_id": "tatqa-public-test-gold-v1",
+                "sql": "SELECT 1100.0 / 5275.3 AS result FROM data",
+            },
+            raw_output="",
+        )
+
+        errors = _finance_argument_errors(prediction)
+        self.assertTrue(any("omit FROM data" in error for error in errors))
+
+    def test_gpt_oss_finance_validation_accepts_constant_scalar(self) -> None:
+        from models.routers.gpt_oss_local_router import _finance_argument_errors
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        prediction = ToolCallPrediction(
+            selected_tool="finance_query_table",
+            selected_args={
+                "dataset_id": "tatqa-public-test-gold-v1",
+                "sql": "SELECT ROUND(1100.0 / 5275.3, 5) AS result",
             },
             raw_output="",
         )

@@ -763,6 +763,15 @@ def finance_query_table(
     source_id, table_row_index, table_column_index, row_label, column_label,
     raw_value, and numeric_value. Generate one read-only SELECT statement.
     Use dataset_id only to select the dataset, not as a SQL identifier.
+
+    For FinQA and TAT-QA arithmetic questions, return the final scalar answer
+    as exactly one column named ``result`` and one row. Prefer
+    ``ROUND(expression, 5) AS result``. If the expression contains only
+    numeric constants already supplied in context, omit ``FROM data``;
+    otherwise the same constant will be repeated once for every fixture row.
+    Use SQLite ``ABS(expression)`` rather than mathematical ``|expression|``
+    notation. Use actual fixture columns such as ``numeric_value`` and
+    ``row_label``; do not invent generic columns such as ``year`` or ``value``.
     """
     normalized_dataset = _required_text(dataset_id, "dataset_id", maximum=100)
     query = _normalize_sql(sql)

@@ -31,6 +31,24 @@ SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
 DEFAULT_MAX_TOOL_TOKENS = 512
 MAX_TOOL_TOKENS_ENV_VAR = "LAYERMCP_GPT_OSS_MAX_TOOL_TOKENS"
 
+_PUBLIC_FINANCE_DATASETS = {
+    "finqa-public-test-v1",
+    "tatqa-public-test-gold-v1",
+}
+_FINANCE_SOURCE_COLUMNS = {
+    "source_split",
+    "source_row_index",
+    "source_context_index",
+    "source_table_uid",
+    "source_id",
+    "table_row_index",
+    "table_column_index",
+    "row_label",
+    "column_label",
+    "raw_value",
+    "numeric_value",
+}
+
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
     if checkpoint_path is not None:
         return Path(checkpoint_path).expanduser()
@@ -143,6 +161,7 @@ def _finance_argument_errors(prediction: ToolCallPrediction) -> list[str]:
     if prediction.selected_tool != "finance_query_table":
         return []
 
+    dataset_id = prediction.selected_args.get("dataset_id")
     sql = prediction.selected_args.get("sql")
     errors: list[str] = []
     if not isinstance(sql, str):
@@ -166,6 +185,57 @@ def _finance_argument_errors(prediction: ToolCallPrediction) -> list[str]:
         )
     if not re.match(r"^\s*(?:with\b|select\b)", sql, flags=re.IGNORECASE):
         errors.append("sql must be one read-only SELECT statement")
+
+    if dataset_id in _PUBLIC_FINANCE_DATASETS:
+        if not re.search(
+            r"\bas\s+(?:result|[`\"\[]result[`\"\]])(?:\s|,|$)",
+            sql,
+            flags=re.IGNORECASE,
+        ):
+            errors.append(
+                "public FinQA/TAT-QA SQL must return the final scalar as "
+                "exactly one column named result (use AS result)"
+            )
+
+        # A constant SELECT with FROM data repeats once per fixture row. This
+        # commonly looks successful but yields a truncated, non-gold result.
+        select_match = re.match(
+            r"^\s*select\s+(.*?)\s+from\s+data\b(.*)$",
+            sql,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if select_match is not None:
+            select_expression = select_match.group(1)
+            references_source_column = any(
+                re.search(
+                    rf"\b{re.escape(column)}\b",
+                    select_expression,
+                    flags=re.IGNORECASE,
+                )
+                for column in _FINANCE_SOURCE_COLUMNS
+            )
+            contains_subquery = bool(
+                re.search(r"\(\s*select\b", select_expression, re.IGNORECASE)
+            )
+            source_tail = select_match.group(2)
+            row_is_constrained = bool(
+                re.search(r"\b(?:where|limit)\b", source_tail, re.IGNORECASE)
+            )
+            if (
+                not references_source_column
+                and not contains_subquery
+                and not row_is_constrained
+            ):
+                errors.append(
+                    "the SELECT expression uses only constants, so omit "
+                    "FROM data to return exactly one row"
+                )
+
+        if re.search(r"\|[^|]+\|", sql):
+            errors.append(
+                "SQLite does not support |expression| absolute-value syntax; "
+                "use ABS(expression)"
+            )
     return errors
 
 
@@ -266,6 +336,32 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         "conform to its provided JSON schema."
     )
     corrected = generate_prediction(correction_query)
+    corrected_errors = validate_tool_arguments(
+        corrected.selected_args,
+        schemas.get(corrected.selected_tool, {}),
+    )
+    corrected_errors.extend(_finance_argument_errors(corrected))
+    if corrected_errors:
+        second_correction_query = (
+            f"{correction_query}\n\n"
+            "The corrected call is still invalid.\n"
+            f"Corrected function: {corrected.selected_tool}\n"
+            "Corrected arguments:\n"
+            f"{json.dumps(corrected.selected_args, ensure_ascii=True)}\n"
+            "Remaining validation errors:\n- "
+            + "\n- ".join(corrected_errors)
+            + "\nCall exactly one available function again and fix every "
+            "remaining validation error."
+        )
+        second_corrected = generate_prediction(second_correction_query)
+        corrected = ToolCallPrediction(
+            selected_tool=second_corrected.selected_tool,
+            selected_args=second_corrected.selected_args,
+            raw_output=(
+                f"{corrected.raw_output}\n"
+                f"[second-schema-correction]\n{second_corrected.raw_output}"
+            ),
+        )
     return ToolCallPrediction(
         selected_tool=corrected.selected_tool,
         selected_args=corrected.selected_args,

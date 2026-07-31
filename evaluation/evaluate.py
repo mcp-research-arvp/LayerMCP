@@ -420,7 +420,12 @@ async def _evaluate_with_server(
                         "name is data; use dataset_id only as the tool argument. "
                         "Do not invent table names, source identifiers, or cell "
                         "values. Compute the requested arithmetic in the SELECT "
-                        "so the query returns the final answer.\n"
+                        "so the query returns the final answer. Return exactly "
+                        "one row and one column named result, normally using "
+                        "ROUND(expression, 5) AS result. If calculating only "
+                        "with constants from this context, omit FROM data so "
+                        "the constant is not repeated for every fixture row. "
+                        "Use ABS(x), never |x|, for absolute value.\n"
                         f"Source-table context:\n{sample.model_context}"
                     )
                 expected = sample.expected_tool

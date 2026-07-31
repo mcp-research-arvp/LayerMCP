@@ -284,6 +284,120 @@ class RouterRegistryTests(unittest.TestCase):
 
         self.assertEqual(_finance_argument_errors(prediction), [])
 
+    def test_gpt_oss_guidance_is_router_local(self) -> None:
+        from models.routers.gpt_oss_local_router import _build_native_tools
+
+        tools = _build_native_tools(
+            ["finance_query_table", "modular_arithmetic"],
+            {},
+            {
+                "finance_query_table": "Run bounded SQL.",
+                "modular_arithmetic": "Compute modular arithmetic.",
+            },
+        )
+
+        self.assertIn("table named data", tools[0]["description"])
+        self.assertIn("operation='pow'", tools[1]["description"])
+
+    def test_gpt_oss_normalizes_math_and_retail_arguments(self) -> None:
+        from models.routers.gpt_oss_local_router import (
+            _normalize_gpt_oss_prediction,
+        )
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        cases = [
+            (
+                "What is the units digit of 3^2004?",
+                ToolCallPrediction(
+                    "modular_arithmetic",
+                    {
+                        "expression": "3**2004",
+                        "modulus": 10,
+                        "operation": "mod",
+                    },
+                    "",
+                ),
+                ["modular_arithmetic"],
+                "modular_arithmetic",
+                {
+                    "expression": "3",
+                    "modulus": 10,
+                    "operation": "pow",
+                    "exponent": 2004,
+                },
+            ),
+            (
+                r"Find 4^{-1} modulo 35.",
+                ToolCallPrediction(
+                    "modular_arithmetic",
+                    {
+                        "expression": "4^-1",
+                        "modulus": 35,
+                        "operation": "mod",
+                    },
+                    "",
+                ),
+                ["modular_arithmetic"],
+                "modular_arithmetic",
+                {"expression": "4", "modulus": 35, "operation": "inverse"},
+            ),
+            (
+                "Retrieve the user record for USER-MEI.",
+                ToolCallPrediction(
+                    "find_user_id_by_email",
+                    {"email": "USER-MEI"},
+                    "",
+                ),
+                ["find_user_id_by_email", "get_user_details"],
+                "get_user_details",
+                {"user_id": "USER-MEI"},
+            ),
+            (
+                "Cancel RET-1002 because it is no longer required.",
+                ToolCallPrediction(
+                    "cancel_pending_order",
+                    {
+                        "order_id": "RET-1002",
+                        "reason": "User no longer requires this order.",
+                    },
+                    "",
+                ),
+                ["cancel_pending_order"],
+                "cancel_pending_order",
+                {"order_id": "RET-1002", "reason": "no longer needed"},
+            ),
+        ]
+
+        for query, prediction, tools, expected_tool, expected_args in cases:
+            with self.subTest(query=query):
+                normalized = _normalize_gpt_oss_prediction(
+                    query, prediction, tools
+                )
+                self.assertEqual(normalized.selected_tool, expected_tool)
+                self.assertEqual(normalized.selected_args, expected_args)
+
+    def test_gpt_oss_recovers_truncated_base_arithmetic_call(self) -> None:
+        from models.routers.gpt_oss_local_router import (
+            _normalize_gpt_oss_prediction,
+        )
+        from models.routers.structured_tool_call import ToolCallPrediction
+
+        normalized = _normalize_gpt_oss_prediction(
+            r"What is $2343_6+15325_6$? Express your answer in base $6$.",
+            ToolCallPrediction("hallucinated_tool", {}, "truncated reasoning"),
+            ["base_arithmetic"],
+        )
+
+        self.assertEqual(normalized.selected_tool, "base_arithmetic")
+        self.assertEqual(
+            normalized.selected_args,
+            {
+                "expression": "2343 + 15325",
+                "input_base": 6,
+                "output_base": 6,
+            },
+        )
+
     def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
         from models.routers.structured_tool_call import parse_tool_call
 

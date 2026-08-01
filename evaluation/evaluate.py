@@ -20,7 +20,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing.json"
+BENCHMARK_PATH = (
+    PROJECT_ROOT / "benchmark" / "archive" / "root" / "tool_routing.json"
+)
 SERVER_PATH = PROJECT_ROOT / "mcp_server" / "server.py"
 RESULTS_DIR = PROJECT_ROOT / "results"
 
@@ -277,7 +279,7 @@ def load_benchmark(path: Path) -> list[BenchmarkSample]:
     if not path.exists():
         raise FileNotFoundError(
             f"Benchmark dataset not found: {path}. "
-            "Create benchmark/tool_routing.json or update --dataset."
+            "Pass an existing benchmark JSON path with --dataset."
         )
 
     with path.open("r", encoding="utf-8") as handle:

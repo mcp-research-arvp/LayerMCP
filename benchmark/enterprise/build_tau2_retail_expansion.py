@@ -20,7 +20,7 @@ DEFAULT_OUTPUT = (
     PROJECT_ROOT
     / "benchmark"
     / "enterprise"
-    / "tool_routing_enterprise_tau2_public_adapted.json"
+    / "enterprise_tau2_single_step.json"
 )
 PROVENANCE_PATH = (
     PROJECT_ROOT / "mcp_server" / "fixtures" / "tau2_retail_provenance.json"

@@ -12,14 +12,16 @@ This folder contains enterprise automation single-tool routing benchmarks. Each 
   database, including user lookup, order/product inspection, order edits,
   returns, exchanges, and human transfer.
 
-For future files, prefer names that say both the source and the version, such as:
+The standardized active enterprise files are:
 
 ```text
-tool_routing_enterprise_controlled_v2.json
-tool_routing_enterprise_public_adapted_v2.json
+enterprise_controlled.json
+enterprise_tau2_single_step.json
 ```
 
-The current filenames are kept as-is for compatibility with tests and existing runs.
+The retired datasets are archived as
+`../archive/enterprise/enterprise_v2_controlled_legacy.json` and
+`../archive/enterprise/enterprise_public_adapted_legacy.json`.
 
 ## Tools Covered
 
@@ -54,7 +56,7 @@ The current filenames are kept as-is for compatibility with tests and existing r
 
 ## Dataset Files
 
-### `tool_routing_enterprise_v1.json`
+### `enterprise_controlled.json`
 
 - Records: 35
 - Source: `controlled_synthetic`
@@ -69,7 +71,7 @@ Difficulty breakdown:
 | `medium` | 12 |
 | `hard` | 7 |
 
-### `tool_routing_enterprise_v2_controlled.json`
+### `../archive/enterprise/enterprise_v2_controlled_legacy.json`
 
 - Records: 48
 - Source: `controlled_synthetic`
@@ -90,7 +92,7 @@ Difficulty breakdown:
 | `medium` | 24 |
 | `hard` | 12 |
 
-### `tool_routing_enterprise_public_adapted.json`
+### `../archive/enterprise/enterprise_public_adapted_legacy.json`
 
 - Records: 24
 - Source: `public_adapted`
@@ -121,7 +123,7 @@ Difficulty breakdown:
 | `medium` | 22 |
 | `hard` | 2 |
 
-### `tool_routing_enterprise_tau2_public_adapted.json`
+### `enterprise_tau2_single_step.json`
 
 - Records: 293
 - Source: pinned tau2-bench retail tasks

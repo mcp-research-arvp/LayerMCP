@@ -40,7 +40,11 @@ class FakeTokenizer:
 class LogitLensHelperTests(unittest.TestCase):
     def test_loads_phase2_seed_benchmark(self) -> None:
         samples = load_benchmark(
-            PROJECT_ROOT / "benchmark" / "tool_routing_phase2_seed.json"
+            PROJECT_ROOT
+            / "benchmark"
+            / "archive"
+            / "root"
+            / "tool_routing_phase2_seed.json"
         )
         self.assertEqual(len(samples), 16)
         self.assertEqual(

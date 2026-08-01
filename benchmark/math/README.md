@@ -22,7 +22,7 @@ The math tool menu is implemented in `mcp_server/math_tools.py`.
 
 ## Dataset Files
 
-### `tool_routing_math_controlled.json`
+### `math_controlled.json`
 
 - Records: 51
 - Source: `controlled_synthetic`
@@ -47,13 +47,13 @@ Breakdown by expected tool:
 
 The early controlled records use difficulty labels such as `easy`, `medium`, and `hard`. The newer v2 controlled records use more targeted IDs such as `math_v2_controlled_modular_arithmetic_001`.
 
-### `tool_routing_math_public_derived.json`
+### `math_public_math_dataset.json`
 
 - Records: 77
 - Source: `public_math_derived`
 - Source dataset: `math`
 - Domain: `mathematics`
-- Purpose: examples derived from public MATH benchmark problems and converted into MCP-style single-tool routing records.
+- Purpose: executable examples derived from public MATH benchmark problems and converted into MCP-style single-tool routing records.
 
 Each record keeps provenance fields such as:
 
@@ -76,7 +76,7 @@ Breakdown by expected tool:
 | `modular_arithmetic` | 8 |
 | `base_arithmetic` | 5 |
 
-### `tool_routing_math_public_derived_expansion.json`
+### `math_public.json`
 
 - Records: 400
 - Sources: pinned DeepMind Mathematics Dataset and GSM8K
@@ -138,7 +138,8 @@ Both math files use the standard benchmark schema:
 The public-derived file also includes provenance fields. New math datasets should follow the same naming and schema style:
 
 ```text
-tool_routing_math_<source>.json
+math_<source_or_purpose>.json
 ```
 
-For example, use `tool_routing_math_controlled_v2.json` only if the version marks a real tool-suite or schema change.
+Current examples are `math_public.json`, `math_public_math_dataset.json`, and
+`math_controlled.json`.

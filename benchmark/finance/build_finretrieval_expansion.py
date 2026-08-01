@@ -575,6 +575,7 @@ def build(
                 "id": f"finance_multistep_finretrieval_{index:03d}",
                 "domain": "finance",
                 "task_type": "multi_step_tool_routing",
+                "benchmark_mode": "offline_trace_replay",
                 "difficulty": "hard",
                 "source": "public_finance_model_trajectory",
                 "query": question["question"],

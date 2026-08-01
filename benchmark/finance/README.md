@@ -159,18 +159,32 @@ Each benchmark row follows the evaluator's current schema:
 
 During evaluation, each row is exposed to the full MCP tool registry.
 
+Adding the four FinRetrieval replay tools, together with five coding replay
+tools, changed the full registry from 51 tools to 60. Previous full-registry
+model results are stale and not directly comparable with current results.
+Rerun them against the 60-tool registry before making model comparisons.
+
+Finance results must be grouped by `benchmark_mode`. FinRetrieval coordinate
+replay is `offline_trace_replay`; all other finance datasets are
+`grounded_tool_execution`. Report these groups separately. Reproducing a
+recorded Daloopa or web call coordinate does not demonstrate live retrieval or
+independent finance reasoning.
+
 A `multi_step_tool_routing` row instead provides an ordered `expected_steps`
-list. Each step contains a current-step instruction or exact gold operation,
-prompt context, expected tool, arguments, partial expected answer, dependency
-IDs, and source program/call metadata. The evaluator reports both per-step
-accuracy and complete ordered sequence accuracy. The evaluator presents the
-expected step instructions in gold order; prior history contains the gold calls
-and answers for every declared dependency plus up to two other recent steps. It
-is not an unconstrained autonomous decomposition loop from only the top-level
-query. A workflow's published `expected_final_answer` is retained in evaluation
-records, but the routing evaluator does not synthesize or score an overall
-natural-language answer; its executable semantic metric applies to individual
-tool outputs and the complete output sequence.
+list and uses evaluation protocol `teacher_forced_step_routing_v1`. Each step
+contains a current-step instruction or exact gold operation, prompt context,
+expected tool, arguments, partial expected answer, dependency IDs, and source
+program/call metadata. The evaluator constructs every prompt from the overall
+task, the gold current-step instruction and grounding context, and bounded gold
+prior-step context: every declared dependency plus up to two other recent
+steps. A prediction does not determine the next step's instruction or history.
+The per-step and complete ordered-sequence metrics therefore measure
+teacher-forced step routing, not autonomous planning or unconstrained
+decomposition from only the top-level query. A workflow's published
+`expected_final_answer` is retained in evaluation records, but the routing
+evaluator does not synthesize or score an overall natural-language answer; its
+executable semantic metric applies to individual tool outputs and the complete
+output sequence.
 
 Finance prompt contexts use four versioned JSON kinds:
 

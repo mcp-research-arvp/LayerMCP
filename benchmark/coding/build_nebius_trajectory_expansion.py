@@ -943,6 +943,7 @@ def _build_sweagent(
                 ),
                 "domain": "coding",
                 "task_type": "multi_step_tool_routing",
+                "benchmark_mode": "offline_trace_replay",
                 "difficulty": "hard",
                 "source": "public_coding_successful_model_trajectory",
                 "query": query,

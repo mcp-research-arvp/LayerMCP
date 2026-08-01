@@ -23,9 +23,10 @@ and submissions are returned as data; they are never executed.
 - `tool_routing_coding_nebius_sweagent_multistep.json` contains the 33 workflows
   with at most five calls from a fixed 500-workflow Nebius SWE-agent source
   selection. They contain 139 calls.
-- `tool_routing_coding_nebius_swerebench_openhands_multistep.json` is an empty
-  benchmark list because all 500 workflows in the fixed Nebius
-  SWE-rebench/OpenHands source selection contain more than five calls.
+- `tool_routing_coding_nebius_swerebench_openhands_multistep.json` is a
+  provenance-only, zero-result placeholder because all 500 workflows in the
+  fixed Nebius SWE-rebench/OpenHands source selection contain more than five
+  calls. It is not a runnable benchmark and contributes no benchmark results.
 - `fixtures/codesearchnet_public_annotations.json` defines the offline
   annotation repository used by those 15 executable rows.
 - `fixtures/CODESEARCHNET_ATTRIBUTION.md` records the paper, pinned sources,
@@ -74,7 +75,8 @@ code_replay_sweagent_submit
 No OpenHands replay tool is registered because none of the 500 selected
 OpenHands workflows meets the five-call benchmark limit. The pinned source and
 empty benchmark artifact remain documented so the selection result is
-reproducible without carrying a 27,481-record unused fixture.
+reproducible without carrying a 27,481-record unused fixture. Do not pass that
+empty artifact to the evaluator or include it in workflow or result totals.
 
 The three generated datasets use repository ID `example/research-mcp` and
 fixture version `coding_fixture_v1`. The public-derived dataset uses repository
@@ -121,6 +123,18 @@ Each JSON record follows the evaluator's current benchmark schema:
 During evaluation, each row is exposed to the full MCP tool registry rather than
 only the coding tools listed above.
 
+Adding the five coding replay tools, together with four finance replay tools,
+changed the full registry from 51 tools to 60. Previous full-registry model
+results are stale and not directly comparable with current results. Rerun them
+against the 60-tool registry before making model comparisons.
+
+Coding results must be grouped by `benchmark_mode`. The coordinate-keyed
+Nebius SWE-agent expansion is `offline_trace_replay`. The controlled,
+CodeSearchNet-derived, and bounded live-repository datasets—including the five
+source-faithful SWE-agent workflows—are `grounded_tool_execution`. Report these
+groups separately: replay routing does not demonstrate live repository
+reasoning or autonomous issue resolution.
+
 Rows in the upstream-inspired set also include `query_origin`,
 `inspiration_repository`, `inspiration_url`, and `inspiration_reference`. These
 fields distinguish generated queries from text copied out of a public corpus.
@@ -133,13 +147,15 @@ The current evaluator scores tool choice and exact argument match. When calls
 are executed, it also reports execution success and semantic matching against
 the partial `expected_answer` oracle.
 
-For `multi_step_tool_routing`, the evaluator processes `expected_steps` in
-order, carries every declared gold dependency plus up to two other recent gold
-calls and answers into the next routing prompt, and reports both per-step
-accuracy and complete ordered-sequence accuracy. It supplies the gold
-current-step instruction on every turn. This is teacher-forced action-routing
-evaluation, not autonomous issue resolution or evidence that a model can
-independently plan the full tool sequence from only the issue statement.
+For `multi_step_tool_routing`, the evaluation protocol is
+`teacher_forced_step_routing_v1`. The evaluator processes `expected_steps` in
+order. Each prompt contains the overall task, the gold current-step instruction
+and grounding context, every declared gold dependency, and up to two other
+recent gold calls and answers. A predicted call does not determine the next
+step's instruction or history. The reported per-step and complete ordered-
+sequence accuracies therefore measure teacher-forced step routing, not
+autonomous planning, autonomous issue resolution, or the ability to discover
+the full tool sequence from only the issue statement.
 
 ## Run
 
@@ -163,9 +179,6 @@ python evaluation/evaluate.py \
 
 python evaluation/evaluate.py \
   --dataset benchmark/coding/tool_routing_coding_nebius_sweagent_multistep.json
-
-python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.

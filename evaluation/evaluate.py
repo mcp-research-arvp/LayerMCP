@@ -45,6 +45,30 @@ MULTISTEP_HISTORY_STEP_LIMIT = 2
 MULTISTEP_HISTORY_ITEM_CHAR_LIMIT = 3_500
 PROMPT_CONTEXT_CHAR_LIMIT = MULTISTEP_CURRENT_STEP_CHAR_LIMIT
 
+SINGLE_STEP_EVALUATION_PROTOCOL = "single_step_tool_routing_v1"
+MULTISTEP_EVALUATION_PROTOCOL = "teacher_forced_step_routing_v1"
+EVALUATION_PROTOCOL_DESCRIPTIONS = {
+    SINGLE_STEP_EVALUATION_PROTOCOL: (
+        "Each sample is evaluated as one independently routed tool call."
+    ),
+    MULTISTEP_EVALUATION_PROTOCOL: (
+        "Each gold step is routed independently using the overall task, current "
+        "step, current-step grounding context, and gold prior-step context; this "
+        "does not evaluate autonomous end-to-end planning."
+    ),
+}
+
+DEFAULT_BENCHMARK_MODE = "grounded_tool_execution"
+TOOL_REGISTRY_FINGERPRINT_VERSION = (
+    "tool_registry_name_schema_description_v1"
+)
+ALLOWED_BENCHMARK_MODES = frozenset(
+    {
+        DEFAULT_BENCHMARK_MODE,
+        "offline_trace_replay",
+    }
+)
+
 
 @dataclass(frozen=True)
 class BenchmarkStep:
@@ -74,6 +98,7 @@ class BenchmarkSample:
     expected_final_answer: Any = None
     prompt_context: str = ""
     expected_steps: tuple[BenchmarkStep, ...] = ()
+    benchmark_mode: str = DEFAULT_BENCHMARK_MODE
 
 
 def _normalize_prompt_context(value: Any, location: str) -> str:
@@ -85,6 +110,19 @@ def _normalize_prompt_context(value: Any, location: str) -> str:
         raise ValueError(
             f"{location} prompt_context exceeds {PROMPT_CONTEXT_CHAR_LIMIT} "
             "characters."
+        )
+    return value
+
+
+def _normalize_benchmark_mode(value: Any, location: str) -> str:
+    if value is None:
+        return DEFAULT_BENCHMARK_MODE
+    if not isinstance(value, str):
+        raise ValueError(f"{location} benchmark_mode must be a string.")
+    if value not in ALLOWED_BENCHMARK_MODES:
+        allowed = ", ".join(sorted(ALLOWED_BENCHMARK_MODES))
+        raise ValueError(
+            f"{location} benchmark_mode must be one of: {allowed}."
         )
     return value
 
@@ -222,6 +260,10 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         expected_answer=sample.get("expected_answer"),
         perturbation_type=str(sample.get("perturbation_type", "none")),
         notes=str(sample.get("notes", "")),
+        benchmark_mode=_normalize_benchmark_mode(
+            sample.get("benchmark_mode"),
+            f"Sample {index}",
+        ),
         expected_final_answer=sample.get("expected_final_answer"),
         prompt_context=_normalize_prompt_context(
             sample.get("prompt_context"),
@@ -475,7 +517,11 @@ def _score_sample(
     )
 
 
-def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+def _build_aggregate_metrics(
+    records: list[dict[str, Any]],
+    *,
+    include_mode_breakdowns: bool = True,
+) -> dict[str, Any]:
     total = len(records)
     expected_tools = sorted({record["expected_tool"] for record in records})
 
@@ -500,8 +546,9 @@ def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
         1 for record in records if record.get("final_outcome_correct") is True
     )
 
-    return {
+    metrics = {
         "total_samples": total,
+        "benchmark_mode_counts": _benchmark_mode_counts(records),
         "tool_selection_accuracy": (
             sum(1 for record in records if record["tool_selection_correct"]) / total
             if total
@@ -546,6 +593,20 @@ def _build_aggregate_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
             for expected, selected_counts in sorted(confusion.items())
         },
     }
+    if include_mode_breakdowns:
+        records_by_mode: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for record in records:
+            records_by_mode[
+                record.get("benchmark_mode", DEFAULT_BENCHMARK_MODE)
+            ].append(record)
+        metrics["metrics_by_benchmark_mode"] = {
+            mode: _build_aggregate_metrics(
+                mode_records,
+                include_mode_breakdowns=False,
+            )
+            for mode, mode_records in sorted(records_by_mode.items())
+        }
+    return metrics
 
 
 def _summarize_tool_result(result: Any) -> str:
@@ -712,10 +773,147 @@ def _is_no_tool_call(
     return selected_tool == hallucinated_tool or selected_tool not in live_tool_set
 
 
-def _tool_pool_metadata(live_tools: list[str]) -> dict[str, Any]:
+def _tool_pool_metadata(
+    live_tools: list[str],
+    tool_schemas: dict[str, dict[str, Any]],
+    tool_descriptions: dict[str, str],
+) -> dict[str, Any]:
+    tool_names = sorted(live_tools)
+    registry_payload = [
+        {
+            "name": name,
+            "schema": tool_schemas.get(name, {}),
+            "description": tool_descriptions.get(name, ""),
+        }
+        for name in tool_names
+    ]
+    registry_digest = hashlib.sha256(
+        _normalize_json(registry_payload).encode("utf-8")
+    ).hexdigest()
     return {
         "tool_pool": "full_mcp_registry",
-        "tool_count": len(live_tools),
+        "tool_count": len(tool_names),
+        "tool_names": tool_names,
+        "tool_registry_fingerprint": f"sha256:{registry_digest}",
+        "tool_registry_fingerprint_version": TOOL_REGISTRY_FINGERPRINT_VERSION,
+    }
+
+
+def _benchmark_mode_counts(records: list[dict[str, Any]]) -> dict[str, int]:
+    counts = Counter(
+        record.get("benchmark_mode", DEFAULT_BENCHMARK_MODE)
+        for record in records
+    )
+    return dict(sorted(counts.items()))
+
+
+def _multistep_step_metrics(
+    step_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    total_steps = len(step_records)
+    semantic_output_scores = [
+        step["final_outcome_correct"]
+        for step in step_records
+        if step["final_outcome_correct"] is not None
+    ]
+    return {
+        "total_steps": total_steps,
+        "step_tool_selection_accuracy": (
+            sum(step["tool_selection_correct"] for step in step_records)
+            / total_steps
+            if total_steps
+            else 0.0
+        ),
+        "step_exact_argument_match_accuracy": (
+            sum(step["argument_match_correct"] for step in step_records)
+            / total_steps
+            if total_steps
+            else 0.0
+        ),
+        "step_semantic_output_accuracy": (
+            sum(score is True for score in semantic_output_scores)
+            / len(semantic_output_scores)
+            if semantic_output_scores
+            else None
+        ),
+        "step_semantic_output_scored": len(semantic_output_scores),
+    }
+
+
+def _multistep_workflow_metrics(
+    workflow_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    total_workflows = len(workflow_records)
+    semantic_output_scores = [
+        workflow["sequence_semantic_output_correct"]
+        for workflow in workflow_records
+        if workflow["sequence_semantic_output_correct"] is not None
+    ]
+    return {
+        "total_workflows": total_workflows,
+        "workflow_tool_sequence_accuracy": (
+            sum(
+                workflow["sequence_tool_selection_correct"]
+                for workflow in workflow_records
+            )
+            / total_workflows
+            if total_workflows
+            else 0.0
+        ),
+        "workflow_exact_sequence_accuracy": (
+            sum(
+                workflow["sequence_argument_match_correct"]
+                for workflow in workflow_records
+            )
+            / total_workflows
+            if total_workflows
+            else 0.0
+        ),
+        "workflow_semantic_output_sequence_accuracy": (
+            sum(score is True for score in semantic_output_scores)
+            / len(semantic_output_scores)
+            if semantic_output_scores
+            else None
+        ),
+        "workflow_semantic_output_sequence_scored": len(
+            semantic_output_scores
+        ),
+        "workflow_expected_final_answer_gold": sum(
+            workflow["expected_final_answer"] is not None
+            for workflow in workflow_records
+        ),
+    }
+
+
+def _build_multistep_metrics(
+    workflow_records: list[dict[str, Any]],
+    step_records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    workflows_by_mode: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for workflow in workflow_records:
+        workflows_by_mode[
+            workflow.get("benchmark_mode", DEFAULT_BENCHMARK_MODE)
+        ].append(workflow)
+
+    steps_by_mode: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for step in step_records:
+        steps_by_mode[
+            step.get("benchmark_mode", DEFAULT_BENCHMARK_MODE)
+        ].append(step)
+
+    return {
+        "benchmark_mode_counts": _benchmark_mode_counts(workflow_records),
+        "step_benchmark_mode_counts": _benchmark_mode_counts(step_records),
+        **_multistep_workflow_metrics(workflow_records),
+        **_multistep_step_metrics(step_records),
+        "workflow_metrics_by_benchmark_mode": {
+            mode: _multistep_workflow_metrics(mode_records)
+            for mode, mode_records in sorted(workflows_by_mode.items())
+        },
+        "step_metrics_by_benchmark_mode": {
+            mode: _multistep_step_metrics(mode_records)
+            for mode, mode_records in sorted(steps_by_mode.items())
+        },
     }
 
 
@@ -860,9 +1058,17 @@ async def _evaluate_multistep_with_server(
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
-        tool_pool_metadata = _tool_pool_metadata(live_tools)
+        tool_pool_metadata = _tool_pool_metadata(
+            live_tools,
+            tool_schemas,
+            tool_descriptions,
+        )
 
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
+        print(
+            f"Evaluation protocol: {MULTISTEP_EVALUATION_PROTOCOL} -- "
+            f"{EVALUATION_PROTOCOL_DESCRIPTIONS[MULTISTEP_EVALUATION_PROTOCOL]}"
+        )
 
         with samples_path.open("w", encoding="utf-8") as sample_handle:
             for sample in tqdm(dataset):
@@ -953,6 +1159,13 @@ async def _evaluate_multistep_with_server(
                         "step_id": step.id,
                         "step_index": step_index,
                         "domain": sample.domain,
+                        "benchmark_mode": sample.benchmark_mode,
+                        "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
+                        "evaluation_protocol_description": (
+                            EVALUATION_PROTOCOL_DESCRIPTIONS[
+                                MULTISTEP_EVALUATION_PROTOCOL
+                            ]
+                        ),
                         "query": step.query,
                         "prompt_context": step.prompt_context,
                         "routed_query": query,
@@ -967,6 +1180,7 @@ async def _evaluate_multistep_with_server(
                         "failure_category": score.failure_category,
                         "depends_on": list(step.depends_on),
                         "source_program": step.source_program,
+                        **tool_pool_metadata,
                         "raw_model_output": raw_model_output,
                         "parse_status": parse_status,
                         "attempted_tool": attempted_tool,
@@ -985,6 +1199,13 @@ async def _evaluate_multistep_with_server(
                 workflow_record = {
                     "sample_id": sample.id,
                     "domain": sample.domain,
+                    "benchmark_mode": sample.benchmark_mode,
+                    "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
+                    "evaluation_protocol_description": (
+                        EVALUATION_PROTOCOL_DESCRIPTIONS[
+                            MULTISTEP_EVALUATION_PROTOCOL
+                        ]
+                    ),
                     "query": sample.query,
                     "prompt_context": sample.prompt_context,
                     "expected_final_answer": sample.expected_final_answer,
@@ -1027,18 +1248,12 @@ async def _evaluate_multistep_with_server(
                     json.dumps(workflow_record, ensure_ascii=True) + "\n"
                 )
 
-    total_steps = len(step_records)
-    total_workflows = len(workflow_records)
-    step_semantic_output_scores = [
-        step["final_outcome_correct"]
-        for step in step_records
-        if step["final_outcome_correct"] is not None
-    ]
-    workflow_semantic_output_scores = [
-        workflow["sequence_semantic_output_correct"]
-        for workflow in workflow_records
-        if workflow["sequence_semantic_output_correct"] is not None
-    ]
+    multistep_metrics = _build_multistep_metrics(
+        workflow_records,
+        step_records,
+    )
+    total_steps = multistep_metrics["total_steps"]
+    total_workflows = multistep_metrics["total_workflows"]
     summary = {
         "timestamp": timestamp,
         "benchmark_path": str(benchmark_path),
@@ -1048,59 +1263,12 @@ async def _evaluate_multistep_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
+        "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
+            MULTISTEP_EVALUATION_PROTOCOL
+        ],
         **tool_pool_metadata,
-        "total_workflows": total_workflows,
-        "total_steps": total_steps,
-        "step_tool_selection_accuracy": (
-            sum(step["tool_selection_correct"] for step in step_records)
-            / total_steps
-            if total_steps
-            else 0.0
-        ),
-        "step_exact_argument_match_accuracy": (
-            sum(step["argument_match_correct"] for step in step_records)
-            / total_steps
-            if total_steps
-            else 0.0
-        ),
-        "workflow_tool_sequence_accuracy": (
-            sum(
-                workflow["sequence_tool_selection_correct"]
-                for workflow in workflow_records
-            )
-            / total_workflows
-            if total_workflows
-            else 0.0
-        ),
-        "workflow_exact_sequence_accuracy": (
-            sum(
-                workflow["sequence_argument_match_correct"]
-                for workflow in workflow_records
-            )
-            / total_workflows
-            if total_workflows
-            else 0.0
-        ),
-        "step_semantic_output_accuracy": (
-            sum(score is True for score in step_semantic_output_scores)
-            / len(step_semantic_output_scores)
-            if step_semantic_output_scores
-            else None
-        ),
-        "step_semantic_output_scored": len(step_semantic_output_scores),
-        "workflow_semantic_output_sequence_accuracy": (
-            sum(score is True for score in workflow_semantic_output_scores)
-            / len(workflow_semantic_output_scores)
-            if workflow_semantic_output_scores
-            else None
-        ),
-        "workflow_semantic_output_sequence_scored": len(
-            workflow_semantic_output_scores
-        ),
-        "workflow_expected_final_answer_gold": sum(
-            workflow["expected_final_answer"] is not None
-            for workflow in workflow_records
-        ),
+        **multistep_metrics,
         "average_step_latency_seconds": (
             sum(latencies) / len(latencies) if latencies else 0.0
         ),
@@ -1111,19 +1279,21 @@ async def _evaluate_multistep_with_server(
         json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
 
     print("\n===================")
+    print(f"Evaluation protocol: {MULTISTEP_EVALUATION_PROTOCOL}")
+    print("Metric scope: teacher-forced current-step routing (not autonomous planning)")
     print(f"Workflows: {total_workflows}")
     print(f"Steps: {total_steps}")
     print(
-        "Step tool-selection accuracy: "
+        "Teacher-forced step tool-selection accuracy: "
         f"{summary['step_tool_selection_accuracy']:.2%}"
     )
     print(
-        "Exact workflow-sequence accuracy: "
+        "Teacher-forced exact workflow-sequence accuracy: "
         f"{summary['workflow_exact_sequence_accuracy']:.2%}"
     )
     step_semantic_output_accuracy = summary["step_semantic_output_accuracy"]
     print(
-        "Step semantic-output accuracy: "
+        "Teacher-forced step semantic-output accuracy: "
         + (
             f"{step_semantic_output_accuracy:.2%}"
             if step_semantic_output_accuracy is not None
@@ -1134,13 +1304,26 @@ async def _evaluate_multistep_with_server(
         "workflow_semantic_output_sequence_accuracy"
     ]
     print(
-        "Workflow semantic-output sequence accuracy: "
+        "Teacher-forced workflow semantic-output sequence accuracy: "
         + (
             f"{workflow_semantic_output_accuracy:.2%}"
             if workflow_semantic_output_accuracy is not None
             else "not scored"
         )
     )
+    for mode, workflow_metrics in summary[
+        "workflow_metrics_by_benchmark_mode"
+    ].items():
+        step_metrics = summary["step_metrics_by_benchmark_mode"].get(mode, {})
+        print(
+            f"Benchmark mode {mode}: "
+            f"workflows={workflow_metrics['total_workflows']}, "
+            "exact teacher-forced sequence accuracy="
+            f"{workflow_metrics['workflow_exact_sequence_accuracy']:.2%}, "
+            f"steps={step_metrics.get('total_steps', 0)}, "
+            "teacher-forced step tool-selection accuracy="
+            f"{step_metrics.get('step_tool_selection_accuracy', 0.0):.2%}"
+        )
     print(f"Results: {samples_path}")
     print(f"Summary: {summary_path}")
 
@@ -1188,9 +1371,14 @@ async def _evaluate_with_server(
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
-        tool_pool_metadata = _tool_pool_metadata(live_tools)
+        tool_pool_metadata = _tool_pool_metadata(
+            live_tools,
+            tool_schemas,
+            tool_descriptions,
+        )
 
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
+        print(f"Evaluation protocol: {SINGLE_STEP_EVALUATION_PROTOCOL}")
 
         with samples_path.open("w", encoding="utf-8") as sample_handle:
             for sample in tqdm(dataset):
@@ -1290,6 +1478,13 @@ async def _evaluate_with_server(
                 record = {
                     "sample_id": sample.id,
                     "domain": sample.domain,
+                    "benchmark_mode": sample.benchmark_mode,
+                    "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
+                    "evaluation_protocol_description": (
+                        EVALUATION_PROTOCOL_DESCRIPTIONS[
+                            SINGLE_STEP_EVALUATION_PROTOCOL
+                        ]
+                    ),
                     "query": query,
                     "prompt_context": sample.prompt_context,
                     "routed_query": routed_query,
@@ -1341,6 +1536,10 @@ async def _evaluate_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
+        "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
+            SINGLE_STEP_EVALUATION_PROTOCOL
+        ],
         **tool_pool_metadata,
         "average_latency_seconds": avg_latency,
         "executed_tool_calls": executed_tool_calls,
@@ -1366,6 +1565,14 @@ async def _evaluate_with_server(
         )
     )
     print(f"Final outcome gold coverage: {metrics['final_outcome_gold_coverage']:.2%}")
+    for mode, mode_metrics in metrics["metrics_by_benchmark_mode"].items():
+        print(
+            f"Benchmark mode {mode}: samples={mode_metrics['total_samples']}, "
+            "tool-selection accuracy="
+            f"{mode_metrics['tool_selection_accuracy']:.2%}, "
+            "exact argument match accuracy="
+            f"{mode_metrics['exact_argument_match_accuracy']:.2%}"
+        )
     print(f"Avg Latency: {avg_latency:.2f}s")
     print(f"Executed tool calls: {executed_tool_calls}")
     print(f"Results: {samples_path}")

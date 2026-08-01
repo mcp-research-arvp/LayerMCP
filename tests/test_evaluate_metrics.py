@@ -1,19 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import fields, replace
+import hashlib
+import json
 from types import SimpleNamespace
 import unittest
 
 from evaluation.evaluate import (
+    DEFAULT_BENCHMARK_MODE,
+    EVALUATION_PROTOCOL_DESCRIPTIONS,
     BenchmarkSample,
     BenchmarkStep,
     FINAL_OUTCOME_MATCHER,
+    MULTISTEP_EVALUATION_PROTOCOL,
     MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
     MULTISTEP_HISTORY_ITEM_CHAR_LIMIT,
     MULTISTEP_HISTORY_STEP_LIMIT,
     MULTISTEP_OVERALL_TASK_CHAR_LIMIT,
     PROMPT_CONTEXT_CHAR_LIMIT,
+    SINGLE_STEP_EVALUATION_PROTOCOL,
+    TOOL_REGISTRY_FINGERPRINT_VERSION,
     _build_aggregate_metrics,
+    _build_multistep_metrics,
     _bounded_prompt_text,
     _exact_argument_match,
     _extract_structured_tool_result,
@@ -22,6 +30,7 @@ from evaluation.evaluate import (
     _is_no_tool_call,
     _match_expected_answer,
     _multistep_query,
+    _normalize_benchmark_mode,
     _normalize_json,
     _normalize_sample,
     _query_with_context,
@@ -169,6 +178,45 @@ class EvaluateMetricTests(unittest.TestCase):
                 0,
             )
 
+    def test_benchmark_mode_defaults_for_backwards_compatibility(self) -> None:
+        sample = _normalize_sample(
+            {
+                "id": "legacy-row",
+                "domain": "coding",
+                "task_type": "single_tool_routing",
+                "query": "Read the file.",
+                "expected_tool": "calculator",
+            },
+            0,
+        )
+
+        self.assertEqual(sample.benchmark_mode, DEFAULT_BENCHMARK_MODE)
+        self.assertEqual(
+            _normalize_benchmark_mode(None, "Sample 0"),
+            "grounded_tool_execution",
+        )
+
+    def test_offline_replay_benchmark_mode_is_preserved(self) -> None:
+        sample = _normalize_sample(
+            {
+                "id": "replay-row",
+                "domain": "coding",
+                "task_type": "single_tool_routing",
+                "query": "Replay the recorded call.",
+                "expected_tool": "calculator",
+                "benchmark_mode": "offline_trace_replay",
+            },
+            0,
+        )
+
+        self.assertEqual(sample.benchmark_mode, "offline_trace_replay")
+
+    def test_unknown_benchmark_mode_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "benchmark_mode must be one of"):
+            _normalize_benchmark_mode("autonomous_agent", "Sample 0")
+        with self.assertRaisesRegex(ValueError, "benchmark_mode must be a string"):
+            _normalize_benchmark_mode({"mode": "replay"}, "Sample 0")
+
     def test_workflow_final_answer_gold_is_preserved_without_being_scored(self) -> None:
         sample = _normalize_sample(
             {
@@ -286,15 +334,85 @@ class EvaluateMetricTests(unittest.TestCase):
             _validate_expected_tools([sample], {"calculator"})
 
     def test_full_registry_metadata_is_recorded_for_samples_and_summaries(self) -> None:
-        metadata = _tool_pool_metadata(
-            ["calculator", "factor_expression", "customer_lookup"]
-        )
+        live_tools = ["factor_expression", "calculator", "customer_lookup"]
+        schemas = {
+            "calculator": {
+                "type": "object",
+                "properties": {"expression": {"type": "string"}},
+            },
+            "customer_lookup": {"type": "object"},
+            "factor_expression": {"type": "object"},
+        }
+        descriptions = {
+            "calculator": "Evaluate an expression.",
+            "customer_lookup": "Find a customer.",
+            "factor_expression": "Factor an expression.",
+        }
+        metadata = _tool_pool_metadata(live_tools, schemas, descriptions)
         sample_record = {"sample_id": "sample-1", **metadata}
         summary_record = {"total_samples": 1, **metadata}
 
         for record in (sample_record, summary_record):
             self.assertEqual(record["tool_pool"], "full_mcp_registry")
             self.assertEqual(record["tool_count"], 3)
+            self.assertEqual(
+                record["tool_names"],
+                ["calculator", "customer_lookup", "factor_expression"],
+            )
+
+        registry_payload = [
+            {
+                "name": name,
+                "schema": schemas[name],
+                "description": descriptions[name],
+            }
+            for name in sorted(live_tools)
+        ]
+        encoded_payload = json.dumps(
+            registry_payload,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        expected_fingerprint = "sha256:" + hashlib.sha256(
+            encoded_payload
+        ).hexdigest()
+        self.assertEqual(
+            metadata["tool_registry_fingerprint"],
+            expected_fingerprint,
+        )
+        self.assertEqual(
+            metadata["tool_registry_fingerprint_version"],
+            TOOL_REGISTRY_FINGERPRINT_VERSION,
+        )
+        self.assertEqual(
+            metadata,
+            _tool_pool_metadata(list(reversed(live_tools)), schemas, descriptions),
+        )
+
+        changed_descriptions = {**descriptions, "calculator": "Changed."}
+        self.assertNotEqual(
+            metadata["tool_registry_fingerprint"],
+            _tool_pool_metadata(
+                live_tools,
+                schemas,
+                changed_descriptions,
+            )["tool_registry_fingerprint"],
+        )
+
+    def test_evaluation_protocol_labels_are_explicit(self) -> None:
+        self.assertEqual(
+            SINGLE_STEP_EVALUATION_PROTOCOL,
+            "single_step_tool_routing_v1",
+        )
+        self.assertEqual(
+            MULTISTEP_EVALUATION_PROTOCOL,
+            "teacher_forced_step_routing_v1",
+        )
+        self.assertIn(
+            "does not evaluate autonomous end-to-end planning",
+            EVALUATION_PROTOCOL_DESCRIPTIONS[MULTISTEP_EVALUATION_PROTOCOL],
+        )
 
     def test_nested_json_subset_match_allows_extra_actual_fields(self) -> None:
         match = _match_expected_answer(
@@ -486,6 +604,112 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertIsNone(metrics["final_outcome_accuracy"])
         self.assertEqual(metrics["final_outcome_scored_samples"], 0)
         self.assertEqual(metrics["final_outcome_gold_samples"], 1)
+
+    def test_summary_reports_benchmark_modes_separately(self) -> None:
+        grounded = self._aggregate_record(True)
+        replay = {
+            **self._aggregate_record(False, status="wrong_tool"),
+            "benchmark_mode": "offline_trace_replay",
+            "selected_tool": "factor_expression",
+            "tool_selection_correct": False,
+            "argument_match_correct": False,
+        }
+
+        metrics = _build_aggregate_metrics([grounded, replay, replay])
+
+        self.assertEqual(
+            metrics["benchmark_mode_counts"],
+            {
+                "grounded_tool_execution": 1,
+                "offline_trace_replay": 2,
+            },
+        )
+        by_mode = metrics["metrics_by_benchmark_mode"]
+        self.assertEqual(
+            by_mode["grounded_tool_execution"]["tool_selection_accuracy"],
+            1.0,
+        )
+        self.assertEqual(
+            by_mode["offline_trace_replay"]["tool_selection_accuracy"],
+            0.0,
+        )
+        self.assertNotIn(
+            "metrics_by_benchmark_mode",
+            by_mode["grounded_tool_execution"],
+        )
+
+    def test_multistep_metrics_are_broken_down_by_benchmark_mode(self) -> None:
+        workflow_records = [
+            {
+                "benchmark_mode": "grounded_tool_execution",
+                "sequence_tool_selection_correct": True,
+                "sequence_argument_match_correct": True,
+                "sequence_semantic_output_correct": True,
+                "expected_final_answer": "done",
+            },
+            {
+                "benchmark_mode": "offline_trace_replay",
+                "sequence_tool_selection_correct": False,
+                "sequence_argument_match_correct": False,
+                "sequence_semantic_output_correct": False,
+                "expected_final_answer": None,
+            },
+        ]
+        step_records = [
+            {
+                "benchmark_mode": "grounded_tool_execution",
+                "tool_selection_correct": True,
+                "argument_match_correct": True,
+                "final_outcome_correct": True,
+            },
+            {
+                "benchmark_mode": "grounded_tool_execution",
+                "tool_selection_correct": False,
+                "argument_match_correct": False,
+                "final_outcome_correct": None,
+            },
+            {
+                "benchmark_mode": "offline_trace_replay",
+                "tool_selection_correct": False,
+                "argument_match_correct": False,
+                "final_outcome_correct": False,
+            },
+        ]
+
+        metrics = _build_multistep_metrics(workflow_records, step_records)
+        workflow_by_mode = metrics["workflow_metrics_by_benchmark_mode"]
+        steps_by_mode = metrics["step_metrics_by_benchmark_mode"]
+
+        self.assertEqual(metrics["workflow_exact_sequence_accuracy"], 0.5)
+        self.assertEqual(metrics["step_tool_selection_accuracy"], 1 / 3)
+        self.assertEqual(
+            workflow_by_mode["grounded_tool_execution"][
+                "workflow_exact_sequence_accuracy"
+            ],
+            1.0,
+        )
+        self.assertEqual(
+            workflow_by_mode["offline_trace_replay"][
+                "workflow_exact_sequence_accuracy"
+            ],
+            0.0,
+        )
+        self.assertEqual(
+            steps_by_mode["grounded_tool_execution"][
+                "step_tool_selection_accuracy"
+            ],
+            0.5,
+        )
+        self.assertEqual(
+            steps_by_mode["offline_trace_replay"][
+                "step_tool_selection_accuracy"
+            ],
+            0.0,
+        )
+        self.assertNotIn(
+            "step_metrics_by_benchmark_mode",
+            steps_by_mode["grounded_tool_execution"],
+        )
 
     def test_structured_mcp_result_extraction(self) -> None:
         extraction = _extract_structured_tool_result(

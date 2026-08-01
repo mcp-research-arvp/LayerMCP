@@ -278,6 +278,10 @@ class CodingPublicExpansionTests(unittest.TestCase):
             instance_ids.append(str(row["source_instance_id"]))
             with self.subTest(sample=sample.id):
                 self.assertEqual(row["id"], sample.id)
+                self.assertEqual(
+                    row["benchmark_mode"],
+                    "offline_trace_replay",
+                )
                 self.assertEqual(row["source_dataset"], EXPECTED_SOURCE_DATASET)
                 self.assertEqual(row["source_revision"], EXPECTED_SOURCE_REVISION)
                 self.assertEqual(row["source_license"], "CC-BY-4.0")

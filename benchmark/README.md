@@ -1,6 +1,10 @@
 # Benchmark Datasets
 
-This folder contains JSON datasets for evaluating single-tool routing. Each record asks a model/router to choose one tool from an available tool list and provide the expected arguments for that tool.
+This folder contains JSON datasets for evaluating single-tool routing and
+teacher-forced multi-step routing. Each single-step record asks a model/router
+to choose one tool from an available tool list and provide the expected
+arguments for that tool. Multi-step records contain an ordered sequence of
+those routing decisions.
 
 ## Current Layout
 
@@ -18,11 +22,18 @@ This folder contains JSON datasets for evaluating single-tool routing. Each reco
 | `coding/tool_routing_coding_controlled.json` | 35 | coding | Controlled coding routing set. |
 | `coding/tool_routing_coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
 | `coding/tool_routing_coding_codesearchnet_public_derived.json` | 15 | coding | Public CodeSearchNet-derived coding search set. |
+| `coding/tool_routing_coding_sweagent_multistep.json` | 5 | coding | Source-faithful SWE-agent workflows executed against bounded repository fixtures. |
+| `coding/tool_routing_coding_nebius_sweagent_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
+| `coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |
 | `finance/tool_routing_finance_smoke.json` | 10 | finance | Small direct finance tool smoke set. |
 | `finance/tool_routing_finance_controlled.json` | 50 | finance | Controlled finance routing set. |
 | `finance/tool_routing_finance_upstream_inspired.json` | 40 | finance | Generated finance prompts adapted from upstream tool usage patterns. |
 | `finance/tool_routing_finance_public_derived.json` | 15 | finance | Public FinQA-derived finance table set. |
 | `finance/tool_routing_finance_tatqa_public_derived.json` | 15 | finance | Public TAT-QA-derived finance table set. |
+| `finance/tool_routing_finance_convfinqa_multistep.json` | 10 | finance | Paper-authored ConvFinQA conversations adapted to grounded tool calls. |
+| `finance/tool_routing_finance_finqa_test_single.json` | 642 | finance | One-operation FinQA gold programs adapted to grounded tool calls. |
+| `finance/tool_routing_finance_finqa_test_multistep.json` | 490 | finance | Two- to five-operation FinQA gold programs adapted to grounded tool calls. |
+| `finance/tool_routing_finance_finretrieval_multistep.json` | 485 | finance | Offline replay of selected correct FinRetrieval model trajectories containing at most five calls. |
 
 The root-level files are legacy mixed-domain benchmarks. The domain folders are the preferred place for new datasets.
 
@@ -32,18 +43,58 @@ New datasets should use the same core fields:
 
 - `id`: stable unique identifier.
 - `domain`: broad domain, such as `mathematics` or `enterprise_automation`.
-- `task_type`: currently `single_tool_routing`.
+- `task_type`: `single_tool_routing` or `multi_step_tool_routing`.
+- `benchmark_mode`: `grounded_tool_execution` by default, or
+  `offline_trace_replay` for coordinate-keyed trajectory replay.
 - `difficulty`: simple level label for analysis.
 - `source`: how the example was created, such as `controlled_synthetic`, `public_math_derived`, or `public_adapted`.
 - `query`: natural-language user request.
-- `expected_tool`: correct tool name.
-- `expected_args`: correct JSON arguments for the selected tool.
-- `expected_answer`: expected tool output when known, or `null` if the output is stateful or not fixed.
+- `expected_tool`: correct tool name for a single-step row.
+- `expected_args`: correct JSON arguments for a single-step row.
+- `expected_answer`: expected single-step tool output when known, or `null` if
+  the output is stateful or not fixed.
+- `expected_steps`: ordered gold step labels for a multi-step row, including
+  each step's tool, arguments, answer, dependencies, and visible grounding.
 - `perturbation_type`: what kind of routing challenge the example tests.
 - `notes`: short human-readable provenance or rationale.
 
 The evaluator exposes every row to the full live tool registry returned by MCP
 `list_tools()`. Benchmark rows do not define their own candidate tool menus.
+
+The replay-tool expansion changed the full registry from 51 tools to 60 by
+adding five coding replay tools and four finance replay tools. Any model result
+produced against the former 51-tool registry is stale and not directly
+comparable with a current result. All full-registry evaluations must be rerun
+against the 60-tool registry after this change.
+
+Every result record and summary stores the sorted tool names and a versioned
+SHA-256 fingerprint over the tool names, input schemas, and descriptions.
+Results are directly comparable only when their registry fingerprints match.
+
+## Evaluation and Reporting Protocols
+
+Multi-step evaluation uses `teacher_forced_step_routing_v1`. For every expected
+step, the evaluator constructs a prompt from the overall task, the gold
+current-step instruction and grounding context, and bounded gold prior-step
+context. A prediction does not determine the instruction or context supplied
+to the next step. Sequence accuracy therefore measures controlled ordered
+routing under teacher forcing; it must not be reported as autonomous planning,
+autonomous decomposition, or end-to-end task completion.
+
+Every benchmark result must retain and be grouped by one of these modes:
+
+- `grounded_tool_execution`: controlled or source-faithful queries targeting
+  bounded fixtures or allowlisted repositories.
+- `offline_trace_replay`: reproduction of recorded offline tool-call
+  coordinates and outputs.
+
+Report these modes separately. In particular, Nebius SWE-agent coding traces
+and FinRetrieval finance traces are `offline_trace_replay`; their scores must
+not be aggregated with live/source-faithful `grounded_tool_execution` results.
+Summaries provide separate accuracy sections for every benchmark mode present.
+The empty OpenHands JSON file is retained only to document the deterministic
+five-call selection result. It contributes zero queries and must not be passed
+to evaluation or included in result summaries.
 
 Public or adapted datasets should also include provenance fields when available:
 

@@ -435,7 +435,7 @@ datasets are:
 - `benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
 - `benchmark/coding/tool_routing_coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
 - `benchmark/coding/tool_routing_coding_nebius_sweagent_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
-- `benchmark/coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json` — an empty retained artifact because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap
+- `benchmark/coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
 
 The coding family therefore has 123 workflows: 85 single-call workflows and 38
 multi-call workflows. The public trajectory additions contain source issue text
@@ -489,6 +489,30 @@ Each current-format benchmark item looks like:
 Every row is evaluated against the full live tool registry returned by the MCP
 server.
 
+The replay-tool expansion changed that full registry from 51 tools to 60 tools:
+five coding replay tools and four finance replay tools were added. Tool-routing
+results produced against the former 51-tool registry are stale and are not
+directly comparable with results against the current 60-tool registry. Rerun
+all full-registry model evaluations after this registry change; do not combine
+the old and new scores in one comparison table.
+
+Evaluation records and summaries store the sorted tool names plus a versioned
+SHA-256 fingerprint over tool names, input schemas, and descriptions. Compare
+model results only when this registry fingerprint matches.
+
+Reports must also keep two benchmark modes separate:
+
+- `grounded_tool_execution` covers controlled and source-faithful rows targeting
+  bounded LayerMCP fixtures or allowlisted repositories.
+- `offline_trace_replay` covers coordinate-keyed reproduction of recorded tool
+  calls, including the Nebius SWE-agent and FinRetrieval expansions.
+
+Both modes are deterministic and useful for routing evaluation, but replay
+accuracy is not evidence of live repository, Daloopa, web, or finance reasoning.
+Do not aggregate the two modes into a single public-benchmark score. Result
+summaries include separate accuracy sections for each mode present. The empty
+OpenHands JSON file contributes zero workflows and zero results to either mode.
+
 `expected_args` is the exact argument-generation label. With
 `--call-predicted-tools`, the evaluator executes the router's predicted tool and
 predicted arguments; it does not substitute the expected arguments.
@@ -509,13 +533,16 @@ written in more than one way.
 4. The router predicts one tool name from that live catalog.
 5. If `--call-predicted-tools` is enabled, the evaluator calls the predicted tool with the router's predicted arguments.
 
-For multi-step datasets, the evaluator supplies the gold current-step
-instruction, every declared dependency, and a bounded view of up to two other
-recent gold calls and results. It scores per-action and complete-sequence
-routing, and reports semantic call-output accuracy when predicted calls are
-executed. It does not generate or score a synthesized answer to the overall
-task. This teacher-forced mode should not be reported as autonomous planning or
-end-to-end issue resolution.
+For multi-step datasets, the evaluation protocol is
+`teacher_forced_step_routing_v1`. Each step prompt contains the overall task,
+the gold current-step instruction and grounding context, every declared gold
+dependency, and a bounded view of up to two other recent gold calls and
+results. The evaluator scores per-action and complete-sequence routing and
+reports semantic call-output accuracy when predicted calls are executed. It
+does not ask the model to plan the sequence or generate and score a synthesized
+answer to the overall task. Results from this protocol must be described as
+teacher-forced step routing, not autonomous planning or end-to-end issue
+resolution.
 
 ### Notes
 

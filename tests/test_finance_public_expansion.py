@@ -281,6 +281,10 @@ class FinancePublicExpansionTests(unittest.TestCase):
 
         for row in self.raw_finretrieval_multistep:
             with self.subTest(row=row["id"]):
+                self.assertEqual(
+                    row["benchmark_mode"],
+                    "offline_trace_replay",
+                )
                 steps = row["expected_steps"]
                 self.assertGreaterEqual(len(steps), 2)
                 self.assertLessEqual(

@@ -1,0 +1,1029 @@
+[
+  {
+    "id": "finance_multistep_convfinqa_dev_000",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "by how much did the weighted average exercise price per share increase from 2005 to 2007?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the weighted average exercise price per share in 2007?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_MRO/2007/page_134.pdf-1\",\"evidence_key\":\"table_1\",\"evidence_text\":\"the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;\",\"filename\":\"MRO/2007/page_134.pdf\",\"metric\":\"weighted average exercise price per share\",\"numeric_value\":25.14,\"period\":\"2005\",\"source_row_index\":0,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_MRO/2007/page_134.pdf-1\",\"evidence_key\":\"table_1\",\"evidence_text\":\"the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;\",\"filename\":\"MRO/2007/page_134.pdf\",\"metric\":\"weighted average exercise price per share\",\"numeric_value\":60.94,\"period\":\"2007\",\"source_row_index\":0,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":0},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 0 AND metric = 'weighted average exercise price per share' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              60.94
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "60.94"
+      },
+      {
+        "id": "turn_002",
+        "query": "and what was it in 2005?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_MRO/2007/page_134.pdf-1\",\"evidence_key\":\"table_1\",\"evidence_text\":\"the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;\",\"filename\":\"MRO/2007/page_134.pdf\",\"metric\":\"weighted average exercise price per share\",\"numeric_value\":25.14,\"period\":\"2005\",\"source_row_index\":0,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_MRO/2007/page_134.pdf-1\",\"evidence_key\":\"table_1\",\"evidence_text\":\"the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;\",\"filename\":\"MRO/2007/page_134.pdf\",\"metric\":\"weighted average exercise price per share\",\"numeric_value\":60.94,\"period\":\"2007\",\"source_row_index\":0,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":0},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 0 AND metric = 'weighted average exercise price per share' AND period = '2005'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              25.14
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "25.14"
+      },
+      {
+        "id": "turn_003",
+        "query": "what was, then, the change over the years?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"60.94 - 25.14\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "60.94 - 25.14"
+        },
+        "expected_answer": {
+          "result": 35.8
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(60.94, 25.14)"
+      },
+      {
+        "id": "turn_004",
+        "query": "what was the weighted average exercise price per share in 2005?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_MRO/2007/page_134.pdf-1\",\"evidence_key\":\"table_1\",\"evidence_text\":\"the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;\",\"filename\":\"MRO/2007/page_134.pdf\",\"metric\":\"weighted average exercise price per share\",\"numeric_value\":25.14,\"period\":\"2005\",\"source_row_index\":0,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_MRO/2007/page_134.pdf-1\",\"evidence_key\":\"table_1\",\"evidence_text\":\"the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;\",\"filename\":\"MRO/2007/page_134.pdf\",\"metric\":\"weighted average exercise price per share\",\"numeric_value\":60.94,\"period\":\"2007\",\"source_row_index\":0,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":0},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 0 AND metric = 'weighted average exercise price per share' AND period = '2005'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              25.14
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "25.14"
+      },
+      {
+        "id": "turn_005",
+        "query": "and how much does that change represent in relation to this 2005 weighted average exercise price?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(60.94 - 25.14) / 25.14\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(60.94 - 25.14) / 25.14"
+        },
+        "expected_answer": {
+          "result": 1.424025457438345
+        },
+        "depends_on": [
+          "turn_003",
+          "turn_004"
+        ],
+        "source_program": "subtract(60.94, 25.14), divide(#0, 25.14)"
+      }
+    ],
+    "expected_final_answer": "142.4%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 0,
+    "source_conversation_id": "Single_MRO/2007/page_134.pdf-1",
+    "source_filename": "MRO/2007/page_134.pdf",
+    "source_original_program": "subtract(60.94, 25.14), divide(A0, 25.14)",
+    "source_execution_answers": [
+      60.94,
+      25.14,
+      35.8,
+      25.14,
+      1.42403
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact five-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_002",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what percentage of amounts expensed in 2009 came from discretionary company contributions?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what is the ratio of discretionary company contributions to total expensed amounts for savings plans in 2009?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_IPG/2009/page_85.pdf-3\",\"evidence_key\":\"text_15\",\"evidence_text\":\"expense includes a discretionary company contribution of $ 3.8 , $ 4.0 and $ 4.9 offset by participant forfeitures of $ 2.7 , $ 7.8 , $ 6.0 in 2009 , 2008 and 2007 , respectively .\",\"filename\":\"IPG/2009/page_85.pdf\",\"metric\":\"discretionary company contributions\",\"numeric_value\":3.8,\"period\":\"2009\",\"source_row_index\":2,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_IPG/2009/page_85.pdf-3\",\"evidence_key\":\"text_14\",\"evidence_text\":\"amounts expensed for the savings plans for 2009 , 2008 and 2007 were $ 35.1 , $ 29.6 and $ 31.4 , respectively .\",\"filename\":\"IPG/2009/page_85.pdf\",\"metric\":\"total expensed amounts for savings plans\",\"numeric_value\":35.1,\"period\":\"2009\",\"source_row_index\":2,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":2},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(CASE WHEN metric = 'discretionary company contributions' THEN numeric_value END) / MAX(CASE WHEN metric = 'total expensed amounts for savings plans' THEN numeric_value END) AS result FROM data WHERE source_row_index = 2 AND period = '2009'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              0.10826210826210825
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "divide(3.8, 35.1)"
+      },
+      {
+        "id": "turn_002",
+        "query": "what is that times 100?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(3.8 / 35.1) * 100\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(3.8 / 35.1) * 100"
+        },
+        "expected_answer": {
+          "result": 10.826210826210826
+        },
+        "depends_on": [
+          "turn_001"
+        ],
+        "source_program": "divide(3.8, 35.1), multiply(#0, const_100)"
+      }
+    ],
+    "expected_final_answer": "10.83%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 2,
+    "source_conversation_id": "Single_IPG/2009/page_85.pdf-3",
+    "source_filename": "IPG/2009/page_85.pdf",
+    "source_original_program": "divide(3.8, 35.1), multiply(A0, const_100)",
+    "source_execution_answers": [
+      0.10826,
+      10.82621
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact two-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_003",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what was the percentage change in equipment rents payable from 2007 to 2008?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the equipment rents payable in 2008?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_UNP/2008/page_77.pdf-2\",\"evidence_key\":\"table_6\",\"evidence_text\":\"millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;\",\"filename\":\"UNP/2008/page_77.pdf\",\"metric\":\"equipment rents payable\",\"numeric_value\":103.0,\"period\":\"2007\",\"source_row_index\":3,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_UNP/2008/page_77.pdf-2\",\"evidence_key\":\"table_6\",\"evidence_text\":\"millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;\",\"filename\":\"UNP/2008/page_77.pdf\",\"metric\":\"equipment rents payable\",\"numeric_value\":93.0,\"period\":\"2008\",\"source_row_index\":3,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":3},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 3 AND metric = 'equipment rents payable' AND period = '2008'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              93.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "93"
+      },
+      {
+        "id": "turn_002",
+        "query": "and in 2007?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_UNP/2008/page_77.pdf-2\",\"evidence_key\":\"table_6\",\"evidence_text\":\"millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;\",\"filename\":\"UNP/2008/page_77.pdf\",\"metric\":\"equipment rents payable\",\"numeric_value\":103.0,\"period\":\"2007\",\"source_row_index\":3,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_UNP/2008/page_77.pdf-2\",\"evidence_key\":\"table_6\",\"evidence_text\":\"millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;\",\"filename\":\"UNP/2008/page_77.pdf\",\"metric\":\"equipment rents payable\",\"numeric_value\":93.0,\"period\":\"2008\",\"source_row_index\":3,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":3},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 3 AND metric = 'equipment rents payable' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              103.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "103"
+      },
+      {
+        "id": "turn_003",
+        "query": "so what was the difference between the two years?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"93 - 103\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "93 - 103"
+        },
+        "expected_answer": {
+          "result": -10
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(93, 103)"
+      },
+      {
+        "id": "turn_004",
+        "query": "and the value for 2007 again?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_UNP/2008/page_77.pdf-2\",\"evidence_key\":\"table_6\",\"evidence_text\":\"millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;\",\"filename\":\"UNP/2008/page_77.pdf\",\"metric\":\"equipment rents payable\",\"numeric_value\":103.0,\"period\":\"2007\",\"source_row_index\":3,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_UNP/2008/page_77.pdf-2\",\"evidence_key\":\"table_6\",\"evidence_text\":\"millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;\",\"filename\":\"UNP/2008/page_77.pdf\",\"metric\":\"equipment rents payable\",\"numeric_value\":93.0,\"period\":\"2008\",\"source_row_index\":3,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":3},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 3 AND metric = 'equipment rents payable' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              103.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "103"
+      },
+      {
+        "id": "turn_005",
+        "query": "so what was the percentage change during this time?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(93 - 103) / 103\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(93 - 103) / 103"
+        },
+        "expected_answer": {
+          "result": -0.0970873786407767
+        },
+        "depends_on": [
+          "turn_003",
+          "turn_004"
+        ],
+        "source_program": "subtract(93, 103), divide(#0, 103)"
+      }
+    ],
+    "expected_final_answer": "-10%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 3,
+    "source_conversation_id": "Single_UNP/2008/page_77.pdf-2",
+    "source_filename": "UNP/2008/page_77.pdf",
+    "source_original_program": "subtract(93, 103), divide(A0, 103)",
+    "source_execution_answers": [
+      93.0,
+      103.0,
+      -10.0,
+      103.0,
+      -0.09709
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact five-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_006",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what was the percentage change in cash provided by operating activities from 2012 to 2013?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the cash provided by operating activities in 2013?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_UNP/2014/page_35.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;\",\"filename\":\"UNP/2014/page_35.pdf\",\"metric\":\"cash provided by operating activities\",\"numeric_value\":6161.0,\"period\":\"2012\",\"source_row_index\":6,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_UNP/2014/page_35.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;\",\"filename\":\"UNP/2014/page_35.pdf\",\"metric\":\"cash provided by operating activities\",\"numeric_value\":6823.0,\"period\":\"2013\",\"source_row_index\":6,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":6},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 6 AND metric = 'cash provided by operating activities' AND period = '2013'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              6823.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "6823"
+      },
+      {
+        "id": "turn_002",
+        "query": "and in 2012?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_UNP/2014/page_35.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;\",\"filename\":\"UNP/2014/page_35.pdf\",\"metric\":\"cash provided by operating activities\",\"numeric_value\":6161.0,\"period\":\"2012\",\"source_row_index\":6,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_UNP/2014/page_35.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;\",\"filename\":\"UNP/2014/page_35.pdf\",\"metric\":\"cash provided by operating activities\",\"numeric_value\":6823.0,\"period\":\"2013\",\"source_row_index\":6,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":6},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 6 AND metric = 'cash provided by operating activities' AND period = '2012'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              6161.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "6161"
+      },
+      {
+        "id": "turn_003",
+        "query": "so what was the difference in this value between the years?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"6823 - 6161\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "6823 - 6161"
+        },
+        "expected_answer": {
+          "result": 662
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(6823, 6161)"
+      },
+      {
+        "id": "turn_004",
+        "query": "and the value for 2012 again?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_UNP/2014/page_35.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;\",\"filename\":\"UNP/2014/page_35.pdf\",\"metric\":\"cash provided by operating activities\",\"numeric_value\":6161.0,\"period\":\"2012\",\"source_row_index\":6,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_UNP/2014/page_35.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;\",\"filename\":\"UNP/2014/page_35.pdf\",\"metric\":\"cash provided by operating activities\",\"numeric_value\":6823.0,\"period\":\"2013\",\"source_row_index\":6,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":6},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 6 AND metric = 'cash provided by operating activities' AND period = '2012'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              6161.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "6161"
+      },
+      {
+        "id": "turn_005",
+        "query": "so what was the percentage change during this time?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(6823 - 6161) / 6161\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(6823 - 6161) / 6161"
+        },
+        "expected_answer": {
+          "result": 0.10745008927122221
+        },
+        "depends_on": [
+          "turn_003",
+          "turn_004"
+        ],
+        "source_program": "subtract(6823, 6161), divide(#0, 6161)"
+      }
+    ],
+    "expected_final_answer": "11%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 6,
+    "source_conversation_id": "Single_UNP/2014/page_35.pdf-3",
+    "source_filename": "UNP/2014/page_35.pdf",
+    "source_original_program": "subtract(6823, 6161), divide(A0, 6161)",
+    "source_execution_answers": [
+      6823.0,
+      6161.0,
+      662.0,
+      6161.0,
+      0.10745
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 5-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_007",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what percentage of the total oil and gas mmboe comes from canada?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what is the amount of oil and gas mmboe from canada divided by the total?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_DVN/2007/page_58.pdf-3\",\"evidence_key\":\"table_3\",\"evidence_text\":\"the canada of oil ( mmbbls ) is 23 ; the canada of gas ( bcf ) is 198 ; the canada of ngls ( mmbbls ) is 4 ; the canada of total ( mmboe ) is 60 ;\",\"filename\":\"DVN/2007/page_58.pdf\",\"metric\":\"total oil and gas\",\"numeric_value\":60.0,\"period\":\"canada mmboe\",\"source_row_index\":7,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_DVN/2007/page_58.pdf-3\",\"evidence_key\":\"table_5\",\"evidence_text\":\"the total of oil ( mmbbls ) is 66 ; the total of gas ( bcf ) is 894 ; the total of ngls ( mmbbls ) is 28 ; the total of total ( mmboe ) is 243 ;\",\"filename\":\"DVN/2007/page_58.pdf\",\"metric\":\"total oil and gas\",\"numeric_value\":243.0,\"period\":\"total mmboe\",\"source_row_index\":7,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":7},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(CASE WHEN period = 'canada mmboe' THEN numeric_value END) / MAX(CASE WHEN period = 'total mmboe' THEN numeric_value END) AS result FROM data WHERE source_row_index = 7 AND metric = 'total oil and gas'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              0.24691358024691357
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "divide(60, 243)"
+      },
+      {
+        "id": "turn_002",
+        "query": "what is that times 100?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(60 / 243) * 100\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(60 / 243) * 100"
+        },
+        "expected_answer": {
+          "result": 24.691358024691358
+        },
+        "depends_on": [
+          "turn_001"
+        ],
+        "source_program": "divide(60, 243), multiply(#0, const_100)"
+      }
+    ],
+    "expected_final_answer": "24.69%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 7,
+    "source_conversation_id": "Single_DVN/2007/page_58.pdf-3",
+    "source_filename": "DVN/2007/page_58.pdf",
+    "source_original_program": "divide(60, 243), multiply(A0, const_100)",
+    "source_execution_answers": [
+      0.24691,
+      24.69136
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 2-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_008",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what was the percent of the change in the risk and insurance brokerage services segment revenue from 2008 2009\\\\n",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the total of risk and insurance brokerage services segment revenue in 2009?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_AON/2009/page_46.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"years ended december 31 , the segment revenue of 2009 is $ 6305 ; the segment revenue of 2008 is $ 6197 ; the segment revenue of 2007 is $ 5918 ;\",\"filename\":\"AON/2009/page_46.pdf\",\"metric\":\"risk and insurance brokerage services segment revenue\",\"numeric_value\":6197.0,\"period\":\"2008\",\"source_row_index\":8,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_AON/2009/page_46.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"years ended december 31 , the segment revenue of 2009 is $ 6305 ; the segment revenue of 2008 is $ 6197 ; the segment revenue of 2007 is $ 5918 ;\",\"filename\":\"AON/2009/page_46.pdf\",\"metric\":\"risk and insurance brokerage services segment revenue\",\"numeric_value\":6305.0,\"period\":\"2009\",\"source_row_index\":8,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":8},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 8 AND metric = 'risk and insurance brokerage services segment revenue' AND period = '2009'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              6305.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "6305"
+      },
+      {
+        "id": "turn_002",
+        "query": "and what was that in 2008?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_AON/2009/page_46.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"years ended december 31 , the segment revenue of 2009 is $ 6305 ; the segment revenue of 2008 is $ 6197 ; the segment revenue of 2007 is $ 5918 ;\",\"filename\":\"AON/2009/page_46.pdf\",\"metric\":\"risk and insurance brokerage services segment revenue\",\"numeric_value\":6197.0,\"period\":\"2008\",\"source_row_index\":8,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_AON/2009/page_46.pdf-3\",\"evidence_key\":\"table_1\",\"evidence_text\":\"years ended december 31 , the segment revenue of 2009 is $ 6305 ; the segment revenue of 2008 is $ 6197 ; the segment revenue of 2007 is $ 5918 ;\",\"filename\":\"AON/2009/page_46.pdf\",\"metric\":\"risk and insurance brokerage services segment revenue\",\"numeric_value\":6305.0,\"period\":\"2009\",\"source_row_index\":8,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":8},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 8 AND metric = 'risk and insurance brokerage services segment revenue' AND period = '2008'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              6197.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "6197"
+      },
+      {
+        "id": "turn_003",
+        "query": "what was, then, the change over the year?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"6305 - 6197\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "6305 - 6197"
+        },
+        "expected_answer": {
+          "result": 108
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(6305, 6197)"
+      },
+      {
+        "id": "turn_004",
+        "query": "and how much does this change represent in relation to the 2008 total, in percentage?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(6305 - 6197) / 6197\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(6305 - 6197) / 6197"
+        },
+        "expected_answer": {
+          "result": 0.017427787639180247
+        },
+        "depends_on": [
+          "turn_002",
+          "turn_003"
+        ],
+        "source_program": "subtract(6305, 6197), divide(#0, 6197)"
+      }
+    ],
+    "expected_final_answer": "1.7%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 8,
+    "source_conversation_id": "Single_AON/2009/page_46.pdf-3",
+    "source_filename": "AON/2009/page_46.pdf",
+    "source_original_program": "subtract(6305, 6197), divide(A0, 6197)",
+    "source_execution_answers": [
+      6305.0,
+      6197.0,
+      108.0,
+      0.01743
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 4-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_009",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what is the total return is $ 100000 are invested in s&p500 on january 1st , 2015 and sold at the end of 2016?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what is the change in price of the s&p 500 from 2015 to 2016?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_CDNS/2018/page_31.pdf-1\",\"evidence_key\":\"table_3\",\"evidence_text\":\"the s&p 500 of 12/28/2013 is 100.00 ; the s&p 500 of 1/3/2015 is 110.28 ; the s&p 500 of 1/2/2016 is 109.54 ; the s&p 500 of 12/31/2016 is 129.05 ; the s&p 500 of 12/30/2017 is 157.22 ; the s&p 500 of 12/29/2018 is 150.33 ;\",\"filename\":\"CDNS/2018/page_31.pdf\",\"metric\":\"s&p 500\",\"numeric_value\":110.28,\"period\":\"2015\",\"source_row_index\":9,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_CDNS/2018/page_31.pdf-1\",\"evidence_key\":\"table_3\",\"evidence_text\":\"the s&p 500 of 12/28/2013 is 100.00 ; the s&p 500 of 1/3/2015 is 110.28 ; the s&p 500 of 1/2/2016 is 109.54 ; the s&p 500 of 12/31/2016 is 129.05 ; the s&p 500 of 12/30/2017 is 157.22 ; the s&p 500 of 12/29/2018 is 150.33 ;\",\"filename\":\"CDNS/2018/page_31.pdf\",\"metric\":\"s&p 500\",\"numeric_value\":129.05,\"period\":\"2016\",\"source_row_index\":9,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":9},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(CASE WHEN period = '2016' THEN numeric_value END) - MAX(CASE WHEN period = '2015' THEN numeric_value END) AS result FROM data WHERE source_row_index = 9 AND metric = 's&p 500'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              18.77000000000001
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "subtract(129.05, 110.28)"
+      },
+      {
+        "id": "turn_002",
+        "query": "what is 100000 divided by 100?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"100000 / 100\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "100000 / 100"
+        },
+        "expected_answer": {
+          "result": 1000.0
+        },
+        "depends_on": [],
+        "source_program": "subtract(129.05, 110.28), divide(100000, const_100)"
+      },
+      {
+        "id": "turn_003",
+        "query": "what is the product of the change by the quotient?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(100000 / 100) * (129.05 - 110.28)\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(100000 / 100) * (129.05 - 110.28)"
+        },
+        "expected_answer": {
+          "result": 18770.00000000001
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(129.05, 110.28), divide(100000, const_100), multiply(#1, #0)"
+      }
+    ],
+    "expected_final_answer": "1877",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 9,
+    "source_conversation_id": "Single_CDNS/2018/page_31.pdf-1",
+    "source_filename": "CDNS/2018/page_31.pdf",
+    "source_original_program": "subtract(129.05, 110.28), divide(100000, const_100), multiply(A1, A0)",
+    "source_execution_answers": [
+      18.77,
+      1000.0,
+      18770.0
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 3-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_010",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what percent higher is fair value than carrying value?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what is the ratio of fair value to carrying value?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_BLK/2014/page_119.pdf-1\",\"evidence_key\":\"table_7\",\"evidence_text\":\"( in millions ) the total long-term borrowings of maturity amount is $ 4950 ; the total long-term borrowings of unamortized discount is $ -12 ( 12 ) ; the total long-term borrowings of carrying value is $ 4938 ; the total long-term borrowings of fair value is $ 5309 ;\",\"filename\":\"BLK/2014/page_119.pdf\",\"metric\":\"total long-term borrowings\",\"numeric_value\":4938.0,\"period\":\"carrying value\",\"source_row_index\":10,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_BLK/2014/page_119.pdf-1\",\"evidence_key\":\"table_7\",\"evidence_text\":\"( in millions ) the total long-term borrowings of maturity amount is $ 4950 ; the total long-term borrowings of unamortized discount is $ -12 ( 12 ) ; the total long-term borrowings of carrying value is $ 4938 ; the total long-term borrowings of fair value is $ 5309 ;\",\"filename\":\"BLK/2014/page_119.pdf\",\"metric\":\"total long-term borrowings\",\"numeric_value\":5309.0,\"period\":\"fair value\",\"source_row_index\":10,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":10},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(CASE WHEN period = 'fair value' THEN numeric_value END) / MAX(CASE WHEN period = 'carrying value' THEN numeric_value END) AS result FROM data WHERE source_row_index = 10 AND metric = 'total long-term borrowings'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              1.0751316322397733
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "divide(5309, 4938)"
+      },
+      {
+        "id": "turn_002",
+        "query": "what is that less 1?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(5309 / 4938) - 1\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(5309 / 4938) - 1"
+        },
+        "expected_answer": {
+          "result": 0.07513163223977326
+        },
+        "depends_on": [
+          "turn_001"
+        ],
+        "source_program": "divide(5309, 4938), subtract(#0, const_1)"
+      }
+    ],
+    "expected_final_answer": "7.51%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 10,
+    "source_conversation_id": "Single_BLK/2014/page_119.pdf-1",
+    "source_filename": "BLK/2014/page_119.pdf",
+    "source_original_program": "divide(5309, 4938), subtract(A0, const_1)",
+    "source_execution_answers": [
+      1.07513,
+      0.07513
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 2-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_011",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what is the percent change in gas customers between 2007 and 2008?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the number of gas customers in 2008?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_ETR/2008/page_355.pdf-4\",\"evidence_key\":\"text_5\",\"evidence_text\":\"entergy new orleans estimates that approximately 141000 electric customers and 93000 gas customers have returned since hurricane katrina and are taking service as of december 31 , 2008 , compared to approximately 132000 electric customers and 86000 gas customers as of december 31 , 2007 .\",\"filename\":\"ETR/2008/page_355.pdf\",\"metric\":\"gas customers\",\"numeric_value\":86000.0,\"period\":\"2007\",\"source_row_index\":11,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_ETR/2008/page_355.pdf-4\",\"evidence_key\":\"text_5\",\"evidence_text\":\"entergy new orleans estimates that approximately 141000 electric customers and 93000 gas customers have returned since hurricane katrina and are taking service as of december 31 , 2008 , compared to approximately 132000 electric customers and 86000 gas customers as of december 31 , 2007 .\",\"filename\":\"ETR/2008/page_355.pdf\",\"metric\":\"gas customers\",\"numeric_value\":93000.0,\"period\":\"2008\",\"source_row_index\":11,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":11},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 11 AND metric = 'gas customers' AND period = '2008'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              93000.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "93000"
+      },
+      {
+        "id": "turn_002",
+        "query": "and what was it in 2007?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_ETR/2008/page_355.pdf-4\",\"evidence_key\":\"text_5\",\"evidence_text\":\"entergy new orleans estimates that approximately 141000 electric customers and 93000 gas customers have returned since hurricane katrina and are taking service as of december 31 , 2008 , compared to approximately 132000 electric customers and 86000 gas customers as of december 31 , 2007 .\",\"filename\":\"ETR/2008/page_355.pdf\",\"metric\":\"gas customers\",\"numeric_value\":86000.0,\"period\":\"2007\",\"source_row_index\":11,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_ETR/2008/page_355.pdf-4\",\"evidence_key\":\"text_5\",\"evidence_text\":\"entergy new orleans estimates that approximately 141000 electric customers and 93000 gas customers have returned since hurricane katrina and are taking service as of december 31 , 2008 , compared to approximately 132000 electric customers and 86000 gas customers as of december 31 , 2007 .\",\"filename\":\"ETR/2008/page_355.pdf\",\"metric\":\"gas customers\",\"numeric_value\":93000.0,\"period\":\"2008\",\"source_row_index\":11,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":11},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 11 AND metric = 'gas customers' AND period = '2007'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              86000.0
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "86000"
+      },
+      {
+        "id": "turn_003",
+        "query": "what was, then, the change in that number over the year?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"93000 - 86000\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "93000 - 86000"
+        },
+        "expected_answer": {
+          "result": 7000
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(93000, 86000)"
+      },
+      {
+        "id": "turn_004",
+        "query": "and how much does this change represent in relation to the 2007 number of customers, in percentage?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(93000 - 86000) / 86000\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(93000 - 86000) / 86000"
+        },
+        "expected_answer": {
+          "result": 0.08139534883720931
+        },
+        "depends_on": [
+          "turn_002",
+          "turn_003"
+        ],
+        "source_program": "subtract(93000, 86000), divide(#0, 86000)"
+      }
+    ],
+    "expected_final_answer": "8%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 11,
+    "source_conversation_id": "Single_ETR/2008/page_355.pdf-4",
+    "source_filename": "ETR/2008/page_355.pdf",
+    "source_original_program": "subtract(93000, 86000), divide(A0, 86000)",
+    "source_execution_answers": [
+      93000.0,
+      86000.0,
+      7000.0,
+      0.0814
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 4-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  },
+  {
+    "id": "finance_multistep_convfinqa_dev_013",
+    "domain": "finance",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_finance_conversation_derived",
+    "query": "what is the growth rate in total shipment volume from 2010 to 2011?",
+    "expected_steps": [
+      {
+        "id": "turn_001",
+        "query": "what was the difference in total shipment volume between 2010 and 2011?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_MO/2012/page_44.pdf-4\",\"evidence_key\":\"table_5\",\"evidence_text\":\"( cans and packs in millions ) the total smokeless products of shipment volumefor the years ended december 31 , 2012 is 763.3 ; the total smokeless products of shipment volumefor the years ended december 31 , 2011 is 734.6 ; the total smokeless products of shipment volumefor the years ended december 31 , 2010 is 724.4 ;\",\"filename\":\"MO/2012/page_44.pdf\",\"metric\":\"total smokeless products shipment volume\",\"numeric_value\":724.4,\"period\":\"2010\",\"source_row_index\":13,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_MO/2012/page_44.pdf-4\",\"evidence_key\":\"table_5\",\"evidence_text\":\"( cans and packs in millions ) the total smokeless products of shipment volumefor the years ended december 31 , 2012 is 763.3 ; the total smokeless products of shipment volumefor the years ended december 31 , 2011 is 734.6 ; the total smokeless products of shipment volumefor the years ended december 31 , 2010 is 724.4 ;\",\"filename\":\"MO/2012/page_44.pdf\",\"metric\":\"total smokeless products shipment volume\",\"numeric_value\":734.6,\"period\":\"2011\",\"source_row_index\":13,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":13},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(CASE WHEN period = '2011' THEN numeric_value END) - MAX(CASE WHEN period = '2010' THEN numeric_value END) AS result FROM data WHERE source_row_index = 13 AND metric = 'total smokeless products shipment volume'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              10.200000000000045
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "subtract(734.6, 724.4)"
+      },
+      {
+        "id": "turn_002",
+        "query": "and the specific value for 2010?",
+        "prompt_context": "{\"columns\":[{\"name\":\"source_split\",\"type\":\"TEXT\"},{\"name\":\"source_row_index\",\"type\":\"INTEGER\"},{\"name\":\"conversation_id\",\"type\":\"TEXT\"},{\"name\":\"filename\",\"type\":\"TEXT\"},{\"name\":\"metric\",\"type\":\"TEXT\"},{\"name\":\"period\",\"type\":\"TEXT\"},{\"name\":\"numeric_value\",\"type\":\"REAL\"},{\"name\":\"evidence_key\",\"type\":\"TEXT\"},{\"name\":\"evidence_text\",\"type\":\"TEXT\"}],\"dataset_id\":\"convfinqa-dev-v1\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"conversation_id\":\"Single_MO/2012/page_44.pdf-4\",\"evidence_key\":\"table_5\",\"evidence_text\":\"( cans and packs in millions ) the total smokeless products of shipment volumefor the years ended december 31 , 2012 is 763.3 ; the total smokeless products of shipment volumefor the years ended december 31 , 2011 is 734.6 ; the total smokeless products of shipment volumefor the years ended december 31 , 2010 is 724.4 ;\",\"filename\":\"MO/2012/page_44.pdf\",\"metric\":\"total smokeless products shipment volume\",\"numeric_value\":724.4,\"period\":\"2010\",\"source_row_index\":13,\"source_split\":\"dev\"},{\"conversation_id\":\"Single_MO/2012/page_44.pdf-4\",\"evidence_key\":\"table_5\",\"evidence_text\":\"( cans and packs in millions ) the total smokeless products of shipment volumefor the years ended december 31 , 2012 is 763.3 ; the total smokeless products of shipment volumefor the years ended december 31 , 2011 is 734.6 ; the total smokeless products of shipment volumefor the years ended december 31 , 2010 is 724.4 ;\",\"filename\":\"MO/2012/page_44.pdf\",\"metric\":\"total smokeless products shipment volume\",\"numeric_value\":734.6,\"period\":\"2011\",\"source_row_index\":13,\"source_split\":\"dev\"}],\"source_filter\":{\"source_row_index\":13},\"table_name\":\"data\"}",
+        "expected_tool": "finance_query_table",
+        "expected_args": {
+          "dataset_id": "convfinqa-dev-v1",
+          "sql": "SELECT MAX(numeric_value) AS result FROM data WHERE source_row_index = 13 AND metric = 'total smokeless products shipment volume' AND period = '2010'"
+        },
+        "expected_answer": {
+          "columns": [
+            "result"
+          ],
+          "rows": [
+            [
+              724.4
+            ]
+          ],
+          "row_count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "724.4"
+      },
+      {
+        "id": "turn_003",
+        "query": "so what was the growth rate over this time?",
+        "prompt_context": "{\"arguments\":{\"expression\":\"(734.6 - 724.4) / 724.4\"},\"instruction\":\"Call calculator with this resolved expression.\",\"kind\":\"finance_calculator_call_grounding_v1\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "(734.6 - 724.4) / 724.4"
+        },
+        "expected_answer": {
+          "result": 0.014080618442849318
+        },
+        "depends_on": [
+          "turn_001",
+          "turn_002"
+        ],
+        "source_program": "subtract(734.6, 724.4), divide(#0, 724.4)"
+      }
+    ],
+    "expected_final_answer": "1.4%",
+    "source_dataset": "ConvFinQA",
+    "source_split": "dev",
+    "source_row_index": 13,
+    "source_conversation_id": "Single_MO/2012/page_44.pdf-4",
+    "source_filename": "MO/2012/page_44.pdf",
+    "source_original_program": "subtract(734.6, 724.4), divide(A0, 724.4)",
+    "source_execution_answers": [
+      10.2,
+      724.4,
+      0.01408
+    ],
+    "query_origin": "exact_public_dataset_dialogue",
+    "tool_sequence_origin": "mechanical_adaptation_of_gold_turn_programs",
+    "fixture_dataset_id": "convfinqa-dev-v1",
+    "source_revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "source_license": "MIT",
+    "provenance_type": "public_dataset_multistep_adaptation",
+    "perturbation_type": "paper_conversation",
+    "notes": "Exact 3-turn ConvFinQA conversation with a mechanically adapted retrieval-and-calculation tool sequence."
+  }
+]

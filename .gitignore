@@ -34,3 +34,8 @@ weights/
 # Local public datasets and generated candidate-analysis outputs.
 data/raw/
 data/processed/
+
+# Full coding replay exports are regeneration inputs, not benchmark artifacts.
+# The small benchmark-scoped fixture has a different filename and stays in Git.
+/benchmark/coding/fixtures/coding_nebius_sweagent_replay.json
+/benchmark/coding/fixtures/coding_nebius_swerebench_openhands_replay.json

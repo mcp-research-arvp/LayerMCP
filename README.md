@@ -145,7 +145,10 @@ LayerMCP/
 │   │   ├── README.md
 │   │   ├── tool_routing_coding_controlled.json
 │   │   ├── tool_routing_coding_codesearchnet_public_derived.json
+│   │   ├── tool_routing_coding_nebius_sweagent_multistep.json
+│   │   ├── tool_routing_coding_nebius_swerebench_openhands_multistep.json
 │   │   ├── tool_routing_coding_smoke.json
+│   │   ├── tool_routing_coding_sweagent_multistep.json
 │   │   └── tool_routing_coding_upstream_inspired.json
 │   ├── finance/
 │   │   ├── fixtures/
@@ -161,6 +164,8 @@ LayerMCP/
 │   └── evaluate.py
 ├── mcp_server/
 │   ├── __init__.py
+│   ├── coding_replay_state.py
+│   ├── coding_replay_tools.py
 │   ├── coding_state.py
 │   ├── coding_tools.py
 │   ├── finance_state.py
@@ -366,6 +371,22 @@ Paths are repository-relative, `.git` access and symlinks are rejected, Git
 revisions are restricted to the pinned history, and outputs are capped. These
 seven tools are read-only.
 
+Five additional coding tools replay selected successful research trajectories:
+
+- `code_replay_sweagent_shell`
+- `code_replay_sweagent_file_view`
+- `code_replay_sweagent_file_search`
+- `code_replay_sweagent_file_edit`
+- `code_replay_sweagent_submit`
+
+These are coordinate-keyed, inert replay tools. They validate the exact
+record, trajectory, and step coordinates, then resolve the exact released
+arguments from a small checked-in fixture and return them with a bounded
+recorded observation. The fixture contains exactly the 139 calls referenced by
+the 33 retained SWE-agent workflows. The tools never run a process, access the
+network, change a file, update a task, or submit work. No additional fixture
+setup is required.
+
 A second allowlisted repository, `codesearchnet-public-v1`, contains a narrow
 MIT-licensed adaptation of 15 exact CodeSearchNet human-evaluation queries and
 their selected annotation records. It contains no target source code and is
@@ -389,13 +410,19 @@ The finance tool catalog is:
 - `finance_extract_pdf_tables` — retrieve pre-extracted tables for selected PDF pages
 - `finance_get_market_quote` — retrieve the latest synthetic OHLCV quote
 - `finance_get_market_time_series` — retrieve a bounded synthetic daily series
+- `finance_discover_companies` — replay selected FinRetrieval company discovery
+- `finance_discover_company_series` — replay selected financial-series discovery
+- `finance_get_company_fundamentals` — replay selected fundamental retrieval
+- `finance_search_web_archive` — replay selected web-research calls offline
 
 The main finance fixture uses fictional companies and synthetic filings, XBRL,
-PDF tables, and market snapshots. It is offline and read-only. Two pinned
-paper-dataset adaptations supply 30 executable public-derived table queries: 15
-from FinQA and 15 from the CC BY 4.0 TAT-QA test-gold release. See
-`benchmark/finance/README.md` for the exact runtime boundaries, attribution, and
-provenance.
+PDF tables, and market snapshots. It is offline and read-only. Pinned research
+adaptations add all 1,147 FinQA test questions, 15 TAT-QA questions, 10
+ConvFinQA workflows, and 485 correct FinRetrieval trajectories containing at
+most five calls. The four
+FinRetrieval-only tools replay bounded checked-in results and never contact
+Daloopa or the web. See `benchmark/finance/README.md` for exact runtime
+boundaries, attribution, and provenance.
 
 ### 6. Benchmark Format
 
@@ -406,6 +433,18 @@ datasets are:
 - `benchmark/coding/tool_routing_coding_controlled.json` — 35 balanced controlled examples
 - `benchmark/coding/tool_routing_coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
 - `benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
+- `benchmark/coding/tool_routing_coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
+- `benchmark/coding/tool_routing_coding_nebius_sweagent_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
+- `benchmark/coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
+
+The coding family therefore has 123 workflows: 85 single-call workflows and 38
+multi-call workflows. The public trajectory additions contain source issue text
+and released model call sequences; they are not newly generated coding
+questions. The checked-in replay fixture contains only records used by
+workflows containing at most five calls. The full upstream sources remain
+revision-pinned and reproducible through the importer; they are not stored as
+Git fixtures. SWE-agent action-family mappings and all replay-coordinate
+wrappers are mechanical LayerMCP adaptations.
 
 See `benchmark/coding/README.md` for their scope, provenance, and run commands.
 The finance-specific datasets are:
@@ -415,6 +454,10 @@ The finance-specific datasets are:
 - `benchmark/finance/tool_routing_finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
 - `benchmark/finance/tool_routing_finance_public_derived.json` — 15 executable public-test adaptations from FinQA
 - `benchmark/finance/tool_routing_finance_tatqa_public_derived.json` — 15 exact TAT-QA test-gold questions with executable SQL adaptations
+- `benchmark/finance/tool_routing_finance_convfinqa_multistep.json` — 10 exact ConvFinQA conversations containing 35 ordered paper-authored turns
+- `benchmark/finance/tool_routing_finance_finqa_test_single.json` — 642 remaining FinQA test questions with one gold operation/call
+- `benchmark/finance/tool_routing_finance_finqa_test_multistep.json` — 490 remaining FinQA test questions with 1,111 ordered gold-operation calls
+- `benchmark/finance/tool_routing_finance_finretrieval_multistep.json` — 485 exact FinRetrieval questions whose selected correct trajectories contain at most five calls (1,490 calls total)
 
 See `benchmark/finance/README.md` for their data boundaries, upstream mappings,
 provenance, and run commands.
@@ -446,9 +489,41 @@ Each current-format benchmark item looks like:
 Every row is evaluated against the full live tool registry returned by the MCP
 server.
 
+The replay-tool expansion changed that full registry from 51 tools to 60 tools:
+five coding replay tools and four finance replay tools were added. Tool-routing
+results produced against the former 51-tool registry are stale and are not
+directly comparable with results against the current 60-tool registry. Rerun
+all full-registry model evaluations after this registry change; do not combine
+the old and new scores in one comparison table.
+
+Evaluation records and summaries store the sorted tool names plus a versioned
+SHA-256 fingerprint over tool names, input schemas, and descriptions. Compare
+model results only when this registry fingerprint matches.
+
+Reports must also keep two benchmark modes separate:
+
+- `grounded_tool_execution` covers controlled and source-faithful rows targeting
+  bounded LayerMCP fixtures or allowlisted repositories.
+- `offline_trace_replay` covers coordinate-keyed reproduction of recorded tool
+  calls, including the Nebius SWE-agent and FinRetrieval expansions.
+
+Both modes are deterministic and useful for routing evaluation, but replay
+accuracy is not evidence of live repository, Daloopa, web, or finance reasoning.
+Do not aggregate the two modes into a single public-benchmark score. Result
+summaries include separate accuracy sections for each mode present. The empty
+OpenHands JSON file contributes zero workflows and zero results to either mode.
+
 `expected_args` is the exact argument-generation label. With
 `--call-predicted-tools`, the evaluator executes the router's predicted tool and
 predicted arguments; it does not substitute the expected arguments.
+
+Rows may also include a bounded `prompt_context` string. The evaluator appends
+this context to the routed prompt so opaque fixture identifiers, table schemas,
+source selectors, and other required call coordinates are visible to the model.
+The field is routing input, not hidden scoring metadata. For tools such as
+`finance_query_table`, executable final-outcome accuracy is the semantic measure;
+exact argument match remains a stricter diagnostic because equivalent SQL can be
+written in more than one way.
 
 ### 7. Runtime Flow
 
@@ -457,6 +532,17 @@ predicted arguments; it does not substitute the expected arguments.
 3. The evaluator calls `list_tools` to get the live tool catalog from the server.
 4. The router predicts one tool name from that live catalog.
 5. If `--call-predicted-tools` is enabled, the evaluator calls the predicted tool with the router's predicted arguments.
+
+For multi-step datasets, the evaluation protocol is
+`teacher_forced_step_routing_v1`. Each step prompt contains the overall task,
+the gold current-step instruction and grounding context, every declared gold
+dependency, and a bounded view of up to two other recent gold calls and
+results. The evaluator scores per-action and complete-sequence routing and
+reports semantic call-output accuracy when predicted calls are executed. It
+does not ask the model to plan the sequence or generate and score a synthesized
+answer to the overall task. Results from this protocol must be described as
+teacher-forced step routing, not autonomous planning or end-to-end issue
+resolution.
 
 ### Notes
 

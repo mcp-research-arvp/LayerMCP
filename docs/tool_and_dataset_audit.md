@@ -1,5 +1,10 @@
 # Tool and Dataset Audit
 
+> Historical baseline audit. This file describes the initial three-tool
+> prototype and is not a current inventory. See `README.md` and the
+> `benchmark/<domain>/README.md` files for the implemented tool catalogs and
+> public dataset adaptations.
+
 ## Current repo status
 
 LayerMCP currently contains a small, runnable MCP tool-routing prototype. It has one MCP server, three deterministic offline MCP tools, one JSON benchmark file with four examples, one Qwen-based router, and one evaluation harness.

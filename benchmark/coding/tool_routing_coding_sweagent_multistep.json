@@ -1,0 +1,418 @@
+[
+  {
+    "id": "coding_multistep_sweagent_marshmallow_1867",
+    "domain": "coding",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_coding_trajectory_derived",
+    "query": "TimeDelta serialization precision\nHi there!\n\nI just found quite strange behaviour of `TimeDelta` field serialization\n\n```python3\nfrom marshmallow.fields import TimeDelta\nfrom datetime import timedelta\n\ntd_field = TimeDelta(precision=\"milliseconds\")\n\nobj = dict()\nobj[\"td_field\"] = timedelta(milliseconds=345)\n\nprint(td_field.serialize(\"td_field\", obj))\n```\n\nOutput of this snippet is `344`, but it seems that `345` is correct.\n\nLooks like a rounding issue here: https://github.com/marshmallow-code/marshmallow/blob/dev/src/marshmallow/fields.py#L1474",
+    "expected_steps": [
+      {
+        "id": "trajectory_action_000",
+        "query": "ls -F",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"list_files\",\"arguments\":{\"repo_id\":\"swebench-marshmallow-1867\",\"path\":\".\",\"glob\":\"**/*\",\"max_results\":100}}",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": ".",
+          "glob": "**/*",
+          "max_results": 100
+        },
+        "expected_answer": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": ".",
+          "glob": "**/*",
+          "count": 15,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "ls -F"
+      },
+      {
+        "id": "trajectory_action_007",
+        "query": "find_file \"fields.py\" src",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"list_files\",\"arguments\":{\"repo_id\":\"swebench-marshmallow-1867\",\"path\":\"src\",\"glob\":\"**/fields.py\",\"max_results\":10}}",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src",
+          "glob": "**/fields.py",
+          "max_results": 10
+        },
+        "expected_answer": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src",
+          "glob": "**/fields.py",
+          "count": 1,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_000"
+        ],
+        "source_program": "find_file \"fields.py\" src"
+      },
+      {
+        "id": "trajectory_action_008",
+        "query": "open src/marshmallow/fields.py 1474",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"read_file\",\"arguments\":{\"repo_id\":\"swebench-marshmallow-1867\",\"path\":\"src/marshmallow/fields.py\",\"start_line\":1459,\"end_line\":1491}}",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src/marshmallow/fields.py",
+          "start_line": 1459,
+          "end_line": 1491
+        },
+        "expected_answer": {
+          "repo_id": "swebench-marshmallow-1867",
+          "path": "src/marshmallow/fields.py",
+          "content": "            self.WEEKS,\n        )\n\n        if precision not in units:\n            msg = 'The precision must be {} or \"{}\".'.format(\n                \", \".join([f'\"{each}\"' for each in units[:-1]]), units[-1]\n            )\n            raise ValueError(msg)\n\n        self.precision = precision\n        super().__init__(**kwargs)\n\n    def _serialize(self, value, attr, obj, **kwargs):\n        if value is None:\n            return None\n        base_unit = dt.timedelta(**{self.precision: 1})\n        return int(value.total_seconds() / base_unit.total_seconds())\n\n    def _deserialize(self, value, attr, data, **kwargs):\n        try:\n            value = int(value)\n        except (TypeError, ValueError) as error:\n            raise self.make_error(\"invalid\") from error\n\n        kwargs = {self.precision: value}\n\n        try:\n            return dt.timedelta(**kwargs)\n        except OverflowError as error:\n            raise self.make_error(\"invalid\") from error\n\n\nclass Mapping(Field):\n",
+          "start_line": 1459,
+          "end_line": 1491,
+          "total_lines": 1491,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_007"
+        ],
+        "source_program": "open src/marshmallow/fields.py 1474"
+      }
+    ],
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "SWE-bench",
+    "source_instance_id": "marshmallow-code__marshmallow-1867",
+    "source_repository": "marshmallow-code/marshmallow",
+    "source_repository_base_commit": "bfd2593d4b416122e30cdefe0c72d322ef471611",
+    "source_trajectory_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_trajectory_sha256": "8856076ec31832f20aefa7f0a2714e3ad6bc752f14815d94d2e852e50213a459",
+    "source_trajectory_action_count": 14,
+    "selected_read_only_action_count": 3,
+    "source_trajectory_step_indexes": [
+      0,
+      7,
+      8
+    ],
+    "source_license": "MIT",
+    "query_origin": "exact_swebench_issue",
+    "step_query_origin": "exact_official_sweagent_actions",
+    "tool_sequence_origin": "mechanical_action_to_mcp_tool_adaptation",
+    "fixture_id": "swebench-marshmallow-1867",
+    "fixture_version": "coding_sweagent_marshmallow_1867_fixture_v1",
+    "provenance_type": "public_research_trajectory_adaptation",
+    "perturbation_type": "paper_agent_trajectory",
+    "notes": "Exact issue text and read-only exploration actions from the official SWE-agent demonstration. Mutation and test-execution actions are intentionally out of scope for the current read-only coding tool catalog."
+  },
+  {
+    "id": "coding_multistep_sweagent_pydicom_1458",
+    "domain": "coding",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_coding_trajectory_derived",
+    "query": "Pixel Representation attribute should be optional for pixel data handler\n**Describe the bug**\r\nThe NumPy pixel data handler currently [requires the Pixel Representation attribute](https://github.com/pydicom/pydicom/blob/8da0b9b215ebfad5756051c891def88e426787e7/pydicom/pixel_data_handlers/numpy_handler.py#L46). This is problematic, because in case of Float Pixel Data or Double Float Pixel Data the attribute shall be absent. Compare [Floating Point Image Pixel Module Attributes](http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.24.html) versus [Image Pixel Description Macro Attributes](http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.3.html#table_C.7-11c)\r\n\r\n**Expected behavior**\r\nI would expect the `Dataset.pixel_array` property to be able to decode a Float Pixel Data or Double Float Pixel Data element without presence of the Pixel Representation element in the metadata.\r\n\r\n**Steps To Reproduce**\r\n```python\r\nimport numpy as np\r\nfrom pydicom.dataset import Dataset, FileMetaDataset\r\n\r\n\r\nds = Dataset()\r\nds.file_meta = FileMetaDataset()\r\nds.file_meta.TransferSyntaxUID = '1.2.840.10008.1.2.1'\r\n\r\nds.BitsAllocated = 32\r\nds.SamplesPerPixel = 1\r\nds.Rows = 5\r\nds.Columns = 5\r\nds.PhotometricInterpretation = 'MONOCHROME2'\r\n\r\npixel_array = np.zeros((ds.Rows, ds.Columns), dtype=np.float32)\r\nds.FloatPixelData = pixel_array.flatten().tobytes()\r\n\r\nnp.array_equal(ds.pixel_array, pixel_array)\r\n```",
+    "expected_steps": [
+      {
+        "id": "trajectory_action_003",
+        "query": "find_file \"numpy_handler.py\"",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"list_files\",\"arguments\":{\"repo_id\":\"swebench-pydicom-1458\",\"path\":\".\",\"glob\":\"**/numpy_handler.py\",\"max_results\":10}}",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "swebench-pydicom-1458",
+          "path": ".",
+          "glob": "**/numpy_handler.py",
+          "max_results": 10
+        },
+        "expected_answer": {
+          "repo_id": "swebench-pydicom-1458",
+          "path": ".",
+          "glob": "**/numpy_handler.py",
+          "count": 3,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "find_file \"numpy_handler.py\""
+      },
+      {
+        "id": "trajectory_action_004",
+        "query": "open pydicom/pixel_data_handlers/numpy_handler.py 293",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"read_file\",\"arguments\":{\"repo_id\":\"swebench-pydicom-1458\",\"path\":\"pydicom/pixel_data_handlers/numpy_handler.py\",\"start_line\":273,\"end_line\":372}}",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "swebench-pydicom-1458",
+          "path": "pydicom/pixel_data_handlers/numpy_handler.py",
+          "start_line": 273,
+          "end_line": 372
+        },
+        "expected_answer": {
+          "repo_id": "swebench-pydicom-1458",
+          "path": "pydicom/pixel_data_handlers/numpy_handler.py",
+          "content": "            \"Unable to convert the pixel data as the transfer syntax \"\n            \"is not supported by the numpy pixel data handler.\"\n        )\n\n    # Check required elements\n    keywords = ['PixelData', 'FloatPixelData', 'DoubleFloatPixelData']\n    px_keyword = [kw for kw in keywords if kw in ds]\n    if len(px_keyword) != 1:\n        raise AttributeError(\n            \"Unable to convert the pixel data: one of Pixel Data, Float \"\n            \"Pixel Data or Double Float Pixel Data must be present in \"\n            \"the dataset\"\n        )\n\n    required_elements = [\n        'BitsAllocated', 'Rows', 'Columns', 'PixelRepresentation',\n        'SamplesPerPixel', 'PhotometricInterpretation'\n    ]\n    missing = [elem for elem in required_elements if elem not in ds]\n    if missing:\n        raise AttributeError(\n            \"Unable to convert the pixel data as the following required \"\n            \"elements are missing from the dataset: \" + \", \".join(missing)\n        )\n\n    # May be Pixel Data, Float Pixel Data or Double Float Pixel Data\n    pixel_data = getattr(ds, px_keyword[0])\n\n    # Calculate the expected length of the pixel data (in bytes)\n    #   Note: this does NOT include the trailing null byte for odd length data\n    expected_len = get_expected_length(ds)\n\n    # Check that the actual length of the pixel data is as expected\n    actual_length = len(pixel_data)\n\n    # Correct for the trailing NULL byte padding for odd length data\n    padded_expected_len = expected_len + expected_len % 2\n    if actual_length < padded_expected_len:\n        if actual_length == expected_len:\n            warnings.warn(\n                \"The odd length pixel data is missing a trailing padding byte\"\n            )\n        else:\n            raise ValueError(\n                \"The length of the pixel data in the dataset ({} bytes) \"\n                \"doesn't match the expected length ({} bytes). \"\n                \"The dataset may be corrupted or there may be an issue \"\n                \"with the pixel data handler.\"\n                .format(actual_length, padded_expected_len)\n            )\n    elif actual_length > padded_expected_len:\n        # PS 3.5, Section 8.1.1\n        msg = (\n            \"The length of the pixel data in the dataset ({} bytes) indicates \"\n            \"it contains excess padding. {} bytes will be removed from the \"\n            \"end of the data\"\n            .format(actual_length, actual_length - expected_len)\n        )\n        # PS 3.3, Annex C.7.6.3\n        if ds.PhotometricInterpretation == 'YBR_FULL_422':\n            # Check to ensure we do have subsampled YBR 422 data\n            ybr_full_length = expected_len / 2 * 3 + expected_len / 2 * 3 % 2\n            # >= as may also include excess padding\n            if actual_length >= ybr_full_length:\n                msg = (\n                    \"The Photometric Interpretation of the dataset is \"\n                    \"YBR_FULL_422, however the length of the pixel data \"\n                    \"({} bytes) is a third larger than expected ({} bytes) \"\n                    \"which indicates that this may be incorrect. You may \"\n                    \"need to change the Photometric Interpretation to \"\n                    \"the correct value.\".format(actual_length, expected_len)\n                )\n        warnings.warn(msg)\n\n    # Unpack the pixel data into a 1D ndarray\n    if ds.BitsAllocated == 1:\n        # Skip any trailing padding bits\n        nr_pixels = get_expected_length(ds, unit='pixels')\n        arr = unpack_bits(pixel_data)[:nr_pixels]\n    else:\n        # Skip the trailing padding byte(s) if present\n        dtype = pixel_dtype(ds, as_float=('Float' in px_keyword[0]))\n        arr = np.frombuffer(pixel_data[:expected_len], dtype=dtype)\n        if ds.PhotometricInterpretation == 'YBR_FULL_422':\n            # PS3.3 C.7.6.3.1.2: YBR_FULL_422 data needs to be resampled\n            # Y1 Y2 B1 R1 -> Y1 B1 R1 Y2 B1 R1\n            out = np.zeros(expected_len // 2 * 3, dtype=dtype)\n            out[::6] = arr[::4]  # Y1\n            out[3::6] = arr[1::4]  # Y2\n            out[1::6], out[4::6] = arr[2::4], arr[2::4]  # B\n            out[2::6], out[5::6] = arr[3::4], arr[3::4]  # R\n            arr = out\n\n    if should_change_PhotometricInterpretation_to_RGB(ds):\n        ds.PhotometricInterpretation = \"RGB\"\n\n    if not read_only and ds.BitsAllocated > 1:\n        return cast(\"np.ndarray\", arr.copy())\n\n    return cast(\"np.ndarray\", arr)\n",
+          "start_line": 273,
+          "end_line": 372,
+          "total_lines": 372,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_003"
+        ],
+        "source_program": "open pydicom/pixel_data_handlers/numpy_handler.py 293"
+      }
+    ],
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "SWE-bench",
+    "source_instance_id": "pydicom__pydicom-1458",
+    "source_repository": "pydicom/pydicom",
+    "source_trajectory_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_trajectory_path": "tests/test_data/trajectories/gpt4__swe-bench-dev-easy_first_only__default__t-0.00__p-0.95__c-3.00__install-1/pydicom__pydicom-1458.traj",
+    "source_trajectory_sha256": "f081b131803e16ed68cf2c65bedff8e8a60be494c98b141d0af44ce28ae56b74",
+    "source_trajectory_action_count": 12,
+    "selected_read_only_action_count": 2,
+    "source_trajectory_step_indexes": [
+      3,
+      4
+    ],
+    "source_license": "MIT",
+    "query_origin": "exact_swebench_issue",
+    "step_query_origin": "exact_official_sweagent_actions",
+    "tool_sequence_origin": "mechanical_action_to_mcp_tool_adaptation",
+    "fixture_id": "swebench-pydicom-1458",
+    "fixture_version": "coding_sweagent_pydicom_1458_fixture_v1",
+    "provenance_type": "public_research_trajectory_adaptation",
+    "perturbation_type": "paper_agent_trajectory",
+    "notes": "Exact issue text and read-only exploration actions from the official SWE-agent trajectory."
+  },
+  {
+    "id": "coding_multistep_sweagent_humanevalfix_python_0",
+    "domain": "coding",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_coding_trajectory_derived",
+    "query": "I have a function that has a bug and needs to be fixed, can you help?",
+    "expected_steps": [
+      {
+        "id": "trajectory_action_000",
+        "query": "ls -a",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"list_files\",\"arguments\":{\"repo_id\":\"humanevalfix-python-0\",\"path\":\".\",\"glob\":\"**/*\",\"max_results\":100}}",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "humanevalfix-python-0",
+          "path": ".",
+          "glob": "**/*",
+          "max_results": 100
+        },
+        "expected_answer": {
+          "repo_id": "humanevalfix-python-0",
+          "path": ".",
+          "glob": "**/*",
+          "count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "ls -a"
+      },
+      {
+        "id": "trajectory_action_001",
+        "query": "open main.py",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"read_file\",\"arguments\":{\"repo_id\":\"humanevalfix-python-0\",\"path\":\"main.py\",\"start_line\":1,\"end_line\":23}}",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "humanevalfix-python-0",
+          "path": "main.py",
+          "start_line": 1,
+          "end_line": 23
+        },
+        "expected_answer": {
+          "repo_id": "humanevalfix-python-0",
+          "path": "main.py",
+          "content": "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n    for idx, elem in enumerate(numbers):\n        for idx2, elem2 in enumerate(numbers):\n            if idx != idx2:\n                distance = elem - elem2\n                if distance < threshold:\n                    return True\n\n    return False\ndef check(has_close_elements):\n    assert has_close_elements([1.0, 2.0, 3.0], 0.5) == False\n    assert has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3) == True\ncheck(has_close_elements)\n",
+          "start_line": 1,
+          "end_line": 23,
+          "total_lines": 23,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_000"
+        ],
+        "source_program": "open main.py"
+      }
+    ],
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "HumanEvalFix",
+    "source_instance_id": "humanevalfix-python-0",
+    "source_repository": "HumanEvalFix/Python",
+    "source_trajectory_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_trajectory_path": "trajectories/demonstrations/human_thought__swe-bench-HumanEvalFix-python__lcb__t-0.00__p-0.95__c-4.00__install-0/humanevalfix-python-0.traj",
+    "source_trajectory_sha256": "d55e047485f44a26325ff03ec9895e8fecbc665b098fd98427baa8c57635f2de",
+    "source_trajectory_action_count": 5,
+    "selected_read_only_action_count": 2,
+    "source_trajectory_step_indexes": [
+      0,
+      1
+    ],
+    "source_license": "MIT",
+    "query_origin": "exact_humanevalfix_prompt",
+    "step_query_origin": "exact_official_sweagent_actions",
+    "tool_sequence_origin": "mechanical_action_to_mcp_tool_adaptation",
+    "fixture_id": "humanevalfix-python-0",
+    "fixture_version": "coding_sweagent_humanevalfix_python_0_fixture_v1",
+    "provenance_type": "public_research_trajectory_adaptation",
+    "perturbation_type": "paper_agent_trajectory",
+    "notes": "Exact prompt and read-only exploration actions from the official SWE-agent demonstration."
+  },
+  {
+    "id": "coding_multistep_sweagent_ctf_baby_encryption",
+    "domain": "coding",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_coding_trajectory_derived",
+    "query": "BabyEncryption\nYou are after an organised crime group which is responsible for the illegal weapon market in your country. As a secret agent, you have infiltrated the group enough to be included in meetings with clients. During the last negotiation, you found one of the confidential messages for the customer. It contains crucial information about the delivery. Do you think you can decrypt it?\nFiles included in the challenge: ['msg.enc', 'chall.py']",
+    "expected_steps": [
+      {
+        "id": "trajectory_action_000",
+        "query": "open chall.py",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"read_file\",\"arguments\":{\"repo_id\":\"sweagent-ctf-baby-encryption\",\"path\":\"chall.py\",\"start_line\":1,\"end_line\":15}}",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "sweagent-ctf-baby-encryption",
+          "path": "chall.py",
+          "start_line": 1,
+          "end_line": 15
+        },
+        "expected_answer": {
+          "repo_id": "sweagent-ctf-baby-encryption",
+          "path": "chall.py",
+          "content": "import string\nfrom secret import MSG\n\ndef encryption(msg):\n    ct = []\n    for char in msg:\n        ct.append((123 * char + 18) % 256)\n    return bytes(ct)\n\nct = encryption(MSG)\nf = open('./msg.enc','w')\nf.write(ct.hex())\nf.close()\n\n\n",
+          "start_line": 1,
+          "end_line": 15,
+          "total_lines": 15,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "open chall.py"
+      },
+      {
+        "id": "trajectory_action_006",
+        "query": "open chall.py",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"read_file\",\"arguments\":{\"repo_id\":\"sweagent-ctf-baby-encryption\",\"path\":\"chall.py\",\"start_line\":1,\"end_line\":15}}",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "sweagent-ctf-baby-encryption",
+          "path": "chall.py",
+          "start_line": 1,
+          "end_line": 15
+        },
+        "expected_answer": {
+          "repo_id": "sweagent-ctf-baby-encryption",
+          "path": "chall.py",
+          "content": "import string\nfrom secret import MSG\n\ndef encryption(msg):\n    ct = []\n    for char in msg:\n        ct.append((123 * char + 18) % 256)\n    return bytes(ct)\n\nct = encryption(MSG)\nf = open('./msg.enc','w')\nf.write(ct.hex())\nf.close()\n\n\n",
+          "start_line": 1,
+          "end_line": 15,
+          "total_lines": 15,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_000"
+        ],
+        "source_program": "open chall.py"
+      }
+    ],
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "SWE-agent CTF demonstrations",
+    "source_instance_id": "BabyEncryption",
+    "source_repository": "HTB/BabyEncryption",
+    "source_trajectory_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_trajectory_path": "trajectories/demonstrations/ctf/crypto/BabyEncryption.traj",
+    "source_trajectory_sha256": "fe26571d9c23f2b91483c18eb20d9e953d07ec5ad82ea36b6e1e80981d35afe4",
+    "source_trajectory_action_count": 16,
+    "selected_read_only_action_count": 2,
+    "source_trajectory_step_indexes": [
+      0,
+      6
+    ],
+    "source_license": "MIT",
+    "query_origin": "exact_ctf_challenge_prompt",
+    "step_query_origin": "exact_official_sweagent_actions",
+    "tool_sequence_origin": "mechanical_action_to_mcp_tool_adaptation",
+    "fixture_id": "sweagent-ctf-baby-encryption",
+    "fixture_version": "coding_sweagent_baby_encryption_fixture_v1",
+    "provenance_type": "public_research_trajectory_adaptation",
+    "perturbation_type": "paper_agent_trajectory",
+    "notes": "Exact challenge text and two read-only source-inspection actions from the official SWE-agent demonstration."
+  },
+  {
+    "id": "coding_multistep_sweagent_function_calling_simple",
+    "domain": "coding",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "public_coding_trajectory_derived",
+    "query": "SyntaxError: invalid syntax\nI'm running `missing_colon.py` as follows:\r\n\r\n```python\r\ndivision(23, 0)\r\n```\r\n\r\nbut I get the following error:\r\n\r\n```\r\n  File \"/Users/fuchur/Documents/24/git_sync/swe-agent-test-repo/tests/./missing_colon.py\", line 4\r\n    def division(a: float, b: float) -> float\r\n                                             ^\r\nSyntaxError: invalid syntax\r\n```",
+    "expected_steps": [
+      {
+        "id": "trajectory_action_000",
+        "query": "find_file missing_colon.py",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"list_files\",\"arguments\":{\"repo_id\":\"sweagent-test-repo-missing-colon\",\"path\":\".\",\"glob\":\"**/missing_colon.py\",\"max_results\":10}}",
+        "expected_tool": "code_list_files",
+        "expected_args": {
+          "repo_id": "sweagent-test-repo-missing-colon",
+          "path": ".",
+          "glob": "**/missing_colon.py",
+          "max_results": 10
+        },
+        "expected_answer": {
+          "repo_id": "sweagent-test-repo-missing-colon",
+          "path": ".",
+          "glob": "**/missing_colon.py",
+          "count": 1,
+          "truncated": false
+        },
+        "depends_on": [],
+        "source_program": "find_file missing_colon.py"
+      },
+      {
+        "id": "trajectory_action_001",
+        "query": "open \"tests/missing_colon.py\"",
+        "prompt_context": "{\"kind\":\"coding_live_repository_call_v1\",\"execution_mode\":\"live_allowlisted_repository\",\"operation\":\"read_file\",\"arguments\":{\"repo_id\":\"sweagent-test-repo-missing-colon\",\"path\":\"tests/missing_colon.py\",\"start_line\":1,\"end_line\":10}}",
+        "expected_tool": "code_read_file",
+        "expected_args": {
+          "repo_id": "sweagent-test-repo-missing-colon",
+          "path": "tests/missing_colon.py",
+          "start_line": 1,
+          "end_line": 10
+        },
+        "expected_answer": {
+          "repo_id": "sweagent-test-repo-missing-colon",
+          "path": "tests/missing_colon.py",
+          "content": "#!/usr/bin/env python3\n\n\ndef division(a: float, b: float) -> float\n    return a/b\n\n\nif __name__ == \"__main__\":\n    print(division(123, 15))\n\n",
+          "start_line": 1,
+          "end_line": 10,
+          "total_lines": 10,
+          "truncated": false
+        },
+        "depends_on": [
+          "trajectory_action_000"
+        ],
+        "source_program": "open \"tests/missing_colon.py\""
+      }
+    ],
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_dataset": "SWE-agent test repository",
+    "source_instance_id": "missing-colon",
+    "source_repository": "SWE-agent/test-repo",
+    "source_trajectory_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_trajectory_path": "trajectories/demonstrations/function_calling_simple.traj",
+    "source_trajectory_sha256": "b75b7744217bd5e91e6be8f39f17e8a215429be9d57b2d7ef1ff4c6787375d9f",
+    "source_trajectory_action_count": 5,
+    "selected_read_only_action_count": 2,
+    "source_trajectory_step_indexes": [
+      0,
+      1
+    ],
+    "source_license": "MIT",
+    "query_origin": "exact_sweagent_test_issue",
+    "step_query_origin": "exact_official_sweagent_actions",
+    "tool_sequence_origin": "mechanical_action_to_mcp_tool_adaptation",
+    "fixture_id": "sweagent-test-repo-missing-colon",
+    "fixture_version": "coding_sweagent_function_calling_simple_fixture_v1",
+    "provenance_type": "public_research_trajectory_adaptation",
+    "perturbation_type": "paper_agent_trajectory",
+    "notes": "Exact issue and read-only exploration actions from the official SWE-agent function-calling demonstration."
+  }
+]

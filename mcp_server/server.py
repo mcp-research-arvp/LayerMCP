@@ -17,6 +17,13 @@ from mcp_server.coding_tools import (
     git_show,
     git_status,
 )
+from mcp_server.coding_replay_tools import (
+    code_replay_sweagent_file_edit,
+    code_replay_sweagent_file_search,
+    code_replay_sweagent_file_view,
+    code_replay_sweagent_shell,
+    code_replay_sweagent_submit,
+)
 from mcp_server.enterprise_tools import (
     check_policy,
     create_support_ticket,
@@ -25,8 +32,11 @@ from mcp_server.enterprise_tools import (
     update_order_status,
 )
 from mcp_server.finance_tools import (
+    finance_discover_companies,
+    finance_discover_company_series,
     finance_extract_pdf_tables,
     finance_get_company_facts,
+    finance_get_company_fundamentals,
     finance_get_filing_section,
     finance_get_financial_statement,
     finance_get_market_quote,
@@ -35,6 +45,7 @@ from mcp_server.finance_tools import (
     finance_parse_xbrl,
     finance_query_table,
     finance_search_filings,
+    finance_search_web_archive,
 )
 from mcp_server.math_tools import (
     base_arithmetic,
@@ -114,6 +125,11 @@ mcp.tool()(git_log)
 mcp.tool()(git_show)
 mcp.tool()(git_diff)
 mcp.tool()(git_status)
+mcp.tool()(code_replay_sweagent_shell)
+mcp.tool()(code_replay_sweagent_file_view)
+mcp.tool()(code_replay_sweagent_file_search)
+mcp.tool()(code_replay_sweagent_file_edit)
+mcp.tool()(code_replay_sweagent_submit)
 mcp.tool()(finance_lookup_company)
 mcp.tool()(finance_search_filings)
 mcp.tool()(finance_get_filing_section)
@@ -124,6 +140,10 @@ mcp.tool()(finance_query_table)
 mcp.tool()(finance_extract_pdf_tables)
 mcp.tool()(finance_get_market_quote)
 mcp.tool()(finance_get_market_time_series)
+mcp.tool()(finance_discover_companies)
+mcp.tool()(finance_discover_company_series)
+mcp.tool()(finance_get_company_fundamentals)
+mcp.tool()(finance_search_web_archive)
 
 
 def main() -> None:

@@ -1,0 +1,37 @@
+{
+  "repo_id": "humanevalfix-python-0",
+  "fixture_version": "coding_sweagent_humanevalfix_python_0_fixture_v1",
+  "description": "Bounded read-only fixture for the official SWE-agent HumanEvalFix demonstration trajectory.",
+  "files": {
+    "main.py": "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n    for idx, elem in enumerate(numbers):\n        for idx2, elem2 in enumerate(numbers):\n            if idx != idx2:\n                distance = elem - elem2\n                if distance < threshold:\n                    return True\n\n    return False\ndef check(has_close_elements):\n    assert has_close_elements([1.0, 2.0, 3.0], 0.5) == False\n    assert has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3) == True\ncheck(has_close_elements)\n"
+  },
+  "source_issue": {
+    "instance_id": "humanevalfix-python-0",
+    "text": "I have a function that has a bug and needs to be fixed, can you help?"
+  },
+  "source_actions": [
+    {
+      "trajectory_step_index": 0,
+      "action": "ls -a",
+      "observation_kind": "repository_root_listing"
+    },
+    {
+      "trajectory_step_index": 1,
+      "action": "open main.py",
+      "observation_kind": "source_window"
+    }
+  ],
+  "provenance": {
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_repository": "https://github.com/SWE-agent/SWE-agent",
+    "source_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_license": "MIT",
+    "trajectory_origin": "official_sweagent_trajectory",
+    "provenance_type": "research_trajectory_adaptation",
+    "source_dataset": "HumanEvalFix",
+    "trajectory_path": "trajectories/demonstrations/human_thought__swe-bench-HumanEvalFix-python__lcb__t-0.00__p-0.95__c-4.00__install-0/humanevalfix-python-0.traj",
+    "trajectory_sha256": "d55e047485f44a26325ff03ec9895e8fecbc665b098fd98427baa8c57635f2de",
+    "query_origin": "humanevalfix_prompt",
+    "adaptation": "The prompt and two read-only exploration actions are exact; only tool arguments and the bounded source fixture are adapted."
+  }
+}

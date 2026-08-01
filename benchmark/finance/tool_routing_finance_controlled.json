@@ -6,6 +6,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Look up the company record for ticker LMCP.",
+    "prompt_context": "{\"arguments\":{\"query\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "LMCP"
@@ -28,6 +29,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find the company named Layer Manufacturing Concepts, Inc.; return company matches, not filings.",
+    "prompt_context": "{\"arguments\":{\"query\":\"Layer Manufacturing Concepts, Inc.\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "Layer Manufacturing Concepts, Inc."
@@ -50,6 +52,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Search company identifiers for CIK 0001900002 and return only one match.",
+    "prompt_context": "{\"arguments\":{\"max_results\":1,\"query\":\"0001900002\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "0001900002",
@@ -73,6 +76,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Which fixture company trades under TBLR? Retrieve up to two company records.",
+    "prompt_context": "{\"arguments\":{\"max_results\":2,\"query\":\"TBLR\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "TBLR",
@@ -96,6 +100,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Before looking for its filings, resolve Tabular Cloud Labs, Inc. to a registered company and CIK.",
+    "prompt_context": "{\"arguments\":{\"query\":\"Tabular Cloud Labs, Inc.\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_lookup_company",
     "expected_args": {
       "query": "Tabular Cloud Labs, Inc."
@@ -118,6 +123,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "List filings for LMCP.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "LMCP"
@@ -139,6 +145,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Retrieve LMCP Form 10-K filing records, not XBRL facts or document text.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\",\"form_type\":\"10-K\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -161,6 +168,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find CIK 0001900001's fiscal 2023 Form 10-K and return at most one filing.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"0001900001\",\"fiscal_year\":2023,\"form_type\":\"10-K\",\"max_results\":1},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "0001900001",
@@ -185,6 +193,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show the quarterly filing record for Layer Manufacturing Concepts, Inc. for fiscal 2024.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_year\":2024,\"form_type\":\"10-Q\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "Layer Manufacturing Concepts, Inc.",
@@ -208,6 +217,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need the filing index entry—not a filing section—for Tabular Cloud Labs, Inc.'s fiscal 2025 quarterly report, with at most two results.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"Tabular Cloud Labs, Inc.\",\"fiscal_year\":2025,\"form_type\":\"10-Q\",\"max_results\":2},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_search_filings",
     "expected_args": {
       "company_identifier": "Tabular Cloud Labs, Inc.",
@@ -232,6 +242,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Retrieve the Business section from LMCP-2024-10K.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\",\"section\":\"business\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -255,6 +266,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Read the Risk Factors text in LMCP-2024-10K rather than extracting XBRL facts; cap it at 4,000 characters.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\",\"max_chars\":4000,\"section\":\"risk_factors\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -279,6 +291,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most 1,000 characters of Management's Discussion and Analysis from TBLR-2025-Q1-10Q.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"TBLR-2025-Q1-10Q\",\"max_chars\":1000,\"section\":\"management_discussion_and_analysis\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "TBLR-2025-Q1-10Q",
@@ -303,6 +316,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Pull the financial-statements narrative from LMCP-2024-10K, limited to 1,500 characters.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\",\"max_chars\":1500,\"section\":\"financial_statements\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -327,6 +341,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I already know the filing ID TBLR-2024-10K; open its Risk Factors passage, not the filing index or a parsed statement, and return at most 800 characters.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"TBLR-2024-10K\",\"max_chars\":800,\"section\":\"risk_factors\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_filing_section",
     "expected_args": {
       "accession_number": "TBLR-2024-10K",
@@ -351,6 +366,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Retrieve company facts for LMCP.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "LMCP"
@@ -372,6 +388,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Find LMCP's Revenue facts rather than constructing a complete financial statement.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\",\"concept\":\"Revenue\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -394,6 +411,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most two TBLR NetIncomeLoss facts reported in USD for fiscal 2024.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"TBLR\",\"concept\":\"NetIncomeLoss\",\"fiscal_year\":2024,\"max_results\":2,\"unit\":\"USD\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "TBLR",
@@ -419,6 +437,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Using CIK 0001900001, retrieve its 2024 Assets fact in USD and limit the result to one.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"0001900001\",\"concept\":\"Assets\",\"fiscal_year\":2024,\"max_results\":1,\"unit\":\"USD\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "0001900001",
@@ -444,6 +463,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Without returning a whole balance sheet, find up to three 2024 USD CashAndCashEquivalentsAtCarryingValue facts for LMCP.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\",\"concept\":\"CashAndCashEquivalentsAtCarryingValue\",\"fiscal_year\":2024,\"max_results\":3,\"unit\":\"USD\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_company_facts",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -469,6 +489,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Get LMCP's income statement for fiscal 2024.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\",\"fiscal_year\":2024,\"statement\":\"income_statement\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -494,6 +515,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return LMCP's FY 2024 balance sheet, not an individual company fact.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\",\"fiscal_period\":\"FY\",\"fiscal_year\":2024,\"statement\":\"balance_sheet\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -520,6 +542,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Retrieve the Q3 fiscal 2024 income statement for LMCP.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"LMCP\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"statement\":\"income_statement\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "LMCP",
@@ -546,6 +569,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show the FY 2024 cash-flow statement for CIK 0001900002.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"0001900002\",\"fiscal_period\":\"FY\",\"fiscal_year\":2024,\"statement\":\"cash_flow_statement\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "0001900002",
@@ -572,6 +596,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need the structured Q1 2025 statement that balances what TBLR owns against what it owes, rather than isolated Assets facts.",
+    "prompt_context": "{\"arguments\":{\"company_identifier\":\"TBLR\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2025,\"statement\":\"balance_sheet\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_financial_statement",
     "expected_args": {
       "company_identifier": "TBLR",
@@ -598,6 +623,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Parse the XBRL facts in LMCP-2024-10K.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K"
@@ -620,6 +646,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "From LMCP-2024-10K, parse Revenue XBRL facts rather than returning the filing's prose; limit to ten.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\",\"concepts\":[\"Revenue\"],\"max_facts\":10},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -646,6 +673,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Extract only Revenue and NetIncomeLoss from LMCP-2024-10K, with at most two facts.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\",\"concepts\":[\"Revenue\",\"NetIncomeLoss\"],\"max_facts\":2},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -673,6 +701,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Decode Assets and Liabilities from the inline XBRL in TBLR-2024-10K, capped at ten facts.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"TBLR-2024-10K\",\"concepts\":[\"Assets\",\"Liabilities\"],\"max_facts\":10},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "TBLR-2024-10K",
@@ -700,6 +729,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Do not retrieve the rendered balance sheet: inspect LMCP-2024-10K's tagged data for CashAndCashEquivalentsAtCarryingValue and return no more than five facts.",
+    "prompt_context": "{\"arguments\":{\"accession_number\":\"LMCP-2024-10K\",\"concepts\":[\"CashAndCashEquivalentsAtCarryingValue\"],\"max_facts\":5},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_parse_xbrl",
     "expected_args": {
       "accession_number": "LMCP-2024-10K",
@@ -726,6 +756,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Run SELECT * FROM data ORDER BY ticker, fiscal_year, fiscal_period against quarterly_metrics.",
+    "prompt_context": "{\"columns\":[{\"name\":\"ticker\",\"type\":\"TEXT\"},{\"name\":\"company\",\"type\":\"TEXT\"},{\"name\":\"fiscal_year\",\"type\":\"INTEGER\"},{\"name\":\"fiscal_period\",\"type\":\"TEXT\"},{\"name\":\"revenue\",\"type\":\"INTEGER\"},{\"name\":\"gross_profit\",\"type\":\"INTEGER\"},{\"name\":\"operating_income\",\"type\":\"INTEGER\"},{\"name\":\"net_income\",\"type\":\"INTEGER\"},{\"name\":\"assets\",\"type\":\"INTEGER\"},{\"name\":\"liabilities\",\"type\":\"INTEGER\"}],\"dataset_id\":\"quarterly_metrics\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"assets\":198000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":12000000,\"liabilities\":79000000,\"net_income\":3000000,\"operating_income\":4000000,\"revenue\":29000000,\"ticker\":\"LMCP\"},{\"assets\":203000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":13000000,\"liabilities\":80000000,\"net_income\":3500000,\"operating_income\":4500000,\"revenue\":31000000,\"ticker\":\"LMCP\"},{\"assets\":207000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":13500000,\"liabilities\":80000000,\"net_income\":3600000,\"operating_income\":4700000,\"revenue\":32000000,\"ticker\":\"LMCP\"},{\"assets\":210000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":14500000,\"liabilities\":82000000,\"net_income\":3900000,\"operating_income\":4800000,\"revenue\":33000000,\"ticker\":\"LMCP\"},{\"assets\":139000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":14000000,\"liabilities\":55000000,\"net_income\":1500000,\"operating_income\":2000000,\"revenue\":19000000,\"ticker\":\"TBLR\"},{\"assets\":145000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":15000000,\"liabilities\":57000000,\"net_income\":2000000,\"operating_income\":3000000,\"revenue\":21000000,\"ticker\":\"TBLR\"},{\"assets\":149000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":16000000,\"liabilities\":59000000,\"net_income\":2400000,\"operating_income\":3200000,\"revenue\":22000000,\"ticker\":\"TBLR\"},{\"assets\":155000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":17000000,\"liabilities\":60000000,\"net_income\":3100000,\"operating_income\":3800000,\"revenue\":24000000,\"ticker\":\"TBLR\"},{\"assets\":164000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2025,\"gross_profit\":19000000,\"liabilities\":62000000,\"net_income\":3400000,\"operating_income\":4500000,\"revenue\":26000000,\"ticker\":\"TBLR\"}],\"source_filter\":{},\"table_name\":\"data\"}",
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -749,6 +780,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Use the quarterly_metrics table—not filing retrieval—to list LMCP's fiscal period and revenue in fiscal-period order.",
+    "prompt_context": "{\"columns\":[{\"name\":\"ticker\",\"type\":\"TEXT\"},{\"name\":\"company\",\"type\":\"TEXT\"},{\"name\":\"fiscal_year\",\"type\":\"INTEGER\"},{\"name\":\"fiscal_period\",\"type\":\"TEXT\"},{\"name\":\"revenue\",\"type\":\"INTEGER\"},{\"name\":\"gross_profit\",\"type\":\"INTEGER\"},{\"name\":\"operating_income\",\"type\":\"INTEGER\"},{\"name\":\"net_income\",\"type\":\"INTEGER\"},{\"name\":\"assets\",\"type\":\"INTEGER\"},{\"name\":\"liabilities\",\"type\":\"INTEGER\"}],\"dataset_id\":\"quarterly_metrics\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"assets\":198000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":12000000,\"liabilities\":79000000,\"net_income\":3000000,\"operating_income\":4000000,\"revenue\":29000000,\"ticker\":\"LMCP\"},{\"assets\":203000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":13000000,\"liabilities\":80000000,\"net_income\":3500000,\"operating_income\":4500000,\"revenue\":31000000,\"ticker\":\"LMCP\"},{\"assets\":207000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":13500000,\"liabilities\":80000000,\"net_income\":3600000,\"operating_income\":4700000,\"revenue\":32000000,\"ticker\":\"LMCP\"},{\"assets\":210000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":14500000,\"liabilities\":82000000,\"net_income\":3900000,\"operating_income\":4800000,\"revenue\":33000000,\"ticker\":\"LMCP\"},{\"assets\":139000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":14000000,\"liabilities\":55000000,\"net_income\":1500000,\"operating_income\":2000000,\"revenue\":19000000,\"ticker\":\"TBLR\"},{\"assets\":145000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":15000000,\"liabilities\":57000000,\"net_income\":2000000,\"operating_income\":3000000,\"revenue\":21000000,\"ticker\":\"TBLR\"},{\"assets\":149000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":16000000,\"liabilities\":59000000,\"net_income\":2400000,\"operating_income\":3200000,\"revenue\":22000000,\"ticker\":\"TBLR\"},{\"assets\":155000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":17000000,\"liabilities\":60000000,\"net_income\":3100000,\"operating_income\":3800000,\"revenue\":24000000,\"ticker\":\"TBLR\"},{\"assets\":164000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2025,\"gross_profit\":19000000,\"liabilities\":62000000,\"net_income\":3400000,\"operating_income\":4500000,\"revenue\":26000000,\"ticker\":\"TBLR\"}],\"source_filter\":{},\"table_name\":\"data\"}",
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -776,6 +808,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "In quarterly_metrics, calculate total revenue per ticker with SQL, order by ticker, and return at most two rows.",
+    "prompt_context": "{\"columns\":[{\"name\":\"ticker\",\"type\":\"TEXT\"},{\"name\":\"company\",\"type\":\"TEXT\"},{\"name\":\"fiscal_year\",\"type\":\"INTEGER\"},{\"name\":\"fiscal_period\",\"type\":\"TEXT\"},{\"name\":\"revenue\",\"type\":\"INTEGER\"},{\"name\":\"gross_profit\",\"type\":\"INTEGER\"},{\"name\":\"operating_income\",\"type\":\"INTEGER\"},{\"name\":\"net_income\",\"type\":\"INTEGER\"},{\"name\":\"assets\",\"type\":\"INTEGER\"},{\"name\":\"liabilities\",\"type\":\"INTEGER\"}],\"dataset_id\":\"quarterly_metrics\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"assets\":198000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":12000000,\"liabilities\":79000000,\"net_income\":3000000,\"operating_income\":4000000,\"revenue\":29000000,\"ticker\":\"LMCP\"},{\"assets\":203000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":13000000,\"liabilities\":80000000,\"net_income\":3500000,\"operating_income\":4500000,\"revenue\":31000000,\"ticker\":\"LMCP\"},{\"assets\":207000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":13500000,\"liabilities\":80000000,\"net_income\":3600000,\"operating_income\":4700000,\"revenue\":32000000,\"ticker\":\"LMCP\"},{\"assets\":210000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":14500000,\"liabilities\":82000000,\"net_income\":3900000,\"operating_income\":4800000,\"revenue\":33000000,\"ticker\":\"LMCP\"},{\"assets\":139000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":14000000,\"liabilities\":55000000,\"net_income\":1500000,\"operating_income\":2000000,\"revenue\":19000000,\"ticker\":\"TBLR\"},{\"assets\":145000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":15000000,\"liabilities\":57000000,\"net_income\":2000000,\"operating_income\":3000000,\"revenue\":21000000,\"ticker\":\"TBLR\"},{\"assets\":149000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":16000000,\"liabilities\":59000000,\"net_income\":2400000,\"operating_income\":3200000,\"revenue\":22000000,\"ticker\":\"TBLR\"},{\"assets\":155000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":17000000,\"liabilities\":60000000,\"net_income\":3100000,\"operating_income\":3800000,\"revenue\":24000000,\"ticker\":\"TBLR\"},{\"assets\":164000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2025,\"gross_profit\":19000000,\"liabilities\":62000000,\"net_income\":3400000,\"operating_income\":4500000,\"revenue\":26000000,\"ticker\":\"TBLR\"}],\"source_filter\":{},\"table_name\":\"data\"}",
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -804,6 +837,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "For each ticker in quarterly_metrics, work out average net income and arrange the results alphabetically by ticker.",
+    "prompt_context": "{\"columns\":[{\"name\":\"ticker\",\"type\":\"TEXT\"},{\"name\":\"company\",\"type\":\"TEXT\"},{\"name\":\"fiscal_year\",\"type\":\"INTEGER\"},{\"name\":\"fiscal_period\",\"type\":\"TEXT\"},{\"name\":\"revenue\",\"type\":\"INTEGER\"},{\"name\":\"gross_profit\",\"type\":\"INTEGER\"},{\"name\":\"operating_income\",\"type\":\"INTEGER\"},{\"name\":\"net_income\",\"type\":\"INTEGER\"},{\"name\":\"assets\",\"type\":\"INTEGER\"},{\"name\":\"liabilities\",\"type\":\"INTEGER\"}],\"dataset_id\":\"quarterly_metrics\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"assets\":198000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":12000000,\"liabilities\":79000000,\"net_income\":3000000,\"operating_income\":4000000,\"revenue\":29000000,\"ticker\":\"LMCP\"},{\"assets\":203000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":13000000,\"liabilities\":80000000,\"net_income\":3500000,\"operating_income\":4500000,\"revenue\":31000000,\"ticker\":\"LMCP\"},{\"assets\":207000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":13500000,\"liabilities\":80000000,\"net_income\":3600000,\"operating_income\":4700000,\"revenue\":32000000,\"ticker\":\"LMCP\"},{\"assets\":210000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":14500000,\"liabilities\":82000000,\"net_income\":3900000,\"operating_income\":4800000,\"revenue\":33000000,\"ticker\":\"LMCP\"},{\"assets\":139000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":14000000,\"liabilities\":55000000,\"net_income\":1500000,\"operating_income\":2000000,\"revenue\":19000000,\"ticker\":\"TBLR\"},{\"assets\":145000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":15000000,\"liabilities\":57000000,\"net_income\":2000000,\"operating_income\":3000000,\"revenue\":21000000,\"ticker\":\"TBLR\"},{\"assets\":149000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":16000000,\"liabilities\":59000000,\"net_income\":2400000,\"operating_income\":3200000,\"revenue\":22000000,\"ticker\":\"TBLR\"},{\"assets\":155000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":17000000,\"liabilities\":60000000,\"net_income\":3100000,\"operating_income\":3800000,\"revenue\":24000000,\"ticker\":\"TBLR\"},{\"assets\":164000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2025,\"gross_profit\":19000000,\"liabilities\":62000000,\"net_income\":3400000,\"operating_income\":4500000,\"revenue\":26000000,\"ticker\":\"TBLR\"}],\"source_filter\":{},\"table_name\":\"data\"}",
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -831,6 +865,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "Use SQL—not a market quote or filing lookup—to return only the highest-revenue metric row with its ticker, year, period, and revenue.",
+    "prompt_context": "{\"columns\":[{\"name\":\"ticker\",\"type\":\"TEXT\"},{\"name\":\"company\",\"type\":\"TEXT\"},{\"name\":\"fiscal_year\",\"type\":\"INTEGER\"},{\"name\":\"fiscal_period\",\"type\":\"TEXT\"},{\"name\":\"revenue\",\"type\":\"INTEGER\"},{\"name\":\"gross_profit\",\"type\":\"INTEGER\"},{\"name\":\"operating_income\",\"type\":\"INTEGER\"},{\"name\":\"net_income\",\"type\":\"INTEGER\"},{\"name\":\"assets\",\"type\":\"INTEGER\"},{\"name\":\"liabilities\",\"type\":\"INTEGER\"}],\"dataset_id\":\"quarterly_metrics\",\"instruction\":\"Call finance_query_table with this dataset_id. Write one bounded read-only SELECT or WITH statement over table data that answers the request, and expose the answer as result.\",\"kind\":\"finance_table_query_grounding_v1\",\"relevant_rows\":[{\"assets\":198000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":12000000,\"liabilities\":79000000,\"net_income\":3000000,\"operating_income\":4000000,\"revenue\":29000000,\"ticker\":\"LMCP\"},{\"assets\":203000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":13000000,\"liabilities\":80000000,\"net_income\":3500000,\"operating_income\":4500000,\"revenue\":31000000,\"ticker\":\"LMCP\"},{\"assets\":207000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":13500000,\"liabilities\":80000000,\"net_income\":3600000,\"operating_income\":4700000,\"revenue\":32000000,\"ticker\":\"LMCP\"},{\"assets\":210000000,\"company\":\"Layer Manufacturing Concepts, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":14500000,\"liabilities\":82000000,\"net_income\":3900000,\"operating_income\":4800000,\"revenue\":33000000,\"ticker\":\"LMCP\"},{\"assets\":139000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2024,\"gross_profit\":14000000,\"liabilities\":55000000,\"net_income\":1500000,\"operating_income\":2000000,\"revenue\":19000000,\"ticker\":\"TBLR\"},{\"assets\":145000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q2\",\"fiscal_year\":2024,\"gross_profit\":15000000,\"liabilities\":57000000,\"net_income\":2000000,\"operating_income\":3000000,\"revenue\":21000000,\"ticker\":\"TBLR\"},{\"assets\":149000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q3\",\"fiscal_year\":2024,\"gross_profit\":16000000,\"liabilities\":59000000,\"net_income\":2400000,\"operating_income\":3200000,\"revenue\":22000000,\"ticker\":\"TBLR\"},{\"assets\":155000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q4\",\"fiscal_year\":2024,\"gross_profit\":17000000,\"liabilities\":60000000,\"net_income\":3100000,\"operating_income\":3800000,\"revenue\":24000000,\"ticker\":\"TBLR\"},{\"assets\":164000000,\"company\":\"Tabular Cloud Labs, Inc.\",\"fiscal_period\":\"Q1\",\"fiscal_year\":2025,\"gross_profit\":19000000,\"liabilities\":62000000,\"net_income\":3400000,\"operating_income\":4500000,\"revenue\":26000000,\"ticker\":\"TBLR\"}],\"source_filter\":{},\"table_name\":\"data\"}",
     "expected_tool": "finance_query_table",
     "expected_args": {
       "dataset_id": "quarterly_metrics",
@@ -860,6 +895,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Extract all available tables from the LMCP 2024 annual-report PDF.",
+    "prompt_context": "{\"arguments\":{\"document_id\":\"lmcp-2024-annual-report\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "lmcp-2024-annual-report"
@@ -884,6 +920,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Use lattice extraction on page 42 of lmcp-2024-annual-report rather than reading a filing section.",
+    "prompt_context": "{\"arguments\":{\"document_id\":\"lmcp-2024-annual-report\",\"flavor\":\"lattice\",\"pages\":\"42\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "lmcp-2024-annual-report",
@@ -910,6 +947,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "From page 8 of tblr-2025-q1-report, extract at most one table using stream mode.",
+    "prompt_context": "{\"arguments\":{\"document_id\":\"tblr-2025-q1-report\",\"flavor\":\"stream\",\"max_tables\":1,\"pages\":\"8\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "tblr-2025-q1-report",
@@ -937,6 +975,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Pull no more than two tables from pages 42 and 45 of the LMCP annual-report PDF with lattice extraction.",
+    "prompt_context": "{\"arguments\":{\"document_id\":\"lmcp-2024-annual-report\",\"flavor\":\"lattice\",\"max_tables\":2,\"pages\":\"42,45\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "lmcp-2024-annual-report",
@@ -964,6 +1003,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need tabular cells, not prose or XBRL: scan pages 8 and 11 of tblr-2025-q1-report with stream extraction and return at most two tables.",
+    "prompt_context": "{\"arguments\":{\"document_id\":\"tblr-2025-q1-report\",\"flavor\":\"stream\",\"max_tables\":2,\"pages\":\"8,11\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_extract_pdf_tables",
     "expected_args": {
       "document_id": "tblr-2025-q1-report",
@@ -991,6 +1031,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Get the market quote for LMCP.",
+    "prompt_context": "{\"arguments\":{\"symbol\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "LMCP"
@@ -1014,6 +1055,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return TBLR's point-in-time quote, not its historical series.",
+    "prompt_context": "{\"arguments\":{\"symbol\":\"TBLR\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "TBLR"
@@ -1037,6 +1079,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Look up the current fixture quote for ticker LMCP.",
+    "prompt_context": "{\"arguments\":{\"symbol\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "LMCP"
@@ -1060,6 +1103,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "What price-and-volume quote does the market fixture report for Tabular Cloud Labs ticker TBLR?",
+    "prompt_context": "{\"arguments\":{\"symbol\":\"TBLR\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "TBLR"
@@ -1083,6 +1127,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need one LMCP market snapshot; do not retrieve filings, company facts, or daily candles.",
+    "prompt_context": "{\"arguments\":{\"symbol\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_quote",
     "expected_args": {
       "symbol": "LMCP"
@@ -1106,6 +1151,7 @@
     "difficulty": "easy",
     "source": "controlled_synthetic",
     "query": "Get LMCP's market time series.",
+    "prompt_context": "{\"arguments\":{\"symbol\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "LMCP"
@@ -1131,6 +1177,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Return at most three daily TBLR price points rather than a single quote.",
+    "prompt_context": "{\"arguments\":{\"interval\":\"daily\",\"max_points\":3,\"symbol\":\"TBLR\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "TBLR",
@@ -1158,6 +1205,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Retrieve LMCP daily market data from 2025-01-03 through 2025-01-07, with at most five points.",
+    "prompt_context": "{\"arguments\":{\"end_date\":\"2025-01-07\",\"interval\":\"daily\",\"max_points\":5,\"start_date\":\"2025-01-03\",\"symbol\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "LMCP",
@@ -1187,6 +1235,7 @@
     "difficulty": "medium",
     "source": "controlled_synthetic",
     "query": "Show no more than four daily observations for TBLR between January 2 and January 10, 2025.",
+    "prompt_context": "{\"arguments\":{\"end_date\":\"2025-01-10\",\"interval\":\"daily\",\"max_points\":4,\"start_date\":\"2025-01-02\",\"symbol\":\"TBLR\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "TBLR",
@@ -1216,6 +1265,7 @@
     "difficulty": "hard",
     "source": "controlled_synthetic",
     "query": "I need LMCP candles, not a point quote: start on 2025-01-06 and return at most two daily observations.",
+    "prompt_context": "{\"arguments\":{\"interval\":\"daily\",\"max_points\":2,\"start_date\":\"2025-01-06\",\"symbol\":\"LMCP\"},\"instruction\":\"Use these canonical normalized arguments for the requested fixture operation. Choose the matching tool from the registry.\",\"kind\":\"finance_normalized_call_grounding_v1\"}",
     "expected_tool": "finance_get_market_time_series",
     "expected_args": {
       "symbol": "LMCP",

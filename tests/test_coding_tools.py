@@ -10,6 +10,8 @@ from mcp_server.coding_state import (
     CODESEARCHNET_CODING_REPOSITORY_ID,
     CODESEARCHNET_SOURCE_REVISION,
     DEFAULT_CODING_REPOSITORY_ID,
+    SWEAGENT_CODING_FIXTURE_VERSION,
+    SWEAGENT_CODING_REPOSITORY_ID,
     snapshot_coding_state,
 )
 from mcp_server.coding_tools import (
@@ -83,11 +85,23 @@ class CodingToolTests(unittest.TestCase):
         }
         self.assertEqual(
             set(repositories),
-            {DEFAULT_CODING_REPOSITORY_ID, CODESEARCHNET_CODING_REPOSITORY_ID},
+            {
+                DEFAULT_CODING_REPOSITORY_ID,
+                CODESEARCHNET_CODING_REPOSITORY_ID,
+                SWEAGENT_CODING_REPOSITORY_ID,
+                "swebench-pydicom-1458",
+                "humanevalfix-python-0",
+                "sweagent-ctf-baby-encryption",
+                "sweagent-test-repo-missing-colon",
+            },
         )
         self.assertEqual(
             repositories[DEFAULT_CODING_REPOSITORY_ID]["fixture_version"],
             CODING_FIXTURE_VERSION,
+        )
+        self.assertEqual(
+            repositories[SWEAGENT_CODING_REPOSITORY_ID]["fixture_version"],
+            SWEAGENT_CODING_FIXTURE_VERSION,
         )
         self.assertTrue(
             all(

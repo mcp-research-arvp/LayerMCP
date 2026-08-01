@@ -13,7 +13,10 @@ from mcp_server.finance_state import (
     FINANCE_FIXTURE_VERSION,
     get_finance_fixture,
 )
-
+from mcp_server.finretrieval_state import (
+    FINRETRIEVAL_REPLAY_TOOL_NAMES,
+    replay_finretrieval_call,
+)
 
 FINANCE_TOOL_NAMES = frozenset(
     {
@@ -29,6 +32,7 @@ FINANCE_TOOL_NAMES = frozenset(
         "finance_get_market_time_series",
     }
 )
+FINRETRIEVAL_TOOL_NAMES = FINRETRIEVAL_REPLAY_TOOL_NAMES
 
 _SOURCE = "deterministic_offline_finance_fixture"
 _MAX_QUERY_LENGTH = 500
@@ -98,6 +102,170 @@ def _bounded_integer(
     if value < minimum or value > maximum:
         raise ValueError(f"{field} must be between {minimum} and {maximum}.")
     return value
+
+
+def _bounded_text_list(
+    value: list[str],
+    field: str,
+    *,
+    maximum_items: int = 50,
+    maximum_item_length: int = 500,
+    allow_empty: bool = False,
+) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be a list.")
+    if not value and not allow_empty:
+        raise ValueError(f"{field} must not be empty.")
+    if len(value) > maximum_items:
+        raise ValueError(f"{field} must contain at most {maximum_items} entries.")
+    return [
+        _required_text(item, f"{field} entry", maximum=maximum_item_length)
+        for item in value
+    ]
+
+
+def _bounded_integer_list(
+    value: list[int],
+    field: str,
+    *,
+    maximum_items: int = 100,
+) -> list[int]:
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{field} must be a non-empty list.")
+    if len(value) > maximum_items:
+        raise ValueError(f"{field} must contain at most {maximum_items} entries.")
+    return [
+        _bounded_integer(item, f"{field} entry", 1, 2_147_483_647)
+        for item in value
+    ]
+
+
+def finance_discover_companies(keywords: list[str]) -> dict[str, Any]:
+    """Replay an allowlisted FinRetrieval company-discovery result offline."""
+    normalized_args = {
+        "keywords": _bounded_text_list(
+            keywords,
+            "keywords",
+            maximum_items=20,
+            maximum_item_length=200,
+        )
+    }
+    return replay_finretrieval_call(
+        "finance_discover_companies",
+        normalized_args,
+    )
+
+
+def finance_discover_company_series(
+    company_id: int,
+    keywords: list[str],
+    periods: list[str],
+) -> dict[str, Any]:
+    """Replay allowlisted FinRetrieval series discovery without network access."""
+    normalized_args = {
+        "company_id": _bounded_integer(
+            company_id,
+            "company_id",
+            1,
+            2_147_483_647,
+        ),
+        "keywords": _bounded_text_list(
+            keywords,
+            "keywords",
+            maximum_items=50,
+            maximum_item_length=500,
+        ),
+        "periods": _bounded_text_list(
+            periods,
+            "periods",
+            maximum_items=50,
+            maximum_item_length=32,
+            allow_empty=True,
+        ),
+    }
+    return replay_finretrieval_call(
+        "finance_discover_company_series",
+        normalized_args,
+    )
+
+
+def finance_get_company_fundamentals(
+    company_id: int,
+    series_ids: list[int],
+    periods: list[str],
+) -> dict[str, Any]:
+    """Replay allowlisted FinRetrieval fundamental values offline."""
+    normalized_args = {
+        "company_id": _bounded_integer(
+            company_id,
+            "company_id",
+            1,
+            2_147_483_647,
+        ),
+        "series_ids": _bounded_integer_list(
+            series_ids,
+            "series_ids",
+            maximum_items=100,
+        ),
+        "periods": _bounded_text_list(
+            periods,
+            "periods",
+            maximum_items=50,
+            maximum_item_length=32,
+            allow_empty=True,
+        ),
+    }
+    return replay_finretrieval_call(
+        "finance_get_company_fundamentals",
+        normalized_args,
+    )
+
+
+def finance_search_web_archive(
+    action: str,
+    query: str | None = None,
+    url: str | None = None,
+    pattern: str | None = None,
+) -> dict[str, Any]:
+    """Replay a selected FinRetrieval web-research call from a frozen archive."""
+    normalized_action = _required_text(action, "action", maximum=16).casefold()
+    if normalized_action not in {"search", "open", "find"}:
+        raise ValueError("action must be one of: search, open, find.")
+
+    normalized_args: dict[str, Any] = {"action": normalized_action}
+    if query is not None:
+        normalized_args["query"] = _required_text(
+            query,
+            "query",
+            maximum=2_000,
+        )
+    if url is not None:
+        normalized_args["url"] = _required_text(url, "url", maximum=4_000)
+    if pattern is not None:
+        normalized_args["pattern"] = _required_text(
+            pattern,
+            "pattern",
+            maximum=1_000,
+        )
+
+    requirements = {
+        "search": ("query",),
+        "open": ("url",),
+        "find": ("url", "pattern"),
+    }
+    missing = [
+        field
+        for field in requirements[normalized_action]
+        if field not in normalized_args
+    ]
+    if missing:
+        raise ValueError(
+            f"action {normalized_action!r} requires: {', '.join(missing)}."
+        )
+    return replay_finretrieval_call(
+        "finance_search_web_archive",
+        normalized_args,
+    )
 
 
 def _optional_year(value: int | None, field: str = "fiscal_year") -> int | None:

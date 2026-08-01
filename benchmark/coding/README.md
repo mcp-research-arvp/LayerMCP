@@ -1,7 +1,9 @@
 # Coding Tool-Routing Datasets
 
-These datasets evaluate selection and argument generation for the seven
-read-only coding tools backed by deterministic, allowlisted repository fixtures.
+These datasets evaluate selection and argument generation for seven live,
+read-only repository tools and five inert trajectory-replay tools. All runtime
+data is deterministic and offline. Recorded trajectory commands, edits, tests,
+and submissions are returned as data; they are never executed.
 
 ## Files
 
@@ -15,14 +17,39 @@ read-only coding tools backed by deterministic, allowlisted repository fixtures.
 - `tool_routing_coding_codesearchnet_public_derived.json` contains 15
   self-contained search instructions wrapping exact human-evaluation queries
   from the CodeSearchNet Challenge.
+- `tool_routing_coding_sweagent_multistep.json` contains five exact
+  research-trajectory workflows and 11 ordered read-only exploration actions
+  from pinned official SWE-agent trajectories.
+- `tool_routing_coding_nebius_sweagent_multistep.json` contains the 33 workflows
+  with at most five calls from a fixed 500-workflow Nebius SWE-agent source
+  selection. They contain 139 calls.
+- `tool_routing_coding_nebius_swerebench_openhands_multistep.json` is an empty
+  benchmark list because all 500 workflows in the fixed Nebius
+  SWE-rebench/OpenHands source selection contain more than five calls.
 - `fixtures/codesearchnet_public_annotations.json` defines the offline
   annotation repository used by those 15 executable rows.
 - `fixtures/CODESEARCHNET_ATTRIBUTION.md` records the paper, pinned sources,
   hashes, MIT license, and the changes made for this repository.
 - `fixtures/CODESEARCHNET_LICENSE.txt` preserves the exact MIT notice from the
   pinned CodeSearchNet revision.
+- `fixtures/sweagent_*.json` defines the five bounded repository excerpts
+  needed to execute the selected trajectory actions.
+- `fixtures/SWEAGENT_MARSHMALLOW_1867_ATTRIBUTION.md` records the SWE-agent
+  paper, trajectory hash, repository commit, gold pull request, and adaptation
+  boundary.
+- `fixtures/coding_nebius_sweagent_benchmark_replay.json` is the checked-in,
+  bounded replay fixture. It contains exactly the 139 records referenced by the
+  33 retained SWE-agent workflows and no unused source trajectories.
+- `fixtures/NEBIUS_SWE_AGENT_TRAJECTORIES_ATTRIBUTION.md` and
+  `fixtures/NEBIUS_SWEREBENCH_OPENHANDS_ATTRIBUTION.md` record the source
+  releases, research provenance, licenses, selection rules, and adaptation
+  boundaries.
+- `build_nebius_trajectory_expansion.py` deterministically rebuilds the two
+  benchmark lists and benchmark-scoped SWE-agent fixture from the pinned
+  parquet releases.
 
-The coding tools covered by these datasets are:
+The single-tool datasets and the five-workflow SWE-agent dataset target these
+seven live repository tools:
 
 ```text
 code_list_files
@@ -34,6 +61,21 @@ git_diff
 git_status
 ```
 
+The retained SWE-agent expansion adds these replay-only action families:
+
+```text
+code_replay_sweagent_shell
+code_replay_sweagent_file_view
+code_replay_sweagent_file_search
+code_replay_sweagent_file_edit
+code_replay_sweagent_submit
+```
+
+No OpenHands replay tool is registered because none of the 500 selected
+OpenHands workflows meets the five-call benchmark limit. The pinned source and
+empty benchmark artifact remain documented so the selection result is
+reproducible without carrying a 27,481-record unused fixture.
+
 The three generated datasets use repository ID `example/research-mcp` and
 fixture version `coding_fixture_v1`. The public-derived dataset uses repository
 ID `codesearchnet-public-v1` and fixture version
@@ -41,11 +83,35 @@ ID `codesearchnet-public-v1` and fixture version
 by `mcp_server/coding_state.py`, so file contents and Git history remain stable
 across offline runs.
 
+The SWE-agent multi-step dataset uses one allowlisted repository fixture per
+trajectory. It preserves issue or challenge text and selected trajectory
+actions exactly, then maps those actions mechanically onto the existing
+read-only coding tools. Each exact action has a compact `prompt_context` with
+kind `coding_live_repository_call_v1` that marks the operation as a live
+allowlisted-repository call and exposes every normalized argument. The original
+action remains unchanged in `query`.
+
+The two large expansions do not create or clone repositories. Each expected
+call includes a replay record ID, source trajectory ID, and ordered step index.
+Those three coordinates are the complete public tool schema and benchmark
+argument label. The runtime verifies them, resolves the exact released source
+arguments from the checked-in benchmark-scoped fixture, and returns those
+arguments with a bounded observation excerpt and full-output SHA-256. This
+keeps large commands and patches in provenance rather than requiring a router
+to reproduce them. It reports `offline_replay: true`, `network_access: false`,
+`process_executed: false`, and `mutation_applied: false`.
+
+Across all checked-in coding benchmark files there are 123 query records: 85
+single-call queries and 38 multi-call workflows. Every workflow contains two to
+five calls. Together they contain 235 expected calls.
+
 ## Schema and Scoring
 
 Each JSON record follows the evaluator's current benchmark schema:
 
 - `query` is the natural-language routing request.
+- `prompt_context`, when present, supplies deterministic grounding while
+  preserving an exact public query or action in `query`.
 - `expected_tool` is the routing label.
 - `expected_args` is the exact argument-generation label.
 - `expected_answer` is a partial semantic oracle for checking the fixture output.
@@ -63,10 +129,17 @@ to the router, while `original_query` preserves the exact published search text.
 The `query_origin` and `original_query_origin` fields keep those two origins
 separate, and `query_wrapper_id` versions the instruction template.
 
-The current evaluator scores tool choice and exact argument match. It can also
-report whether the predicted call executes successfully. `expected_answer` is
-included for fixture validation and future answer-level scoring; it is not
-currently scored by `evaluation/evaluate.py`.
+The current evaluator scores tool choice and exact argument match. When calls
+are executed, it also reports execution success and semantic matching against
+the partial `expected_answer` oracle.
+
+For `multi_step_tool_routing`, the evaluator processes `expected_steps` in
+order, carries every declared gold dependency plus up to two other recent gold
+calls and answers into the next routing prompt, and reports both per-step
+accuracy and complete ordered-sequence accuracy. It supplies the gold
+current-step instruction on every turn. This is teacher-forced action-routing
+evaluation, not autonomous issue resolution or evidence that a model can
+independently plan the full tool sequence from only the issue statement.
 
 ## Run
 
@@ -84,9 +157,93 @@ python evaluation/evaluate.py \
 
 python evaluation/evaluate.py \
   --dataset benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json
+
+python evaluation/evaluate.py \
+  --dataset benchmark/coding/tool_routing_coding_sweagent_multistep.json
+
+python evaluation/evaluate.py \
+  --dataset benchmark/coding/tool_routing_coding_nebius_sweagent_multistep.json
+
+python evaluation/evaluate.py \
+  --dataset benchmark/coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.
+
+The replay fixture is checked in with the benchmark, so a fresh clone can run
+all retained calls offline without a download step, release asset, Git LFS, or
+environment-variable configuration.
+
+## Public SWE-agent Trajectories
+
+The five selected trajectories cover the Marshmallow and pydicom SWE-bench
+issues, a HumanEvalFix task, the BabyEncryption CTF demonstration, and the
+function-calling demonstration. The current LayerMCP coding catalog is
+read-only, so the benchmark retains only exact file-listing, file-location, and
+source-reading actions. Installation, temporary file creation, execution,
+edits, cleanup, and submission are not misrepresented as supported calls.
+
+Every trajectory is pinned to SWE-agent revision
+`3ea751c087f32b16e039a2233dd6eefecef325d5` and its source file SHA-256. The
+Marshmallow repository excerpt is additionally pinned to base commit
+`bfd2593d4b416122e30cdefe0c72d322ef471611`.
+
+## Large Public Coding-Trajectory Expansions
+
+The SWE-agent expansion uses
+`nebius/SWE-agent-trajectories` revision
+`68195a1450865274106246d0d0296a1d6807b88e`. The pinned release contains
+80,036 trajectories, of which 13,389 are marked successful across 838 distinct
+issues. Source-fixture selection walks successful rows in pinned physical order,
+keeps the first eligible complete trajectory for each issue, and stops at 500
+distinct issues. The benchmark then keeps only the 33 workflows containing at
+most five calls; their step-count distribution is four three-call workflows,
+18 four-call workflows, and 11 five-call workflows. SWE-agent actions are not
+native function calls: the importer removes model discussion, parses the final
+fenced action from each `role=ai` message, and pairs it with the following
+environment observation. Terminal `submit` is retained even though the release
+does not provide a following observation.
+
+The OpenHands expansion uses
+`nebius/SWE-rebench-openhands-trajectories` revision
+`35455389ab51bf5e2306bfd436ef72d0f98bf882`. The release contains 67,074
+trajectories, 32,161 resolved rows, and 3,792 distinct resolved issues. The
+clean `resolved=1`, `exit_status=submit` subset has 31,020 rows and 3,735
+distinct issues. Selection takes the first clean submitted row per issue in
+pinned physical order, excludes issue IDs already selected for SWE-agent,
+filters ineligible trajectories, and stops at 500 retained source-fixture
+issues. These workflows contain 26 to 97 calls, so none meets the benchmark's
+five-call limit and the checked-in OpenHands benchmark list is empty. No
+OpenHands replay fixture or runtime tool is retained. The importer still pairs
+native function calls with tool observations by `tool_call_id` when reproducing
+the selection analysis. Explicit `think` calls and assistant prose are omitted
+so model chain-of-thought is not redistributed.
+
+Both releases are CC BY 4.0. The SWE-agent dataset card additionally instructs
+users to respect each underlying repository license and applicable Llama 3.1
+output-license terms. The OpenHands traces were generated with Qwen3-Coder, but
+underlying repository content may still carry repository-specific terms.
+LayerMCP preserves this boundary in the attribution files. Exact edit arguments
+can contain generated patch fragments, and bounded observations can contain
+test-log excerpts; the adaptation does not include a complete repository
+checkout, generated workspace, or full unbounded evaluation log.
+
+Observation excerpts are bounded and high-confidence private-key/token patterns
+are redacted. The full pre-redaction observation is represented only by its
+SHA-256 and original character count. Candidate trajectories with such values
+inside call arguments are excluded instead of modifying their expected calls.
+
+Rebuild in a temporary environment with DuckDB:
+
+```bash
+python benchmark/coding/build_nebius_trajectory_expansion.py \
+  --sweagent-sources <12 pinned SWE-agent parquet files in shard order> \
+  --openhands-source <pinned trajectories.parquet> \
+  --openhands-tools <pinned tools.json>
+```
+
+The importer verifies local parquet SHA-256 values. It also accepts only the
+exact revision-pinned Hugging Face URLs recorded in the attribution files.
 
 ## Upstream-Inspired Queries
 
@@ -144,9 +301,9 @@ repository describe the 99 queries and human relevance judgments:
 - [Pinned annotation store](https://github.com/github/CodeSearchNet/blob/bb121a53a559e99a6849409355ee5c83803f2e87/resources/annotationStore.csv)
 - [MIT license](https://github.com/github/CodeSearchNet/blob/bb121a53a559e99a6849409355ee5c83803f2e87/LICENSE)
 
-SWE-bench issue statements are not included in this single-tool dataset. Their
-intended task requires repository modification and test-based patch validation,
-while the current seven coding tools are read-only. HumanEval is likewise
-deferred until sandboxed execution and test-runner tools exist. Adding either
-benchmark now would assign a subjective first tool rather than faithfully
-represent its published task.
+SWE-bench issue statements remain absent from the single-tool CodeSearchNet
+dataset. They now appear only in the separately labeled trajectory adaptations
+above. Those adaptations evaluate exact released action routing through inert,
+coordinate-only replay; full released arguments remain in the provenance
+fixture only for calls that are benchmark members. The adaptations do not
+execute patches or claim to reproduce SWE-bench's repository-level test oracle.

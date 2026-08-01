@@ -10,8 +10,12 @@ from mcp_server.finance_state import (
 )
 from mcp_server.finance_tools import (
     FINANCE_TOOL_NAMES,
+    FINRETRIEVAL_TOOL_NAMES,
+    finance_discover_companies,
+    finance_discover_company_series,
     finance_extract_pdf_tables,
     finance_get_company_facts,
+    finance_get_company_fundamentals,
     finance_get_filing_section,
     finance_get_financial_statement,
     finance_get_market_quote,
@@ -20,9 +24,10 @@ from mcp_server.finance_tools import (
     finance_parse_xbrl,
     finance_query_table,
     finance_search_filings,
+    finance_search_web_archive,
 )
+from mcp_server.finretrieval_state import snapshot_finretrieval_state
 from mcp_server.server import mcp
-
 
 TOOL_FUNCTIONS = {
     "finance_lookup_company": finance_lookup_company,
@@ -35,6 +40,12 @@ TOOL_FUNCTIONS = {
     "finance_extract_pdf_tables": finance_extract_pdf_tables,
     "finance_get_market_quote": finance_get_market_quote,
     "finance_get_market_time_series": finance_get_market_time_series,
+}
+FINRETRIEVAL_TOOL_FUNCTIONS = {
+    "finance_discover_companies": finance_discover_companies,
+    "finance_discover_company_series": finance_discover_company_series,
+    "finance_get_company_fundamentals": finance_get_company_fundamentals,
+    "finance_search_web_archive": finance_search_web_archive,
 }
 
 
@@ -50,6 +61,11 @@ class FinanceToolTests(unittest.TestCase):
         self.assertEqual(FINANCE_TOOL_NAMES, frozenset(TOOL_FUNCTIONS))
         registered = set(mcp._tool_manager._tools)
         self.assertTrue(FINANCE_TOOL_NAMES <= registered)
+        self.assertEqual(
+            FINRETRIEVAL_TOOL_NAMES,
+            frozenset(FINRETRIEVAL_TOOL_FUNCTIONS),
+        )
+        self.assertTrue(FINRETRIEVAL_TOOL_NAMES <= registered)
 
         expected_parameters = {
             "finance_lookup_company": ["query", "max_results"],
@@ -99,6 +115,30 @@ class FinanceToolTests(unittest.TestCase):
                 list(inspect.signature(function).parameters),
                 expected_parameters[name],
             )
+        expected_replay_parameters = {
+            "finance_discover_companies": ["keywords"],
+            "finance_discover_company_series": [
+                "company_id",
+                "keywords",
+                "periods",
+            ],
+            "finance_get_company_fundamentals": [
+                "company_id",
+                "series_ids",
+                "periods",
+            ],
+            "finance_search_web_archive": [
+                "action",
+                "query",
+                "url",
+                "pattern",
+            ],
+        }
+        for name, function in FINRETRIEVAL_TOOL_FUNCTIONS.items():
+            self.assertEqual(
+                list(inspect.signature(function).parameters),
+                expected_replay_parameters[name],
+            )
 
     def test_fixture_inventory_is_deterministic_and_explicitly_synthetic(self) -> None:
         state = snapshot_finance_state()
@@ -113,10 +153,40 @@ class FinanceToolTests(unittest.TestCase):
             state["table_datasets"],
             [
                 "annual_metrics",
+                "convfinqa-dev-v1",
+                "finqa-public-test-program-results-v1",
                 "finqa-public-test-v1",
                 "quarterly_metrics",
                 "tatqa-public-test-gold-v1",
             ],
+        )
+
+    def test_finretrieval_replay_inventory_is_pinned_and_offline(self) -> None:
+        state = snapshot_finretrieval_state()
+        self.assertEqual(state["fixture_id"], "finretrieval-replay-v1")
+        self.assertEqual(
+            state["fixture_version"],
+            "finretrieval_replay_fixture_v1",
+        )
+        self.assertEqual(state["record_count"], 1596)
+        manifest = state["manifest"]
+        self.assertEqual(manifest["workflow_count"], 498)
+        self.assertEqual(manifest["selected_call_count"], 1608)
+        self.assertEqual(
+            manifest["excluded_no_correct_trace_indices"],
+            [253, 455],
+        )
+        self.assertFalse(manifest["synthetic"])
+        self.assertFalse(manifest["network_access"])
+
+        result = finance_discover_companies(
+            ["DOUTOR NICHIRES Holdings", "3087"]
+        )
+        self.assertTrue(result["offline_replay"])
+        self.assertFalse(result["network_access"])
+        self.assertEqual(
+            result["provenance"]["source_revision"],
+            "86a111357cffa181b3ba0a6b5ce94625d4511176",
         )
 
     def test_tatqa_public_table_fixture_has_pinned_provenance(self) -> None:

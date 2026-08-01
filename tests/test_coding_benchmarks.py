@@ -84,6 +84,15 @@ class CodingBenchmarkTests(unittest.TestCase):
             with self.subTest(dataset=name):
                 self.assertEqual(len(load_benchmark(path)), expected_lengths[name])
 
+    def test_every_coding_query_has_at_most_five_tool_calls(self) -> None:
+        for path in sorted(
+            CODING_BENCHMARK_ROOT.glob("tool_routing_coding_*.json")
+        ):
+            for row in _load_json(path):
+                with self.subTest(dataset=path.name, row=row["id"]):
+                    call_count = len(row.get("expected_steps", [])) or 1
+                    self.assertLessEqual(call_count, 5)
+
     def test_ids_registry_compatibility_and_tool_counts_are_exact(self) -> None:
         all_rows = [row for rows in self.datasets.values() for row in rows]
         ids = [row["id"] for row in all_rows]

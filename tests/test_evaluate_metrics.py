@@ -1,19 +1,30 @@
 from __future__ import annotations
 
-from dataclasses import fields
+from dataclasses import fields, replace
 from types import SimpleNamespace
 import unittest
 
 from evaluation.evaluate import (
     BenchmarkSample,
+    BenchmarkStep,
     FINAL_OUTCOME_MATCHER,
+    MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
+    MULTISTEP_HISTORY_ITEM_CHAR_LIMIT,
+    MULTISTEP_HISTORY_STEP_LIMIT,
+    MULTISTEP_OVERALL_TASK_CHAR_LIMIT,
+    PROMPT_CONTEXT_CHAR_LIMIT,
     _build_aggregate_metrics,
+    _bounded_prompt_text,
     _exact_argument_match,
     _extract_structured_tool_result,
     _final_outcome_record_fields,
+    _gold_history_item,
     _is_no_tool_call,
     _match_expected_answer,
+    _multistep_query,
     _normalize_json,
+    _normalize_sample,
+    _query_with_context,
     _route_sample,
     _score_sample,
     _score_final_outcome,
@@ -74,6 +85,154 @@ class EvaluateMetricTests(unittest.TestCase):
             self.assertEqual(received_schemas, schemas)
             self.assertEqual(received_descriptions, descriptions)
 
+    def test_single_step_prompt_context_is_visible_to_the_router(self) -> None:
+        sample = replace(
+            self._sample(),
+            prompt_context="dataset_id=finance-public-v1; schema=result REAL",
+        )
+        received_queries: list[str] = []
+
+        class FakeRouter:
+            SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
+
+            def choose_tool_call(
+                self,
+                query,
+                tools,
+                tool_schemas,
+                tool_descriptions,
+            ):
+                received_queries.append(query)
+                return SimpleNamespace(
+                    selected_tool="calculator",
+                    selected_args={"expression": "2 + 2"},
+                    raw_output="",
+                    parse_status="ok",
+                    attempted_tool="calculator",
+                    diagnostic=None,
+                )
+
+        routed = _query_with_context(sample.query, sample.prompt_context)
+        _route_sample(
+            FakeRouter(),
+            sample,
+            ["calculator"],
+            {"calculator": {"type": "object"}},
+            {"calculator": "Evaluate an expression."},
+        )
+
+        self.assertIn(sample.query, routed)
+        self.assertIn("Grounding context:", routed)
+        self.assertIn("dataset_id=finance-public-v1", routed)
+        self.assertEqual(received_queries, [routed])
+
+    def test_multistep_prompt_includes_overall_and_step_grounding(self) -> None:
+        sample = replace(
+            self._sample(),
+            task_type="multi_step_tool_routing",
+            prompt_context="repository_id=repo-1",
+        )
+        step = BenchmarkStep(
+            id="step-1",
+            query="open src/main.py",
+            expected_tool="code_read_file",
+            expected_args={"repo_id": "repo-1", "path": "src/main.py"},
+            expected_answer=None,
+            depends_on=(),
+            source_program=None,
+            prompt_context="read lines 10 through 20",
+        )
+
+        routed = _multistep_query(sample, step, [])
+
+        self.assertIn("Overall grounding context: repository_id=repo-1", routed)
+        self.assertIn(
+            "Current-step grounding context: read lines 10 through 20",
+            routed,
+        )
+
+    def test_prompt_context_must_be_a_bounded_string(self) -> None:
+        raw_sample = {
+            "id": "sample-with-context",
+            "domain": "finance",
+            "task_type": "single_tool_routing",
+            "query": "Run the grounded lookup.",
+            "expected_tool": "calculator",
+            "expected_args": {"expression": "2 + 2"},
+        }
+
+        with self.assertRaisesRegex(ValueError, "prompt_context must be a string"):
+            _normalize_sample({**raw_sample, "prompt_context": {"hidden": "id"}}, 0)
+        with self.assertRaisesRegex(ValueError, "prompt_context exceeds"):
+            _normalize_sample(
+                {**raw_sample, "prompt_context": "x" * (PROMPT_CONTEXT_CHAR_LIMIT + 1)},
+                0,
+            )
+
+    def test_workflow_final_answer_gold_is_preserved_without_being_scored(self) -> None:
+        sample = _normalize_sample(
+            {
+                "id": "workflow-answer-gold",
+                "domain": "finance",
+                "task_type": "single_tool_routing",
+                "query": "Run the lookup.",
+                "expected_tool": "calculator",
+                "expected_args": {"expression": "6 * 7"},
+                "expected_final_answer": "42",
+            },
+            0,
+        )
+
+        self.assertEqual(sample.expected_final_answer, "42")
+
+    def test_multistep_prompt_keeps_old_declared_dependencies(self) -> None:
+        sample = replace(self._sample(), task_type="multi_step_tool_routing")
+        step = BenchmarkStep(
+            id="step-5",
+            query="Use the result from step 1.",
+            expected_tool="calculator",
+            expected_args={"expression": "40 + 2"},
+            expected_answer={"result": 42},
+            depends_on=("step-1",),
+            source_program=None,
+        )
+        history = [
+            {"step_id": f"step-{index}", "expected_answer": {"result": index}}
+            for index in range(1, 5)
+        ]
+
+        routed = _multistep_query(sample, step, history)
+
+        self.assertIn('"step_id": "step-1"', routed)
+        self.assertNotIn('"step_id": "step-2"', routed)
+        self.assertIn('"step_id": "step-3"', routed)
+        self.assertIn('"step_id": "step-4"', routed)
+
+    def test_gold_history_is_independent_of_model_predictions(self) -> None:
+        step = BenchmarkStep(
+            id="step-1",
+            query="Look up the source row.",
+            expected_tool="finance_query_table",
+            expected_args={"dataset_id": "public-v1", "sql": "SELECT 1"},
+            expected_answer={"rows": [{"1": 1}]},
+            depends_on=(),
+            source_program=None,
+        )
+
+        self.assertEqual(
+            _gold_history_item(step),
+            {
+                "step_id": "step-1",
+                "query": "Look up the source row.",
+                "expected_tool": "finance_query_table",
+                "expected_args": {
+                    "dataset_id": "public-v1",
+                    "sql": "SELECT 1",
+                },
+                "expected_answer": {"rows": [{"1": 1}]},
+            },
+        )
+
     def test_unregistered_predicted_tool_is_rejected(self) -> None:
         self.assertTrue(
             _is_no_tool_call(
@@ -96,6 +255,35 @@ class EvaluateMetricTests(unittest.TestCase):
                 [self._sample(expected_tool="missing_tool")],
                 {"calculator"},
             )
+
+    def test_every_multistep_expected_tool_must_be_registered(self) -> None:
+        sample = replace(
+            self._sample(),
+            task_type="multi_step_tool_routing",
+            expected_steps=(
+                BenchmarkStep(
+                    id="step-1",
+                    query="Calculate 2 + 2.",
+                    expected_tool="calculator",
+                    expected_args={"expression": "2 + 2"},
+                    expected_answer={"result": 4},
+                    depends_on=(),
+                    source_program=None,
+                ),
+                BenchmarkStep(
+                    id="step-2",
+                    query="Use a missing tool.",
+                    expected_tool="missing_tool",
+                    expected_args={},
+                    expected_answer=None,
+                    depends_on=("step-1",),
+                    source_program=None,
+                ),
+            ),
+        )
+
+        with self.assertRaisesRegex(ValueError, "missing_tool"):
+            _validate_expected_tools([sample], {"calculator"})
 
     def test_full_registry_metadata_is_recorded_for_samples_and_summaries(self) -> None:
         metadata = _tool_pool_metadata(
@@ -527,6 +715,26 @@ class EvaluateMetricTests(unittest.TestCase):
 
         self.assertEqual(_normalize_json(left), _normalize_json(right))
         self.assertTrue(_exact_argument_match(left, right))
+
+    def test_multistep_prompt_bounds_are_explicit_and_hash_preserving(self) -> None:
+        value = "0123456789" * 100
+        bounded = _bounded_prompt_text(value, 240)
+
+        self.assertEqual(len(bounded), 240)
+        self.assertIn("original_chars=1000", bounded)
+        self.assertIn(
+            "sha256=ab6c5f3237f551d208fc2ca5225a4cca20b3fd63"
+            "8794a804f0ed5549d5041734",
+            bounded,
+        )
+        self.assertEqual(
+            _bounded_prompt_text("short", 240),
+            "short",
+        )
+        self.assertEqual(MULTISTEP_HISTORY_STEP_LIMIT, 2)
+        self.assertGreater(MULTISTEP_OVERALL_TASK_CHAR_LIMIT, 0)
+        self.assertGreater(MULTISTEP_CURRENT_STEP_CHAR_LIMIT, 0)
+        self.assertGreater(MULTISTEP_HISTORY_ITEM_CHAR_LIMIT, 0)
 
 
 if __name__ == "__main__":

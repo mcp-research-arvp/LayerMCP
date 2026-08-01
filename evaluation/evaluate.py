@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -13,8 +14,6 @@ import sys
 import time
 from typing import Any
 
-from mcp import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
 from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +39,24 @@ RETAIL_TOOL_NAMES = {
     "transfer_to_human_agents",
 }
 
+MULTISTEP_OVERALL_TASK_CHAR_LIMIT = 8_000
+MULTISTEP_CURRENT_STEP_CHAR_LIMIT = 16_000
+MULTISTEP_HISTORY_STEP_LIMIT = 2
+MULTISTEP_HISTORY_ITEM_CHAR_LIMIT = 3_500
+PROMPT_CONTEXT_CHAR_LIMIT = MULTISTEP_CURRENT_STEP_CHAR_LIMIT
+
+
+@dataclass(frozen=True)
+class BenchmarkStep:
+    id: str
+    query: str
+    expected_tool: str
+    expected_args: dict[str, Any]
+    expected_answer: Any
+    depends_on: tuple[str, ...]
+    source_program: str | None
+    prompt_context: str = ""
+
 
 @dataclass(frozen=True)
 class BenchmarkSample:
@@ -54,6 +71,63 @@ class BenchmarkSample:
     expected_answer: Any
     perturbation_type: str
     notes: str
+    expected_final_answer: Any = None
+    prompt_context: str = ""
+    expected_steps: tuple[BenchmarkStep, ...] = ()
+
+
+def _normalize_prompt_context(value: Any, location: str) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError(f"{location} prompt_context must be a string.")
+    if len(value) > PROMPT_CONTEXT_CHAR_LIMIT:
+        raise ValueError(
+            f"{location} prompt_context exceeds {PROMPT_CONTEXT_CHAR_LIMIT} "
+            "characters."
+        )
+    return value
+
+
+def _normalize_step(
+    step: dict[str, Any],
+    *,
+    sample_index: int,
+    step_index: int,
+) -> BenchmarkStep:
+    if not isinstance(step, dict):
+        raise ValueError(
+            f"Sample {sample_index} expected_steps[{step_index}] must be an object."
+        )
+    expected_args = step.get("expected_args", {})
+    if not isinstance(expected_args, dict):
+        raise ValueError(
+            f"Sample {sample_index} expected_steps[{step_index}].expected_args "
+            "must be an object."
+        )
+    depends_on = step.get("depends_on", [])
+    if not isinstance(depends_on, list) or not all(
+        isinstance(item, str) for item in depends_on
+    ):
+        raise ValueError(
+            f"Sample {sample_index} expected_steps[{step_index}].depends_on "
+            "must be a list of strings."
+        )
+    return BenchmarkStep(
+        id=str(step.get("id") or f"step_{step_index + 1:03d}"),
+        query=str(step["query"]),
+        expected_tool=str(step["expected_tool"]),
+        expected_args=expected_args,
+        expected_answer=step.get("expected_answer"),
+        depends_on=tuple(depends_on),
+        source_program=(
+            str(step["source_program"]) if step.get("source_program") is not None else None
+        ),
+        prompt_context=_normalize_prompt_context(
+            step.get("prompt_context"),
+            f"Sample {sample_index} expected_steps[{step_index}]",
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -97,6 +171,29 @@ _SYMBOLIC_MATH_FIELDS = {
 
 
 def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
+    raw_steps = sample.get("expected_steps", [])
+    if not isinstance(raw_steps, list):
+        raise ValueError(f"Sample {index} expected_steps must be a list.")
+    expected_steps = tuple(
+        _normalize_step(step, sample_index=index, step_index=step_index)
+        for step_index, step in enumerate(raw_steps)
+    )
+    completed_step_ids: set[str] = set()
+    for step in expected_steps:
+        if step.id in completed_step_ids:
+            raise ValueError(f"Sample {index} repeats expected step ID {step.id!r}.")
+        unknown_dependencies = set(step.depends_on) - completed_step_ids
+        if unknown_dependencies:
+            raise ValueError(
+                f"Sample {index} step {step.id!r} depends on unknown or future "
+                f"steps: {sorted(unknown_dependencies)!r}."
+            )
+        completed_step_ids.add(step.id)
+    if sample.get("task_type") == "multi_step_tool_routing" and len(expected_steps) < 2:
+        raise ValueError(
+            f"Sample {index} multi_step_tool_routing requires at least two steps."
+        )
+
     expected_args = sample.get("expected_args")
     if expected_args is None:
         expected_args = sample.get("tool_args", {})
@@ -107,6 +204,12 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
 
     sample_id = sample.get("id") or f"sample_{index + 1:04d}"
 
+    expected_tool = sample.get("expected_tool")
+    if expected_tool is None and expected_steps:
+        expected_tool = expected_steps[0].expected_tool
+    if expected_tool is None:
+        raise ValueError(f"Sample {index} expected_tool is required.")
+
     return BenchmarkSample(
         id=str(sample_id),
         domain=str(sample.get("domain", "unknown")),
@@ -114,11 +217,17 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         difficulty=str(sample.get("difficulty", "unspecified")),
         source=str(sample.get("source", "unspecified")),
         query=str(sample["query"]),
-        expected_tool=str(sample["expected_tool"]),
+        expected_tool=str(expected_tool),
         expected_args=expected_args,
         expected_answer=sample.get("expected_answer"),
         perturbation_type=str(sample.get("perturbation_type", "none")),
         notes=str(sample.get("notes", "")),
+        expected_final_answer=sample.get("expected_final_answer"),
+        prompt_context=_normalize_prompt_context(
+            sample.get("prompt_context"),
+            f"Sample {index}",
+        ),
+        expected_steps=expected_steps,
     )
 
 
@@ -479,6 +588,9 @@ def _extract_structured_tool_result(result: Any) -> ToolResultExtraction:
 
 @asynccontextmanager
 async def _run_server_session(server_path: Path):
+    from mcp import ClientSession
+    from mcp.client.stdio import StdioServerParameters, stdio_client
+
     server = StdioServerParameters(
         command=sys.executable,
         args=[str(server_path)],
@@ -515,13 +627,13 @@ def _validate_expected_tools(
     dataset: list[BenchmarkSample],
     live_tool_set: set[str],
 ) -> None:
-    missing = sorted(
-        {
-            sample.expected_tool
-            for sample in dataset
-            if sample.expected_tool not in live_tool_set
-        }
+    expected_tools = {sample.expected_tool for sample in dataset}
+    expected_tools.update(
+        step.expected_tool
+        for sample in dataset
+        for step in sample.expected_steps
     )
+    missing = sorted(expected_tools - live_tool_set)
     if missing:
         raise ValueError(
             "Benchmark expected_tool values are not registered by the MCP server: "
@@ -529,9 +641,9 @@ def _validate_expected_tools(
         )
 
 
-def _route_sample(
+def _route_query(
     router: Any,
-    sample: BenchmarkSample,
+    query: str,
     live_tools: list[str],
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
@@ -539,14 +651,14 @@ def _route_sample(
     if hasattr(router, "choose_tool_call"):
         if getattr(router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False):
             prediction = router.choose_tool_call(
-                sample.query,
+                query,
                 live_tools,
                 tool_schemas,
                 tool_descriptions,
             )
         else:
             prediction = router.choose_tool_call(
-                sample.query,
+                query,
                 live_tools,
                 tool_schemas,
             )
@@ -561,13 +673,35 @@ def _route_sample(
 
     if getattr(router, "SUPPORTS_TOOL_DESCRIPTIONS", False):
         selected_tool = router.choose_tool(
-            sample.query,
+            query,
             live_tools,
             tool_descriptions,
         )
     else:
-        selected_tool = router.choose_tool(sample.query, live_tools)
+        selected_tool = router.choose_tool(query, live_tools)
     return selected_tool, {}, selected_tool, "legacy_router", selected_tool, None
+
+
+def _query_with_context(query: str, prompt_context: str) -> str:
+    if not prompt_context.strip():
+        return query
+    return f"{query}\n\nGrounding context:\n{prompt_context}"
+
+
+def _route_sample(
+    router: Any,
+    sample: BenchmarkSample,
+    live_tools: list[str],
+    tool_schemas: dict[str, dict[str, Any]],
+    tool_descriptions: dict[str, str],
+) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
+    return _route_query(
+        router,
+        _query_with_context(sample.query, sample.prompt_context),
+        live_tools,
+        tool_schemas,
+        tool_descriptions,
+    )
 
 
 def _is_no_tool_call(
@@ -585,6 +719,432 @@ def _tool_pool_metadata(live_tools: list[str]) -> dict[str, Any]:
     }
 
 
+def _gold_history_item(step: BenchmarkStep) -> dict[str, Any]:
+    """Build the deterministic teacher-forced context for a completed step."""
+    return {
+        "step_id": step.id,
+        "query": step.query,
+        "expected_tool": step.expected_tool,
+        "expected_args": step.expected_args,
+        "expected_answer": step.expected_answer,
+    }
+
+
+def _multistep_query(
+    sample: BenchmarkSample,
+    step: BenchmarkStep,
+    history: list[dict[str, Any]],
+) -> str:
+    parts = [
+        "Overall task: "
+        + _bounded_prompt_text(
+            sample.query,
+            MULTISTEP_OVERALL_TASK_CHAR_LIMIT,
+        ),
+        "Current step: "
+        + _bounded_prompt_text(
+            step.query,
+            MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
+        ),
+    ]
+    if sample.prompt_context.strip():
+        parts.append(
+            "Overall grounding context: "
+            + _bounded_prompt_text(
+                sample.prompt_context,
+                MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
+            )
+        )
+    if step.prompt_context.strip():
+        parts.append(
+            "Current-step grounding context: "
+            + _bounded_prompt_text(
+                step.prompt_context,
+                MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
+            )
+        )
+    if history:
+        dependency_ids = set(step.depends_on)
+        recent_non_dependencies = [
+            item
+            for item in history
+            if item.get("step_id") not in dependency_ids
+        ][-MULTISTEP_HISTORY_STEP_LIMIT:]
+        visible_step_ids = dependency_ids | {
+            str(item.get("step_id")) for item in recent_non_dependencies
+        }
+        visible_history = [
+            item
+            for item in history
+            if item.get("step_id") in visible_step_ids
+        ]
+        omitted_count = len(history) - len(visible_history)
+        history_heading = "Gold prior-step context"
+        if omitted_count:
+            history_heading += (
+                f" (showing every declared dependency and up to the latest "
+                f"{MULTISTEP_HISTORY_STEP_LIMIT} other step(s); "
+                f"{omitted_count} earlier step(s) omitted)"
+            )
+        parts.append(
+            history_heading
+            + ":\n"
+            + "\n".join(
+                _bounded_prompt_text(
+                    json.dumps(item, ensure_ascii=True, sort_keys=True),
+                    MULTISTEP_HISTORY_ITEM_CHAR_LIMIT,
+                )
+                for item in visible_history
+            )
+        )
+    parts.append("Choose and call the one tool needed for the current step.")
+    return "\n\n".join(parts)
+
+
+def _bounded_prompt_text(value: str, maximum_chars: int) -> str:
+    """Return a deterministic head/tail prompt excerpt with a full-text hash."""
+    if len(value) <= maximum_chars:
+        return value
+    if maximum_chars < 200:
+        raise ValueError("Prompt text bounds must allow a hash marker.")
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    marker = (
+        "\n...[bounded prompt excerpt; "
+        f"original_chars={len(value)}; sha256={digest}]...\n"
+    )
+    remaining = maximum_chars - len(marker)
+    head_chars = (remaining * 3) // 4
+    tail_chars = remaining - head_chars
+    return value[:head_chars] + marker + value[-tail_chars:]
+
+
+async def _evaluate_multistep_with_server(
+    dataset: list[BenchmarkSample],
+    benchmark_path: Path,
+    server_path: Path,
+    call_predicted_tools: bool,
+    router_name: str,
+) -> None:
+    from models.routers.registry import load_router
+
+    if not dataset or not all(sample.expected_steps for sample in dataset):
+        raise ValueError(
+            "Multi-step evaluation requires expected_steps on every dataset sample."
+        )
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    RESULTS_DIR.mkdir(exist_ok=True)
+    samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
+    summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
+
+    workflow_records: list[dict[str, Any]] = []
+    step_records: list[dict[str, Any]] = []
+    latencies: list[float] = []
+    executed_tool_calls = 0
+    errors_count = 0
+
+    async with _run_server_session(server_path) as session:
+        listed_tools = await session.list_tools()
+        live_tools = [tool.name for tool in listed_tools.tools]
+        live_tool_set = set(live_tools)
+        tool_schemas = {
+            tool.name: _tool_schema(tool) for tool in listed_tools.tools
+        }
+        tool_descriptions = {
+            tool.name: str(getattr(tool, "description", "") or "")
+            for tool in listed_tools.tools
+        }
+        _validate_expected_tools(dataset, live_tool_set)
+
+        router = load_router(router_name)
+        hallucinated_tool = router.HALLUCINATED_TOOL
+        model_name = router.MODEL_NAME
+        prompt_template = router.PROMPT_TEMPLATE
+        tool_pool_metadata = _tool_pool_metadata(live_tools)
+
+        print(f"Discovered MCP tools: {', '.join(live_tools)}")
+
+        with samples_path.open("w", encoding="utf-8") as sample_handle:
+            for sample in tqdm(dataset):
+                history: list[dict[str, Any]] = []
+                workflow_steps: list[dict[str, Any]] = []
+
+                for step_index, step in enumerate(sample.expected_steps):
+                    query = _multistep_query(sample, step, history)
+                    start = time.perf_counter()
+                    (
+                        selected_tool,
+                        selected_args,
+                        raw_model_output,
+                        parse_status,
+                        attempted_tool,
+                        parse_diagnostic,
+                    ) = _route_query(
+                        router,
+                        query,
+                        live_tools,
+                        tool_schemas,
+                        tool_descriptions,
+                    )
+                    latency = time.perf_counter() - start
+                    latencies.append(latency)
+
+                    no_tool_call = _is_no_tool_call(
+                        selected_tool,
+                        hallucinated_tool,
+                        live_tool_set,
+                    )
+                    called_tool = None
+                    tool_result = None
+                    tool_result_value = None
+                    result_extraction_diagnostic = None
+                    tool_error = None
+                    execution_success = False
+                    execution_attempted = False
+
+                    if call_predicted_tools and not no_tool_call:
+                        called_tool = selected_tool
+                        execution_attempted = True
+                        try:
+                            call_result = await _call_tool_with_sample_isolation(
+                                session,
+                                server_path,
+                                selected_tool,
+                                selected_args,
+                            )
+                            executed_tool_calls += 1
+                            tool_result = _summarize_tool_result(call_result)
+                            extracted_result = _extract_structured_tool_result(
+                                call_result
+                            )
+                            tool_result_value = extracted_result.value
+                            result_extraction_diagnostic = (
+                                extracted_result.diagnostic
+                            )
+                            execution_success = not bool(
+                                getattr(call_result, "isError", False)
+                            )
+                            if not execution_success:
+                                errors_count += 1
+                                tool_error = tool_result
+                        except Exception as exc:  # pragma: no cover
+                            errors_count += 1
+                            tool_error = str(exc)
+
+                    score = _score_sample(
+                        expected_tool=step.expected_tool,
+                        selected_tool=None if no_tool_call else selected_tool,
+                        expected_args=step.expected_args,
+                        selected_args=selected_args,
+                        execution_success=execution_success,
+                        execution_attempted=execution_attempted,
+                    )
+                    final_outcome = _score_final_outcome(
+                        expected_answer=step.expected_answer,
+                        tool_result_value=tool_result_value,
+                        result_extraction_diagnostic=result_extraction_diagnostic,
+                        domain=sample.domain,
+                        call_predicted_tools=call_predicted_tools,
+                        no_tool_call=no_tool_call,
+                        execution_success=execution_success,
+                    )
+                    step_record = {
+                        "sample_id": sample.id,
+                        "step_id": step.id,
+                        "step_index": step_index,
+                        "domain": sample.domain,
+                        "query": step.query,
+                        "prompt_context": step.prompt_context,
+                        "routed_query": query,
+                        "expected_tool": step.expected_tool,
+                        "selected_tool": None if no_tool_call else selected_tool,
+                        "expected_args": step.expected_args,
+                        "expected_answer": step.expected_answer,
+                        "selected_args": selected_args,
+                        "tool_selection_correct": score.tool_selection_correct,
+                        "argument_match_correct": score.argument_match_correct,
+                        "execution_success": score.execution_success,
+                        "failure_category": score.failure_category,
+                        "depends_on": list(step.depends_on),
+                        "source_program": step.source_program,
+                        "raw_model_output": raw_model_output,
+                        "parse_status": parse_status,
+                        "attempted_tool": attempted_tool,
+                        "parse_diagnostic": parse_diagnostic,
+                        "latency_seconds": latency,
+                        "called_tool": called_tool,
+                        "tool_result": tool_result,
+                        "tool_result_value": tool_result_value,
+                        "tool_error": tool_error,
+                        **_final_outcome_record_fields(final_outcome),
+                    }
+                    step_records.append(step_record)
+                    workflow_steps.append(step_record)
+                    history.append(_gold_history_item(step))
+
+                workflow_record = {
+                    "sample_id": sample.id,
+                    "domain": sample.domain,
+                    "query": sample.query,
+                    "prompt_context": sample.prompt_context,
+                    "expected_final_answer": sample.expected_final_answer,
+                    "task_type": sample.task_type,
+                    "difficulty": sample.difficulty,
+                    "source": sample.source,
+                    **tool_pool_metadata,
+                    "sequence_tool_selection_correct": all(
+                        step["tool_selection_correct"] for step in workflow_steps
+                    ),
+                    "sequence_argument_match_correct": all(
+                        step["argument_match_correct"] for step in workflow_steps
+                    ),
+                    "sequence_execution_success": (
+                        call_predicted_tools
+                        and all(step["execution_success"] for step in workflow_steps)
+                    ),
+                    "sequence_semantic_output_correct": (
+                        all(
+                            step["final_outcome_correct"] is True
+                            for step in workflow_steps
+                        )
+                        if workflow_steps
+                        and all(
+                            step["final_outcome_correct"] is not None
+                            for step in workflow_steps
+                        )
+                        else None
+                    ),
+                    "steps": workflow_steps,
+                    "model_name": model_name,
+                    "router_id": getattr(router, "ROUTER_ID", router_name),
+                    "router_backend": getattr(
+                        router, "ROUTER_BACKEND", "unknown"
+                    ),
+                    "prompt_template": prompt_template,
+                }
+                workflow_records.append(workflow_record)
+                sample_handle.write(
+                    json.dumps(workflow_record, ensure_ascii=True) + "\n"
+                )
+
+    total_steps = len(step_records)
+    total_workflows = len(workflow_records)
+    step_semantic_output_scores = [
+        step["final_outcome_correct"]
+        for step in step_records
+        if step["final_outcome_correct"] is not None
+    ]
+    workflow_semantic_output_scores = [
+        workflow["sequence_semantic_output_correct"]
+        for workflow in workflow_records
+        if workflow["sequence_semantic_output_correct"] is not None
+    ]
+    summary = {
+        "timestamp": timestamp,
+        "benchmark_path": str(benchmark_path),
+        "model_name": model_name,
+        "router_id": getattr(router, "ROUTER_ID", router_name),
+        "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
+        "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
+        "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
+        "prompt_template": prompt_template,
+        **tool_pool_metadata,
+        "total_workflows": total_workflows,
+        "total_steps": total_steps,
+        "step_tool_selection_accuracy": (
+            sum(step["tool_selection_correct"] for step in step_records)
+            / total_steps
+            if total_steps
+            else 0.0
+        ),
+        "step_exact_argument_match_accuracy": (
+            sum(step["argument_match_correct"] for step in step_records)
+            / total_steps
+            if total_steps
+            else 0.0
+        ),
+        "workflow_tool_sequence_accuracy": (
+            sum(
+                workflow["sequence_tool_selection_correct"]
+                for workflow in workflow_records
+            )
+            / total_workflows
+            if total_workflows
+            else 0.0
+        ),
+        "workflow_exact_sequence_accuracy": (
+            sum(
+                workflow["sequence_argument_match_correct"]
+                for workflow in workflow_records
+            )
+            / total_workflows
+            if total_workflows
+            else 0.0
+        ),
+        "step_semantic_output_accuracy": (
+            sum(score is True for score in step_semantic_output_scores)
+            / len(step_semantic_output_scores)
+            if step_semantic_output_scores
+            else None
+        ),
+        "step_semantic_output_scored": len(step_semantic_output_scores),
+        "workflow_semantic_output_sequence_accuracy": (
+            sum(score is True for score in workflow_semantic_output_scores)
+            / len(workflow_semantic_output_scores)
+            if workflow_semantic_output_scores
+            else None
+        ),
+        "workflow_semantic_output_sequence_scored": len(
+            workflow_semantic_output_scores
+        ),
+        "workflow_expected_final_answer_gold": sum(
+            workflow["expected_final_answer"] is not None
+            for workflow in workflow_records
+        ),
+        "average_step_latency_seconds": (
+            sum(latencies) / len(latencies) if latencies else 0.0
+        ),
+        "executed_tool_calls": executed_tool_calls,
+        "errors_count": errors_count,
+    }
+    with summary_path.open("w", encoding="utf-8") as summary_handle:
+        json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+
+    print("\n===================")
+    print(f"Workflows: {total_workflows}")
+    print(f"Steps: {total_steps}")
+    print(
+        "Step tool-selection accuracy: "
+        f"{summary['step_tool_selection_accuracy']:.2%}"
+    )
+    print(
+        "Exact workflow-sequence accuracy: "
+        f"{summary['workflow_exact_sequence_accuracy']:.2%}"
+    )
+    step_semantic_output_accuracy = summary["step_semantic_output_accuracy"]
+    print(
+        "Step semantic-output accuracy: "
+        + (
+            f"{step_semantic_output_accuracy:.2%}"
+            if step_semantic_output_accuracy is not None
+            else "not scored"
+        )
+    )
+    workflow_semantic_output_accuracy = summary[
+        "workflow_semantic_output_sequence_accuracy"
+    ]
+    print(
+        "Workflow semantic-output sequence accuracy: "
+        + (
+            f"{workflow_semantic_output_accuracy:.2%}"
+            if workflow_semantic_output_accuracy is not None
+            else "not scored"
+        )
+    )
+    print(f"Results: {samples_path}")
+    print(f"Summary: {summary_path}")
+
+
 async def _evaluate_with_server(
     dataset: list[BenchmarkSample],
     benchmark_path: Path,
@@ -592,6 +1152,16 @@ async def _evaluate_with_server(
     call_predicted_tools: bool,
     router_name: str,
 ) -> None:
+    if any(sample.expected_steps for sample in dataset):
+        await _evaluate_multistep_with_server(
+            dataset,
+            benchmark_path,
+            server_path,
+            call_predicted_tools,
+            router_name,
+        )
+        return
+
     from models.routers.registry import load_router
 
     latencies: list[float] = []
@@ -625,6 +1195,7 @@ async def _evaluate_with_server(
         with samples_path.open("w", encoding="utf-8") as sample_handle:
             for sample in tqdm(dataset):
                 query = sample.query
+                routed_query = _query_with_context(query, sample.prompt_context)
                 expected = sample.expected_tool
 
                 start = time.perf_counter()
@@ -720,6 +1291,8 @@ async def _evaluate_with_server(
                     "sample_id": sample.id,
                     "domain": sample.domain,
                     "query": query,
+                    "prompt_context": sample.prompt_context,
+                    "routed_query": routed_query,
                     "expected_tool": expected,
                     "selected_tool": None if no_tool_call else selected_tool,
                     "expected_args": sample.expected_args,

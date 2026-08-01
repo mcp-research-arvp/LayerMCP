@@ -18,6 +18,10 @@ CODING_FIXTURE_VERSION = "coding_fixture_v1"
 CODESEARCHNET_CODING_REPOSITORY_ID = "codesearchnet-public-v1"
 CODESEARCHNET_CODING_FIXTURE_VERSION = "coding_codesearchnet_fixture_v1"
 CODESEARCHNET_SOURCE_REVISION = "bb121a53a559e99a6849409355ee5c83803f2e87"
+SWEAGENT_CODING_REPOSITORY_ID = "swebench-marshmallow-1867"
+SWEAGENT_CODING_FIXTURE_VERSION = "coding_sweagent_marshmallow_1867_fixture_v1"
+SWEAGENT_SOURCE_REVISION = "3ea751c087f32b16e039a2233dd6eefecef325d5"
+SWEAGENT_MARSHMALLOW_BASE_COMMIT = "bfd2593d4b416122e30cdefe0c72d322ef471611"
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +31,12 @@ _CODESEARCHNET_FIXTURE_PATH = (
     / "coding"
     / "fixtures"
     / "codesearchnet_public_annotations.json"
+)
+_SWEAGENT_FIXTURE_DIRECTORY = (
+    _PROJECT_ROOT
+    / "benchmark"
+    / "coding"
+    / "fixtures"
 )
 _MAX_DECLARATIVE_FILES = 100
 _MAX_DECLARATIVE_FILE_BYTES = 256 * 1024
@@ -233,6 +243,150 @@ def _load_codesearchnet_fixture() -> tuple[dict[str, str], dict[str, Any]]:
     return files, deepcopy(provenance)
 
 
+def _load_sweagent_fixtures() -> list[
+    tuple[str, str, str, dict[str, str], dict[str, Any]]
+]:
+    fixture_paths = sorted(_SWEAGENT_FIXTURE_DIRECTORY.glob("sweagent_*.json"))
+    if not fixture_paths:
+        raise RuntimeError("No declarative SWE-agent coding fixtures were found.")
+
+    loaded = []
+    seen_repo_ids: set[str] = set()
+    for fixture_path in fixture_paths:
+        loaded.append(_load_sweagent_fixture(fixture_path, seen_repo_ids))
+    return loaded
+
+
+def _load_sweagent_fixture(
+    fixture_path: Path,
+    seen_repo_ids: set[str],
+) -> tuple[str, str, str, dict[str, str], dict[str, Any]]:
+    try:
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            "Unable to load the declarative SWE-agent coding fixture."
+        ) from exc
+
+    if not isinstance(fixture, dict):
+        raise RuntimeError("The SWE-agent coding fixture must be a JSON object.")
+    repo_id = fixture.get("repo_id")
+    fixture_version = fixture.get("fixture_version")
+    if not isinstance(repo_id, str) or not repo_id.strip():
+        raise RuntimeError("The SWE-agent coding fixture requires a repo_id.")
+    if repo_id in seen_repo_ids:
+        raise RuntimeError("SWE-agent coding fixture repo_ids must be unique.")
+    seen_repo_ids.add(repo_id)
+    if not isinstance(fixture_version, str) or not fixture_version.strip():
+        raise RuntimeError(
+            "The SWE-agent coding fixture requires a fixture_version."
+        )
+    if repo_id == SWEAGENT_CODING_REPOSITORY_ID:
+        if fixture_version != SWEAGENT_CODING_FIXTURE_VERSION:
+            raise RuntimeError(
+                "The marshmallow SWE-agent fixture has an unexpected version."
+            )
+
+    raw_files = fixture.get("files")
+    if (
+        not isinstance(raw_files, dict)
+        or not raw_files
+        or len(raw_files) > _MAX_DECLARATIVE_FILES
+    ):
+        raise RuntimeError(
+            "The SWE-agent coding fixture must declare between 1 and "
+            f"{_MAX_DECLARATIVE_FILES} files."
+        )
+
+    files: dict[str, str] = {}
+    total_bytes = 0
+    for raw_path, raw_content in raw_files.items():
+        path = _validate_declarative_path(raw_path)
+        if isinstance(raw_content, str):
+            content = raw_content
+        elif isinstance(raw_content, dict):
+            line_offset = raw_content.get("line_offset")
+            excerpt = raw_content.get("content")
+            if (
+                isinstance(line_offset, bool)
+                or not isinstance(line_offset, int)
+                or line_offset < 0
+                or line_offset > 10_000
+                or not isinstance(excerpt, str)
+            ):
+                raise RuntimeError(
+                    "SWE-agent excerpt files require a bounded line_offset "
+                    "and string content."
+                )
+            content = ("\n" * line_offset) + excerpt
+        else:
+            raise RuntimeError(
+                "SWE-agent fixture files must contain text or excerpt objects."
+            )
+        if "\x00" in content:
+            raise RuntimeError("SWE-agent fixture files must be NUL-free.")
+        try:
+            content_size = len(content.encode("utf-8"))
+        except UnicodeEncodeError as exc:
+            raise RuntimeError(
+                "SWE-agent fixture files must contain valid UTF-8 text."
+            ) from exc
+        if content_size > _MAX_DECLARATIVE_FILE_BYTES:
+            raise RuntimeError(
+                "A SWE-agent fixture file exceeds the bounded file size."
+            )
+        files[path] = content
+        total_bytes += content_size
+
+    if total_bytes > _MAX_DECLARATIVE_TOTAL_BYTES:
+        raise RuntimeError("The SWE-agent fixture exceeds the bounded total size.")
+    file_paths = set(files)
+    for path in file_paths:
+        parts = PurePosixPath(path).parts
+        for end in range(1, len(parts)):
+            parent = PurePosixPath(*parts[:end]).as_posix()
+            if parent in file_paths:
+                raise RuntimeError(
+                    "Coding fixture paths must not use a file as a parent directory."
+                )
+
+    provenance = fixture.get("provenance")
+    if not isinstance(provenance, dict):
+        raise RuntimeError("The SWE-agent coding fixture requires provenance.")
+    required_provenance = {
+        "source_revision": SWEAGENT_SOURCE_REVISION,
+        "provenance_type": "research_trajectory_adaptation",
+    }
+    for field, expected in required_provenance.items():
+        if provenance.get(field) != expected:
+            raise RuntimeError(
+                f"The SWE-agent coding fixture has unexpected {field}."
+            )
+    if not isinstance(provenance.get("query_origin"), str):
+        raise RuntimeError("The SWE-agent fixture requires a query_origin.")
+    if provenance.get("trajectory_origin") not in {
+        "official_sweagent_demonstration",
+        "official_sweagent_trajectory",
+    }:
+        raise RuntimeError(
+            "The SWE-agent fixture has an unexpected trajectory_origin."
+        )
+    if repo_id == SWEAGENT_CODING_REPOSITORY_ID and (
+        provenance.get("repository_base_commit") != SWEAGENT_MARSHMALLOW_BASE_COMMIT
+        or provenance.get("query_origin") != "swebench_issue"
+    ):
+        raise RuntimeError(
+            "The marshmallow SWE-agent fixture has unexpected provenance."
+        )
+    return (
+        fixture_path.stem,
+        repo_id,
+        fixture_version,
+        files,
+        deepcopy(provenance),
+    )
+
+
 def _git_environment(home: Path, timestamp: str | None = None) -> dict[str, str]:
     env = {
         "PATH": os.environ.get("PATH", os.defpath),
@@ -397,6 +551,44 @@ def _create_codesearchnet_fixture(root: Path) -> CodingRepository:
     )
 
 
+def _create_sweagent_fixture(
+    root: Path,
+    fixture: tuple[str, str, str, dict[str, str], dict[str, Any]],
+) -> CodingRepository:
+    fixture_name, repo_id, fixture_version, files, provenance = fixture
+    repository = root / f"{fixture_name}-repository"
+    git_home = root / f"{fixture_name}-git-home"
+    repository.mkdir(parents=True)
+    git_home.mkdir(parents=True)
+
+    _run_git(repository, "init", "--quiet", "--initial-branch=main", home=git_home)
+    _run_git(repository, "config", "user.name", "LayerMCP Fixture", home=git_home)
+    _run_git(
+        repository,
+        "config",
+        "user.email",
+        "fixture@layermcp.invalid",
+        home=git_home,
+    )
+    _run_git(repository, "config", "core.autocrlf", "false", home=git_home)
+    _commit_snapshot(
+        repository,
+        git_home,
+        files,
+        f"Initialize {fixture_name} exploration fixture",
+        "2024-05-24T12:00:00+00:00",
+    )
+
+    base_commit = _run_git(repository, "rev-parse", "HEAD", home=git_home)
+    return CodingRepository(
+        repo_id=repo_id,
+        path=repository.resolve(),
+        base_commit=base_commit,
+        fixture_version=fixture_version,
+        provenance=provenance,
+    )
+
+
 def _ensure_coding_state() -> None:
     global _WORKSPACE_DIRECTORY
     if _WORKSPACE_DIRECTORY is not None:
@@ -405,9 +597,13 @@ def _ensure_coding_state() -> None:
     workspace_directory = tempfile.TemporaryDirectory(prefix="layermcp-coding-")
     workspace_root = Path(workspace_directory.name)
     try:
-        repositories = (
+        repositories = [
             _create_fixture(workspace_root),
             _create_codesearchnet_fixture(workspace_root),
+        ]
+        repositories.extend(
+            _create_sweagent_fixture(workspace_root, fixture)
+            for fixture in _load_sweagent_fixtures()
         )
     except Exception:
         workspace_directory.cleanup()

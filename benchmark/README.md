@@ -10,14 +10,16 @@ those routing decisions.
 
 | Path | Records | Domains | Purpose |
 | --- | ---: | --- | --- |
-| `tool_routing_smoke.json` | 8 | coding, enterprise automation, finance, mathematics | Small smoke test across the original four domains. |
-| `tool_routing_controlled.json` | 40 | coding, enterprise automation, finance, mathematics | Older controlled synthetic benchmark across the original four domains. |
-| `tool_routing_phase2_seed.json` | 16 | coding, enterprise automation, finance, mathematics | Seed set for phase-2 routing work. |
-| `math/tool_routing_math_controlled.json` | 51 | mathematics | Controlled math routing set. |
-| `math/tool_routing_math_public_derived.json` | 77 | mathematics | Public MATH-derived math routing set. |
-| `enterprise/tool_routing_enterprise_v1.json` | 35 | enterprise automation | First controlled enterprise fixture suite. |
-| `enterprise/tool_routing_enterprise_v2_controlled.json` | 48 | enterprise automation | Controlled retail-style enterprise suite. |
-| `enterprise/tool_routing_enterprise_public_adapted.json` | 24 | enterprise automation | Public tau3 Retail-adapted enterprise suite. |
+| `archive/root/tool_routing_smoke.json` | 8 | coding, enterprise automation, finance, mathematics | Small smoke test across the original four domains. |
+| `archive/root/tool_routing_controlled.json` | 40 | coding, enterprise automation, finance, mathematics | Older controlled synthetic benchmark across the original four domains. |
+| `archive/root/tool_routing_phase2_seed.json` | 16 | coding, enterprise automation, finance, mathematics | Seed set for phase-2 routing work. |
+| `math/math_public.json` | 400 | mathematics | Expanded public-derived DeepMind Mathematics and GSM8K routing set. |
+| `math/math_public_math_dataset.json` | 77 | mathematics | Executable public MATH-derived math routing set. |
+| `math/math_controlled.json` | 51 | mathematics | Controlled math routing set. |
+| `enterprise/enterprise_controlled.json` | 35 | enterprise automation | First controlled enterprise fixture suite. |
+| `enterprise/enterprise_tau2_single_step.json` | 293 | enterprise automation | Executable tau2 retail single-step/adapted diagnostic benchmark. |
+| `archive/enterprise/enterprise_v2_controlled_legacy.json` | 48 | enterprise automation | Controlled retail-style enterprise suite. |
+| `archive/enterprise/enterprise_public_adapted_legacy.json` | 24 | enterprise automation | Public tau3 Retail-adapted enterprise suite. |
 | `coding/tool_routing_coding_smoke.json` | 7 | coding | Small direct coding tool smoke set. |
 | `coding/tool_routing_coding_controlled.json` | 35 | coding | Controlled coding routing set. |
 | `coding/tool_routing_coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
@@ -114,17 +116,22 @@ Not every public source has every provenance field. Use the fields that clearly 
 Prefer this filename pattern for new benchmark files:
 
 ```text
-tool_routing_<domain>_<source>.json
+benchmark/<domain>/<domain>_<source_or_purpose>.json
 ```
 
 Examples:
 
 ```text
-tool_routing_math_controlled.json
-tool_routing_math_public_derived.json
-tool_routing_enterprise_controlled_v2.json
-tool_routing_enterprise_public_adapted.json
+benchmark/math/math_public.json
+benchmark/math/math_public_math_dataset.json
+benchmark/math/math_controlled.json
+benchmark/enterprise/enterprise_controlled.json
+benchmark/enterprise/enterprise_tau2_single_step.json
+benchmark/archive/enterprise/enterprise_public_adapted_legacy.json
 ```
+
+Coding and Finance may retain older `tool_routing_<domain>_...` filenames until
+a follow-up cleanup standardizes those domains.
 
 Use `controlled` for examples written specifically to target a tool and argument schema. Use `public_derived` or `public_adapted` when the query came from, or was adapted from, a public dataset.
 

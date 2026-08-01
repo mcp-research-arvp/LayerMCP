@@ -15,7 +15,7 @@ Relevant files:
 |---|---|---|
 | MCP tool definitions | `mcp_server/tool_impls.py` | Implements `calculator`, `customer_lookup`, and `github_search`. |
 | MCP tool registration | `mcp_server/server.py` | Creates a `FastMCP` server and registers the three implemented tools. |
-| Benchmark data | `benchmark/tool_routing.json` | Contains four toy tool-routing examples. |
+| Benchmark data | `benchmark/archive/root/tool_routing.json` | Archived four-row legacy root benchmark retained for backwards-compatible no-argument evaluator behavior. |
 | Model routing | `models/routers/qwen_hf_router.py` | Loads a Hugging Face causal LM and prompts it to choose a tool name. |
 | Evaluation | `evaluation/evaluate.py` | Loads benchmark data, starts the MCP server, discovers tools, calls the router, computes metrics, and optionally executes predicted tools. |
 | Package and CLI setup | `pyproject.toml` | Declares dependencies, package metadata, and CLI entrypoints. |
@@ -43,9 +43,12 @@ No finance-domain MCP tools are currently implemented. No multi-step or multi-to
 
 ## Current benchmark files
 
-### `benchmark/tool_routing.json`
+### `benchmark/archive/root/tool_routing.json`
 
-This is the only benchmark JSON file currently present.
+This is the archived legacy root benchmark retained for backwards-compatible
+no-argument evaluator behavior. Current benchmark files live under
+`benchmark/<domain>/`, while legacy and superseded files live under
+`benchmark/archive/`.
 
 Summary:
 

@@ -120,7 +120,7 @@ class SharedLoaderIntegrationTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             args = argparse.Namespace(
-                benchmark=Path("benchmark/tool_routing_phase2_seed.json"),
+                benchmark=Path("benchmark/archive/root/tool_routing_phase2_seed.json"),
                 model="fake/model",
                 output_dir=Path(tmpdir),
                 max_examples=0,

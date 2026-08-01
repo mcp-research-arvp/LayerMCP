@@ -20,7 +20,7 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_public_derived_expansion.json"
+    PROJECT_ROOT / "benchmark" / "math" / "math_public.json"
 )
 DEEPMIND_REVISION = "427f45075f84b8b9774950196ad63867ca20ffb3"
 GSM8K_REVISION = "3101c7d5072418e28b9008a6636bde82a006892c"

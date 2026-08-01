@@ -36,7 +36,7 @@ EXPANSION_PATH = (
     PROJECT_ROOT
     / "benchmark"
     / "enterprise"
-    / "tool_routing_enterprise_tau2_public_adapted.json"
+    / "enterprise_tau2_single_step.json"
 )
 RETAIL_TOOL_NAMES = {
     "find_user_id_by_email",

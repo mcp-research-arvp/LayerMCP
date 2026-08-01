@@ -69,20 +69,20 @@ Logit lens alone should be treated as a guide for where to look next, not as the
 Run a small smoke analysis:
 
 ```powershell
-python analysis/logit_lens.py --benchmark benchmark/tool_routing_phase2_seed.json --max-examples 4
+python analysis/logit_lens.py --benchmark benchmark/archive/root/tool_routing_phase2_seed.json --max-examples 4
 ```
 
 Run with plotting:
 
 ```powershell
-python analysis/logit_lens.py --benchmark benchmark/tool_routing_phase2_seed.json --max-examples 4 --plot
+python analysis/logit_lens.py --benchmark benchmark/archive/root/tool_routing_phase2_seed.json --max-examples 4 --plot
 ```
 
 Override the model:
 
 ```powershell
 $env:LAYERMCP_MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
-python analysis/logit_lens.py --benchmark benchmark/tool_routing_phase2_seed.json
+python analysis/logit_lens.py --benchmark benchmark/archive/root/tool_routing_phase2_seed.json
 ```
 
 Outputs are saved under `results/`:

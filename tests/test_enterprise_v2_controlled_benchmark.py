@@ -14,13 +14,25 @@ from mcp_server.server import mcp
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "enterprise" / "tool_routing_enterprise_v2_controlled.json"
-PUBLIC_ADAPTED_PATH = PROJECT_ROOT / "benchmark" / "enterprise" / "tool_routing_enterprise_public_adapted.json"
+BENCHMARK_PATH = (
+    PROJECT_ROOT
+    / "benchmark"
+    / "archive"
+    / "enterprise"
+    / "enterprise_v2_controlled_legacy.json"
+)
+PUBLIC_ADAPTED_PATH = (
+    PROJECT_ROOT
+    / "benchmark"
+    / "archive"
+    / "enterprise"
+    / "enterprise_public_adapted_legacy.json"
+)
 TAU2_EXPANSION_PATH = (
     PROJECT_ROOT
     / "benchmark"
     / "enterprise"
-    / "tool_routing_enterprise_tau2_public_adapted.json"
+    / "enterprise_tau2_single_step.json"
 )
 TAU2_FIXTURE_PATH = (
     PROJECT_ROOT / "mcp_server" / "fixtures" / "tau2_retail_db.json"

@@ -26,16 +26,16 @@ from mcp_server.tool_impls import calculator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_BENCHMARK_PATH = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_public_derived.json"
+    PROJECT_ROOT / "benchmark" / "math" / "math_public_math_dataset.json"
 )
 EXPANSION_BENCHMARK_PATH = (
     PROJECT_ROOT
     / "benchmark"
     / "math"
-    / "tool_routing_math_public_derived_expansion.json"
+    / "math_public.json"
 )
 CONTROLLED_BENCHMARK_PATH = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_controlled.json"
+    PROJECT_ROOT / "benchmark" / "math" / "math_controlled.json"
 )
 MATH_V2_MENU = [
     "calculator",

@@ -17,7 +17,13 @@ if str(PROJECT_ROOT) not in sys.path:
 from models.model_loader import load_model_components, resolve_model_name
 from mcp_server.server import mcp
 
-DEFAULT_BENCHMARK_PATH = PROJECT_ROOT / "benchmark" / "tool_routing_phase2_seed.json"
+DEFAULT_BENCHMARK_PATH = (
+    PROJECT_ROOT
+    / "benchmark"
+    / "archive"
+    / "root"
+    / "tool_routing_phase2_seed.json"
+)
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "results"
 DEFAULT_MODEL_NAME = resolve_model_name()
 LABELS = tuple(string.ascii_uppercase + string.ascii_lowercase)

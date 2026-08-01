@@ -158,7 +158,11 @@ LayerMCP/
 │   │   ├── tool_routing_finance_smoke.json
 │   │   ├── tool_routing_finance_tatqa_public_derived.json
 │   │   └── tool_routing_finance_upstream_inspired.json
-│   └── tool_routing.json
+│   ├── math/
+│   │   ├── math_controlled.json
+│   │   ├── math_public.json
+│   │   └── math_public_math_dataset.json
+│   └── archive/root/tool_routing.json
 ├── evaluation/
 │   ├── __init__.py
 │   └── evaluate.py
@@ -231,30 +235,30 @@ The evaluator starts the MCP server automatically. You do not need to start `mcp
 Evaluate routing only:
 
 ```powershell
-python evaluation\evaluate.py
+python evaluation\evaluate.py --dataset benchmark/math/math_public.json
 ```
 
 Evaluate routing and execute the predicted MCP tool for each sample:
 
 ```powershell
-python evaluation\evaluate.py --call-predicted-tools
+python evaluation\evaluate.py --dataset benchmark/math/math_public.json --call-predicted-tools
 ```
 
 Or use the installed entrypoint:
 
 ```powershell
-layermcp-evaluate --call-predicted-tools
+layermcp-evaluate --dataset benchmark/math/math_public.json --call-predicted-tools
 ```
 
 Choose a router backend explicitly:
 
 ```powershell
-layermcp-evaluate --router qwen-hf
-layermcp-evaluate --router gpt-oss-local
-layermcp-evaluate --router phi-4-local
-layermcp-evaluate --router llama-3.1-8b-local
-layermcp-evaluate --router qwen-3.6-local
-layermcp-evaluate --router gemma-4-local
+layermcp-evaluate --dataset benchmark/math/math_public.json --router qwen-hf
+layermcp-evaluate --dataset benchmark/math/math_public.json --router gpt-oss-local
+layermcp-evaluate --dataset benchmark/math/math_public.json --router phi-4-local
+layermcp-evaluate --dataset benchmark/math/math_public.json --router llama-3.1-8b-local
+layermcp-evaluate --dataset benchmark/math/math_public.json --router qwen-3.6-local
+layermcp-evaluate --dataset benchmark/math/math_public.json --router gemma-4-local
 ```
 
 Router naming:
@@ -426,7 +430,9 @@ boundaries, attribution, and provenance.
 
 ### 6. Benchmark Format
 
-The default benchmark file is `benchmark/tool_routing.json`. The coding-specific
+The evaluator's legacy no-argument default is archived at
+`benchmark/archive/root/tool_routing.json`; current model-comparison runs should
+pass an active dataset explicitly with `--dataset`. The coding-specific
 datasets are:
 
 - `benchmark/coding/tool_routing_coding_smoke.json` — 7 direct examples, one per coding tool

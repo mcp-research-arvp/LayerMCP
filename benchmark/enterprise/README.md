@@ -123,6 +123,24 @@ Difficulty breakdown:
 | `medium` | 22 |
 | `hard` | 2 |
 
+
+### `enterprise_public_workflows.json`
+
+- Rows: 69
+- Task type: multi-step tool routing
+- Source dataset: pinned tau2-bench retail tasks
+- Source splits: 45 train workflows, 24 test workflows
+- Purpose: source-faithful public Enterprise workflow evaluation using original tau2 retail user-scenario fields.
+
+This benchmark differs from `enterprise_tau2_single_step.json`. The single-step file extracts individual tau2 gold actions into standalone executable requests. This workflow file preserves original tau2 scenario fields and keeps only fully supported, fully executable multi-action workflows against the pinned LayerMCP tau2 retail fixture.
+
+Each row contains `expected_steps` from the tau2 evaluation criteria actions.
+Evaluation is teacher-forced gold-action routing, not autonomous end-to-end
+planning: every step supplies a natural-language operation and authoritative
+step-level source facts while excluding earlier and later actions. Step outputs
+are deterministic LayerMCP retail-tool results from a fresh pinned retail
+fixture.
+
 ### `enterprise_tau2_single_step.json`
 
 - Records: 293

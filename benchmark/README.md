@@ -149,3 +149,4 @@ The original four domains were:
 - `coding`
 
 The older root-level benchmarks cover all four domains in one file. The newer direction is to keep each domain in its own folder, using the same core schema and clear source-oriented filenames across domains.
+| `enterprise/enterprise_public_workflows.json` | 69 | enterprise | Source-faithful tau2 retail public workflows using original user-scenario fields and expected multi-step tool sequences. |

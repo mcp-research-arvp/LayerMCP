@@ -151,7 +151,10 @@ step supplies a natural-language operation and authoritative step-level source
 facts. Declared dependencies are empty, so prompt construction uses the
 evaluator's bounded recent-history policy. For execution scoring, earlier
 reference actions are replayed only to reconstruct isolated workflow state.
-Step outputs use the MCP structured-result shape.
+Step outputs use the MCP structured-result shape. Rows explicitly declare
+`benchmark_mode: grounded_tool_execution` and
+`workflow_execution_mode: isolated_reference_prefix_replay`; both values are
+retained in evaluation result metadata.
 
 ### `enterprise_tau2_single_step.json`
 

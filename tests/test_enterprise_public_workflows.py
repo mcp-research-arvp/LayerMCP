@@ -5,6 +5,8 @@ import unittest
 
 from evaluation.evaluate import (
     BenchmarkStep,
+    DEFAULT_WORKFLOW_EXECUTION_MODE,
+    REFERENCE_PREFIX_REPLAY_MODE,
     SERVER_PATH,
     _call_tool_with_workflow_isolation,
     _extract_structured_tool_result,
@@ -62,6 +64,15 @@ class EnterprisePublicWorkflowTests(unittest.TestCase):
                 "tau2_evaluation_criteria_actions",
             )
             self.assertEqual(row["source_action_role"], "reference_trajectory")
+            self.assertEqual(row["benchmark_mode"], "grounded_tool_execution")
+            self.assertEqual(
+                row["workflow_execution_mode"],
+                REFERENCE_PREFIX_REPLAY_MODE,
+            )
+            self.assertEqual(
+                row["fixture_hash"],
+                "660c72ef6d1ef6a9ad1a886c5835c5794075de452c6a0848a44b4377d5815262",
+            )
             self.assertEqual(
                 row["perturbation_type"],
                 "source_workflow_format_adaptation",
@@ -123,6 +134,7 @@ class EnterpriseWorkflowMcpIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "find_user_id_by_email",
             {"email": "mia.garcia2723@example.com"},
             (),
+            DEFAULT_WORKFLOW_EXECUTION_MODE,
         )
         self.assertEqual(
             _extract_structured_tool_result(primitive_result).value,
@@ -153,6 +165,7 @@ class EnterpriseWorkflowMcpIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "get_order_details",
             {"order_id": "#W8665881"},
             (prior_step,),
+            REFERENCE_PREFIX_REPLAY_MODE,
         )
         value = _extract_structured_tool_result(result).value
         self.assertEqual(value["address"], {
@@ -166,6 +179,29 @@ class EnterpriseWorkflowMcpIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 "zip",
             )
         })
+
+    async def test_non_retail_workflow_does_not_replay_prefix_on_wrong_route(self):
+        coding_prior_step = BenchmarkStep(
+            id="step_00",
+            query="Calculate an intermediate value.",
+            expected_tool="calculator",
+            expected_args={"expression": "2 + 2"},
+            expected_answer={"result": 4},
+            depends_on=(),
+            source_program=None,
+        )
+        result = await _call_tool_with_workflow_isolation(
+            None,
+            SERVER_PATH,
+            "find_user_id_by_email",
+            {"email": "mia.garcia2723@example.com"},
+            (coding_prior_step,),
+            DEFAULT_WORKFLOW_EXECUTION_MODE,
+        )
+        self.assertEqual(
+            _extract_structured_tool_result(result).value,
+            {"result": "mia_garcia_4516"},
+        )
 
 
 if __name__ == "__main__":

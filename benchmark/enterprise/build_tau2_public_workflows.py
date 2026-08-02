@@ -28,6 +28,9 @@ RAW_ROOT = (
     / "retail"
 )
 OUTPUT_PATH = PROJECT_ROOT / "benchmark" / "enterprise" / "enterprise_public_workflows.json"
+PROVENANCE_PATH = (
+    PROJECT_ROOT / "mcp_server" / "fixtures" / "tau2_retail_provenance.json"
+)
 
 SUPPORTED_TOOLS = {
     "find_user_id_by_email",
@@ -169,6 +172,10 @@ def main() -> None:
     tasks = json.loads((RAW_ROOT / "tasks.json").read_text(encoding="utf-8"))
     splits = json.loads((RAW_ROOT / "split_tasks.json").read_text(encoding="utf-8"))
     split_by_id = _split_map(splits)
+    provenance = json.loads(PROVENANCE_PATH.read_text(encoding="utf-8"))
+    if provenance.get("source_revision") != EXPECTED_TAU2_REVISION:
+        raise RuntimeError("Committed tau2 retail fixture provenance is stale")
+    fixture_hash = provenance["derived_fixture_sha256"]
 
     functions, reset_state = _load_retail_runtime()
 
@@ -255,10 +262,13 @@ def main() -> None:
             "source_split": split_by_id.get(task_id, "unknown"),
             "source_task_id": task_id,
             "source_hash": _sha256_json(task),
+            "fixture_hash": fixture_hash,
             "source_license": "MIT",
             "query_origin": "tau2_user_scenario_instruction_fields",
             "tool_sequence_origin": "tau2_evaluation_criteria_actions",
             "source_action_role": "reference_trajectory",
+            "benchmark_mode": "grounded_tool_execution",
+            "workflow_execution_mode": "isolated_reference_prefix_replay",
             "perturbation_type": "source_workflow_format_adaptation",
             "difficulty": "public_workflow",
             "query": _scenario_query(task),

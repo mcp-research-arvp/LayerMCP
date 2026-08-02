@@ -44,11 +44,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CODING_BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "coding"
 SWEAGENT_BENCHMARK_PATH = (
     CODING_BENCHMARK_ROOT
-    / "tool_routing_coding_nebius_sweagent_multistep.json"
+    / "coding_nebius_sweagent_multistep.json"
 )
 OPENHANDS_BENCHMARK_PATH = (
     CODING_BENCHMARK_ROOT
-    / "tool_routing_coding_nebius_swerebench_openhands_multistep.json"
+    / "coding_nebius_swerebench_openhands_multistep.json"
 )
 FIXTURE_PATH = (
     CODING_BENCHMARK_ROOT

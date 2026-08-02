@@ -57,25 +57,25 @@ projects or live clients for their services.
 
 ## Files
 
-- `tool_routing_finance_smoke.json` contains 10 direct examples, one per tool.
-- `tool_routing_finance_controlled.json` contains 50 balanced examples, five per
+- `finance_smoke.json` contains 10 direct examples, one per tool.
+- `finance_controlled.json` contains 50 balanced examples, five per
   tool: direct, same-domain distractor, parameter-specific, paraphrased, and
   difficult indirect requests.
-- `tool_routing_finance_upstream_inspired.json` contains 40 generated examples,
+- `finance_upstream_inspired.json` contains 40 generated examples,
   four per tool, adapted from documented upstream usage patterns.
-- `tool_routing_finance_public_derived.json` contains 15 table-reasoning rows
+- `finance_public_derived.json` contains 15 table-reasoning rows
   adapted from the official FinQA public test split.
-- `tool_routing_finance_tatqa_public_derived.json` contains 15 exact questions
+- `finance_tatqa_public_derived.json` contains 15 exact questions
   selected from the official TAT-QA test-gold split and adapted to bounded SQL.
-- `tool_routing_finance_convfinqa_multistep.json` contains ten exact
+- `finance_convfinqa_multistep.json` contains ten exact
   ConvFinQA development-split conversations (35 paper-authored turns) adapted
   into ordered, executable retrieval-and-calculation workflows.
-- `tool_routing_finance_finqa_test_single.json` contains the 642 remaining
+- `finance_finqa_test_single.json` contains the 642 remaining
   FinQA test questions whose gold programs have one operation.
-- `tool_routing_finance_finqa_test_multistep.json` contains the 490 remaining
+- `finance_finqa_test_multistep.json` contains the 490 remaining
   FinQA test questions whose gold programs have two to five operations. They
   provide 1,111 ordered calls.
-- `tool_routing_finance_finretrieval_multistep.json` contains 485 exact
+- `finance_finretrieval_multistep.json` contains 485 exact
   FinRetrieval questions with one selected correct multi-call model trajectory
   of at most five calls each, totaling 1,490 ordered calls.
 - `fixtures/finqa_public_test_cells.json` contains the 201 normalized source
@@ -283,28 +283,28 @@ From the repository root:
 
 ```bash
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_smoke.json
+  --dataset benchmark/finance/finance_smoke.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_controlled.json
+  --dataset benchmark/finance/finance_controlled.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_upstream_inspired.json
+  --dataset benchmark/finance/finance_upstream_inspired.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_public_derived.json
+  --dataset benchmark/finance/finance_public_derived.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_tatqa_public_derived.json
+  --dataset benchmark/finance/finance_tatqa_public_derived.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_finqa_test_single.json
+  --dataset benchmark/finance/finance_finqa_test_single.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_finqa_test_multistep.json
+  --dataset benchmark/finance/finance_finqa_test_multistep.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/tool_routing_finance_finretrieval_multistep.json
+  --dataset benchmark/finance/finance_finretrieval_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.

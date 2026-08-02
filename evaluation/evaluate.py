@@ -679,6 +679,36 @@ async def _call_tool_with_sample_isolation(
         return await isolated_session.call_tool(tool_name, tool_args)
 
 
+async def _call_tool_with_workflow_isolation(
+    session: ClientSession,
+    server_path: Path,
+    tool_name: str,
+    tool_args: dict[str, Any],
+    prior_steps: tuple[BenchmarkStep, ...],
+) -> Any:
+    """Execute a retail prediction after replaying its reference-state prefix."""
+    if tool_name not in RETAIL_TOOL_NAMES:
+        return await session.call_tool(tool_name, tool_args)
+
+    async with _run_server_session(server_path) as isolated_session:
+        for prior_step in prior_steps:
+            if prior_step.expected_tool not in RETAIL_TOOL_NAMES:
+                raise ValueError(
+                    "Retail workflow state setup contains a non-retail tool: "
+                    f"{prior_step.expected_tool}"
+                )
+            setup_result = await isolated_session.call_tool(
+                prior_step.expected_tool,
+                prior_step.expected_args,
+            )
+            if bool(getattr(setup_result, "isError", False)):
+                raise RuntimeError(
+                    "Reference workflow state setup failed at "
+                    f"{prior_step.id}: {_summarize_tool_result(setup_result)}"
+                )
+        return await isolated_session.call_tool(tool_name, tool_args)
+
+
 def _tool_schema(tool: Any) -> dict[str, Any]:
     schema = getattr(tool, "inputSchema", None)
     if schema is None:
@@ -1114,11 +1144,12 @@ async def _evaluate_multistep_with_server(
                         called_tool = selected_tool
                         execution_attempted = True
                         try:
-                            call_result = await _call_tool_with_sample_isolation(
+                            call_result = await _call_tool_with_workflow_isolation(
                                 session,
                                 server_path,
                                 selected_tool,
                                 selected_args,
+                                sample.expected_steps[:step_index],
                             )
                             executed_tool_calls += 1
                             tool_result = _summarize_tool_result(call_result)

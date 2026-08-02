@@ -151,6 +151,13 @@ def _step_prompt_context(
     )
 
 
+def _mcp_expected_answer(value: Any) -> Any:
+    """Match FastMCP structuredContent for primitive function returns."""
+    if isinstance(value, dict):
+        return value
+    return {"result": value}
+
+
 def main() -> None:
     tau2_repo = RAW_ROOT.parents[3]
     actual_revision = _git_revision(tau2_repo)
@@ -224,11 +231,12 @@ def main() -> None:
                     ),
                     "expected_tool": tool_name,
                     "expected_args": args,
-                    "expected_answer": expected_answer,
-                    "depends_on": [s["id"] for s in steps],
+                    "expected_answer": _mcp_expected_answer(expected_answer),
+                    "depends_on": [],
                     "source_action_id": action_id,
                     "source_action_index": action_index,
                     "source_action": tool_name,
+                    "source_action_role": "reference_trajectory",
                     "source_expected_args": args,
                     "source_action_info": action.get("info"),
                 }
@@ -239,7 +247,7 @@ def main() -> None:
 
         row = {
             "id": f"enterprise_public_tau2_workflow_{int(task_id):03d}",
-            "domain": "enterprise",
+            "domain": "enterprise_automation",
             "task_type": "multi_step_tool_routing",
             "source": "public_enterprise_workflow",
             "source_dataset": "tau2_bench_retail",
@@ -250,6 +258,7 @@ def main() -> None:
             "source_license": "MIT",
             "query_origin": "tau2_user_scenario_instruction_fields",
             "tool_sequence_origin": "tau2_evaluation_criteria_actions",
+            "source_action_role": "reference_trajectory",
             "perturbation_type": "source_workflow_format_adaptation",
             "difficulty": "public_workflow",
             "query": _scenario_query(task),
@@ -262,8 +271,10 @@ def main() -> None:
             "notes": (
                 "Original tau2 retail user-scenario fields are preserved. "
                 "Only fully supported multi-action workflows are included. "
-                "Expected step outputs are deterministic LayerMCP retail-tool results "
-                "from a fresh pinned retail fixture."
+                "Expected steps preserve one tau2 reference trajectory; they are not "
+                "a uniquely correct plan or a direct measure of tau2 task success. "
+                "Expected step outputs are deterministic MCP-shaped LayerMCP "
+                "retail-tool results from the pinned retail fixture."
             ),
         }
         rows.append(row)

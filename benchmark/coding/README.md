@@ -20,10 +20,10 @@ and submissions are returned as data; they are never executed.
 - `coding_sweagent_multistep.json` contains five exact
   research-trajectory workflows and 11 ordered read-only exploration actions
   from pinned official SWE-agent trajectories.
-- `coding_nebius_sweagent_multistep.json` contains the 33 workflows
+- `coding_nebius_sweagent_replay_multistep.json` contains the 33 workflows
   with at most five calls from a fixed 500-workflow Nebius SWE-agent source
   selection. They contain 139 calls.
-- `coding_nebius_swerebench_openhands_multistep.json` is a
+- `coding_nebius_swerebench_openhands_replay_multistep.json` is a
   provenance-only, zero-result placeholder because all 500 workflows in the
   fixed Nebius SWE-rebench/OpenHands source selection contain more than five
   calls. It is not a runnable benchmark and contributes no benchmark results.
@@ -178,7 +178,7 @@ python evaluation/evaluate.py \
   --dataset benchmark/coding/coding_sweagent_multistep.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/coding_nebius_sweagent_multistep.json
+  --dataset benchmark/coding/coding_nebius_sweagent_replay_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.

@@ -54,7 +54,7 @@ EXCLUDED_OVER_STEP_LIMIT = [
 EXPECTED_BENCHMARK_WORKFLOWS = 485
 EXPECTED_BENCHMARK_CALLS = 1_490
 
-BENCHMARK_FILENAME = "finance_finretrieval_multistep.json"
+BENCHMARK_FILENAME = "finance_finretrieval_replay_multistep.json"
 FIXTURE_FILENAME = "finretrieval_replay.json"
 FIXTURE_ID = "finretrieval-replay-v1"
 

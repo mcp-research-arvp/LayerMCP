@@ -112,10 +112,10 @@ SWEAGENT_FIXTURE_ID = "nebius-sweagent-benchmark-replay-v1"
 SWEAGENT_FIXTURE_VERSION = "coding_nebius_sweagent_benchmark_replay_v1"
 
 SWEAGENT_BENCHMARK_FILENAME = (
-    "coding_nebius_sweagent_multistep.json"
+    "coding_nebius_sweagent_replay_multistep.json"
 )
 OPENHANDS_BENCHMARK_FILENAME = (
-    "coding_nebius_swerebench_openhands_multistep.json"
+    "coding_nebius_swerebench_openhands_replay_multistep.json"
 )
 SWEAGENT_FIXTURE_FILENAME = "coding_nebius_sweagent_benchmark_replay.json"
 

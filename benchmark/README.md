@@ -25,8 +25,8 @@ those routing decisions.
 | `coding/coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
 | `coding/coding_codesearchnet_public_derived.json` | 15 | coding | Public CodeSearchNet-derived coding search set. |
 | `coding/coding_sweagent_multistep.json` | 5 | coding | Source-faithful SWE-agent workflows executed against bounded repository fixtures. |
-| `coding/coding_nebius_sweagent_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
-| `coding/coding_nebius_swerebench_openhands_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |
+| `coding/coding_nebius_sweagent_replay_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
+| `coding/coding_nebius_swerebench_openhands_replay_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |
 | `finance/finance_smoke.json` | 10 | finance | Small direct finance tool smoke set. |
 | `finance/finance_controlled.json` | 50 | finance | Controlled finance routing set. |
 | `finance/finance_upstream_inspired.json` | 40 | finance | Generated finance prompts adapted from upstream tool usage patterns. |
@@ -35,7 +35,7 @@ those routing decisions.
 | `finance/finance_convfinqa_multistep.json` | 10 | finance | Paper-authored ConvFinQA conversations adapted to grounded tool calls. |
 | `finance/finance_finqa_test_single.json` | 642 | finance | One-operation FinQA gold programs adapted to grounded tool calls. |
 | `finance/finance_finqa_test_multistep.json` | 490 | finance | Two- to five-operation FinQA gold programs adapted to grounded tool calls. |
-| `finance/finance_finretrieval_multistep.json` | 485 | finance | Offline replay of selected correct FinRetrieval model trajectories containing at most five calls. |
+| `finance/finance_finretrieval_replay_multistep.json` | 485 | finance | Offline replay of selected correct FinRetrieval model trajectories containing at most five calls. |
 
 The files under `archive/root/` are legacy mixed-domain benchmarks. The domain
 folders are the preferred place for active datasets.

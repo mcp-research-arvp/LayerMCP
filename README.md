@@ -145,8 +145,8 @@ LayerMCP/
 │   │   ├── README.md
 │   │   ├── coding_controlled.json
 │   │   ├── coding_codesearchnet_public_derived.json
-│   │   ├── coding_nebius_sweagent_multistep.json
-│   │   ├── coding_nebius_swerebench_openhands_multistep.json
+│   │   ├── coding_nebius_sweagent_replay_multistep.json
+│   │   ├── coding_nebius_swerebench_openhands_replay_multistep.json
 │   │   ├── coding_smoke.json
 │   │   ├── coding_sweagent_multistep.json
 │   │   └── coding_upstream_inspired.json
@@ -157,7 +157,7 @@ LayerMCP/
 │   │   ├── finance_convfinqa_multistep.json
 │   │   ├── finance_finqa_test_multistep.json
 │   │   ├── finance_finqa_test_single.json
-│   │   ├── finance_finretrieval_multistep.json
+│   │   ├── finance_finretrieval_replay_multistep.json
 │   │   ├── finance_public_derived.json
 │   │   ├── finance_smoke.json
 │   │   ├── finance_tatqa_public_derived.json
@@ -444,8 +444,8 @@ datasets are:
 - `benchmark/coding/coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
 - `benchmark/coding/coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
 - `benchmark/coding/coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
-- `benchmark/coding/coding_nebius_sweagent_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
-- `benchmark/coding/coding_nebius_swerebench_openhands_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
+- `benchmark/coding/coding_nebius_sweagent_replay_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
+- `benchmark/coding/coding_nebius_swerebench_openhands_replay_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
 
 The coding family therefore has 123 workflows: 85 single-call workflows and 38
 multi-call workflows. The public trajectory additions contain source issue text
@@ -467,7 +467,7 @@ The finance-specific datasets are:
 - `benchmark/finance/finance_convfinqa_multistep.json` — 10 exact ConvFinQA conversations containing 35 ordered paper-authored turns
 - `benchmark/finance/finance_finqa_test_single.json` — 642 remaining FinQA test questions with one gold operation/call
 - `benchmark/finance/finance_finqa_test_multistep.json` — 490 remaining FinQA test questions with 1,111 ordered gold-operation calls
-- `benchmark/finance/finance_finretrieval_multistep.json` — 485 exact FinRetrieval questions whose selected correct trajectories contain at most five calls (1,490 calls total)
+- `benchmark/finance/finance_finretrieval_replay_multistep.json` — 485 exact FinRetrieval questions whose selected correct trajectories contain at most five calls (1,490 calls total)
 
 See `benchmark/finance/README.md` for their data boundaries, upstream mappings,
 provenance, and run commands.

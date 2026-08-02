@@ -21,7 +21,7 @@ FINQA_MULTISTEP_PATH = (
     FINANCE_BENCHMARK_ROOT / "finance_finqa_test_multistep.json"
 )
 FINRETRIEVAL_MULTISTEP_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_finretrieval_multistep.json"
+    FINANCE_BENCHMARK_ROOT / "finance_finretrieval_replay_multistep.json"
 )
 EXISTING_FINQA_PATH = (
     FINANCE_BENCHMARK_ROOT / "finance_public_derived.json"
@@ -162,7 +162,7 @@ class FinancePublicExpansionTests(unittest.TestCase):
                 "finance_convfinqa_multistep.json",
                 "finance_finqa_test_multistep.json",
                 "finance_finqa_test_single.json",
-                "finance_finretrieval_multistep.json",
+                "finance_finretrieval_replay_multistep.json",
                 "finance_public_derived.json",
                 "finance_smoke.json",
                 "finance_tatqa_public_derived.json",

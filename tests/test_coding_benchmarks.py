@@ -91,8 +91,8 @@ class CodingBenchmarkTests(unittest.TestCase):
             [
                 "coding_codesearchnet_public_derived.json",
                 "coding_controlled.json",
-                "coding_nebius_sweagent_multistep.json",
-                "coding_nebius_swerebench_openhands_multistep.json",
+                "coding_nebius_sweagent_replay_multistep.json",
+                "coding_nebius_swerebench_openhands_replay_multistep.json",
                 "coding_smoke.json",
                 "coding_sweagent_multistep.json",
                 "coding_upstream_inspired.json",

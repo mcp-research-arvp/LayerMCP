@@ -75,7 +75,7 @@ projects or live clients for their services.
 - `finance_finqa_test_multistep.json` contains the 490 remaining
   FinQA test questions whose gold programs have two to five operations. They
   provide 1,111 ordered calls.
-- `finance_finretrieval_multistep.json` contains 485 exact
+- `finance_finretrieval_replay_multistep.json` contains 485 exact
   FinRetrieval questions with one selected correct multi-call model trajectory
   of at most five calls each, totaling 1,490 ordered calls.
 - `fixtures/finqa_public_test_cells.json` contains the 201 normalized source
@@ -304,7 +304,7 @@ python evaluation/evaluate.py \
   --dataset benchmark/finance/finance_finqa_test_multistep.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/finance/finance_finretrieval_multistep.json
+  --dataset benchmark/finance/finance_finretrieval_replay_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.

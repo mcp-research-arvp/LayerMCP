@@ -22,12 +22,12 @@ from mcp_server.coding_tools import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CODING_BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "coding"
 BENCHMARK_PATHS = {
-    "smoke": CODING_BENCHMARK_ROOT / "tool_routing_coding_smoke.json",
-    "controlled": CODING_BENCHMARK_ROOT / "tool_routing_coding_controlled.json",
+    "smoke": CODING_BENCHMARK_ROOT / "coding_smoke.json",
+    "controlled": CODING_BENCHMARK_ROOT / "coding_controlled.json",
     "upstream": CODING_BENCHMARK_ROOT
-    / "tool_routing_coding_upstream_inspired.json",
+    / "coding_upstream_inspired.json",
     "codesearchnet": CODING_BENCHMARK_ROOT
-    / "tool_routing_coding_codesearchnet_public_derived.json",
+    / "coding_codesearchnet_public_derived.json",
 }
 CODING_TOOL_MENU = [
     "code_list_files",
@@ -85,9 +85,20 @@ class CodingBenchmarkTests(unittest.TestCase):
                 self.assertEqual(len(load_benchmark(path)), expected_lengths[name])
 
     def test_every_coding_query_has_at_most_five_tool_calls(self) -> None:
-        for path in sorted(
-            CODING_BENCHMARK_ROOT.glob("tool_routing_coding_*.json")
-        ):
+        benchmark_paths = sorted(CODING_BENCHMARK_ROOT.glob("coding_*.json"))
+        self.assertEqual(
+            [path.name for path in benchmark_paths],
+            [
+                "coding_codesearchnet_public_derived.json",
+                "coding_controlled.json",
+                "coding_nebius_sweagent_replay_multistep.json",
+                "coding_nebius_swerebench_openhands_replay_multistep.json",
+                "coding_smoke.json",
+                "coding_sweagent_multistep.json",
+                "coding_upstream_inspired.json",
+            ],
+        )
+        for path in benchmark_paths:
             for row in _load_json(path):
                 with self.subTest(dataset=path.name, row=row["id"]):
                     call_count = len(row.get("expected_steps", [])) or 1

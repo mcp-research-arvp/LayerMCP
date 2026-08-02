@@ -32,7 +32,7 @@ from mcp_server.finretrieval_state import (  # noqa: E402
 
 
 BENCHMARK_ROOT = Path(__file__).resolve().parent
-BENCHMARK_PATTERN = "tool_routing_finance_*.json"
+BENCHMARK_PATTERN = "finance_*.json"
 
 
 def _with_prompt_context(

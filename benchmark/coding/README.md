@@ -7,23 +7,23 @@ and submissions are returned as data; they are never executed.
 
 ## Files
 
-- `tool_routing_coding_smoke.json` contains 7 direct examples, one per tool.
-- `tool_routing_coding_controlled.json` contains 35 balanced examples, five per
+- `coding_smoke.json` contains 7 direct examples, one per tool.
+- `coding_controlled.json` contains 35 balanced examples, five per
   tool, spanning direct requests, same-domain distractors, parameter-specific
   requests, paraphrases, and difficult indirect requests.
-- `tool_routing_coding_upstream_inspired.json` contains 28 generated examples,
+- `coding_upstream_inspired.json` contains 28 generated examples,
   four per tool, based on documented upstream usage patterns and adapted to the
   local fixture and tool signatures.
-- `tool_routing_coding_codesearchnet_public_derived.json` contains 15
+- `coding_codesearchnet_public_derived.json` contains 15
   self-contained search instructions wrapping exact human-evaluation queries
   from the CodeSearchNet Challenge.
-- `tool_routing_coding_sweagent_multistep.json` contains five exact
+- `coding_sweagent_multistep.json` contains five exact
   research-trajectory workflows and 11 ordered read-only exploration actions
   from pinned official SWE-agent trajectories.
-- `tool_routing_coding_nebius_sweagent_multistep.json` contains the 33 workflows
+- `coding_nebius_sweagent_replay_multistep.json` contains the 33 workflows
   with at most five calls from a fixed 500-workflow Nebius SWE-agent source
   selection. They contain 139 calls.
-- `tool_routing_coding_nebius_swerebench_openhands_multistep.json` is a
+- `coding_nebius_swerebench_openhands_replay_multistep.json` is a
   provenance-only, zero-result placeholder because all 500 workflows in the
   fixed Nebius SWE-rebench/OpenHands source selection contain more than five
   calls. It is not a runnable benchmark and contributes no benchmark results.
@@ -163,22 +163,22 @@ From the repository root:
 
 ```bash
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_smoke.json
+  --dataset benchmark/coding/coding_smoke.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_controlled.json
+  --dataset benchmark/coding/coding_controlled.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_upstream_inspired.json
+  --dataset benchmark/coding/coding_upstream_inspired.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json
+  --dataset benchmark/coding/coding_codesearchnet_public_derived.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_sweagent_multistep.json
+  --dataset benchmark/coding/coding_sweagent_multistep.json
 
 python evaluation/evaluate.py \
-  --dataset benchmark/coding/tool_routing_coding_nebius_sweagent_multistep.json
+  --dataset benchmark/coding/coding_nebius_sweagent_replay_multistep.json
 ```
 
 Add `--call-predicted-tools` to execute the model's predicted calls.

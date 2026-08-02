@@ -3,7 +3,7 @@
 The builder deliberately does not download data. Pass the official FinQA
 ``dataset/test.json`` file from the pinned revision with ``--source-test``.
 It excludes the 15 examples already represented by
-``finance_public_derived.json`` and writes:
+``tool_routing_finance_public_derived.json`` and writes:
 
 * 642 one-operation, single-tool samples;
 * 490 multi-operation, multi-call samples; and
@@ -60,8 +60,8 @@ OPERATION_ROW_COUNT = 1_753
 MAX_COMPACT_FIXTURE_ROWS = 10_000
 
 FIXTURE_DATASET_ID = "finqa-public-test-program-results-v1"
-SINGLE_OUTPUT_NAME = "finance_finqa_test_single.json"
-MULTISTEP_OUTPUT_NAME = "finance_finqa_test_multistep.json"
+SINGLE_OUTPUT_NAME = "tool_routing_finance_finqa_test_single.json"
+MULTISTEP_OUTPUT_NAME = "tool_routing_finance_finqa_test_multistep.json"
 FIXTURE_OUTPUT_NAME = "fixtures/finqa_test_program_results_cells.json"
 CANONICAL_FIXTURE_FILE = (
     "benchmark/finance/fixtures/finqa_test_program_results_cells.json"
@@ -87,7 +87,7 @@ FIXTURE_GROUNDING_TABLE = {
 }
 
 EXISTING_FINQA_BENCHMARK = (
-    Path(__file__).resolve().with_name("finance_public_derived.json")
+    Path(__file__).resolve().with_name("tool_routing_finance_public_derived.json")
 )
 EXPECTED_EXISTING_SOURCE_INDICES = {
     0,

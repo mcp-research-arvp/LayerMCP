@@ -16,7 +16,7 @@ BENCHMARK_PATH = (
     PROJECT_ROOT
     / "benchmark"
     / "finance"
-    / "finance_convfinqa_multistep.json"
+    / "tool_routing_finance_convfinqa_multistep.json"
 )
 FIXTURE_PATH = (
     PROJECT_ROOT

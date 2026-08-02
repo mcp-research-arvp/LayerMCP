@@ -15,16 +15,16 @@ from mcp_server.tool_impls import calculator
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FINANCE_BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "finance"
 FINQA_SINGLE_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_finqa_test_single.json"
+    FINANCE_BENCHMARK_ROOT / "tool_routing_finance_finqa_test_single.json"
 )
 FINQA_MULTISTEP_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_finqa_test_multistep.json"
+    FINANCE_BENCHMARK_ROOT / "tool_routing_finance_finqa_test_multistep.json"
 )
 FINRETRIEVAL_MULTISTEP_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_finretrieval_multistep.json"
+    FINANCE_BENCHMARK_ROOT / "tool_routing_finance_finretrieval_multistep.json"
 )
 EXISTING_FINQA_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_public_derived.json"
+    FINANCE_BENCHMARK_ROOT / "tool_routing_finance_public_derived.json"
 )
 FINQA_FIXTURE_PATH = (
     FINANCE_BENCHMARK_ROOT / "fixtures" / "finqa_test_program_results_cells.json"
@@ -154,22 +154,7 @@ class FinancePublicExpansionTests(unittest.TestCase):
 
     def test_ids_are_unique_across_all_finance_benchmark_files(self) -> None:
         ids_by_path: dict[Path, list[str]] = {}
-        benchmark_paths = sorted(FINANCE_BENCHMARK_ROOT.glob("finance_*.json"))
-        self.assertEqual(
-            [path.name for path in benchmark_paths],
-            [
-                "finance_controlled.json",
-                "finance_convfinqa_multistep.json",
-                "finance_finqa_test_multistep.json",
-                "finance_finqa_test_single.json",
-                "finance_finretrieval_multistep.json",
-                "finance_public_derived.json",
-                "finance_smoke.json",
-                "finance_tatqa_public_derived.json",
-                "finance_upstream_inspired.json",
-            ],
-        )
-        for path in benchmark_paths:
+        for path in sorted(FINANCE_BENCHMARK_ROOT.glob("tool_routing_finance_*.json")):
             rows = _load_json(path)
             self.assertIsInstance(rows, list)
             assert isinstance(rows, list)

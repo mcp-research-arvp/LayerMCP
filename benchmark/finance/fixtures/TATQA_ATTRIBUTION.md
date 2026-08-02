@@ -1,7 +1,7 @@
 # TAT-QA attribution
 
 The files tatqa_public_test_gold_cells.json and
-../finance_tatqa_public_derived.json contain a narrow adaptation
+../tool_routing_finance_tatqa_public_derived.json contain a narrow adaptation
 of 15 records from the official TAT-QA test set with released gold answers.
 
 ## Source

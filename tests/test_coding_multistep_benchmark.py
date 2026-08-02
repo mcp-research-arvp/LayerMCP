@@ -25,7 +25,7 @@ BENCHMARK_PATH = (
     PROJECT_ROOT
     / "benchmark"
     / "coding"
-    / "coding_sweagent_multistep.json"
+    / "tool_routing_coding_sweagent_multistep.json"
 )
 FIXTURE_DIRECTORY = (
     PROJECT_ROOT

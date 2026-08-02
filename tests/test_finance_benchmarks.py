@@ -25,14 +25,14 @@ from mcp_server.finance_tools import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FINANCE_BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "finance"
 BENCHMARK_PATHS = {
-    "smoke": FINANCE_BENCHMARK_ROOT / "finance_smoke.json",
-    "controlled": FINANCE_BENCHMARK_ROOT / "finance_controlled.json",
+    "smoke": FINANCE_BENCHMARK_ROOT / "tool_routing_finance_smoke.json",
+    "controlled": FINANCE_BENCHMARK_ROOT / "tool_routing_finance_controlled.json",
     "upstream": FINANCE_BENCHMARK_ROOT
-    / "finance_upstream_inspired.json",
+    / "tool_routing_finance_upstream_inspired.json",
     "public": FINANCE_BENCHMARK_ROOT
-    / "finance_public_derived.json",
+    / "tool_routing_finance_public_derived.json",
     "tatqa_public": FINANCE_BENCHMARK_ROOT
-    / "finance_tatqa_public_derived.json",
+    / "tool_routing_finance_tatqa_public_derived.json",
 }
 FINANCE_TOOL_MENU = [
     "finance_lookup_company",

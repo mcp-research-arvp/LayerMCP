@@ -20,24 +20,25 @@ those routing decisions.
 | `enterprise/enterprise_tau2_single_step.json` | 293 | enterprise automation | Executable tau2 retail single-step/adapted diagnostic benchmark. |
 | `archive/enterprise/enterprise_v2_controlled_legacy.json` | 48 | enterprise automation | Controlled retail-style enterprise suite. |
 | `archive/enterprise/enterprise_public_adapted_legacy.json` | 24 | enterprise automation | Public tau3 Retail-adapted enterprise suite. |
-| `coding/tool_routing_coding_smoke.json` | 7 | coding | Small direct coding tool smoke set. |
-| `coding/tool_routing_coding_controlled.json` | 35 | coding | Controlled coding routing set. |
-| `coding/tool_routing_coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
-| `coding/tool_routing_coding_codesearchnet_public_derived.json` | 15 | coding | Public CodeSearchNet-derived coding search set. |
-| `coding/tool_routing_coding_sweagent_multistep.json` | 5 | coding | Source-faithful SWE-agent workflows executed against bounded repository fixtures. |
-| `coding/tool_routing_coding_nebius_sweagent_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
-| `coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |
-| `finance/tool_routing_finance_smoke.json` | 10 | finance | Small direct finance tool smoke set. |
-| `finance/tool_routing_finance_controlled.json` | 50 | finance | Controlled finance routing set. |
-| `finance/tool_routing_finance_upstream_inspired.json` | 40 | finance | Generated finance prompts adapted from upstream tool usage patterns. |
-| `finance/tool_routing_finance_public_derived.json` | 15 | finance | Public FinQA-derived finance table set. |
-| `finance/tool_routing_finance_tatqa_public_derived.json` | 15 | finance | Public TAT-QA-derived finance table set. |
-| `finance/tool_routing_finance_convfinqa_multistep.json` | 10 | finance | Paper-authored ConvFinQA conversations adapted to grounded tool calls. |
-| `finance/tool_routing_finance_finqa_test_single.json` | 642 | finance | One-operation FinQA gold programs adapted to grounded tool calls. |
-| `finance/tool_routing_finance_finqa_test_multistep.json` | 490 | finance | Two- to five-operation FinQA gold programs adapted to grounded tool calls. |
-| `finance/tool_routing_finance_finretrieval_multistep.json` | 485 | finance | Offline replay of selected correct FinRetrieval model trajectories containing at most five calls. |
+| `coding/coding_smoke.json` | 7 | coding | Small direct coding tool smoke set. |
+| `coding/coding_controlled.json` | 35 | coding | Controlled coding routing set. |
+| `coding/coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
+| `coding/coding_codesearchnet_public_derived.json` | 15 | coding | Public CodeSearchNet-derived coding search set. |
+| `coding/coding_sweagent_multistep.json` | 5 | coding | Source-faithful SWE-agent workflows executed against bounded repository fixtures. |
+| `coding/coding_nebius_sweagent_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
+| `coding/coding_nebius_swerebench_openhands_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |
+| `finance/finance_smoke.json` | 10 | finance | Small direct finance tool smoke set. |
+| `finance/finance_controlled.json` | 50 | finance | Controlled finance routing set. |
+| `finance/finance_upstream_inspired.json` | 40 | finance | Generated finance prompts adapted from upstream tool usage patterns. |
+| `finance/finance_public_derived.json` | 15 | finance | Public FinQA-derived finance table set. |
+| `finance/finance_tatqa_public_derived.json` | 15 | finance | Public TAT-QA-derived finance table set. |
+| `finance/finance_convfinqa_multistep.json` | 10 | finance | Paper-authored ConvFinQA conversations adapted to grounded tool calls. |
+| `finance/finance_finqa_test_single.json` | 642 | finance | One-operation FinQA gold programs adapted to grounded tool calls. |
+| `finance/finance_finqa_test_multistep.json` | 490 | finance | Two- to five-operation FinQA gold programs adapted to grounded tool calls. |
+| `finance/finance_finretrieval_multistep.json` | 485 | finance | Offline replay of selected correct FinRetrieval model trajectories containing at most five calls. |
 
-The root-level files are legacy mixed-domain benchmarks. The domain folders are the preferred place for new datasets.
+The files under `archive/root/` are legacy mixed-domain benchmarks. The domain
+folders are the preferred place for active datasets.
 
 ## Standard Record Schema
 
@@ -127,11 +128,13 @@ benchmark/math/math_public_math_dataset.json
 benchmark/math/math_controlled.json
 benchmark/enterprise/enterprise_controlled.json
 benchmark/enterprise/enterprise_tau2_single_step.json
+benchmark/coding/coding_sweagent_multistep.json
+benchmark/finance/finance_finqa_test_multistep.json
 benchmark/archive/enterprise/enterprise_public_adapted_legacy.json
 ```
 
-Coding and Finance may retain older `tool_routing_<domain>_...` filenames until
-a follow-up cleanup standardizes those domains.
+All active domain benchmark files follow this domain-local convention. Archived
+legacy files may retain their historical names.
 
 Use `controlled` for examples written specifically to target a tool and argument schema. Use `public_derived` or `public_adapted` when the query came from, or was adapted from, a public dataset.
 
@@ -148,4 +151,6 @@ The original four domains were:
 - `finance`
 - `coding`
 
-The older root-level benchmarks cover all four domains in one file. The newer direction is to keep each domain in its own folder, using the same core schema and clear source-oriented filenames across domains.
+The benchmarks under `archive/root/` cover all four domains in one file. The
+newer direction is to keep each domain in its own folder, using the same core
+schema and clear source-oriented filenames across domains.

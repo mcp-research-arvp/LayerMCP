@@ -143,21 +143,25 @@ LayerMCP/
 │   ├── coding/
 │   │   ├── fixtures/
 │   │   ├── README.md
-│   │   ├── tool_routing_coding_controlled.json
-│   │   ├── tool_routing_coding_codesearchnet_public_derived.json
-│   │   ├── tool_routing_coding_nebius_sweagent_multistep.json
-│   │   ├── tool_routing_coding_nebius_swerebench_openhands_multistep.json
-│   │   ├── tool_routing_coding_smoke.json
-│   │   ├── tool_routing_coding_sweagent_multistep.json
-│   │   └── tool_routing_coding_upstream_inspired.json
+│   │   ├── coding_controlled.json
+│   │   ├── coding_codesearchnet_public_derived.json
+│   │   ├── coding_nebius_sweagent_multistep.json
+│   │   ├── coding_nebius_swerebench_openhands_multistep.json
+│   │   ├── coding_smoke.json
+│   │   ├── coding_sweagent_multistep.json
+│   │   └── coding_upstream_inspired.json
 │   ├── finance/
 │   │   ├── fixtures/
 │   │   ├── README.md
-│   │   ├── tool_routing_finance_controlled.json
-│   │   ├── tool_routing_finance_public_derived.json
-│   │   ├── tool_routing_finance_smoke.json
-│   │   ├── tool_routing_finance_tatqa_public_derived.json
-│   │   └── tool_routing_finance_upstream_inspired.json
+│   │   ├── finance_controlled.json
+│   │   ├── finance_convfinqa_multistep.json
+│   │   ├── finance_finqa_test_multistep.json
+│   │   ├── finance_finqa_test_single.json
+│   │   ├── finance_finretrieval_multistep.json
+│   │   ├── finance_public_derived.json
+│   │   ├── finance_smoke.json
+│   │   ├── finance_tatqa_public_derived.json
+│   │   └── finance_upstream_inspired.json
 │   ├── math/
 │   │   ├── math_controlled.json
 │   │   ├── math_public.json
@@ -435,13 +439,13 @@ The evaluator's legacy no-argument default is archived at
 pass an active dataset explicitly with `--dataset`. The coding-specific
 datasets are:
 
-- `benchmark/coding/tool_routing_coding_smoke.json` — 7 direct examples, one per coding tool
-- `benchmark/coding/tool_routing_coding_controlled.json` — 35 balanced controlled examples
-- `benchmark/coding/tool_routing_coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
-- `benchmark/coding/tool_routing_coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
-- `benchmark/coding/tool_routing_coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
-- `benchmark/coding/tool_routing_coding_nebius_sweagent_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
-- `benchmark/coding/tool_routing_coding_nebius_swerebench_openhands_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
+- `benchmark/coding/coding_smoke.json` — 7 direct examples, one per coding tool
+- `benchmark/coding/coding_controlled.json` — 35 balanced controlled examples
+- `benchmark/coding/coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
+- `benchmark/coding/coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
+- `benchmark/coding/coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
+- `benchmark/coding/coding_nebius_sweagent_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
+- `benchmark/coding/coding_nebius_swerebench_openhands_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
 
 The coding family therefore has 123 workflows: 85 single-call workflows and 38
 multi-call workflows. The public trajectory additions contain source issue text
@@ -455,15 +459,15 @@ wrappers are mechanical LayerMCP adaptations.
 See `benchmark/coding/README.md` for their scope, provenance, and run commands.
 The finance-specific datasets are:
 
-- `benchmark/finance/tool_routing_finance_smoke.json` — 10 direct examples, one per finance tool
-- `benchmark/finance/tool_routing_finance_controlled.json` — 50 balanced controlled examples
-- `benchmark/finance/tool_routing_finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
-- `benchmark/finance/tool_routing_finance_public_derived.json` — 15 executable public-test adaptations from FinQA
-- `benchmark/finance/tool_routing_finance_tatqa_public_derived.json` — 15 exact TAT-QA test-gold questions with executable SQL adaptations
-- `benchmark/finance/tool_routing_finance_convfinqa_multistep.json` — 10 exact ConvFinQA conversations containing 35 ordered paper-authored turns
-- `benchmark/finance/tool_routing_finance_finqa_test_single.json` — 642 remaining FinQA test questions with one gold operation/call
-- `benchmark/finance/tool_routing_finance_finqa_test_multistep.json` — 490 remaining FinQA test questions with 1,111 ordered gold-operation calls
-- `benchmark/finance/tool_routing_finance_finretrieval_multistep.json` — 485 exact FinRetrieval questions whose selected correct trajectories contain at most five calls (1,490 calls total)
+- `benchmark/finance/finance_smoke.json` — 10 direct examples, one per finance tool
+- `benchmark/finance/finance_controlled.json` — 50 balanced controlled examples
+- `benchmark/finance/finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
+- `benchmark/finance/finance_public_derived.json` — 15 executable public-test adaptations from FinQA
+- `benchmark/finance/finance_tatqa_public_derived.json` — 15 exact TAT-QA test-gold questions with executable SQL adaptations
+- `benchmark/finance/finance_convfinqa_multistep.json` — 10 exact ConvFinQA conversations containing 35 ordered paper-authored turns
+- `benchmark/finance/finance_finqa_test_single.json` — 642 remaining FinQA test questions with one gold operation/call
+- `benchmark/finance/finance_finqa_test_multistep.json` — 490 remaining FinQA test questions with 1,111 ordered gold-operation calls
+- `benchmark/finance/finance_finretrieval_multistep.json` — 485 exact FinRetrieval questions whose selected correct trajectories contain at most five calls (1,490 calls total)
 
 See `benchmark/finance/README.md` for their data boundaries, upstream mappings,
 provenance, and run commands.

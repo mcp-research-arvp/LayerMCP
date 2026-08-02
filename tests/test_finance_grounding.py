@@ -29,7 +29,7 @@ from mcp_server.finretrieval_state import FINRETRIEVAL_REPLAY_TOOL_NAMES
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "finance"
 BENCHMARK_PATHS = sorted(
-    BENCHMARK_ROOT.glob("tool_routing_finance_*.json")
+    BENCHMARK_ROOT.glob("finance_*.json")
 )
 SOURCE_FILTER_COLUMNS = (
     "source_id",

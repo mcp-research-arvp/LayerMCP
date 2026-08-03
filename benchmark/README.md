@@ -6,6 +6,20 @@ to choose one tool from an available tool list and provide the expected
 arguments for that tool. Multi-step records contain an ordered sequence of
 those routing decisions.
 
+Generate a current inventory of active Math, Enterprise, Coding, and Finance
+benchmark JSON files with:
+
+```bash
+python -m analysis.benchmark_inventory
+python -m analysis.benchmark_inventory --json
+python -m analysis.benchmark_inventory \
+  --markdown-out /tmp/benchmark-inventory.md \
+  --json-out /tmp/benchmark-inventory.json
+```
+
+The inventory excludes `benchmark/archive/`, domain fixture directories, and
+cache files. It reads benchmark data but does not modify it.
+
 ## Current Layout
 
 | Path | Records | Domains | Purpose |

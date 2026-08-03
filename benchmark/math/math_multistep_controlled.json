@@ -1,0 +1,3186 @@
+[
+  {
+    "id": "math_multistep_controlled_001",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Compute 12 \u00d7 15, then prime-factorize the product.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 12 times 15.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"12 * 15\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 12 times 15.\", \"sequence_relation\": \"Produces the integer used by the next step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "12 * 15"
+        },
+        "expected_answer": {
+          "expression": "12 * 15",
+          "result": 180
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting integer 180.",
+        "prompt_context": "{\"inputs\": {\"value\": \"180\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting integer 180.\", \"sequence_relation\": \"Uses the numeric result from step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "180"
+        },
+        "expected_answer": {
+          "value": "180",
+          "integer_value": 180,
+          "prime_factors": {
+            "2": 2,
+            "3": 2,
+            "5": 1
+          },
+          "factor_list": [
+            "2",
+            "2",
+            "3",
+            "3",
+            "5"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 5,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "180",
+      "integer_value": 180,
+      "prime_factors": {
+        "2": 2,
+        "3": 2,
+        "5": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "3",
+        "3",
+        "5"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 5,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_002",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Compute 14 \u00d7 18, then prime-factorize the product.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 14 times 18.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"14 * 18\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 14 times 18.\", \"sequence_relation\": \"Produces the integer used by the next step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "14 * 18"
+        },
+        "expected_answer": {
+          "expression": "14 * 18",
+          "result": 252
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting integer 252.",
+        "prompt_context": "{\"inputs\": {\"value\": \"252\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting integer 252.\", \"sequence_relation\": \"Uses the numeric result from step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "252"
+        },
+        "expected_answer": {
+          "value": "252",
+          "integer_value": 252,
+          "prime_factors": {
+            "2": 2,
+            "3": 2,
+            "7": 1
+          },
+          "factor_list": [
+            "2",
+            "2",
+            "3",
+            "3",
+            "7"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 7,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "252",
+      "integer_value": 252,
+      "prime_factors": {
+        "2": 2,
+        "3": 2,
+        "7": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "3",
+        "3",
+        "7"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 7,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_003",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Compute 16 \u00d7 21, then prime-factorize the product.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 16 times 21.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"16 * 21\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 16 times 21.\", \"sequence_relation\": \"Produces the integer used by the next step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "16 * 21"
+        },
+        "expected_answer": {
+          "expression": "16 * 21",
+          "result": 336
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting integer 336.",
+        "prompt_context": "{\"inputs\": {\"value\": \"336\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting integer 336.\", \"sequence_relation\": \"Uses the numeric result from step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "336"
+        },
+        "expected_answer": {
+          "value": "336",
+          "integer_value": 336,
+          "prime_factors": {
+            "2": 4,
+            "3": 1,
+            "7": 1
+          },
+          "factor_list": [
+            "2",
+            "2",
+            "2",
+            "2",
+            "3",
+            "7"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 7,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "336",
+      "integer_value": 336,
+      "prime_factors": {
+        "2": 4,
+        "3": 1,
+        "7": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "2",
+        "2",
+        "3",
+        "7"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 7,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_004",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Compute 22 \u00d7 27, then prime-factorize the product.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 22 times 27.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"22 * 27\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 22 times 27.\", \"sequence_relation\": \"Produces the integer used by the next step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "22 * 27"
+        },
+        "expected_answer": {
+          "expression": "22 * 27",
+          "result": 594
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting integer 594.",
+        "prompt_context": "{\"inputs\": {\"value\": \"594\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting integer 594.\", \"sequence_relation\": \"Uses the numeric result from step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "594"
+        },
+        "expected_answer": {
+          "value": "594",
+          "integer_value": 594,
+          "prime_factors": {
+            "2": 1,
+            "3": 3,
+            "11": 1
+          },
+          "factor_list": [
+            "2",
+            "3",
+            "3",
+            "3",
+            "11"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 11,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "594",
+      "integer_value": 594,
+      "prime_factors": {
+        "2": 1,
+        "3": 3,
+        "11": 1
+      },
+      "factor_list": [
+        "2",
+        "3",
+        "3",
+        "3",
+        "11"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 11,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_005",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Compute 24 \u00d7 35, then prime-factorize the product.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 24 times 35.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"24 * 35\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 24 times 35.\", \"sequence_relation\": \"Produces the integer used by the next step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "24 * 35"
+        },
+        "expected_answer": {
+          "expression": "24 * 35",
+          "result": 840
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting integer 840.",
+        "prompt_context": "{\"inputs\": {\"value\": \"840\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting integer 840.\", \"sequence_relation\": \"Uses the numeric result from step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "840"
+        },
+        "expected_answer": {
+          "value": "840",
+          "integer_value": 840,
+          "prime_factors": {
+            "2": 3,
+            "3": 1,
+            "5": 1,
+            "7": 1
+          },
+          "factor_list": [
+            "2",
+            "2",
+            "2",
+            "3",
+            "5",
+            "7"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 7,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "840",
+      "integer_value": 840,
+      "prime_factors": {
+        "2": 3,
+        "3": 1,
+        "5": 1,
+        "7": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "2",
+        "3",
+        "5",
+        "7"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 7,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_006",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate two sums, then compute the GCD and LCM of their results: (18 + 6) and (24 + 6).",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 18 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"18 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 18 plus 6.\", \"sequence_relation\": \"Produces the first integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "18 + 6"
+        },
+        "expected_answer": {
+          "expression": "18 + 6",
+          "result": 24
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Calculate 24 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"24 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 24 plus 6.\", \"sequence_relation\": \"Produces the second integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "24 + 6"
+        },
+        "expected_answer": {
+          "expression": "24 + 6",
+          "result": 30
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_02",
+        "query": "Compute both the GCD and LCM of 24 and 30.",
+        "prompt_context": "{\"inputs\": {\"operation\": \"both\", \"values\": [\"24\", \"30\"]}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute both the GCD and LCM of 24 and 30.\", \"sequence_relation\": \"Uses both arithmetic results from steps 00 and 01.\"}",
+        "expected_tool": "gcd_lcm",
+        "expected_args": {
+          "values": [
+            "24",
+            "30"
+          ],
+          "operation": "both"
+        },
+        "expected_answer": {
+          "values": [
+            "24",
+            "30"
+          ],
+          "integer_values": [
+            24,
+            30
+          ],
+          "operation": "both",
+          "source": "python-math",
+          "gcd": 6,
+          "lcm": 120
+        },
+        "depends_on": [
+          "step_00",
+          "step_01"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "values": [
+        "24",
+        "30"
+      ],
+      "integer_values": [
+        24,
+        30
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 6,
+      "lcm": 120
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_007",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate two sums, then compute the GCD and LCM of their results: (28 + 6) and (42 + 6).",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 28 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"28 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 28 plus 6.\", \"sequence_relation\": \"Produces the first integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "28 + 6"
+        },
+        "expected_answer": {
+          "expression": "28 + 6",
+          "result": 34
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Calculate 42 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"42 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 42 plus 6.\", \"sequence_relation\": \"Produces the second integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "42 + 6"
+        },
+        "expected_answer": {
+          "expression": "42 + 6",
+          "result": 48
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_02",
+        "query": "Compute both the GCD and LCM of 34 and 48.",
+        "prompt_context": "{\"inputs\": {\"operation\": \"both\", \"values\": [\"34\", \"48\"]}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute both the GCD and LCM of 34 and 48.\", \"sequence_relation\": \"Uses both arithmetic results from steps 00 and 01.\"}",
+        "expected_tool": "gcd_lcm",
+        "expected_args": {
+          "values": [
+            "34",
+            "48"
+          ],
+          "operation": "both"
+        },
+        "expected_answer": {
+          "values": [
+            "34",
+            "48"
+          ],
+          "integer_values": [
+            34,
+            48
+          ],
+          "operation": "both",
+          "source": "python-math",
+          "gcd": 2,
+          "lcm": 816
+        },
+        "depends_on": [
+          "step_00",
+          "step_01"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "values": [
+        "34",
+        "48"
+      ],
+      "integer_values": [
+        34,
+        48
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 2,
+      "lcm": 816
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_008",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate two sums, then compute the GCD and LCM of their results: (45 + 6) and (60 + 6).",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 45 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"45 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 45 plus 6.\", \"sequence_relation\": \"Produces the first integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "45 + 6"
+        },
+        "expected_answer": {
+          "expression": "45 + 6",
+          "result": 51
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Calculate 60 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"60 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 60 plus 6.\", \"sequence_relation\": \"Produces the second integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "60 + 6"
+        },
+        "expected_answer": {
+          "expression": "60 + 6",
+          "result": 66
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_02",
+        "query": "Compute both the GCD and LCM of 51 and 66.",
+        "prompt_context": "{\"inputs\": {\"operation\": \"both\", \"values\": [\"51\", \"66\"]}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute both the GCD and LCM of 51 and 66.\", \"sequence_relation\": \"Uses both arithmetic results from steps 00 and 01.\"}",
+        "expected_tool": "gcd_lcm",
+        "expected_args": {
+          "values": [
+            "51",
+            "66"
+          ],
+          "operation": "both"
+        },
+        "expected_answer": {
+          "values": [
+            "51",
+            "66"
+          ],
+          "integer_values": [
+            51,
+            66
+          ],
+          "operation": "both",
+          "source": "python-math",
+          "gcd": 3,
+          "lcm": 1122
+        },
+        "depends_on": [
+          "step_00",
+          "step_01"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "values": [
+        "51",
+        "66"
+      ],
+      "integer_values": [
+        51,
+        66
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 3,
+      "lcm": 1122
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_009",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate two sums, then compute the GCD and LCM of their results: (56 + 6) and (84 + 6).",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 56 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"56 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 56 plus 6.\", \"sequence_relation\": \"Produces the first integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "56 + 6"
+        },
+        "expected_answer": {
+          "expression": "56 + 6",
+          "result": 62
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Calculate 84 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"84 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 84 plus 6.\", \"sequence_relation\": \"Produces the second integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "84 + 6"
+        },
+        "expected_answer": {
+          "expression": "84 + 6",
+          "result": 90
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_02",
+        "query": "Compute both the GCD and LCM of 62 and 90.",
+        "prompt_context": "{\"inputs\": {\"operation\": \"both\", \"values\": [\"62\", \"90\"]}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute both the GCD and LCM of 62 and 90.\", \"sequence_relation\": \"Uses both arithmetic results from steps 00 and 01.\"}",
+        "expected_tool": "gcd_lcm",
+        "expected_args": {
+          "values": [
+            "62",
+            "90"
+          ],
+          "operation": "both"
+        },
+        "expected_answer": {
+          "values": [
+            "62",
+            "90"
+          ],
+          "integer_values": [
+            62,
+            90
+          ],
+          "operation": "both",
+          "source": "python-math",
+          "gcd": 2,
+          "lcm": 2790
+        },
+        "depends_on": [
+          "step_00",
+          "step_01"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "values": [
+        "62",
+        "90"
+      ],
+      "integer_values": [
+        62,
+        90
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 2,
+      "lcm": 2790
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_010",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "hard",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate two sums, then compute the GCD and LCM of their results: (72 + 6) and (90 + 6).",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Calculate 72 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"72 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 72 plus 6.\", \"sequence_relation\": \"Produces the first integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "72 + 6"
+        },
+        "expected_answer": {
+          "expression": "72 + 6",
+          "result": 78
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Calculate 90 plus 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"90 + 6\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Calculate 90 plus 6.\", \"sequence_relation\": \"Produces the second integer for the GCD/LCM step.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "90 + 6"
+        },
+        "expected_answer": {
+          "expression": "90 + 6",
+          "result": 96
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_02",
+        "query": "Compute both the GCD and LCM of 78 and 96.",
+        "prompt_context": "{\"inputs\": {\"operation\": \"both\", \"values\": [\"78\", \"96\"]}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute both the GCD and LCM of 78 and 96.\", \"sequence_relation\": \"Uses both arithmetic results from steps 00 and 01.\"}",
+        "expected_tool": "gcd_lcm",
+        "expected_args": {
+          "values": [
+            "78",
+            "96"
+          ],
+          "operation": "both"
+        },
+        "expected_answer": {
+          "values": [
+            "78",
+            "96"
+          ],
+          "integer_values": [
+            78,
+            96
+          ],
+          "operation": "both",
+          "source": "python-math",
+          "gcd": 6,
+          "lcm": 1248
+        },
+        "depends_on": [
+          "step_00",
+          "step_01"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "values": [
+        "78",
+        "96"
+      ],
+      "integer_values": [
+        78,
+        96
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 6,
+      "lcm": 1248
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_011",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Factor the polynomial 1*x**2 + (-5)*x + (6), then solve the factored equation equal to zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Factor 1*x**2 + (-5)*x + (6).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"1*x**2 + (-5)*x + (6)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Factor 1*x**2 + (-5)*x + (6).\", \"sequence_relation\": \"Produces the factored form used to form the equation.\"}",
+        "expected_tool": "factor_expression",
+        "expected_args": {
+          "expression": "1*x**2 + (-5)*x + (6)"
+        },
+        "expected_answer": {
+          "expression": "1*x**2 + (-5)*x + (6)",
+          "factored": "(x - 3)*(x - 2)",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve (x - 3)*(x - 2) = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"(x - 3)*(x - 2) = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve (x - 3)*(x - 2) = 0 for x.\", \"sequence_relation\": \"Solves the equation formed from the factorization in step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "(x - 3)*(x - 2) = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "(x - 3)*(x - 2) = 0",
+          "variable": "x",
+          "solutions": [
+            "2",
+            "3"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "(x - 3)*(x - 2) = 0",
+      "variable": "x",
+      "solutions": [
+        "2",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_012",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Factor the polynomial 1*x**2 + (-7)*x + (12), then solve the factored equation equal to zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Factor 1*x**2 + (-7)*x + (12).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"1*x**2 + (-7)*x + (12)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Factor 1*x**2 + (-7)*x + (12).\", \"sequence_relation\": \"Produces the factored form used to form the equation.\"}",
+        "expected_tool": "factor_expression",
+        "expected_args": {
+          "expression": "1*x**2 + (-7)*x + (12)"
+        },
+        "expected_answer": {
+          "expression": "1*x**2 + (-7)*x + (12)",
+          "factored": "(x - 4)*(x - 3)",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve (x - 4)*(x - 3) = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"(x - 4)*(x - 3) = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve (x - 4)*(x - 3) = 0 for x.\", \"sequence_relation\": \"Solves the equation formed from the factorization in step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "(x - 4)*(x - 3) = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "(x - 4)*(x - 3) = 0",
+          "variable": "x",
+          "solutions": [
+            "3",
+            "4"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "(x - 4)*(x - 3) = 0",
+      "variable": "x",
+      "solutions": [
+        "3",
+        "4"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_013",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Factor the polynomial 1*x**2 + (1)*x + (-12), then solve the factored equation equal to zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Factor 1*x**2 + (1)*x + (-12).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"1*x**2 + (1)*x + (-12)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Factor 1*x**2 + (1)*x + (-12).\", \"sequence_relation\": \"Produces the factored form used to form the equation.\"}",
+        "expected_tool": "factor_expression",
+        "expected_args": {
+          "expression": "1*x**2 + (1)*x + (-12)"
+        },
+        "expected_answer": {
+          "expression": "1*x**2 + (1)*x + (-12)",
+          "factored": "(x - 3)*(x + 4)",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve (x - 3)*(x + 4) = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"(x - 3)*(x + 4) = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve (x - 3)*(x + 4) = 0 for x.\", \"sequence_relation\": \"Solves the equation formed from the factorization in step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "(x - 3)*(x + 4) = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "(x - 3)*(x + 4) = 0",
+          "variable": "x",
+          "solutions": [
+            "-4",
+            "3"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "(x - 3)*(x + 4) = 0",
+      "variable": "x",
+      "solutions": [
+        "-4",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_014",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Factor the polynomial 2*x**2 + (-10)*x + (12), then solve the factored equation equal to zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Factor 2*x**2 + (-10)*x + (12).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2*x**2 + (-10)*x + (12)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Factor 2*x**2 + (-10)*x + (12).\", \"sequence_relation\": \"Produces the factored form used to form the equation.\"}",
+        "expected_tool": "factor_expression",
+        "expected_args": {
+          "expression": "2*x**2 + (-10)*x + (12)"
+        },
+        "expected_answer": {
+          "expression": "2*x**2 + (-10)*x + (12)",
+          "factored": "2*(x - 3)*(x - 2)",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 2*(x - 3)*(x - 2) = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"2*(x - 3)*(x - 2) = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 2*(x - 3)*(x - 2) = 0 for x.\", \"sequence_relation\": \"Solves the equation formed from the factorization in step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "2*(x - 3)*(x - 2) = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "2*(x - 3)*(x - 2) = 0",
+          "variable": "x",
+          "solutions": [
+            "2",
+            "3"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "2*(x - 3)*(x - 2) = 0",
+      "variable": "x",
+      "solutions": [
+        "2",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_015",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Factor the polynomial 3*x**2 + (-15)*x + (18), then solve the factored equation equal to zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Factor 3*x**2 + (-15)*x + (18).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"3*x**2 + (-15)*x + (18)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Factor 3*x**2 + (-15)*x + (18).\", \"sequence_relation\": \"Produces the factored form used to form the equation.\"}",
+        "expected_tool": "factor_expression",
+        "expected_args": {
+          "expression": "3*x**2 + (-15)*x + (18)"
+        },
+        "expected_answer": {
+          "expression": "3*x**2 + (-15)*x + (18)",
+          "factored": "3*(x - 3)*(x - 2)",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 3*(x - 3)*(x - 2) = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"3*(x - 3)*(x - 2) = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 3*(x - 3)*(x - 2) = 0 for x.\", \"sequence_relation\": \"Solves the equation formed from the factorization in step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "3*(x - 3)*(x - 2) = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "3*(x - 3)*(x - 2) = 0",
+          "variable": "x",
+          "solutions": [
+            "2",
+            "3"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "3*(x - 3)*(x - 2) = 0",
+      "variable": "x",
+      "solutions": [
+        "2",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_016",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate x**3 + 3*x**2 and simplify the resulting derivative.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate x**3 + 3*x**2 with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**3 + 3*x**2\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate x**3 + 3*x**2 with respect to x.\", \"sequence_relation\": \"Produces the derivative used by the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**3 + 3*x**2",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**3 + 3*x**2",
+          "variable": "x",
+          "derivative": "3*x**2 + 6*x",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Simplify the derivative 3*x**2 + 6*x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"3*x**2 + 6*x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify the derivative 3*x**2 + 6*x.\", \"sequence_relation\": \"Simplifies the derivative returned by step_00.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "3*x**2 + 6*x"
+        },
+        "expected_answer": {
+          "expression": "3*x**2 + 6*x",
+          "simplified": "3*x*(x + 2)",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "3*x**2 + 6*x",
+      "simplified": "3*x*(x + 2)",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_017",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate 2*x**4 - 8*x and simplify the resulting derivative.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate 2*x**4 - 8*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2*x**4 - 8*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate 2*x**4 - 8*x with respect to x.\", \"sequence_relation\": \"Produces the derivative used by the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "2*x**4 - 8*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "2*x**4 - 8*x",
+          "variable": "x",
+          "derivative": "8*x**3 - 8",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Simplify the derivative 8*x**3 - 8.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"8*x**3 - 8\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify the derivative 8*x**3 - 8.\", \"sequence_relation\": \"Simplifies the derivative returned by step_00.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "8*x**3 - 8"
+        },
+        "expected_answer": {
+          "expression": "8*x**3 - 8",
+          "simplified": "8*x**3 - 8",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "8*x**3 - 8",
+      "simplified": "8*x**3 - 8",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_018",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate x**5 + 5*x**2 and simplify the resulting derivative.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate x**5 + 5*x**2 with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**5 + 5*x**2\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate x**5 + 5*x**2 with respect to x.\", \"sequence_relation\": \"Produces the derivative used by the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**5 + 5*x**2",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**5 + 5*x**2",
+          "variable": "x",
+          "derivative": "5*x**4 + 10*x",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Simplify the derivative 5*x**4 + 10*x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"5*x**4 + 10*x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify the derivative 5*x**4 + 10*x.\", \"sequence_relation\": \"Simplifies the derivative returned by step_00.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "5*x**4 + 10*x"
+        },
+        "expected_answer": {
+          "expression": "5*x**4 + 10*x",
+          "simplified": "5*x*(x**3 + 2)",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "5*x**4 + 10*x",
+      "simplified": "5*x*(x**3 + 2)",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_019",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate 3*x**3 - 12*x and simplify the resulting derivative.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate 3*x**3 - 12*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"3*x**3 - 12*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate 3*x**3 - 12*x with respect to x.\", \"sequence_relation\": \"Produces the derivative used by the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "3*x**3 - 12*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "3*x**3 - 12*x",
+          "variable": "x",
+          "derivative": "9*x**2 - 12",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Simplify the derivative 9*x**2 - 12.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"9*x**2 - 12\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify the derivative 9*x**2 - 12.\", \"sequence_relation\": \"Simplifies the derivative returned by step_00.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "9*x**2 - 12"
+        },
+        "expected_answer": {
+          "expression": "9*x**2 - 12",
+          "simplified": "9*x**2 - 12",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "9*x**2 - 12",
+      "simplified": "9*x**2 - 12",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_020",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate 4*x**4 + 8*x**2 and simplify the resulting derivative.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate 4*x**4 + 8*x**2 with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"4*x**4 + 8*x**2\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate 4*x**4 + 8*x**2 with respect to x.\", \"sequence_relation\": \"Produces the derivative used by the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "4*x**4 + 8*x**2",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "4*x**4 + 8*x**2",
+          "variable": "x",
+          "derivative": "16*x**3 + 16*x",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Simplify the derivative 16*x**3 + 16*x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"16*x**3 + 16*x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify the derivative 16*x**3 + 16*x.\", \"sequence_relation\": \"Simplifies the derivative returned by step_00.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "16*x**3 + 16*x"
+        },
+        "expected_answer": {
+          "expression": "16*x**3 + 16*x",
+          "simplified": "16*x*(x**2 + 1)",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "16*x**3 + 16*x",
+      "simplified": "16*x*(x**2 + 1)",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_021",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate x**2 - 6*x, then solve where its derivative equals zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate x**2 - 6*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**2 - 6*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate x**2 - 6*x with respect to x.\", \"sequence_relation\": \"Produces the derivative equation for the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**2 - 6*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**2 - 6*x",
+          "variable": "x",
+          "derivative": "2*x - 6",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 2*x - 6 = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"2*x - 6 = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 2*x - 6 = 0 for x.\", \"sequence_relation\": \"Finds stationary points by setting the derivative from step_00 to zero.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "2*x - 6 = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "2*x - 6 = 0",
+          "variable": "x",
+          "solutions": [
+            "3"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "2*x - 6 = 0",
+      "variable": "x",
+      "solutions": [
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_022",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate x**3 - 3*x, then solve where its derivative equals zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate x**3 - 3*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**3 - 3*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate x**3 - 3*x with respect to x.\", \"sequence_relation\": \"Produces the derivative equation for the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**3 - 3*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**3 - 3*x",
+          "variable": "x",
+          "derivative": "3*x**2 - 3",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 3*x**2 - 3 = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"3*x**2 - 3 = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 3*x**2 - 3 = 0 for x.\", \"sequence_relation\": \"Finds stationary points by setting the derivative from step_00 to zero.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "3*x**2 - 3 = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "3*x**2 - 3 = 0",
+          "variable": "x",
+          "solutions": [
+            "-1",
+            "1"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "3*x**2 - 3 = 0",
+      "variable": "x",
+      "solutions": [
+        "-1",
+        "1"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_023",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate 2*x**2 + 8*x, then solve where its derivative equals zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate 2*x**2 + 8*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2*x**2 + 8*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate 2*x**2 + 8*x with respect to x.\", \"sequence_relation\": \"Produces the derivative equation for the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "2*x**2 + 8*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "2*x**2 + 8*x",
+          "variable": "x",
+          "derivative": "4*x + 8",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 4*x + 8 = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"4*x + 8 = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 4*x + 8 = 0 for x.\", \"sequence_relation\": \"Finds stationary points by setting the derivative from step_00 to zero.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "4*x + 8 = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "4*x + 8 = 0",
+          "variable": "x",
+          "solutions": [
+            "-2"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "4*x + 8 = 0",
+      "variable": "x",
+      "solutions": [
+        "-2"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_024",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate x**3 - 12*x, then solve where its derivative equals zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate x**3 - 12*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**3 - 12*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate x**3 - 12*x with respect to x.\", \"sequence_relation\": \"Produces the derivative equation for the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**3 - 12*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**3 - 12*x",
+          "variable": "x",
+          "derivative": "3*x**2 - 12",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 3*x**2 - 12 = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"3*x**2 - 12 = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 3*x**2 - 12 = 0 for x.\", \"sequence_relation\": \"Finds stationary points by setting the derivative from step_00 to zero.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "3*x**2 - 12 = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "3*x**2 - 12 = 0",
+          "variable": "x",
+          "solutions": [
+            "-2",
+            "2"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "3*x**2 - 12 = 0",
+      "variable": "x",
+      "solutions": [
+        "-2",
+        "2"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_025",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Differentiate 3*x**2 - 18*x, then solve where its derivative equals zero.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Differentiate 3*x**2 - 18*x with respect to x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"3*x**2 - 18*x\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate 3*x**2 - 18*x with respect to x.\", \"sequence_relation\": \"Produces the derivative equation for the next step.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "3*x**2 - 18*x",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "3*x**2 - 18*x",
+          "variable": "x",
+          "derivative": "6*x - 18",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 6*x - 18 = 0 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"6*x - 18 = 0\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 6*x - 18 = 0 for x.\", \"sequence_relation\": \"Finds stationary points by setting the derivative from step_00 to zero.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "6*x - 18 = 0",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "6*x - 18 = 0",
+          "variable": "x",
+          "solutions": [
+            "3"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "6*x - 18 = 0",
+      "variable": "x",
+      "solutions": [
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_026",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Expand (x + 2)*(x + 5), then differentiate the expanded polynomial.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Expand (x + 2)*(x + 5).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(x + 2)*(x + 5)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Expand (x + 2)*(x + 5).\", \"sequence_relation\": \"Produces the expanded polynomial used by the next step.\"}",
+        "expected_tool": "expand_expression",
+        "expected_args": {
+          "expression": "(x + 2)*(x + 5)"
+        },
+        "expected_answer": {
+          "expression": "(x + 2)*(x + 5)",
+          "expanded": "x**2 + 7*x + 10",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Differentiate the expanded expression x**2 + 7*x + 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**2 + 7*x + 10\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate the expanded expression x**2 + 7*x + 10.\", \"sequence_relation\": \"Differentiates the expansion returned by step_00.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**2 + 7*x + 10",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**2 + 7*x + 10",
+          "variable": "x",
+          "derivative": "2*x + 7",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "x**2 + 7*x + 10",
+      "variable": "x",
+      "derivative": "2*x + 7",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_027",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Expand (x - 3)*(x + 4), then differentiate the expanded polynomial.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Expand (x - 3)*(x + 4).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(x - 3)*(x + 4)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Expand (x - 3)*(x + 4).\", \"sequence_relation\": \"Produces the expanded polynomial used by the next step.\"}",
+        "expected_tool": "expand_expression",
+        "expected_args": {
+          "expression": "(x - 3)*(x + 4)"
+        },
+        "expected_answer": {
+          "expression": "(x - 3)*(x + 4)",
+          "expanded": "x**2 + x - 12",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Differentiate the expanded expression x**2 + x - 12.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**2 + x - 12\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate the expanded expression x**2 + x - 12.\", \"sequence_relation\": \"Differentiates the expansion returned by step_00.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**2 + x - 12",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**2 + x - 12",
+          "variable": "x",
+          "derivative": "2*x + 1",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "x**2 + x - 12",
+      "variable": "x",
+      "derivative": "2*x + 1",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_028",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Expand (2*x + 1)*(x - 6), then differentiate the expanded polynomial.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Expand (2*x + 1)*(x - 6).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(2*x + 1)*(x - 6)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Expand (2*x + 1)*(x - 6).\", \"sequence_relation\": \"Produces the expanded polynomial used by the next step.\"}",
+        "expected_tool": "expand_expression",
+        "expected_args": {
+          "expression": "(2*x + 1)*(x - 6)"
+        },
+        "expected_answer": {
+          "expression": "(2*x + 1)*(x - 6)",
+          "expanded": "2*x**2 - 11*x - 6",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Differentiate the expanded expression 2*x**2 - 11*x - 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2*x**2 - 11*x - 6\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate the expanded expression 2*x**2 - 11*x - 6.\", \"sequence_relation\": \"Differentiates the expansion returned by step_00.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "2*x**2 - 11*x - 6",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "2*x**2 - 11*x - 6",
+          "variable": "x",
+          "derivative": "4*x - 11",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "2*x**2 - 11*x - 6",
+      "variable": "x",
+      "derivative": "4*x - 11",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_029",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Expand (x + 7)**2, then differentiate the expanded polynomial.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Expand (x + 7)**2.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(x + 7)**2\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Expand (x + 7)**2.\", \"sequence_relation\": \"Produces the expanded polynomial used by the next step.\"}",
+        "expected_tool": "expand_expression",
+        "expected_args": {
+          "expression": "(x + 7)**2"
+        },
+        "expected_answer": {
+          "expression": "(x + 7)**2",
+          "expanded": "x**2 + 14*x + 49",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Differentiate the expanded expression x**2 + 14*x + 49.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"x**2 + 14*x + 49\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate the expanded expression x**2 + 14*x + 49.\", \"sequence_relation\": \"Differentiates the expansion returned by step_00.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "x**2 + 14*x + 49",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "x**2 + 14*x + 49",
+          "variable": "x",
+          "derivative": "2*x + 14",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "x**2 + 14*x + 49",
+      "variable": "x",
+      "derivative": "2*x + 14",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_030",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Expand (3*x - 2)*(x + 3), then differentiate the expanded polynomial.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Expand (3*x - 2)*(x + 3).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(3*x - 2)*(x + 3)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Expand (3*x - 2)*(x + 3).\", \"sequence_relation\": \"Produces the expanded polynomial used by the next step.\"}",
+        "expected_tool": "expand_expression",
+        "expected_args": {
+          "expression": "(3*x - 2)*(x + 3)"
+        },
+        "expected_answer": {
+          "expression": "(3*x - 2)*(x + 3)",
+          "expanded": "3*x**2 + 7*x - 6",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Differentiate the expanded expression 3*x**2 + 7*x - 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"3*x**2 + 7*x - 6\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Differentiate the expanded expression 3*x**2 + 7*x - 6.\", \"sequence_relation\": \"Differentiates the expansion returned by step_00.\"}",
+        "expected_tool": "differentiate_expression",
+        "expected_args": {
+          "expression": "3*x**2 + 7*x - 6",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "expression": "3*x**2 + 7*x - 6",
+          "variable": "x",
+          "derivative": "6*x + 7",
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "3*x**2 + 7*x - 6",
+      "variable": "x",
+      "derivative": "6*x + 7",
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_031",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate the base-2 expression 1011 + 110, then prime-factorize its decimal result.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Evaluate 1011 + 110 in base 2 and express it in base 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"1011 + 110\", \"input_base\": 2, \"output_base\": 10}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Evaluate 1011 + 110 in base 2 and express it in base 10.\", \"sequence_relation\": \"Produces the decimal integer used by the next step.\"}",
+        "expected_tool": "base_arithmetic",
+        "expected_args": {
+          "expression": "1011 + 110",
+          "input_base": 2,
+          "output_base": 10
+        },
+        "expected_answer": {
+          "expression": "1011 + 110",
+          "decimal_result": 17,
+          "base_result": "17",
+          "input_base": 2,
+          "output_base": 10,
+          "source": "python-ast"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting decimal integer 17.",
+        "prompt_context": "{\"inputs\": {\"value\": \"17\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting decimal integer 17.\", \"sequence_relation\": \"Factorizes the decimal_result returned by step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "17"
+        },
+        "expected_answer": {
+          "value": "17",
+          "integer_value": 17,
+          "prime_factors": {
+            "17": 1
+          },
+          "factor_list": [
+            "17"
+          ],
+          "least_prime_factor": 17,
+          "greatest_prime_factor": 17,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "17",
+      "integer_value": 17,
+      "prime_factors": {
+        "17": 1
+      },
+      "factor_list": [
+        "17"
+      ],
+      "least_prime_factor": 17,
+      "greatest_prime_factor": 17,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_032",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate the base-16 expression 2A + 16, then prime-factorize its decimal result.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Evaluate 2A + 16 in base 16 and express it in base 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2A + 16\", \"input_base\": 16, \"output_base\": 10}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Evaluate 2A + 16 in base 16 and express it in base 10.\", \"sequence_relation\": \"Produces the decimal integer used by the next step.\"}",
+        "expected_tool": "base_arithmetic",
+        "expected_args": {
+          "expression": "2A + 16",
+          "input_base": 16,
+          "output_base": 10
+        },
+        "expected_answer": {
+          "expression": "2A + 16",
+          "decimal_result": 64,
+          "base_result": "64",
+          "input_base": 16,
+          "output_base": 10,
+          "source": "python-ast"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting decimal integer 64.",
+        "prompt_context": "{\"inputs\": {\"value\": \"64\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting decimal integer 64.\", \"sequence_relation\": \"Factorizes the decimal_result returned by step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "64"
+        },
+        "expected_answer": {
+          "value": "64",
+          "integer_value": 64,
+          "prime_factors": {
+            "2": 6
+          },
+          "factor_list": [
+            "2",
+            "2",
+            "2",
+            "2",
+            "2",
+            "2"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 2,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "64",
+      "integer_value": 64,
+      "prime_factors": {
+        "2": 6
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "2",
+        "2",
+        "2",
+        "2"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 2,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_033",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate the base-4 expression 123 + 21, then prime-factorize its decimal result.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Evaluate 123 + 21 in base 4 and express it in base 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"123 + 21\", \"input_base\": 4, \"output_base\": 10}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Evaluate 123 + 21 in base 4 and express it in base 10.\", \"sequence_relation\": \"Produces the decimal integer used by the next step.\"}",
+        "expected_tool": "base_arithmetic",
+        "expected_args": {
+          "expression": "123 + 21",
+          "input_base": 4,
+          "output_base": 10
+        },
+        "expected_answer": {
+          "expression": "123 + 21",
+          "decimal_result": 36,
+          "base_result": "36",
+          "input_base": 4,
+          "output_base": 10,
+          "source": "python-ast"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting decimal integer 36.",
+        "prompt_context": "{\"inputs\": {\"value\": \"36\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting decimal integer 36.\", \"sequence_relation\": \"Factorizes the decimal_result returned by step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "36"
+        },
+        "expected_answer": {
+          "value": "36",
+          "integer_value": 36,
+          "prime_factors": {
+            "2": 2,
+            "3": 2
+          },
+          "factor_list": [
+            "2",
+            "2",
+            "3",
+            "3"
+          ],
+          "least_prime_factor": 2,
+          "greatest_prime_factor": 3,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "36",
+      "integer_value": 36,
+      "prime_factors": {
+        "2": 2,
+        "3": 2
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "3",
+        "3"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 3,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_034",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate the base-8 expression 77 - 12, then prime-factorize its decimal result.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Evaluate 77 - 12 in base 8 and express it in base 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"77 - 12\", \"input_base\": 8, \"output_base\": 10}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Evaluate 77 - 12 in base 8 and express it in base 10.\", \"sequence_relation\": \"Produces the decimal integer used by the next step.\"}",
+        "expected_tool": "base_arithmetic",
+        "expected_args": {
+          "expression": "77 - 12",
+          "input_base": 8,
+          "output_base": 10
+        },
+        "expected_answer": {
+          "expression": "77 - 12",
+          "decimal_result": 53,
+          "base_result": "53",
+          "input_base": 8,
+          "output_base": 10,
+          "source": "python-ast"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting decimal integer 53.",
+        "prompt_context": "{\"inputs\": {\"value\": \"53\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting decimal integer 53.\", \"sequence_relation\": \"Factorizes the decimal_result returned by step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "53"
+        },
+        "expected_answer": {
+          "value": "53",
+          "integer_value": 53,
+          "prime_factors": {
+            "53": 1
+          },
+          "factor_list": [
+            "53"
+          ],
+          "least_prime_factor": 53,
+          "greatest_prime_factor": 53,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "53",
+      "integer_value": 53,
+      "prime_factors": {
+        "53": 1
+      },
+      "factor_list": [
+        "53"
+      ],
+      "least_prime_factor": 53,
+      "greatest_prime_factor": 53,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_035",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Evaluate the base-3 expression 120 * 12, then prime-factorize its decimal result.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Evaluate 120 * 12 in base 3 and express it in base 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"120 * 12\", \"input_base\": 3, \"output_base\": 10}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Evaluate 120 * 12 in base 3 and express it in base 10.\", \"sequence_relation\": \"Produces the decimal integer used by the next step.\"}",
+        "expected_tool": "base_arithmetic",
+        "expected_args": {
+          "expression": "120 * 12",
+          "input_base": 3,
+          "output_base": 10
+        },
+        "expected_answer": {
+          "expression": "120 * 12",
+          "decimal_result": 75,
+          "base_result": "75",
+          "input_base": 3,
+          "output_base": 10,
+          "source": "python-ast"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Prime-factorize the resulting decimal integer 75.",
+        "prompt_context": "{\"inputs\": {\"value\": \"75\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Prime-factorize the resulting decimal integer 75.\", \"sequence_relation\": \"Factorizes the decimal_result returned by step_00.\"}",
+        "expected_tool": "integer_factorization",
+        "expected_args": {
+          "value": "75"
+        },
+        "expected_answer": {
+          "value": "75",
+          "integer_value": 75,
+          "prime_factors": {
+            "3": 1,
+            "5": 2
+          },
+          "factor_list": [
+            "3",
+            "5",
+            "5"
+          ],
+          "least_prime_factor": 3,
+          "greatest_prime_factor": 5,
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "value": "75",
+      "integer_value": 75,
+      "prime_factors": {
+        "3": 1,
+        "5": 2
+      },
+      "factor_list": [
+        "3",
+        "5",
+        "5"
+      ],
+      "least_prime_factor": 3,
+      "greatest_prime_factor": 5,
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_036",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Find 83 modulo 7, then add 10 to the residue.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Compute 83 modulo 7.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"83\", \"modulus\": 7, \"operation\": \"mod\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute 83 modulo 7.\", \"sequence_relation\": \"Produces the residue used by the arithmetic step.\"}",
+        "expected_tool": "modular_arithmetic",
+        "expected_args": {
+          "expression": "83",
+          "modulus": 7,
+          "operation": "mod"
+        },
+        "expected_answer": {
+          "operation": "mod",
+          "expression": "83",
+          "value": 83,
+          "modulus": 7,
+          "exponent": null,
+          "result": 6,
+          "source": "python-pow"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Add 10 to the residue 6.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"6 + 10\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Add 10 to the residue 6.\", \"sequence_relation\": \"Uses the modular result from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "6 + 10"
+        },
+        "expected_answer": {
+          "expression": "6 + 10",
+          "result": 16
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "6 + 10",
+      "result": 16
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_037",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Find 145 modulo 12, then add 9 to the residue.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Compute 145 modulo 12.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"145\", \"modulus\": 12, \"operation\": \"mod\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute 145 modulo 12.\", \"sequence_relation\": \"Produces the residue used by the arithmetic step.\"}",
+        "expected_tool": "modular_arithmetic",
+        "expected_args": {
+          "expression": "145",
+          "modulus": 12,
+          "operation": "mod"
+        },
+        "expected_answer": {
+          "operation": "mod",
+          "expression": "145",
+          "value": 145,
+          "modulus": 12,
+          "exponent": null,
+          "result": 1,
+          "source": "python-pow"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Add 9 to the residue 1.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"1 + 9\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Add 9 to the residue 1.\", \"sequence_relation\": \"Uses the modular result from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "1 + 9"
+        },
+        "expected_answer": {
+          "expression": "1 + 9",
+          "result": 10
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "1 + 9",
+      "result": 10
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_038",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Find 2**10 modulo 17, then add 5 to the residue.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Compute 2**10 modulo 17.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2**10\", \"modulus\": 17, \"operation\": \"mod\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute 2**10 modulo 17.\", \"sequence_relation\": \"Produces the residue used by the arithmetic step.\"}",
+        "expected_tool": "modular_arithmetic",
+        "expected_args": {
+          "expression": "2**10",
+          "modulus": 17,
+          "operation": "mod"
+        },
+        "expected_answer": {
+          "operation": "mod",
+          "expression": "2**10",
+          "value": 1024,
+          "modulus": 17,
+          "exponent": null,
+          "result": 4,
+          "source": "python-pow"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Add 5 to the residue 4.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"4 + 5\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Add 5 to the residue 4.\", \"sequence_relation\": \"Uses the modular result from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "4 + 5"
+        },
+        "expected_answer": {
+          "expression": "4 + 5",
+          "result": 9
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "4 + 5",
+      "result": 9
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_039",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Find 999 modulo 13, then add 8 to the residue.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Compute 999 modulo 13.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"999\", \"modulus\": 13, \"operation\": \"mod\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute 999 modulo 13.\", \"sequence_relation\": \"Produces the residue used by the arithmetic step.\"}",
+        "expected_tool": "modular_arithmetic",
+        "expected_args": {
+          "expression": "999",
+          "modulus": 13,
+          "operation": "mod"
+        },
+        "expected_answer": {
+          "operation": "mod",
+          "expression": "999",
+          "value": 999,
+          "modulus": 13,
+          "exponent": null,
+          "result": 11,
+          "source": "python-pow"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Add 8 to the residue 11.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"11 + 8\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Add 8 to the residue 11.\", \"sequence_relation\": \"Uses the modular result from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "11 + 8"
+        },
+        "expected_answer": {
+          "expression": "11 + 8",
+          "result": 19
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "11 + 8",
+      "result": 19
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_040",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Find 12345 modulo 19, then add 4 to the residue.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Compute 12345 modulo 19.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"12345\", \"modulus\": 19, \"operation\": \"mod\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Compute 12345 modulo 19.\", \"sequence_relation\": \"Produces the residue used by the arithmetic step.\"}",
+        "expected_tool": "modular_arithmetic",
+        "expected_args": {
+          "expression": "12345",
+          "modulus": 19,
+          "operation": "mod"
+        },
+        "expected_answer": {
+          "operation": "mod",
+          "expression": "12345",
+          "value": 12345,
+          "modulus": 19,
+          "exponent": null,
+          "result": 14,
+          "source": "python-pow"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Add 4 to the residue 14.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"14 + 4\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Add 4 to the residue 14.\", \"sequence_relation\": \"Uses the modular result from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "14 + 4"
+        },
+        "expected_answer": {
+          "expression": "14 + 4",
+          "result": 18
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "14 + 4",
+      "result": 18
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_041",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Convert 2.5 kilometer to meter, then multiply the converted magnitude by 3.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Convert 2.5 kilometer to meter.",
+        "prompt_context": "{\"inputs\": {\"from_unit\": \"kilometer\", \"to_unit\": \"meter\", \"value\": 2.5}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Convert 2.5 kilometer to meter.\", \"sequence_relation\": \"Produces the converted magnitude used by the next step.\"}",
+        "expected_tool": "convert_units",
+        "expected_args": {
+          "value": 2.5,
+          "from_unit": "kilometer",
+          "to_unit": "meter"
+        },
+        "expected_answer": {
+          "value": 2.5,
+          "from_unit": "kilometer",
+          "to_unit": "meter",
+          "converted_value": 2500.0,
+          "source": "pint"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Multiply the converted value 2500.0 by 3.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2500.0 * 3\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Multiply the converted value 2500.0 by 3.\", \"sequence_relation\": \"Uses converted_value from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "2500.0 * 3"
+        },
+        "expected_answer": {
+          "expression": "2500.0 * 3",
+          "result": 7500.0
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "2500.0 * 3",
+      "result": 7500.0
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_042",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Convert 750.0 centimeter to meter, then multiply the converted magnitude by 4.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Convert 750.0 centimeter to meter.",
+        "prompt_context": "{\"inputs\": {\"from_unit\": \"centimeter\", \"to_unit\": \"meter\", \"value\": 750.0}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Convert 750.0 centimeter to meter.\", \"sequence_relation\": \"Produces the converted magnitude used by the next step.\"}",
+        "expected_tool": "convert_units",
+        "expected_args": {
+          "value": 750.0,
+          "from_unit": "centimeter",
+          "to_unit": "meter"
+        },
+        "expected_answer": {
+          "value": 750.0,
+          "from_unit": "centimeter",
+          "to_unit": "meter",
+          "converted_value": 7.5,
+          "source": "pint"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Multiply the converted value 7.5 by 4.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"7.5 * 4\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Multiply the converted value 7.5 by 4.\", \"sequence_relation\": \"Uses converted_value from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "7.5 * 4"
+        },
+        "expected_answer": {
+          "expression": "7.5 * 4",
+          "result": 30.0
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "7.5 * 4",
+      "result": 30.0
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_043",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Convert 3.0 hour to minute, then multiply the converted magnitude by 2.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Convert 3.0 hour to minute.",
+        "prompt_context": "{\"inputs\": {\"from_unit\": \"hour\", \"to_unit\": \"minute\", \"value\": 3.0}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Convert 3.0 hour to minute.\", \"sequence_relation\": \"Produces the converted magnitude used by the next step.\"}",
+        "expected_tool": "convert_units",
+        "expected_args": {
+          "value": 3.0,
+          "from_unit": "hour",
+          "to_unit": "minute"
+        },
+        "expected_answer": {
+          "value": 3.0,
+          "from_unit": "hour",
+          "to_unit": "minute",
+          "converted_value": 180.0,
+          "source": "pint"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Multiply the converted value 180.0 by 2.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"180.0 * 2\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Multiply the converted value 180.0 by 2.\", \"sequence_relation\": \"Uses converted_value from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "180.0 * 2"
+        },
+        "expected_answer": {
+          "expression": "180.0 * 2",
+          "result": 360.0
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "180.0 * 2",
+      "result": 360.0
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_044",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Convert 5.0 kilogram to gram, then multiply the converted magnitude by 2.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Convert 5.0 kilogram to gram.",
+        "prompt_context": "{\"inputs\": {\"from_unit\": \"kilogram\", \"to_unit\": \"gram\", \"value\": 5.0}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Convert 5.0 kilogram to gram.\", \"sequence_relation\": \"Produces the converted magnitude used by the next step.\"}",
+        "expected_tool": "convert_units",
+        "expected_args": {
+          "value": 5.0,
+          "from_unit": "kilogram",
+          "to_unit": "gram"
+        },
+        "expected_answer": {
+          "value": 5.0,
+          "from_unit": "kilogram",
+          "to_unit": "gram",
+          "converted_value": 5000.0,
+          "source": "pint"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Multiply the converted value 5000.0 by 2.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"5000.0 * 2\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Multiply the converted value 5000.0 by 2.\", \"sequence_relation\": \"Uses converted_value from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "5000.0 * 2"
+        },
+        "expected_answer": {
+          "expression": "5000.0 * 2",
+          "result": 10000.0
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "5000.0 * 2",
+      "result": 10000.0
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_045",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Convert 32.0 foot to meter, then multiply the converted magnitude by 10.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Convert 32.0 foot to meter.",
+        "prompt_context": "{\"inputs\": {\"from_unit\": \"foot\", \"to_unit\": \"meter\", \"value\": 32.0}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Convert 32.0 foot to meter.\", \"sequence_relation\": \"Produces the converted magnitude used by the next step.\"}",
+        "expected_tool": "convert_units",
+        "expected_args": {
+          "value": 32.0,
+          "from_unit": "foot",
+          "to_unit": "meter"
+        },
+        "expected_answer": {
+          "value": 32.0,
+          "from_unit": "foot",
+          "to_unit": "meter",
+          "converted_value": 9.7536,
+          "source": "pint"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Multiply the converted value 9.7536 by 10.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"9.7536 * 10\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Multiply the converted value 9.7536 by 10.\", \"sequence_relation\": \"Uses converted_value from step_00.\"}",
+        "expected_tool": "calculator",
+        "expected_args": {
+          "expression": "9.7536 * 10"
+        },
+        "expected_answer": {
+          "expression": "9.7536 * 10",
+          "result": 97.536
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "expression": "9.7536 * 10",
+      "result": 97.536
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_046",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Simplify (2*x + 4)/2, then solve when the simplified expression equals 7.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Simplify (2*x + 4)/2.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(2*x + 4)/2\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify (2*x + 4)/2.\", \"sequence_relation\": \"Produces the simplified left side for the equation.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "(2*x + 4)/2"
+        },
+        "expected_answer": {
+          "expression": "(2*x + 4)/2",
+          "simplified": "x + 2",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve x + 2 = 7 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"x + 2 = 7\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve x + 2 = 7 for x.\", \"sequence_relation\": \"Solves an equation using the simplified result from step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "x + 2 = 7",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "x + 2 = 7",
+          "variable": "x",
+          "solutions": [
+            "5"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "x + 2 = 7",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_047",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Simplify 3*(x + 2) - 2*x, then solve when the simplified expression equals 11.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Simplify 3*(x + 2) - 2*x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"3*(x + 2) - 2*x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify 3*(x + 2) - 2*x.\", \"sequence_relation\": \"Produces the simplified left side for the equation.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "3*(x + 2) - 2*x"
+        },
+        "expected_answer": {
+          "expression": "3*(x + 2) - 2*x",
+          "simplified": "x + 6",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve x + 6 = 11 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"x + 6 = 11\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve x + 6 = 11 for x.\", \"sequence_relation\": \"Solves an equation using the simplified result from step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "x + 6 = 11",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "x + 6 = 11",
+          "variable": "x",
+          "solutions": [
+            "5"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "x + 6 = 11",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_048",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Simplify (x**2 - 9)/(x - 3), then solve when the simplified expression equals 8.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Simplify (x**2 - 9)/(x - 3).",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(x**2 - 9)/(x - 3)\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify (x**2 - 9)/(x - 3).\", \"sequence_relation\": \"Produces the simplified left side for the equation.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "(x**2 - 9)/(x - 3)"
+        },
+        "expected_answer": {
+          "expression": "(x**2 - 9)/(x - 3)",
+          "simplified": "x + 3",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve x + 3 = 8 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"x + 3 = 8\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve x + 3 = 8 for x.\", \"sequence_relation\": \"Solves an equation using the simplified result from step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "x + 3 = 8",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "x + 3 = 8",
+          "variable": "x",
+          "solutions": [
+            "5"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "x + 3 = 8",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_049",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Simplify 2*x + 3*x - x, then solve when the simplified expression equals 20.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Simplify 2*x + 3*x - x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"2*x + 3*x - x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify 2*x + 3*x - x.\", \"sequence_relation\": \"Produces the simplified left side for the equation.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "2*x + 3*x - x"
+        },
+        "expected_answer": {
+          "expression": "2*x + 3*x - x",
+          "simplified": "4*x",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 4*x = 20 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"4*x = 20\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 4*x = 20 for x.\", \"sequence_relation\": \"Solves an equation using the simplified result from step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "4*x = 20",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "4*x = 20",
+          "variable": "x",
+          "solutions": [
+            "5"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "4*x = 20",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
+  },
+  {
+    "id": "math_multistep_controlled_050",
+    "domain": "mathematics",
+    "task_type": "multi_step_tool_routing",
+    "difficulty": "medium",
+    "source": "controlled_synthetic",
+    "benchmark_mode": "grounded_tool_execution",
+    "workflow_execution_mode": "isolated_step",
+    "query": "Simplify (4*x + 8)/4 + x, then solve when the simplified expression equals 10.",
+    "expected_steps": [
+      {
+        "id": "step_00",
+        "query": "Simplify (4*x + 8)/4 + x.",
+        "prompt_context": "{\"inputs\": {\"expression\": \"(4*x + 8)/4 + x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Simplify (4*x + 8)/4 + x.\", \"sequence_relation\": \"Produces the simplified left side for the equation.\"}",
+        "expected_tool": "simplify_expression",
+        "expected_args": {
+          "expression": "(4*x + 8)/4 + x"
+        },
+        "expected_answer": {
+          "expression": "(4*x + 8)/4 + x",
+          "simplified": "2*x + 2",
+          "source": "sympy"
+        },
+        "depends_on": []
+      },
+      {
+        "id": "step_01",
+        "query": "Solve 2*x + 2 = 10 for x.",
+        "prompt_context": "{\"inputs\": {\"equation\": \"2*x + 2 = 10\", \"variable\": \"x\"}, \"instruction\": \"Use the authoritative inputs for only this current step.\", \"kind\": \"math_controlled_current_step_v1\", \"operation\": \"Solve 2*x + 2 = 10 for x.\", \"sequence_relation\": \"Solves an equation using the simplified result from step_00.\"}",
+        "expected_tool": "solve_equation",
+        "expected_args": {
+          "equation": "2*x + 2 = 10",
+          "variable": "x"
+        },
+        "expected_answer": {
+          "equation": "2*x + 2 = 10",
+          "variable": "x",
+          "solutions": [
+            "4"
+          ],
+          "source": "sympy"
+        },
+        "depends_on": [
+          "step_00"
+        ]
+      }
+    ],
+    "expected_final_answer": {
+      "equation": "2*x + 2 = 10",
+      "variable": "x",
+      "solutions": [
+        "4"
+      ],
+      "source": "sympy"
+    },
+    "perturbation_type": "dependent_math_tool_sequence",
+    "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
+  }
+]

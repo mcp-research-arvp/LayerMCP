@@ -9,6 +9,9 @@ from mcp_server.coding_state import (
     CODESEARCHNET_CODING_FIXTURE_VERSION,
     CODESEARCHNET_CODING_REPOSITORY_ID,
     CODESEARCHNET_SOURCE_REVISION,
+    CONALA_CODING_FIXTURE_VERSION,
+    CONALA_CODING_REPOSITORY_ID,
+    CONALA_SOURCE_REVISION,
     DEFAULT_CODING_REPOSITORY_ID,
     SWEAGENT_CODING_FIXTURE_VERSION,
     SWEAGENT_CODING_REPOSITORY_ID,
@@ -88,6 +91,7 @@ class CodingToolTests(unittest.TestCase):
             {
                 DEFAULT_CODING_REPOSITORY_ID,
                 CODESEARCHNET_CODING_REPOSITORY_ID,
+                CONALA_CODING_REPOSITORY_ID,
                 SWEAGENT_CODING_REPOSITORY_ID,
                 "swebench-pydicom-1458",
                 "humanevalfix-python-0",
@@ -137,6 +141,18 @@ class CodingToolTests(unittest.TestCase):
         self.assertEqual(public["count"], 3)
         self.assertFalse(public["truncated"])
 
+        conala = code_list_files(CONALA_CODING_REPOSITORY_ID)
+        self.assertEqual(
+            [entry["path"] for entry in conala["files"]],
+            [
+                "README.md",
+                "resources/conala_curated_test_queries_selected.txt",
+                "resources/conala_curated_test_selected.jsonl",
+            ],
+        )
+        self.assertEqual(conala["count"], 3)
+        self.assertFalse(conala["truncated"])
+
     def test_codesearchnet_fixture_has_pinned_provenance(self) -> None:
         state = snapshot_coding_state()
         repository = next(
@@ -162,6 +178,25 @@ class CodingToolTests(unittest.TestCase):
             provenance["provenance_type"], "research_dataset_adaptation"
         )
         self.assertEqual(
+            provenance["selection_version"],
+            "codesearchnet_relevance3_query_coverage_v2",
+        )
+        self.assertEqual(
+            provenance["excluded_queries"],
+            [
+                {
+                    "source_query_index_zero_based": 62,
+                    "query": "set file attrib hidden",
+                    "reason": "no_relevance_3_annotation",
+                },
+                {
+                    "source_query_index_zero_based": 94,
+                    "query": "concatenate several file remove header lines",
+                    "reason": "no_relevance_3_annotation",
+                },
+            ],
+        )
+        self.assertEqual(
             provenance["source_query_sha256"],
             "037509c717c2e164721f0fd3ea45cb05f36669551af643f53930a92b76b146cf",
         )
@@ -174,9 +209,13 @@ class CodingToolTests(unittest.TestCase):
             CODESEARCHNET_CODING_REPOSITORY_ID,
             "resources/queries_selected.txt",
         )
-        self.assertEqual(queries["total_lines"], 15)
+        self.assertEqual(queries["total_lines"], 97)
         self.assertTrue(queries["content"].startswith("k means clustering\n"))
-        self.assertTrue(queries["content"].endswith("linear regression\n"))
+        self.assertTrue(
+            queries["content"].endswith(
+                "how to read .csv file in an efficient way?\n"
+            )
+        )
 
     def test_codesearchnet_fixture_has_one_fixed_initial_commit(self) -> None:
         state = snapshot_coding_state()
@@ -198,6 +237,109 @@ class CodingToolTests(unittest.TestCase):
             "Initialize CodeSearchNet public annotation fixture",
         )
 
+    def test_conala_fixture_has_pinned_provenance_and_content(self) -> None:
+        state = snapshot_coding_state()
+        repository = next(
+            repository
+            for repository in state["repositories"]
+            if repository["repo_id"] == CONALA_CODING_REPOSITORY_ID
+        )
+        self.assertEqual(
+            repository["fixture_version"], CONALA_CODING_FIXTURE_VERSION
+        )
+        provenance = repository["provenance"]
+        self.assertEqual(provenance["source_dataset"], "CoNaLa")
+        self.assertEqual(provenance["source_configuration"], "curated")
+        self.assertEqual(provenance["source_split"], "test")
+        self.assertEqual(provenance["source_dataset_version"], "1.1.0")
+        self.assertEqual(provenance["source_repository"], "neulab/conala")
+        self.assertEqual(provenance["source_revision"], CONALA_SOURCE_REVISION)
+        self.assertEqual(provenance["source_license"], "MIT")
+        self.assertEqual(provenance["source_license_scope"], "dataset")
+        self.assertEqual(
+            provenance["source_license_evidence_type"],
+            "dataset_card_metadata",
+        )
+        self.assertEqual(
+            provenance["source_license_evidence"],
+            "Pinned dataset-card YAML front matter (`license` includes `mit`)",
+        )
+        self.assertEqual(
+            provenance["source_license_evidence_sha256"],
+            "326072b41743fff642a4639ade350308a47942ff67608f3dfe447014453f3e74",
+        )
+        self.assertEqual(
+            provenance["query_origin"], "conala_crowd_rewritten_intent"
+        )
+        self.assertEqual(
+            provenance["provenance_type"], "research_dataset_adaptation"
+        )
+        self.assertEqual(
+            provenance["selection_version"],
+            "conala_curated_test_line_unique_133_v1",
+        )
+        self.assertEqual(provenance["selected_record_count"], 133)
+        self.assertEqual(provenance["selected_question_count"], 102)
+        self.assertEqual(provenance["selected_unique_snippet_count"], 132)
+        self.assertEqual(
+            provenance["source_file_sha256"],
+            "3a7e5eea6deeccb5e7c9557534af860854fd2f0ae870752b42c296ed30e53cb7",
+        )
+
+        queries = code_read_file(
+            CONALA_CODING_REPOSITORY_ID,
+            "resources/conala_curated_test_queries_selected.txt",
+        )
+        self.assertEqual(queries["total_lines"], 133)
+        self.assertTrue(
+            queries["content"].startswith(
+                "send a signal `signal.SIGUSR1` to the current process\n"
+            )
+        )
+        self.assertTrue(
+            queries["content"].endswith(
+                "get index of rows in dataframe `df` which column 'BoolCol' "
+                "matches value True\n"
+            )
+        )
+
+        history = git_log(CONALA_CODING_REPOSITORY_ID, max_count=10)
+        self.assertEqual(history["count"], 1)
+        self.assertEqual(history["commits"][0]["sha"], repository["base_commit"])
+        self.assertEqual(history["commits"][0]["author"], "LayerMCP Fixture")
+        self.assertEqual(
+            history["commits"][0]["authored_at"],
+            "2024-04-11T12:00:00+00:00",
+        )
+        self.assertEqual(
+            history["commits"][0]["subject"],
+            "Initialize CoNaLa public intent fixture",
+        )
+
+    def test_expected_conala_search_is_exact_and_bounded(self) -> None:
+        pattern = "send a signal `signal.SIGUSR1` to the current process"
+        result = code_search_text(
+            CONALA_CODING_REPOSITORY_ID,
+            pattern,
+            "resources/conala_curated_test_queries_selected.txt",
+            True,
+            1,
+        )
+        self.assertEqual(result["repo_id"], CONALA_CODING_REPOSITORY_ID)
+        self.assertEqual(result["pattern"], pattern)
+        self.assertEqual(result["count"], 1)
+        self.assertFalse(result["truncated"])
+        self.assertEqual(result["engine"], "ripgrep-fixed-string")
+        match = result["matches"][0]
+        self.assertEqual(
+            match["path"],
+            "resources/conala_curated_test_queries_selected.txt",
+        )
+        self.assertEqual(match["line"], 1)
+        self.assertEqual(match["column"], 1)
+        self.assertEqual(match["columns"], [1])
+        self.assertEqual(match["text"], pattern)
+
     def test_expected_codesearchnet_search_is_exact_and_bounded(self) -> None:
         result = code_search_text(
             CODESEARCHNET_CODING_REPOSITORY_ID,
@@ -214,8 +356,8 @@ class CodingToolTests(unittest.TestCase):
         match = result["matches"][0]
         self.assertEqual(match["path"], "resources/annotationStore_selected.jsonl")
         self.assertEqual(match["line"], 1)
-        self.assertEqual(match["column"], 148)
-        self.assertEqual(match["columns"], [148, 391])
+        self.assertEqual(match["column"], 198)
+        self.assertEqual(match["columns"], [198, 441])
         self.assertIn('"source_annotation_index_zero_based":1635', match["text"])
         self.assertIn('"query":"k means clustering"', match["text"])
 

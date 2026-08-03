@@ -142,7 +142,7 @@ python benchmark/math/build_multistep_controlled.py
 
 ## Schema Notes
 
-Math datasets use the standard benchmark schema:
+All Math datasets use these common top-level fields:
 
 - `id`
 - `domain`
@@ -150,11 +150,27 @@ Math datasets use the standard benchmark schema:
 - `difficulty`
 - `source`
 - `query`
+- `perturbation_type`
+- `notes`
+
+The three single-step datasets store the expected call and result directly on
+each row:
+
 - `expected_tool`
 - `expected_args`
 - `expected_answer`
-- `perturbation_type`
-- `notes`
+
+The controlled multi-step dataset, `math_multistep_controlled.json`, contains
+50 workflows and 105 expected steps. Each workflow uses `expected_steps`; every
+step contains:
+
+- `expected_tool`: the tool selected for that step.
+- `expected_args`: the deterministic arguments for that call.
+- `expected_answer`: the expected result from executing that call.
+- `prompt_context`: authoritative current-step inputs and sequencing context
+  visible during teacher-forced routing.
+- `depends_on`: links to prior step IDs whose outputs or results feed the
+  current operation. Independent prerequisite steps may have an empty list.
 
 The public-derived file also includes provenance fields. New math datasets should follow the same naming and schema style:
 

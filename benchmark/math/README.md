@@ -1,6 +1,8 @@
 # Math Tool-Routing Datasets
 
-This folder contains math-only single-tool routing benchmarks. Each query is paired with the math tool that should be called and the arguments that should be passed.
+This folder contains math-only single-step and teacher-forced multi-step routing
+benchmarks. Each expected call identifies the math tool, arguments, and
+deterministic tool result.
 
 ## Tools Covered
 
@@ -119,9 +121,28 @@ Difficulty comes from the public source levels:
 | `level_4` | 17 |
 | `level_5` | 6 |
 
+### `math_multistep_controlled.json`
+
+- Workflows: 50
+- Expected steps: 105
+- Source: `controlled_synthetic`
+- Domain: `mathematics`
+- Purpose: deterministic sequencing coverage across existing math tools.
+
+Every workflow contains two or three connected calls. Later calls consume a
+resolved result from an earlier call, such as an arithmetic product passed to
+integer factorization, a derivative set equal to zero and solved, or a
+converted magnitude used in final arithmetic. Step-level `prompt_context`
+provides authoritative current-step inputs for teacher-forced routing. Rebuild
+the artifact with:
+
+```bash
+python benchmark/math/build_multistep_controlled.py
+```
+
 ## Schema Notes
 
-Both math files use the standard benchmark schema:
+Math datasets use the standard benchmark schema:
 
 - `id`
 - `domain`
@@ -141,5 +162,5 @@ The public-derived file also includes provenance fields. New math datasets shoul
 math_<source_or_purpose>.json
 ```
 
-Current examples are `math_public.json`, `math_public_math_dataset.json`, and
-`math_controlled.json`.
+Current examples are `math_public.json`, `math_public_math_dataset.json`,
+`math_controlled.json`, and `math_multistep_controlled.json`.

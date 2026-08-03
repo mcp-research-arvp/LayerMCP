@@ -32,6 +32,7 @@ not modify it.
 | `math/math_public.json` | 400 | mathematics | Expanded public-derived DeepMind Mathematics and GSM8K routing set. |
 | `math/math_public_math_dataset.json` | 77 | mathematics | Executable public MATH-derived math routing set. |
 | `math/math_controlled.json` | 51 | mathematics | Controlled math routing set. |
+| `math/math_multistep_controlled.json` | 50 | mathematics | Controlled dependent math workflows with 105 executable steps. |
 | `enterprise/enterprise_controlled.json` | 35 | enterprise automation | First controlled enterprise fixture suite. |
 | `enterprise/enterprise_tau2_single_step.json` | 293 | enterprise automation | Executable tau2 retail single-step/adapted diagnostic benchmark. |
 | `enterprise/enterprise_public_workflows.json` | 69 | enterprise automation | Teacher-forced routing over tau2 retail reference action trajectories with step-level source grounding. |

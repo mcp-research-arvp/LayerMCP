@@ -79,10 +79,13 @@ the evidence and must be reported rather than hidden.
 
 ## Timeline and status
 
-The initial capstone evaluated lightweight language-model tool use across
-Math, Statistics, Finance, and SQL. The current summer research extends that
-work into standardized MCP benchmarks, broader domains, multi-step workflows,
-and planning for interpretability and selective fine-tuning.
+According to team-provided historical context, the initial capstone evaluated
+lightweight language-model tool use across Math, Statistics, Finance, and SQL.
+This statement is project history supplied by the team rather than a claim
+independently substantiated by an in-repository report. The current summer
+research extends that work into standardized MCP benchmarks, broader domains,
+multi-step workflows, and planning for interpretability and selective
+fine-tuning.
 
 The project is currently strengthening benchmark classification, executable
 grounding, evaluator semantics, and reproducibility while expanding

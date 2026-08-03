@@ -17,8 +17,9 @@ prior agent summaries when the code can answer the question directly.
   both are reported.
 - JSON files under `benchmark/archive/` and `benchmark/**/fixtures/` are not
   active runnable benchmarks.
-- Empty or provenance-only placeholders must not be counted as runnable active
-  benchmarks.
+- Empty or provenance-only placeholders must be explicitly documented or
+  allowlisted and must not be counted as runnable active benchmarks. Do not
+  assume that an arbitrary empty `[]` benchmark is an intentional placeholder.
 - Aggregate mixed-domain or mixed-task files per row. Never add an entire file's
   counts to every domain or task type found in that file.
 - Benchmark classification may use benchmark-relative paths or filenames, but
@@ -39,15 +40,21 @@ a patch appear more complete.
 
 ## Validation
 
-Run validation proportional to the change, including targeted tests for every
-touched area. The standard repository checks are:
+Run validation proportional to the change. Targeted tests for every touched
+area are required. The standard checks are:
 
 ```bash
 python -m compileall analysis benchmark evaluation mcp_server tests
-python -m unittest discover -s tests
 git diff --check
 ```
 
-Run additional targeted tests relevant to the files changed. Report all
-results honestly. If unrelated tests fail, skip, or hang, identify the exact
-command and observed condition; do not hide, relabel, or silently omit it.
+When reliable in the current environment, also run full discovery:
+
+```bash
+python -m unittest discover -s tests
+```
+
+Some HPC and local environments may hang at MCP subprocess integration points.
+Report all results honestly. If full discovery or unrelated tests fail, skip,
+or hang, identify the exact command and observed condition; do not hide,
+relabel, or silently omit it.

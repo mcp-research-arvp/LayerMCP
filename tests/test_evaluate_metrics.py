@@ -8,6 +8,7 @@ import unittest
 
 from evaluation.evaluate import (
     DEFAULT_BENCHMARK_MODE,
+    DEFAULT_WORKFLOW_EXECUTION_MODE,
     EVALUATION_PROTOCOL_DESCRIPTIONS,
     BenchmarkSample,
     BenchmarkStep,
@@ -18,6 +19,7 @@ from evaluation.evaluate import (
     MULTISTEP_HISTORY_STEP_LIMIT,
     MULTISTEP_OVERALL_TASK_CHAR_LIMIT,
     PROMPT_CONTEXT_CHAR_LIMIT,
+    REFERENCE_PREFIX_REPLAY_MODE,
     SINGLE_STEP_EVALUATION_PROTOCOL,
     TOOL_REGISTRY_FINGERPRINT_VERSION,
     _build_aggregate_metrics,
@@ -33,6 +35,7 @@ from evaluation.evaluate import (
     _normalize_benchmark_mode,
     _normalize_json,
     _normalize_sample,
+    _normalize_workflow_execution_mode,
     _query_with_context,
     _route_sample,
     _score_sample,
@@ -216,6 +219,32 @@ class EvaluateMetricTests(unittest.TestCase):
             _normalize_benchmark_mode("autonomous_agent", "Sample 0")
         with self.assertRaisesRegex(ValueError, "benchmark_mode must be a string"):
             _normalize_benchmark_mode({"mode": "replay"}, "Sample 0")
+
+    def test_workflow_execution_mode_is_explicit_and_validated(self) -> None:
+        self.assertEqual(
+            _normalize_workflow_execution_mode(None, "Sample 0"),
+            DEFAULT_WORKFLOW_EXECUTION_MODE,
+        )
+        sample = _normalize_sample(
+            {
+                "id": "retail-reference-workflow",
+                "domain": "enterprise_automation",
+                "task_type": "single_tool_routing",
+                "query": "Route the current reference action.",
+                "expected_tool": "get_order_details",
+                "workflow_execution_mode": REFERENCE_PREFIX_REPLAY_MODE,
+            },
+            0,
+        )
+        self.assertEqual(
+            sample.workflow_execution_mode,
+            REFERENCE_PREFIX_REPLAY_MODE,
+        )
+        with self.assertRaisesRegex(
+            ValueError,
+            "workflow_execution_mode must be one of",
+        ):
+            _normalize_workflow_execution_mode("predicted_sequence", "Sample 0")
 
     def test_workflow_final_answer_gold_is_preserved_without_being_scored(self) -> None:
         sample = _normalize_sample(

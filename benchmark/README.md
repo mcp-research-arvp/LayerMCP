@@ -18,6 +18,7 @@ those routing decisions.
 | `math/math_controlled.json` | 51 | mathematics | Controlled math routing set. |
 | `enterprise/enterprise_controlled.json` | 35 | enterprise automation | First controlled enterprise fixture suite. |
 | `enterprise/enterprise_tau2_single_step.json` | 293 | enterprise automation | Executable tau2 retail single-step/adapted diagnostic benchmark. |
+| `enterprise/enterprise_public_workflows.json` | 69 | enterprise automation | Teacher-forced routing over tau2 retail reference action trajectories with step-level source grounding. |
 | `archive/enterprise/enterprise_v2_controlled_legacy.json` | 48 | enterprise automation | Controlled retail-style enterprise suite. |
 | `archive/enterprise/enterprise_public_adapted_legacy.json` | 24 | enterprise automation | Public tau3 Retail-adapted enterprise suite. |
 | `coding/coding_smoke.json` | 7 | coding | Small direct coding tool smoke set. |

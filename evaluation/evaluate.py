@@ -70,6 +70,11 @@ ALLOWED_BENCHMARK_MODES = frozenset(
         "offline_trace_replay",
     }
 )
+DEFAULT_WORKFLOW_EXECUTION_MODE = "isolated_step"
+REFERENCE_PREFIX_REPLAY_MODE = "isolated_reference_prefix_replay"
+ALLOWED_WORKFLOW_EXECUTION_MODES = frozenset(
+    {DEFAULT_WORKFLOW_EXECUTION_MODE, REFERENCE_PREFIX_REPLAY_MODE}
+)
 
 
 @dataclass(frozen=True)
@@ -101,6 +106,7 @@ class BenchmarkSample:
     prompt_context: str = ""
     expected_steps: tuple[BenchmarkStep, ...] = ()
     benchmark_mode: str = DEFAULT_BENCHMARK_MODE
+    workflow_execution_mode: str = DEFAULT_WORKFLOW_EXECUTION_MODE
 
 
 def _normalize_prompt_context(value: Any, location: str) -> str:
@@ -125,6 +131,19 @@ def _normalize_benchmark_mode(value: Any, location: str) -> str:
         allowed = ", ".join(sorted(ALLOWED_BENCHMARK_MODES))
         raise ValueError(
             f"{location} benchmark_mode must be one of: {allowed}."
+        )
+    return value
+
+
+def _normalize_workflow_execution_mode(value: Any, location: str) -> str:
+    if value is None:
+        return DEFAULT_WORKFLOW_EXECUTION_MODE
+    if not isinstance(value, str):
+        raise ValueError(f"{location} workflow_execution_mode must be a string.")
+    if value not in ALLOWED_WORKFLOW_EXECUTION_MODES:
+        allowed = ", ".join(sorted(ALLOWED_WORKFLOW_EXECUTION_MODES))
+        raise ValueError(
+            f"{location} workflow_execution_mode must be one of: {allowed}."
         )
     return value
 
@@ -264,6 +283,10 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         notes=str(sample.get("notes", "")),
         benchmark_mode=_normalize_benchmark_mode(
             sample.get("benchmark_mode"),
+            f"Sample {index}",
+        ),
+        workflow_execution_mode=_normalize_workflow_execution_mode(
+            sample.get("workflow_execution_mode"),
             f"Sample {index}",
         ),
         expected_final_answer=sample.get("expected_final_answer"),
@@ -676,6 +699,42 @@ async def _call_tool_with_sample_isolation(
         return await session.call_tool(tool_name, tool_args)
 
     async with _run_server_session(server_path) as isolated_session:
+        return await isolated_session.call_tool(tool_name, tool_args)
+
+
+async def _call_tool_with_workflow_isolation(
+    session: ClientSession,
+    server_path: Path,
+    tool_name: str,
+    tool_args: dict[str, Any],
+    prior_steps: tuple[BenchmarkStep, ...],
+    workflow_execution_mode: str,
+) -> Any:
+    """Execute a prediction using the sample-declared state setup policy."""
+    if workflow_execution_mode != REFERENCE_PREFIX_REPLAY_MODE:
+        return await _call_tool_with_sample_isolation(
+            session,
+            server_path,
+            tool_name,
+            tool_args,
+        )
+
+    async with _run_server_session(server_path) as isolated_session:
+        for prior_step in prior_steps:
+            if prior_step.expected_tool not in RETAIL_TOOL_NAMES:
+                raise ValueError(
+                    "Retail workflow state setup contains a non-retail tool: "
+                    f"{prior_step.expected_tool}"
+                )
+            setup_result = await isolated_session.call_tool(
+                prior_step.expected_tool,
+                prior_step.expected_args,
+            )
+            if bool(getattr(setup_result, "isError", False)):
+                raise RuntimeError(
+                    "Reference workflow state setup failed at "
+                    f"{prior_step.id}: {_summarize_tool_result(setup_result)}"
+                )
         return await isolated_session.call_tool(tool_name, tool_args)
 
 
@@ -1114,11 +1173,13 @@ async def _evaluate_multistep_with_server(
                         called_tool = selected_tool
                         execution_attempted = True
                         try:
-                            call_result = await _call_tool_with_sample_isolation(
+                            call_result = await _call_tool_with_workflow_isolation(
                                 session,
                                 server_path,
                                 selected_tool,
                                 selected_args,
+                                sample.expected_steps[:step_index],
+                                sample.workflow_execution_mode,
                             )
                             executed_tool_calls += 1
                             tool_result = _summarize_tool_result(call_result)
@@ -1162,6 +1223,7 @@ async def _evaluate_multistep_with_server(
                         "step_index": step_index,
                         "domain": sample.domain,
                         "benchmark_mode": sample.benchmark_mode,
+                        "workflow_execution_mode": sample.workflow_execution_mode,
                         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
                         "evaluation_protocol_description": (
                             EVALUATION_PROTOCOL_DESCRIPTIONS[
@@ -1202,6 +1264,7 @@ async def _evaluate_multistep_with_server(
                     "sample_id": sample.id,
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
+                    "workflow_execution_mode": sample.workflow_execution_mode,
                     "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
                     "evaluation_protocol_description": (
                         EVALUATION_PROTOCOL_DESCRIPTIONS[
@@ -1269,6 +1332,9 @@ async def _evaluate_multistep_with_server(
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             MULTISTEP_EVALUATION_PROTOCOL
         ],
+        "workflow_execution_modes": sorted(
+            {sample.workflow_execution_mode for sample in dataset}
+        ),
         **tool_pool_metadata,
         **multistep_metrics,
         "average_step_latency_seconds": (

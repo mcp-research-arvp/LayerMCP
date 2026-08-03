@@ -1,6 +1,8 @@
 # Enterprise Tool-Routing Datasets
 
-This folder contains enterprise automation single-tool routing benchmarks. Each query asks for one business or retail action, and the expected answer identifies the tool and arguments the router should select.
+This folder contains enterprise automation single-step and teacher-forced
+multi-step routing benchmarks. Each routed step identifies the tool and
+arguments the model should select.
 
 ## What v1 and v2 Mean
 
@@ -17,6 +19,7 @@ The standardized active enterprise files are:
 ```text
 enterprise_controlled.json
 enterprise_tau2_single_step.json
+enterprise_public_workflows.json
 ```
 
 The retired datasets are archived as
@@ -122,6 +125,36 @@ Difficulty breakdown:
 | --- | ---: |
 | `medium` | 22 |
 | `hard` | 2 |
+
+
+### `enterprise_public_workflows.json`
+
+- Rows: 69
+- Task type: multi-step tool routing
+- Source dataset: pinned tau2-bench retail tasks
+- Source splits: 45 train workflows, 24 test workflows
+- Purpose: teacher-forced routing over one tau2 reference action trajectory per
+  public Enterprise workflow using original retail user-scenario fields.
+
+This benchmark differs from `enterprise_tau2_single_step.json`. The single-step
+file extracts individual tau2 reference actions into standalone executable
+requests. This workflow file preserves original tau2 scenario fields and keeps
+only fully supported, fully executable multi-action reference trajectories
+against the pinned LayerMCP tau2 retail fixture.
+
+Each row contains `expected_steps` from one sequence of tau2 evaluation-criteria
+actions. These actions are a reference trajectory used to derive target state;
+they are not asserted to be the uniquely correct plan, and scoring them does
+not measure tau2 task success. Evaluation is teacher-forced
+reference-trajectory action routing, not autonomous end-to-end planning. Every
+step supplies a natural-language operation and authoritative step-level source
+facts. Declared dependencies are empty, so prompt construction uses the
+evaluator's bounded recent-history policy. For execution scoring, earlier
+reference actions are replayed only to reconstruct isolated workflow state.
+Step outputs use the MCP structured-result shape. Rows explicitly declare
+`benchmark_mode: grounded_tool_execution` and
+`workflow_execution_mode: isolated_reference_prefix_replay`; both values are
+retained in evaluation result metadata.
 
 ### `enterprise_tau2_single_step.json`
 

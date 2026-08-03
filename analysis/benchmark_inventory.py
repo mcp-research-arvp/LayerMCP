@@ -8,10 +8,11 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from evaluation.evaluate import DEFAULT_BENCHMARK_MODE, DEFAULT_WORKFLOW_EXECUTION_MODE
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK_DOMAINS = ("math", "enterprise", "coding", "finance")
-MISSING_BENCHMARK_MODE_DEFAULT = "tool_registry_name_schema_description_v1"
 
 
 def discover_benchmark_files(project_root: Path = PROJECT_ROOT) -> list[Path]:
@@ -34,7 +35,10 @@ def discover_benchmark_files(project_root: Path = PROJECT_ROOT) -> list[Path]:
 
 
 def infer_benchmark_class(path: Path, rows: list[dict[str, Any]]) -> str:
-    values = [path.as_posix().lower()]
+    # Checkout directory names are not benchmark evidence. In particular, a
+    # temporary parent directory containing "smoke" must not change a file's
+    # classification.
+    values = [path.name.lower()]
     for row in rows:
         for key in (
             "source",
@@ -150,7 +154,16 @@ def summarize_file(
 
     benchmark_modes = sorted(
         {
-            str(row.get("benchmark_mode") or MISSING_BENCHMARK_MODE_DEFAULT)
+            str(row.get("benchmark_mode") or DEFAULT_BENCHMARK_MODE)
+            for row in rows
+        }
+    )
+    workflow_execution_modes = sorted(
+        {
+            str(
+                row.get("workflow_execution_mode")
+                or DEFAULT_WORKFLOW_EXECUTION_MODE
+            )
             for row in rows
         }
     )
@@ -167,9 +180,7 @@ def summarize_file(
         "source_values": _value_counts(rows, "source"),
         "source_dataset_values": _value_counts(rows, "source_dataset"),
         "benchmark_mode_values": benchmark_modes,
-        "workflow_execution_mode_values": _value_counts(
-            rows, "workflow_execution_mode"
-        ),
+        "workflow_execution_mode_values": workflow_execution_modes,
         "source_action_role_values": sorted(
             set(_value_counts(rows, "source_action_role"))
             | set(_value_counts(steps, "source_action_role"))
@@ -209,27 +220,44 @@ def _empty_metrics() -> dict[str, int]:
     }
 
 
-def _add_summary(target: dict[str, int], summary: dict[str, Any]) -> None:
-    target["file_count"] += 1
-    for key in (
-        "row_count",
-        "workflow_count",
-        "expected_step_count",
-        "single_step_count",
-        "multi_step_workflow_count",
-    ):
-        target[key] += int(summary[key])
+def _add_row(target: dict[str, int], row: dict[str, Any]) -> None:
+    steps = [
+        step for step in row.get("expected_steps", []) if isinstance(step, dict)
+    ]
+    is_multistep = _is_multistep(row)
+    target["row_count"] += 1
+    target["workflow_count"] += int(is_multistep)
+    target["expected_step_count"] += len(steps)
+    target["single_step_count"] += int(
+        row.get("task_type") == "single_tool_routing"
+    )
+    target["multi_step_workflow_count"] += int(is_multistep)
 
 
 def build_inventory(project_root: Path = PROJECT_ROOT) -> dict[str, Any]:
-    summaries = [
-        summarize_file(path, project_root=project_root)
-        for path in discover_benchmark_files(project_root)
+    discovered_paths = discover_benchmark_files(project_root)
+    all_summaries = [
+        summarize_file(path, project_root=project_root) for path in discovered_paths
+    ]
+    summaries = [summary for summary in all_summaries if summary["row_count"] > 0]
+    placeholders = [
+        {
+            **summary,
+            "warnings": [
+                *summary["warnings"],
+                "empty placeholder excluded from runnable active totals",
+            ],
+        }
+        for summary in all_summaries
+        if summary["row_count"] == 0
     ]
     by_domain: dict[str, dict[str, int]] = defaultdict(_empty_metrics)
     by_task_type: dict[str, dict[str, int]] = defaultdict(_empty_metrics)
     by_class: dict[str, dict[str, int]] = defaultdict(_empty_metrics)
     domain_step_kind: dict[str, Counter[str]] = defaultdict(Counter)
+    domain_files: dict[str, set[str]] = defaultdict(set)
+    task_type_files: dict[str, set[str]] = defaultdict(set)
+    class_files: dict[str, set[str]] = defaultdict(set)
     directory_domain_names = {
         "math": "mathematics",
         "enterprise": "enterprise_automation",
@@ -237,27 +265,46 @@ def build_inventory(project_root: Path = PROJECT_ROOT) -> dict[str, Any]:
         "finance": "finance",
     }
 
-    for summary in summaries:
-        path_parts = Path(summary["path"]).parts
+    summaries_by_path = {summary["path"]: summary for summary in summaries}
+    for path in discovered_paths:
+        relative_path = path.relative_to(project_root).as_posix()
+        if relative_path not in summaries_by_path:
+            continue
+        path_parts = Path(relative_path).parts
         directory_domain = (
             directory_domain_names.get(path_parts[1], "<missing>")
             if len(path_parts) > 1
             else "<missing>"
         )
-        domains = summary["domain_values"] or [directory_domain]
-        task_types = summary["task_type_values"] or ["<missing>"]
-        for domain in domains:
-            _add_summary(by_domain[domain], summary)
-            domain_step_kind[domain]["single_step"] += summary["single_step_count"]
-            domain_step_kind[domain]["multi_step"] += summary[
-                "multi_step_workflow_count"
-            ]
-        for task_type in task_types:
-            _add_summary(by_task_type[task_type], summary)
-        _add_summary(by_class[summary["inferred_benchmark_class"]], summary)
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        for row in rows:
+            domain = str(row.get("domain") or directory_domain)
+            task_type = str(row.get("task_type") or "<missing>")
+            benchmark_class = infer_benchmark_class(Path(relative_path), [row])
+            _add_row(by_domain[domain], row)
+            _add_row(by_task_type[task_type], row)
+            _add_row(by_class[benchmark_class], row)
+            domain_files[domain].add(relative_path)
+            task_type_files[task_type].add(relative_path)
+            class_files[benchmark_class].add(relative_path)
+            domain_step_kind[domain]["single_step"] += int(
+                task_type == "single_tool_routing"
+            )
+            domain_step_kind[domain]["multi_step"] += int(
+                task_type == "multi_step_tool_routing"
+            )
+
+    for buckets, files in (
+        (by_domain, domain_files),
+        (by_task_type, task_type_files),
+        (by_class, class_files),
+    ):
+        for value, metrics in buckets.items():
+            metrics["file_count"] = len(files[value])
 
     return {
         "files": summaries,
+        "placeholders": placeholders,
         "aggregates": {
             "by_domain": dict(sorted(by_domain.items())),
             "by_task_type": dict(sorted(by_task_type.items())),
@@ -267,6 +314,7 @@ def build_inventory(project_root: Path = PROJECT_ROOT) -> dict[str, Any]:
                 for domain, counts in sorted(domain_step_kind.items())
             },
             "total_active_files": len(summaries),
+            "total_placeholder_files": len(placeholders),
             "total_active_rows": sum(item["row_count"] for item in summaries),
             "total_workflows": sum(item["workflow_count"] for item in summaries),
             "total_expected_steps": sum(
@@ -282,6 +330,7 @@ def render_markdown(inventory: dict[str, Any]) -> str:
         "# Active Benchmark Inventory",
         "",
         f"- Active files: {aggregates['total_active_files']}",
+        f"- Empty placeholders: {aggregates['total_placeholder_files']}",
         f"- Active rows: {aggregates['total_active_rows']}",
         f"- Multi-step workflows: {aggregates['total_workflows']}",
         f"- Expected steps: {aggregates['total_expected_steps']}",
@@ -297,6 +346,10 @@ def render_markdown(inventory: dict[str, Any]) -> str:
             f"{item['workflow_count']} | {item['expected_step_count']} | "
             f"{warnings} |"
         )
+    if inventory["placeholders"]:
+        lines.extend(["", "## Excluded Empty Placeholders", ""])
+        for item in inventory["placeholders"]:
+            lines.append(f"- `{item['path']}`")
     for heading, key in (
         ("By Domain", "by_domain"),
         ("By Task Type", "by_task_type"),

@@ -18,7 +18,9 @@ python -m analysis.benchmark_inventory \
 ```
 
 The inventory excludes `benchmark/archive/`, domain fixture directories, and
-cache files. It reads benchmark data but does not modify it.
+cache files. Empty provenance-only JSON placeholders are listed separately and
+excluded from runnable active totals. The utility reads benchmark data but does
+not modify it.
 
 ## Current Layout
 

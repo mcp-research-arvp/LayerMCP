@@ -396,12 +396,12 @@ network, change a file, update a task, or submit work. No additional fixture
 setup is required.
 
 A second allowlisted repository, `codesearchnet-public-v1`, contains a narrow
-MIT-licensed adaptation of 15 exact CodeSearchNet human-evaluation queries and
-their selected annotation records. It contains no target source code and is
-explicitly a lexical tool-routing fixture rather than a reproduction of the
-paper's semantic retrieval evaluation. Benchmark prompts wrap the exact source
-queries in self-contained repository-search instructions and preserve the
-verbatim text separately as `original_query`.
+MIT-licensed adaptation of 97 exact CodeSearchNet human-evaluation queries and
+their selected relevance-3 annotation records. It contains no target source
+code and is explicitly a lexical tool-routing fixture rather than a
+reproduction of the paper's semantic retrieval evaluation. Benchmark prompts
+wrap the exact source queries in self-contained repository-search instructions
+and preserve the verbatim text separately as `original_query`.
 
 The older `github_search` and `read_code_file` fixtures remain registered for
 backward compatibility with existing benchmark files.
@@ -442,12 +442,12 @@ datasets are:
 - `benchmark/coding/coding_smoke.json` — 7 direct examples, one per coding tool
 - `benchmark/coding/coding_controlled.json` — 35 balanced controlled examples
 - `benchmark/coding/coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
-- `benchmark/coding/coding_codesearchnet_public_derived.json` — 15 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
+- `benchmark/coding/coding_codesearchnet_public_derived.json` — 97 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
 - `benchmark/coding/coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
 - `benchmark/coding/coding_nebius_sweagent_replay_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
 - `benchmark/coding/coding_nebius_swerebench_openhands_replay_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
 
-The coding family therefore has 123 workflows: 85 single-call workflows and 38
+The coding family therefore has 205 workflows: 167 single-call workflows and 38
 multi-call workflows. The public trajectory additions contain source issue text
 and released model call sequences; they are not newly generated coding
 questions. The checked-in replay fixture contains only records used by

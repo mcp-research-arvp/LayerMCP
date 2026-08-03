@@ -24,13 +24,31 @@ Paper: <https://arxiv.org/abs/1909.09436>
 
 ## Selection and normalization
 
-The fixture selects 15 exact CodeSearchNet query strings. Each is paired with
-one selected Python annotation whose published relevance is `3`. All source
-indices are explicitly zero-based and exclude the CSV header. For every
-selected pair, the query text matches byte-for-byte and the
-`(Language, Query, GitHubUrl)` multiplicity in the pinned annotation file is
-exactly one. The complete selected annotation record, including its original
-field names, values, URL, rating, and notes, is retained in the fixture.
+The fixture selects 97 of the 99 exact CodeSearchNet query strings. Each is
+paired with one selected annotation occurrence whose published relevance is
+`3`. Ninety-five selected annotations are Python, one is Go, and one is Java.
+The two published queries without a relevance-3 annotation are retained in the
+fixture provenance as explicit exclusions.
+
+The first 15 historical LayerMCP query/annotation coordinates remain unchanged.
+For every other query, selection prefers the earliest Python relevance-3
+annotation and otherwise uses the earliest relevance-3 annotation in source
+order. All source indices are explicitly zero-based and exclude the CSV header.
+The query text matches byte-for-byte. The exact
+`(Language, Query, GitHubUrl)` multiplicity is recorded because the annotation
+store can contain repeated human judgments for the same query and URL. The
+complete relevance-rating histogram for that tuple is also retained, while only
+one exact source occurrence is normalized into the executable fixture. The
+complete selected annotation record, including its original field names,
+values, URL, rating, and notes, is retained.
+
+Selection requires at least one relevance-3 occurrence and does not interpret
+that occurrence as a consensus label. Of the 97 selected tuples, 79 have
+multiple judgments, 47 contain only relevance-3 judgments, and 50 have mixed
+ratings. In six tuples, relevance-3 judgments are fewer than all other ratings
+combined. These source disagreements are preserved in
+`source_annotation_pair_relevance_counts` on every fixture and benchmark
+record.
 
 CodeSearchNet publishes these queries, but the source does not expose
 per-query authorship or establish that each query was authored in the paper.
@@ -38,6 +56,9 @@ Accordingly, benchmark metadata marks `original_query_origin` as
 `codesearchnet_published_query`, not as a paper-authored question. The benchmark
 `query` field is explicitly marked as a generated instruction wrapper; the
 source text itself remains unchanged in `original_query` and in this fixture.
+The selection rule is versioned as
+`codesearchnet_relevance3_query_coverage_v2`, and the executable fixture is
+versioned as `coding_codesearchnet_fixture_v2`.
 
 ## License and scope
 

@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 import unittest
 
+from benchmark.coding.build_codesearchnet_public_expansion import (
+    _choose_annotation_candidate,
+)
 from evaluation.evaluate import load_benchmark
 from mcp_server.coding_tools import (
     CODING_TOOL_NAMES,
@@ -21,6 +24,11 @@ from mcp_server.coding_tools import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CODING_BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "coding"
+CODESEARCHNET_FIXTURE_PATH = (
+    CODING_BENCHMARK_ROOT
+    / "fixtures"
+    / "codesearchnet_public_annotations.json"
+)
 BENCHMARK_PATHS = {
     "smoke": CODING_BENCHMARK_ROOT / "coding_smoke.json",
     "controlled": CODING_BENCHMARK_ROOT / "coding_controlled.json",
@@ -78,7 +86,7 @@ class CodingBenchmarkTests(unittest.TestCase):
             "smoke": 7,
             "controlled": 35,
             "upstream": 28,
-            "codesearchnet": 15,
+            "codesearchnet": 97,
         }
         for name, path in BENCHMARK_PATHS.items():
             with self.subTest(dataset=name):
@@ -123,7 +131,7 @@ class CodingBenchmarkTests(unittest.TestCase):
                 row["expected_tool"]
                 for row in self.datasets["codesearchnet"]
             ),
-            Counter({"code_search_text": 15}),
+            Counter({"code_search_text": 97}),
         )
 
         for row in all_rows:
@@ -202,7 +210,7 @@ class CodingBenchmarkTests(unittest.TestCase):
         self,
     ) -> None:
         rows = self.datasets["codesearchnet"]
-        expected_coordinates = [
+        legacy_coordinates = [
             (20, 1635, "k means clustering"),
             (13, 1666, "write csv"),
             (28, 1680, "get executable path"),
@@ -226,19 +234,87 @@ class CodingBenchmarkTests(unittest.TestCase):
                     row["source_annotation_index_zero_based"],
                     row["original_query"],
                 )
+                for row in rows[:15]
+            ],
+            legacy_coordinates,
+        )
+
+        fixture = json.loads(
+            CODESEARCHNET_FIXTURE_PATH.read_text(encoding="utf-8")
+        )
+        jsonl_records = [
+            json.loads(line)
+            for line in fixture["files"][
+                "resources/annotationStore_selected.jsonl"
+            ].splitlines()
+        ]
+        fixture_records = fixture["records"]
+        self.assertEqual(fixture["record_count"], 97)
+        self.assertEqual(len(fixture_records), 97)
+        self.assertEqual(fixture_records, jsonl_records)
+        self.assertEqual(
+            fixture["files"]["resources/queries_selected.txt"].splitlines(),
+            [record["query"] for record in fixture_records],
+        )
+        self.assertEqual(
+            Counter(row["source_language"] for row in rows),
+            Counter({"Python": 95, "Go": 1, "Java": 1}),
+        )
+        selected_query_indexes = {
+            row["source_query_index_zero_based"] for row in rows
+        }
+        self.assertEqual(
+            set(range(99)) - selected_query_indexes,
+            {62, 94},
+        )
+        self.assertEqual(
+            [
+                (
+                    row["source_query_index_zero_based"],
+                    row["source_annotation_index_zero_based"],
+                    row["source_annotation_pair_multiplicity"],
+                    row["source_annotation_pair_relevance_counts"],
+                    row["source_language"],
+                    row["original_query"],
+                    row["source_github_url"],
+                    row["source_annotation_record"],
+                )
                 for row in rows
             ],
-            expected_coordinates,
+            [
+                (
+                    record["source_query_index_zero_based"],
+                    record["source_annotation_index_zero_based"],
+                    record["source_annotation_pair_multiplicity"],
+                    record["source_annotation_pair_relevance_counts"],
+                    record["language"],
+                    record["query"],
+                    record["github_url"],
+                    record["source_annotation_record"],
+                )
+                for record in fixture_records
+            ],
+        )
+        self.assertEqual(
+            fixture["provenance"]["selected_pair_rating_summary"],
+            {
+                "selected_pairs": 97,
+                "selected_pairs_with_multiple_annotations": 79,
+                "only_relevance_3_pairs": 47,
+                "mixed_relevance_pairs": 50,
+                "pairs_where_relevance_3_is_a_minority": 6,
+            },
         )
         self.assertEqual(
             [row["id"] for row in rows],
             [
                 f"coding_public_codesearchnet_search_text_{index:03d}"
-                for index in range(1, 16)
+                for index in range(1, 98)
             ],
         )
 
         for line_number, row in enumerate(rows, start=1):
+            self.assertEqual(row["benchmark_mode"], "grounded_tool_execution")
             self.assertEqual(row["source"], "public_coding_research_derived")
             self.assertEqual(
                 row["source_dataset"],
@@ -298,12 +374,16 @@ class CodingBenchmarkTests(unittest.TestCase):
                 "codesearchnet_annotation_lookup_v1",
             )
             self.assertEqual(
+                row["selection_version"],
+                "codesearchnet_relevance3_query_coverage_v2",
+            )
+            self.assertEqual(
                 row["provenance_type"], "research_dataset_adaptation"
             )
             self.assertEqual(row["perturbation_type"], "none")
             self.assertEqual(row["fixture_id"], "codesearchnet-public-v1")
             self.assertEqual(
-                row["fixture_version"], "coding_codesearchnet_fixture_v1"
+                row["fixture_version"], "coding_codesearchnet_fixture_v2"
             )
             self.assertEqual(
                 row["fixture_file"],
@@ -317,9 +397,14 @@ class CodingBenchmarkTests(unittest.TestCase):
                 row["attribution_file"],
                 "benchmark/coding/fixtures/CODESEARCHNET_ATTRIBUTION.md",
             )
-            self.assertEqual(row["source_language"], "Python")
             self.assertEqual(row["source_relevance"], 3)
-            self.assertEqual(row["source_annotation_pair_multiplicity"], 1)
+            self.assertGreaterEqual(row["source_annotation_pair_multiplicity"], 1)
+            rating_counts = row["source_annotation_pair_relevance_counts"]
+            self.assertEqual(
+                sum(rating_counts.values()),
+                row["source_annotation_pair_multiplicity"],
+            )
+            self.assertGreaterEqual(rating_counts["3"], 1)
             self.assertGreaterEqual(row["source_query_index_zero_based"], 0)
             self.assertGreaterEqual(row["source_annotation_index_zero_based"], 0)
 
@@ -333,11 +418,11 @@ class CodingBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 row["source_annotation_record"],
                 {
-                    "Language": "Python",
+                    "Language": row["source_language"],
                     "Query": row["original_query"],
                     "GitHubUrl": row["source_github_url"],
                     "Relevance": "3",
-                    "Notes": "",
+                    "Notes": fixture_records[line_number - 1]["notes"],
                 },
             )
             self.assertEqual(
@@ -353,6 +438,31 @@ class CodingBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 row["expected_answer"]["matches"][0]["line"], line_number
             )
+
+    def test_codesearchnet_builder_candidate_order_is_explicit(self) -> None:
+        def candidate(language: str) -> dict[str, str]:
+            return {
+                "Language": language,
+                "Query": "query",
+                "GitHubUrl": "https://example.invalid/source",
+                "Relevance": "3",
+                "Notes": "",
+            }
+
+        self.assertEqual(
+            _choose_annotation_candidate(
+                [(2, candidate("Go")), (8, candidate("Python"))]
+            )[0],
+            8,
+        )
+        self.assertEqual(
+            _choose_annotation_candidate(
+                [(5, candidate("Go")), (3, candidate("Java"))]
+            )[0],
+            3,
+        )
+        with self.assertRaises(ValueError):
+            _choose_annotation_candidate([])
 
 
 if __name__ == "__main__":

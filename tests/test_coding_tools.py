@@ -162,6 +162,25 @@ class CodingToolTests(unittest.TestCase):
             provenance["provenance_type"], "research_dataset_adaptation"
         )
         self.assertEqual(
+            provenance["selection_version"],
+            "codesearchnet_relevance3_query_coverage_v2",
+        )
+        self.assertEqual(
+            provenance["excluded_queries"],
+            [
+                {
+                    "source_query_index_zero_based": 62,
+                    "query": "set file attrib hidden",
+                    "reason": "no_relevance_3_annotation",
+                },
+                {
+                    "source_query_index_zero_based": 94,
+                    "query": "concatenate several file remove header lines",
+                    "reason": "no_relevance_3_annotation",
+                },
+            ],
+        )
+        self.assertEqual(
             provenance["source_query_sha256"],
             "037509c717c2e164721f0fd3ea45cb05f36669551af643f53930a92b76b146cf",
         )
@@ -174,9 +193,13 @@ class CodingToolTests(unittest.TestCase):
             CODESEARCHNET_CODING_REPOSITORY_ID,
             "resources/queries_selected.txt",
         )
-        self.assertEqual(queries["total_lines"], 15)
+        self.assertEqual(queries["total_lines"], 97)
         self.assertTrue(queries["content"].startswith("k means clustering\n"))
-        self.assertTrue(queries["content"].endswith("linear regression\n"))
+        self.assertTrue(
+            queries["content"].endswith(
+                "how to read .csv file in an efficient way?\n"
+            )
+        )
 
     def test_codesearchnet_fixture_has_one_fixed_initial_commit(self) -> None:
         state = snapshot_coding_state()
@@ -214,8 +237,8 @@ class CodingToolTests(unittest.TestCase):
         match = result["matches"][0]
         self.assertEqual(match["path"], "resources/annotationStore_selected.jsonl")
         self.assertEqual(match["line"], 1)
-        self.assertEqual(match["column"], 148)
-        self.assertEqual(match["columns"], [148, 391])
+        self.assertEqual(match["column"], 198)
+        self.assertEqual(match["columns"], [198, 441])
         self.assertIn('"source_annotation_index_zero_based":1635', match["text"])
         self.assertIn('"query":"k means clustering"', match["text"])
 

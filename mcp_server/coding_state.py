@@ -16,7 +16,7 @@ from typing import Any
 DEFAULT_CODING_REPOSITORY_ID = "example/research-mcp"
 CODING_FIXTURE_VERSION = "coding_fixture_v1"
 CODESEARCHNET_CODING_REPOSITORY_ID = "codesearchnet-public-v1"
-CODESEARCHNET_CODING_FIXTURE_VERSION = "coding_codesearchnet_fixture_v1"
+CODESEARCHNET_CODING_FIXTURE_VERSION = "coding_codesearchnet_fixture_v2"
 CODESEARCHNET_SOURCE_REVISION = "bb121a53a559e99a6849409355ee5c83803f2e87"
 SWEAGENT_CODING_REPOSITORY_ID = "swebench-marshmallow-1867"
 SWEAGENT_CODING_FIXTURE_VERSION = "coding_sweagent_marshmallow_1867_fixture_v1"

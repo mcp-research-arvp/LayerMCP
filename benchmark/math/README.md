@@ -127,6 +127,7 @@ Difficulty comes from the public source levels:
 - Expected steps: 105
 - Source: `controlled_synthetic`
 - Domain: `mathematics`
+- Task type: `multi_step_tool_routing`
 - Purpose: deterministic sequencing coverage across existing math tools.
 
 Every workflow contains two or three connected calls. Later calls consume a

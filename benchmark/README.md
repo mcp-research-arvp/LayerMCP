@@ -25,6 +25,7 @@ those routing decisions.
 | `coding/coding_controlled.json` | 35 | coding | Controlled coding routing set. |
 | `coding/coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
 | `coding/coding_codesearchnet_public_derived.json` | 97 | coding | Public CodeSearchNet-derived coding search set. |
+| `coding/coding_conala_public_derived.json` | 133 | coding | Public CoNaLa-derived curated-intent search set. |
 | `coding/coding_sweagent_multistep.json` | 5 | coding | Source-faithful SWE-agent workflows executed against bounded repository fixtures. |
 | `coding/coding_nebius_sweagent_replay_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
 | `coding/coding_nebius_swerebench_openhands_replay_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |

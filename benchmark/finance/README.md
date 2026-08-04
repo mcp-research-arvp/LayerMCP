@@ -63,8 +63,6 @@ projects or live clients for their services.
   difficult indirect requests.
 - `finance_upstream_inspired.json` contains 40 generated examples,
   four per tool, adapted from documented upstream usage patterns.
-- `finance_public_derived.json` contains 15 table-reasoning rows
-  adapted from the official FinQA public test split.
 - `finance_tatqa_public_derived.json` contains 15 exact questions
   selected from the official TAT-QA test-gold split and adapted to bounded SQL.
 - `finance_convfinqa_multistep.json` contains ten exact
@@ -78,8 +76,6 @@ projects or live clients for their services.
 - `finance_finretrieval_replay_multistep.json` contains 485 exact
   FinRetrieval questions with one selected correct multi-call model trajectory
   of at most five calls each, totaling 1,490 ordered calls.
-- `fixtures/finqa_public_test_cells.json` contains the 201 normalized source
-  cells needed to execute those 15 FinQA rows.
 - `fixtures/finqa_test_program_results_cells.json` contains one compact row per
   gold operation for the other 1,132 FinQA test questions (1,753 rows).
 - `fixtures/tatqa_public_test_gold_cells.json` contains the normalized source
@@ -290,9 +286,6 @@ python evaluation/evaluate.py \
 
 python evaluation/evaluate.py \
   --dataset benchmark/finance/finance_upstream_inspired.json
-
-python evaluation/evaluate.py \
-  --dataset benchmark/finance/finance_public_derived.json
 
 python evaluation/evaluate.py \
   --dataset benchmark/finance/finance_tatqa_public_derived.json

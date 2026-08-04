@@ -23,9 +23,6 @@ FINQA_MULTISTEP_PATH = (
 FINRETRIEVAL_MULTISTEP_PATH = (
     FINANCE_BENCHMARK_ROOT / "finance_finretrieval_replay_multistep.json"
 )
-EXISTING_FINQA_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_public_derived.json"
-)
 FINQA_FIXTURE_PATH = (
     FINANCE_BENCHMARK_ROOT / "fixtures" / "finqa_test_program_results_cells.json"
 )
@@ -36,6 +33,9 @@ FINRETRIEVAL_FIXTURE_PATH = (
 FINQA_DATASET_ID = "finqa-public-test-program-results-v1"
 FINQA_SOURCE_REVISION = "0f16e2867befa6840783e58be38c9efb9229d742"
 FINQA_TOTAL_TEST_ROWS = 1_147
+EXCLUDED_FINQA_SOURCE_INDICES = {
+    0, 1, 8, 9, 10, 32, 42, 44, 45, 78, 92, 105, 172, 264, 347,
+}
 FINRETRIEVAL_TOTAL_QUESTIONS = 500
 UNSUPPORTED_FINRETRIEVAL_INDICES = {253, 455}
 FINRETRIEVAL_OVER_STEP_LIMIT_INDICES = {
@@ -106,7 +106,6 @@ class FinancePublicExpansionTests(unittest.TestCase):
         cls.raw_finqa_single = _load_json(FINQA_SINGLE_PATH)
         cls.raw_finqa_multistep = _load_json(FINQA_MULTISTEP_PATH)
         cls.raw_finretrieval_multistep = _load_json(FINRETRIEVAL_MULTISTEP_PATH)
-        cls.existing_finqa = _load_json(EXISTING_FINQA_PATH)
         cls.finqa_fixture = _load_json(FINQA_FIXTURE_PATH)
         cls.finretrieval_fixture = _load_json(FINRETRIEVAL_FIXTURE_PATH)
 
@@ -163,7 +162,6 @@ class FinancePublicExpansionTests(unittest.TestCase):
                 "finance_finqa_test_multistep.json",
                 "finance_finqa_test_single.json",
                 "finance_finretrieval_replay_multistep.json",
-                "finance_public_derived.json",
                 "finance_smoke.json",
                 "finance_tatqa_public_derived.json",
                 "finance_upstream_inspired.json",
@@ -186,7 +184,6 @@ class FinancePublicExpansionTests(unittest.TestCase):
     def test_finqa_rows_cover_every_remaining_public_test_question_once(
         self,
     ) -> None:
-        existing_indices = {row["source_row_index"] for row in self.existing_finqa}
         single_indices = {row["source_row_index"] for row in self.raw_finqa_single}
         multistep_indices = {
             row["source_row_index"] for row in self.raw_finqa_multistep
@@ -197,12 +194,10 @@ class FinancePublicExpansionTests(unittest.TestCase):
             len(multistep_indices),
             len(self.raw_finqa_multistep),
         )
-        self.assertTrue(existing_indices.isdisjoint(single_indices))
-        self.assertTrue(existing_indices.isdisjoint(multistep_indices))
         self.assertTrue(single_indices.isdisjoint(multistep_indices))
         self.assertEqual(
             single_indices | multistep_indices,
-            set(range(FINQA_TOTAL_TEST_ROWS)) - existing_indices,
+            set(range(FINQA_TOTAL_TEST_ROWS)) - EXCLUDED_FINQA_SOURCE_INDICES,
         )
 
     def test_finqa_program_lengths_match_the_single_and_multicall_split(
@@ -436,7 +431,7 @@ class FinancePublicExpansionTests(unittest.TestCase):
         finqa_fixture_provenance = self.finqa_fixture["provenance"]
         self.assertEqual(
             finqa_fixture_provenance["excluded_source_row_indices"],
-            sorted(row["source_row_index"] for row in self.existing_finqa),
+            sorted(EXCLUDED_FINQA_SOURCE_INDICES),
         )
         self.assertEqual(
             finqa_fixture_provenance["source_example_count"],

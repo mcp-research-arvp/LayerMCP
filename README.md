@@ -11,6 +11,9 @@
 
 ## Overview
 
+Durable research goals and evaluation guidance are recorded in
+[Project Ground Truth](docs/project_ground_truth.md).
+
 Modern open-source LLMs are capable of tool use, function calling, and domain-specific reasoning — but little is known about *where* inside the network these capabilities reside. This project tests the hypothesis that **MCP tool-selection and domain-specialization behaviors are concentrated in a small, identifiable subset of transformer layers**, rather than being uniformly distributed across the entire model. If true, it becomes possible to create efficient domain experts by modifying only those layers — avoiding the expense of full fine-tuning while matching or exceeding its quality.
 
 The project spans mechanistic interpretability, efficient fine-tuning, and agentic evaluation, applied to four open-source model families across four high-value domains.
@@ -145,6 +148,7 @@ LayerMCP/
 │   │   ├── README.md
 │   │   ├── coding_controlled.json
 │   │   ├── coding_codesearchnet_public_derived.json
+│   │   ├── coding_conala_public_derived.json
 │   │   ├── coding_nebius_sweagent_replay_multistep.json
 │   │   ├── coding_nebius_swerebench_openhands_replay_multistep.json
 │   │   ├── coding_smoke.json
@@ -163,6 +167,7 @@ LayerMCP/
 │   │   └── finance_upstream_inspired.json
 │   ├── math/
 │   │   ├── math_controlled.json
+│   │   ├── math_multistep_controlled.json
 │   │   ├── math_public.json
 │   │   └── math_public_math_dataset.json
 │   └── archive/root/tool_routing.json
@@ -402,6 +407,13 @@ reproduction of the paper's semantic retrieval evaluation. Benchmark prompts
 wrap the exact source queries in self-contained repository-search instructions
 and preserve the verbatim text separately as `original_query`.
 
+A third allowlisted repository, `conala-public-test-v1`, contains 133 exact
+crowd-rewritten intents from 102 questions in the pinned NeuLab CoNaLa curated
+test split, whose dataset card labels the dataset MIT. Original Stack Overflow
+titles and Python snippets are omitted; the fixture retains source coordinates
+and hashes. Its generated wrappers evaluate bounded lexical routing, not CoNaLa
+code generation or BLEU.
+
 The older `github_search` and `read_code_file` fixtures remain registered for
 backward compatibility with existing benchmark files.
 
@@ -442,11 +454,12 @@ datasets are:
 - `benchmark/coding/coding_controlled.json` — 35 balanced controlled examples
 - `benchmark/coding/coding_upstream_inspired.json` — 28 generated queries grounded in official upstream usage documentation
 - `benchmark/coding/coding_codesearchnet_public_derived.json` — 97 self-contained lexical-search instructions preserving exact CodeSearchNet queries in `original_query`
+- `benchmark/coding/coding_conala_public_derived.json` — 133 self-contained lexical-search instructions preserving exact CoNaLa curated intents in `original_query`
 - `benchmark/coding/coding_sweagent_multistep.json` — 5 exact research-trajectory workflows with 11 ordered read-only actions from pinned official SWE-agent trajectories
 - `benchmark/coding/coding_nebius_sweagent_replay_multistep.json` — 33 distinct successful real-issue workflows with three to five calls, adapted from pinned Nebius SWE-agent trajectories
 - `benchmark/coding/coding_nebius_swerebench_openhands_replay_multistep.json` — a provenance-only, zero-result placeholder because none of the 500 pinned Nebius OpenHands workflows satisfy the five-call cap; it is not part of benchmark results
 
-The coding family therefore has 205 workflows: 167 single-call workflows and 38
+The coding family therefore has 338 workflows: 300 single-call workflows and 38
 multi-call workflows. The public trajectory additions contain source issue text
 and released model call sequences; they are not newly generated coding
 questions. The checked-in replay fixture contains only records used by

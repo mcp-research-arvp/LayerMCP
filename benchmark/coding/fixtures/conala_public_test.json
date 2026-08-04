@@ -1,0 +1,1112 @@
+{
+  "repo_id": "conala-public-test-v1",
+  "fixture_version": "coding_conala_fixture_v1",
+  "description": "Declarative repository fixture containing 133 exact CoNaLa curated-test rewritten intents. This is a bounded lexical routing fixture, not a reproduction of code generation or BLEU.",
+  "files": {
+    "README.md": "# CoNaLa Public Routing Fixture\n\nThis deterministic fixture contains 133 exact crowd-rewritten intents from the curated CoNaLa test split. It supports bounded, case-sensitive fixed-string lookup and does not reproduce CoNaLa code generation or BLEU evaluation.\n\nOriginal Stack Overflow titles and paired Python snippets are not copied. Stable source coordinates and SHA-256 values preserve their relationship to each selected rewritten intent.\n\nSource revision: fbc749f1c537e5c3834e93b15784302e331debe2\nPinned dataset-card license metadata: MIT (`license` includes `mit`); no standalone dataset license notice is present.\n",
+    "resources/conala_curated_test_queries_selected.txt": "send a signal `signal.SIGUSR1` to the current process\ndecode a hex string '4a4b4c' to UTF-8.\ncheck if all elements in list `myList` are identical\nformat number of spaces between strings `Python`, `:` and `Very Good` to be `20`\nget rid of None values in dictionary `kwargs`\ncapture final output of a chain of system commands `ps -ef | grep something | wc -l`\nconcatenate a list of strings `['a', 'b', 'c']`\nfind intersection data between series `s1` and series `s2`\nsending http headers to `client`\nFormat a datetime string `when` to extract date only\nsplit a multi-line string `inputString` into separate strings\nSplit a multi-line string ` a \\n b \\r\\n c ` by new line character `\\n`\nconcatenate elements of list `b` by a colon \":\"\nget the first object from a queryset in django model `Entry`\nCalculate sum over all rows of 2D numpy array\nenable warnings using action 'always'\nconcatenate items of list `l` with a space ' '\nrun script 'hello.py' with argument 'htmlfilename.htm' on terminal using python executable\nconvert a string `my_string` with dot and comma into a float number `my_float`\nconvert a string `123,456.908` with dot and comma into a floating number\nset pythonpath in python script.\nsplit string 'Words, words, words.' using a regex '(\\\\W+)'\nopen a file `Output.txt` in append mode\ndownload a file \"http://www.example.com/songs/mp3.mp3\" over HTTP and save to \"mp3.mp3\"\ndownload a file `url` over HTTP and save to `file_name`\ndownload a file 'http://www.example.com/' over HTTP\ndownload a file `url` over HTTP and save to \"10MB\"\nargparse add argument with flag '--version' and version action of '%(prog)s 2.0' to parser `parser`\nremove key 'c' from dictionary `d`\nCreate new DataFrame object by merging columns \"key\" of  dataframes `split_df` and `csv_df` and rename the columns from dataframes `split_df` and `csv_df` with suffix `_left` and `_right` respectively\nSplit a string `s` by space with `4` splits\nread keyboard-input\nenable debug mode on Flask application `app`\npython save list `mylist` to file object 'save.txt'\nMultiply a matrix `P` with a 3d tensor `T` in scipy\nCreate 3d array of zeroes of size `(3,3,3)`\ncut off the last word of a sentence `content`\nconvert scalar `x` to array\nsum all elements of nested list `L`\nconvert hex string '470FC614' to a float number\nMultiple each value by `2` for all keys in a dictionary `my_dict`\nrunning bash script 'sleep.sh'\nJoin elements of list `l` with a comma `,`\nmake a comma-separated string from a list `myList`\nreverse the list that contains 1 to 10\nremove substring 'bag,' from a string 'lamp, bag, mirror'\nReverse the order of words, delimited by `.`, in string `s`\nconvert epoch time represented as milliseconds `s` to string using format '%Y-%m-%d %H:%M:%S.%f'\nparse milliseconds epoch time '1236472051807' to format '%Y-%m-%d %H:%M:%S'\nget the date 7 days before the current date\nsum elements at index `column` of each list in list `data`\nsum columns of a list `array`\nencode binary string 'your string' to base64 code\ncombine list of dictionaries `dicts` with the same keys in each list to a single dictionary\nMerge a nested dictionary `dicts` into a flat dictionary by concatenating nested values with the same key `k`\nidentify duplicate values in list `mylist`\nInsert directory 'apps' into directory `__file__`\nmodify sys.path for python module `subdir`\nInsert a 'None' value into a SQLite3 table.\nflatten list `list_of_menuitems`\nappend elements of a set `b` to a list `a`\nwrite the data of dataframe `df` into text file `np.txt`\nwrite content of DataFrame `df` into text file 'c:\\\\data\\\\pandas.txt'\nSplit a string `x` by last occurrence of character `-`\nget the last part of a string before the character '-'\nupload file using FTP\nadd one to the hidden web element with id 'XYZ' with selenium python script\ncreate array containing the maximum value of respective elements of array `[2, 3, 4]` and array `[1, 5, 2]`\nprint a list `l` and move first 3 elements to the end of the list\nloop over files in directory '.'\nloop over files in directory `source`\ncreate a random list of integers\nGoogle App Engine execute GQL query 'SELECT * FROM Schedule WHERE station = $1' with parameter `foo.key()`\nfilter rows in pandas starting with alphabet 'f' using regular expression.\nprint a 2 dimensional list `tab` as a table with delimiters\npandas: delete rows in dataframe `df` based on multiple columns values\nformat the variables `self.goals` and `self.penalties` using string formatting\nformat string \"({} goals, ${})\" with variables `goals` and `penalties`\nformat string \"({0.goals} goals, ${0.penalties})\"\nconvert list of lists `L` to list of integers\ncombine elements of each list in list `L` into digits of a single integer\nconvert a list of lists `L` to list of integers\nwrite the elements of list `lines` concatenated by special character '\\n' to file `myfile`\nremoving an element from a list based on a predicate 'X' or 'N'\nRemove duplicate words from a string `text` using regex\ncount non zero values in each column in pandas data frame\nsearch for string that matches regular expression pattern '(?<!Distillr)\\\\\\\\AcroTray\\\\.exe' in string 'C:\\\\SomeDir\\\\AcroTray.exe'\nsplit string 'QH QD JC KD JS' into a list on white spaces\nsearch for occurrences of regex pattern '>.*<' in xml string `line`\nerase all the contents of a file `filename`\nconvert a string into datetime using the format '%Y-%m-%d %H:%M:%S.%f'\nfind the index of a list with the first element equal to '332' within the list of lists `thelist`\nlower a string `text` and remove non-alphanumeric characters aside from space\nremove all non-alphanumeric characters except space from a string `text` and lower it\nsubscript text 'H20' with '2' as subscripted in matplotlib labels for arrays 'x' and 'y'.\nloop over a list `mylist` if sublists length equals 3\ninitialize a list `lst` of 100 objects Object()\ncreate list `lst` containing 100 instances of object `Object`\nget the content of child tag with`href` attribute whose parent has css `someclass`\njoining data from dataframe `df1` with data from dataframe `df2` based on matching values of column 'Date_Time' in both dataframes\nuse `%s` operator to print variable values `str1` inside a string\ncheck if directory `directory ` exists and create it if necessary\ncheck if a directory `path` exists and create it if necessary\nReplace a separate word 'H3' by 'H1' in a string 'text'\nsubstitute ASCII letters in string 'aas30dsa20' with empty string ''\nget digits only from a string `aas30dsa20` using lambda function\naccess a tag called \"name\" in beautifulsoup `soup`\nget a dictionary `records` of key-value pairs in PyMongo cursor `cursor`\nCreate new matrix object  by concatenating data from matrix A and matrix B\nconcat two matrices `A` and `B` in numpy\nGet the characters count in a file `filepath`\ncount the occurrences of item \"a\" in list `l`\ncount the occurrences of items in list `l`\ncount the occurrences of item \"b\" in list `l`\ncopy file `srcfile` to directory `dstdir`\nfind the key associated with the largest value in dictionary `x` whilst key is non-zero value\nget the largest key whose not associated with value of 0 in dictionary `x`\nget the largest key in a dictionary `x` with non-zero value\nPut the curser at beginning of the file\ncombine values from column 'b' and column 'a' of dataframe `df`  into column 'c' of datafram `df`\nremove key 'ele' from dictionary `d`\nUpdate datetime field in `MyModel` to be the existing `timestamp` plus 100 years\nmerge list `['it']` and list `['was']` and list `['annoying']` into one list\nincrement a value with leading zeroes in a number `x`\ncheck if a pandas dataframe `df`'s index is sorted\nConvert tuple `t` to list\nConvert list `t` to tuple\nConvert tuple `level1` to list\nsend the output of pprint object `dataobject` to file `logFile`\nget index of rows in column 'BoolCol'\nCreate a list containing the indexes of rows where the value of column 'BoolCol' in dataframe `df` are equal to True\nget list of indexes of rows where column 'BoolCol' values match True\nget index of rows in dataframe `df` which column 'BoolCol' matches value True\n",
+    "resources/conala_curated_test_selected.jsonl": "{\"source_record_index_zero_based\":0,\"question_id\":15080500,\"query\":\"send a signal `signal.SIGUSR1` to the current process\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15080500\",\"source_record_canonical_sha256\":\"4d5c4503782a6c1c276ed758e6ca70da1100f7d97427901c16bbea94487ed17b\",\"source_snippet_sha256\":\"cabdacf2cfe787212fbf9efa5568f449c1c7e73459814571c759c39aaba17b09\"}\n{\"source_record_index_zero_based\":1,\"question_id\":3283984,\"query\":\"decode a hex string '4a4b4c' to UTF-8.\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/3283984\",\"source_record_canonical_sha256\":\"56b64f6393518624dd64f12c4010564647f0d1612725740ac08b02aebc66d8bd\",\"source_snippet_sha256\":\"78849609bba72a7b86321ee4239b0c74c07a556bf7b1d6b25096206ef99eca8e\"}\n{\"source_record_index_zero_based\":2,\"question_id\":3844801,\"query\":\"check if all elements in list `myList` are identical\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/3844801\",\"source_record_canonical_sha256\":\"348bf00536f9f1389f01e29ffb7839599e0e2ebdc3f56451a6edbb180bb62741\",\"source_snippet_sha256\":\"47ef4ee96a1af16aec3327752df8df6261b32504e4d150ab6c5a8f40cda98a8d\"}\n{\"source_record_index_zero_based\":3,\"question_id\":4302166,\"query\":\"format number of spaces between strings `Python`, `:` and `Very Good` to be `20`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4302166\",\"source_record_canonical_sha256\":\"8e38c1990b3c7fb7294117bad6b2b8ead22c792997cf3e21996164f1d95877d1\",\"source_snippet_sha256\":\"a85512838efdcb528a3fa2399ef4a8bda2df265eef835231196ef5f08f32edd4\"}\n{\"source_record_index_zero_based\":5,\"question_id\":2544710,\"query\":\"get rid of None values in dictionary `kwargs`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2544710\",\"source_record_canonical_sha256\":\"c8c7a69ad4a4ecde4465b1c0bd96d0fb514c8f51be92deebfca56144c1d76a51\",\"source_snippet_sha256\":\"155185291e1d0d03a3c8f42d96b33968a5ab1a4d4e060a398b4b741696d35348\"}\n{\"source_record_index_zero_based\":7,\"question_id\":14971373,\"query\":\"capture final output of a chain of system commands `ps -ef | grep something | wc -l`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/14971373\",\"source_record_canonical_sha256\":\"30858af9240f7b4aa6c164a4ec3e2830f2784df74da582adf5611f78dcbdb7bd\",\"source_snippet_sha256\":\"da171621913513f187370eecb510aeb1bf000efbaf028895fc89f47caee0b7fa\"}\n{\"source_record_index_zero_based\":8,\"question_id\":6726636,\"query\":\"concatenate a list of strings `['a', 'b', 'c']`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/6726636\",\"source_record_canonical_sha256\":\"58d20673c21d01a57d44db6eeb53608e2b202e4bd3c51d874ae3bf875569481b\",\"source_snippet_sha256\":\"cba3cd643826e50aa09f437163b16e1b2ead2d4065e7a8c053f3268658443315\"}\n{\"source_record_index_zero_based\":9,\"question_id\":18079563,\"query\":\"find intersection data between series `s1` and series `s2`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18079563\",\"source_record_canonical_sha256\":\"61aaa56fdaad98eae6aeb819a7749aaaecc5bbfa781f18423aa8e9aaccbc4451\",\"source_snippet_sha256\":\"bec6fc4772579b7076b12fa44be05c25d4b0f4a1a07af42646a43ceafaadef62\"}\n{\"source_record_index_zero_based\":10,\"question_id\":8315209,\"query\":\"sending http headers to `client`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/8315209\",\"source_record_canonical_sha256\":\"caab66d18420688faf4f0937359c7f38f557ba5ffed8e589031b1fb7f4ef026a\",\"source_snippet_sha256\":\"291b7a1d09cf02127d78992bb78313ddf1089709eae3c58ea388d52264416680\"}\n{\"source_record_index_zero_based\":11,\"question_id\":26153795,\"query\":\"Format a datetime string `when` to extract date only\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/26153795\",\"source_record_canonical_sha256\":\"9e1cf752e96c1adae6271bb7a80b5f46dd6eca14dddbe19f07f7e9af5dc0b956\",\"source_snippet_sha256\":\"3e7560f9c2e239d45959023cc70dd3073522ec7a7260b0a31639303283ae137f\"}\n{\"source_record_index_zero_based\":12,\"question_id\":172439,\"query\":\"split a multi-line string `inputString` into separate strings\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/172439\",\"source_record_canonical_sha256\":\"3b52e5fa1a4c40294510b7b303c0653606e8a198c9f96006388a67853b04b827\",\"source_snippet_sha256\":\"ea8537cf40a915933145e101e414e391150d155776f76d8f8ce7942e6f3c3adf\"}\n{\"source_record_index_zero_based\":13,\"question_id\":172439,\"query\":\"Split a multi-line string ` a \\\\n b \\\\r\\\\n c ` by new line character `\\\\n`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/172439\",\"source_record_canonical_sha256\":\"69e57e077c310019262405b66360d7c57a67fe851865b4a8936bcca9442e75ca\",\"source_snippet_sha256\":\"2c0b3f89b8508fcf696c03ea1b41530604b03dbd69c4241d321b21cdc4bac9ac\"}\n{\"source_record_index_zero_based\":14,\"question_id\":13954222,\"query\":\"concatenate elements of list `b` by a colon \\\":\\\"\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13954222\",\"source_record_canonical_sha256\":\"7fc1a777bfb14b7446cae15ee9ff085f2914fb6ad004f14f300ba666ddaa2f78\",\"source_snippet_sha256\":\"979825055045305010566f301ec5d91eb3765f3ef76b44ac42de01fc0b4cc7ed\"}\n{\"source_record_index_zero_based\":15,\"question_id\":5123839,\"query\":\"get the first object from a queryset in django model `Entry`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/5123839\",\"source_record_canonical_sha256\":\"76765dbb3f6d7346af61838d320e46f1001c7a04d827685b8c0f245c8b26673f\",\"source_snippet_sha256\":\"0d7c4fc7e2ade801625e21ba5c5fdeca545aafebf525d351176c07b292ca32eb\"}\n{\"source_record_index_zero_based\":16,\"question_id\":13567345,\"query\":\"Calculate sum over all rows of 2D numpy array\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13567345\",\"source_record_canonical_sha256\":\"e846c7967dcf55ef993d5de9b25fbc3887e8a0e87d26555fe17645213d894c8c\",\"source_snippet_sha256\":\"c3c10706d02f8f0bc5b23c31d939d7dbd49f822a76217f289c7433cdc4390d7d\"}\n{\"source_record_index_zero_based\":17,\"question_id\":29784889,\"query\":\"enable warnings using action 'always'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/29784889\",\"source_record_canonical_sha256\":\"fe30b6e7665b33bcd0de26b0d2bcd3d86e4cae6a30ce4768a4614af22f251a3a\",\"source_snippet_sha256\":\"c420dcde993d9d754cb5500ad3a47bcc27dd7d635d0f51335383588f0e884292\"}\n{\"source_record_index_zero_based\":18,\"question_id\":13550423,\"query\":\"concatenate items of list `l` with a space ' '\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13550423\",\"source_record_canonical_sha256\":\"fba2d172c6dce0fab1609368cd6609ce3887c5d61bc62b3bfb84081a196edbdc\",\"source_snippet_sha256\":\"6477f4d81d8a6f20581f54fd147ee2234bcf6bd8c4af364366c5217e69c93c02\"}\n{\"source_record_index_zero_based\":19,\"question_id\":25651990,\"query\":\"run script 'hello.py' with argument 'htmlfilename.htm' on terminal using python executable\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/25651990\",\"source_record_canonical_sha256\":\"24fd4e2202f8149ec74d51a2819a33b80bd24978697feafd356297b6aa87340f\",\"source_snippet_sha256\":\"06da20ef76d1bd27e1ba1aff35b3be9371d80472bc587cd1584f8f3d9a57ecd2\"}\n{\"source_record_index_zero_based\":21,\"question_id\":6633523,\"query\":\"convert a string `my_string` with dot and comma into a float number `my_float`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/6633523\",\"source_record_canonical_sha256\":\"eae991fb8b6e1bb4be78e6d6d92eeb50817ef02985f6d1079549b2c964951414\",\"source_snippet_sha256\":\"03dae3bf8a4105f475a70849715fd80167ad3c2809524b2ca833e7de2b6f239c\"}\n{\"source_record_index_zero_based\":22,\"question_id\":6633523,\"query\":\"convert a string `123,456.908` with dot and comma into a floating number\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/6633523\",\"source_record_canonical_sha256\":\"344db0ecd9f6652fa0105df28eec051ca03f644acb7f58910fe45895652d8242\",\"source_snippet_sha256\":\"4a16ed2427dcb365fa93cc31c43156926a841bc17f2a4a81e6634d30eb88b400\"}\n{\"source_record_index_zero_based\":23,\"question_id\":3108285,\"query\":\"set pythonpath in python script.\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/3108285\",\"source_record_canonical_sha256\":\"a32035a1de29ec70d7e076edeca5c15a9c2253678d938f493cd2c44faef608c8\",\"source_snippet_sha256\":\"976f6bea479974fff4d5160ec69d7547cf34c8d2254bfb0f2e543d18a9b89c2c\"}\n{\"source_record_index_zero_based\":24,\"question_id\":2195340,\"query\":\"split string 'Words, words, words.' using a regex '(\\\\\\\\W+)'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2195340\",\"source_record_canonical_sha256\":\"87f5bb44ea13fd2062768e487f1f415a03e868a6111e7274bd1de09e1eb429cc\",\"source_snippet_sha256\":\"035a9ea5fad97c0cd4fc2ba50d7d95b4b4abafb95ba5bcf8f126bf00b574b1bf\"}\n{\"source_record_index_zero_based\":25,\"question_id\":17977584,\"query\":\"open a file `Output.txt` in append mode\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17977584\",\"source_record_canonical_sha256\":\"4688c991d182987c9cffc7928f8a277b19fc947140ad11c8aecb1a7183b6dc8a\",\"source_snippet_sha256\":\"64dc787d01eb9f4b7b013096434726b09536790ecc952f867e9b75c3d0cd161b\"}\n{\"source_record_index_zero_based\":26,\"question_id\":22676,\"query\":\"download a file \\\"http://www.example.com/songs/mp3.mp3\\\" over HTTP and save to \\\"mp3.mp3\\\"\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/22676\",\"source_record_canonical_sha256\":\"ed9a97ee4d6d5c6d89b4f35dd15e9e51cf8a095178605e0a64088cf5e70dd52d\",\"source_snippet_sha256\":\"c8d8635dd9b711122cd9bb276e62c100aab39a0c43d947d426474ebf946e131e\"}\n{\"source_record_index_zero_based\":27,\"question_id\":22676,\"query\":\"download a file `url` over HTTP and save to `file_name`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/22676\",\"source_record_canonical_sha256\":\"99015f790686499330f0a7d62408e973413f775218415f0298244f85f1698770\",\"source_snippet_sha256\":\"5771f5b607b7d0efa7594995bfa62b42c5da65b99d2a9f2d885d510a77ca8b57\"}\n{\"source_record_index_zero_based\":28,\"question_id\":22676,\"query\":\"download a file 'http://www.example.com/' over HTTP\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/22676\",\"source_record_canonical_sha256\":\"bb5ebff109d5224b1ff32e2c979da117bf4a8c3b596fbd2e4e6e8ffdb4b99570\",\"source_snippet_sha256\":\"d93d9d994d19c45472238201af7513ae79b88dde9ea80437cf2bc6c39d91caaf\"}\n{\"source_record_index_zero_based\":30,\"question_id\":22676,\"query\":\"download a file `url` over HTTP and save to \\\"10MB\\\"\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/22676\",\"source_record_canonical_sha256\":\"581675ef2b31aeeed7a6b6e8e8604117ef632aa0d30791ac70f3c9a17957e8fd\",\"source_snippet_sha256\":\"9e51a99704f80b538688ebe20f881975918dbb982052a0dd5d69b4533eff13eb\"}\n{\"source_record_index_zero_based\":31,\"question_id\":15405636,\"query\":\"argparse add argument with flag '--version' and version action of '%(prog)s 2.0' to parser `parser`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15405636\",\"source_record_canonical_sha256\":\"a6abedd66377c504f728b8aed439fc92dfcbf1a98874714a21bc79f78573ebbb\",\"source_snippet_sha256\":\"b6be50bb8f59e2974df7e865928728db4e60ebcaefe0269d4b3589291e3ac1ed\"}\n{\"source_record_index_zero_based\":32,\"question_id\":17665809,\"query\":\"remove key 'c' from dictionary `d`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17665809\",\"source_record_canonical_sha256\":\"09c6c3cd52689a2981e0525a8876b8f86ea12c316db99e6ff3907a512401ea98\",\"source_snippet_sha256\":\"7d409a66c51eea3b1e07ff390f107228851221c62e5773b859dd2c2748426374\"}\n{\"source_record_index_zero_based\":33,\"question_id\":41861705,\"query\":\"Create new DataFrame object by merging columns \\\"key\\\" of  dataframes `split_df` and `csv_df` and rename the columns from dataframes `split_df` and `csv_df` with suffix `_left` and `_right` respectively\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/41861705\",\"source_record_canonical_sha256\":\"12ce59e0cae7fd3acb98d210468357af5520b29164e526d126b88c0717331c77\",\"source_snippet_sha256\":\"cbb44d7ab62970e944fb51859d4f698f7f15d8b96061905a79d6a190cf091885\"}\n{\"source_record_index_zero_based\":34,\"question_id\":10697757,\"query\":\"Split a string `s` by space with `4` splits\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/10697757\",\"source_record_canonical_sha256\":\"4421cb382b3a44375a22663516adb2b43545f09721df12686f85f56b1819c12b\",\"source_snippet_sha256\":\"41d7bb6d274ed2d65ababb6735aa91858a3811a9c8073b531246f5aa15d88944\"}\n{\"source_record_index_zero_based\":35,\"question_id\":5404068,\"query\":\"read keyboard-input\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/5404068\",\"source_record_canonical_sha256\":\"35503a23e46423da623b544b3ff7ece46106fe4147a6838313c7d6369b900e94\",\"source_snippet_sha256\":\"247e3e9dd1ea8fa1d1259b1ef1f7698438819e08fdcb3781daad63ff549fac01\"}\n{\"source_record_index_zero_based\":36,\"question_id\":16344756,\"query\":\"enable debug mode on Flask application `app`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/16344756\",\"source_record_canonical_sha256\":\"637afd7bc70a6e89f746741e1e888fb20a886a53573e3530056eedb7105f2865\",\"source_snippet_sha256\":\"e990efa17117bcff19bedfaf18baa659f70ff2a9fbdadb190ca2319a2788e318\"}\n{\"source_record_index_zero_based\":37,\"question_id\":40133826,\"query\":\"python save list `mylist` to file object 'save.txt'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/40133826\",\"source_record_canonical_sha256\":\"5349b3d729a4beba8ca370e315f7b9e919abc20a7f100844ade37cf4409931e3\",\"source_snippet_sha256\":\"cfcb19ca709e8d6cd367b2614f5d8d06843f1404391e2487ec6538ce538271f4\"}\n{\"source_record_index_zero_based\":38,\"question_id\":4490961,\"query\":\"Multiply a matrix `P` with a 3d tensor `T` in scipy\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4490961\",\"source_record_canonical_sha256\":\"d136e37190f692159e145b773e5c30f02c044f42e81d3b7b6acd9533b2e52093\",\"source_snippet_sha256\":\"8f9ccbdd4083f38c44d684282631eb8d64eecba85246ef0d90ab3fd01cb53dcf\"}\n{\"source_record_index_zero_based\":39,\"question_id\":2173087,\"query\":\"Create 3d array of zeroes of size `(3,3,3)`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2173087\",\"source_record_canonical_sha256\":\"623716a0dac5852c9c82fa5555c05c00194e85553e617939d2aa3670ac8dc139\",\"source_snippet_sha256\":\"8e712a3152defcbeba1a7e8a57750090f8bfe082604ea6488951570338ff2935\"}\n{\"source_record_index_zero_based\":40,\"question_id\":6266727,\"query\":\"cut off the last word of a sentence `content`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/6266727\",\"source_record_canonical_sha256\":\"ef0edf8a4cdc9556b2152c84bb5504ab9f3a10f030cb46b74ce24a52038f8284\",\"source_snippet_sha256\":\"faea8540262761c2857a8e75a618227d38983df0ef8b1c011c9dc893ce717a1d\"}\n{\"source_record_index_zero_based\":41,\"question_id\":30385151,\"query\":\"convert scalar `x` to array\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/30385151\",\"source_record_canonical_sha256\":\"2fcefa6fb2e9b8cbaa7408bd7f28aff3a64529e098454003bbc003d0cb23dc7a\",\"source_snippet_sha256\":\"31d5b6df956fccd35773d13d8c7eaf3088ea038df6c78d81766d42eb8f734b9b\"}\n{\"source_record_index_zero_based\":42,\"question_id\":15856127,\"query\":\"sum all elements of nested list `L`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15856127\",\"source_record_canonical_sha256\":\"af54656ac36af18c3283c9b1a23434893b884b615aa017df2602235705487bd8\",\"source_snippet_sha256\":\"2c35e1ca6161974f7cde39ee54df93c385209a0d32864f28499d0390059b070d\"}\n{\"source_record_index_zero_based\":43,\"question_id\":1592158,\"query\":\"convert hex string '470FC614' to a float number\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1592158\",\"source_record_canonical_sha256\":\"bc3541df02029f836fe38e67b31620f2f49e8f7c4b8b6569faf997014e261414\",\"source_snippet_sha256\":\"1f36348e095fa1a4f2987a834d5be143d8877bc31110c89a1505ca1798165d45\"}\n{\"source_record_index_zero_based\":44,\"question_id\":5010536,\"query\":\"Multiple each value by `2` for all keys in a dictionary `my_dict`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/5010536\",\"source_record_canonical_sha256\":\"b70b91542bd5d47407ab4c28e156464cfc944bc778bc1747b7b54e6bc1aa1ea7\",\"source_snippet_sha256\":\"d9f3a2b18e88cd59263714bdd0cafd356e5542e92712bae15b461aa6cbcfda7b\"}\n{\"source_record_index_zero_based\":45,\"question_id\":13745648,\"query\":\"running bash script 'sleep.sh'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13745648\",\"source_record_canonical_sha256\":\"8f2e62284ab21768b8b68d7ee935e3ed00668c5e7287cfe2e1188e9c79773895\",\"source_snippet_sha256\":\"5e72513fafa505d45099f2add4058b244b263ccc6e723bf45d6819f231cd637a\"}\n{\"source_record_index_zero_based\":46,\"question_id\":44778,\"query\":\"Join elements of list `l` with a comma `,`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/44778\",\"source_record_canonical_sha256\":\"eaa881c1d055408e7d8075133b89396d695b5725e9ed105e02c2e425196398ba\",\"source_snippet_sha256\":\"24ee06eb77fee9a0972243ec3fdedc0d4e2f1f78ac4cbd452ebc4eb0c7de1bcf\"}\n{\"source_record_index_zero_based\":47,\"question_id\":44778,\"query\":\"make a comma-separated string from a list `myList`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/44778\",\"source_record_canonical_sha256\":\"d23669681e164f8cec83d35a0dc6443fbef00717284ea60a0141313187424a1d\",\"source_snippet_sha256\":\"50a4c50928c2d349accf9e66189465aee8c0a1bf106a06614f73eb218f369638\"}\n{\"source_record_index_zero_based\":48,\"question_id\":7286365,\"query\":\"reverse the list that contains 1 to 10\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/7286365\",\"source_record_canonical_sha256\":\"d760b13c4a0990eb7551be2e8fab5826d683e8a3b38462832f99260b6af34f83\",\"source_snippet_sha256\":\"282a783b4d21bad4056600cf37acb46af53134fda027b8e1561c1addafc2311b\"}\n{\"source_record_index_zero_based\":49,\"question_id\":18454570,\"query\":\"remove substring 'bag,' from a string 'lamp, bag, mirror'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18454570\",\"source_record_canonical_sha256\":\"7a13162c7ba1e4b49a03f8e5f191e7b157d671ecc138105f42dcdeeaa43511c3\",\"source_snippet_sha256\":\"282c5f888782af7f7927cbbf81c5596a0a5cab249657cceb22f733c38ef72e62\"}\n{\"source_record_index_zero_based\":50,\"question_id\":4357787,\"query\":\"Reverse the order of words, delimited by `.`, in string `s`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4357787\",\"source_record_canonical_sha256\":\"e2d990e626d42a1730d23b11ad7019a952e25cafc06bf4affe04b6181a4dd749\",\"source_snippet_sha256\":\"bc8ce9c86bac31a9354c5447aa95b567f934240ddf00b475fd87d34db18fde4e\"}\n{\"source_record_index_zero_based\":51,\"question_id\":21787496,\"query\":\"convert epoch time represented as milliseconds `s` to string using format '%Y-%m-%d %H:%M:%S.%f'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/21787496\",\"source_record_canonical_sha256\":\"bdae1b996d4f8b380fc8a99e19a27f8e73006d914d7a76a787fe18809353ef90\",\"source_snippet_sha256\":\"c14ab46e2fdeac74659c0c0a78d47ea7736240f1241ddc9a4b82158db24ac2f1\"}\n{\"source_record_index_zero_based\":52,\"question_id\":21787496,\"query\":\"parse milliseconds epoch time '1236472051807' to format '%Y-%m-%d %H:%M:%S'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/21787496\",\"source_record_canonical_sha256\":\"a9bd63762616d538a362894455acd9acd04403cdf65f3740fde9cfe32360374f\",\"source_snippet_sha256\":\"1587f9029d5156295a5a5e959935a9ff22d913744fb7e40a86463165e5d3a1f1\"}\n{\"source_record_index_zero_based\":53,\"question_id\":20573459,\"query\":\"get the date 7 days before the current date\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/20573459\",\"source_record_canonical_sha256\":\"d09d668fee8dde2b7a6eed1857a708e345db4c3fab9a82ce7a2374461cd9b3d4\",\"source_snippet_sha256\":\"4688de21a407f8fe8d1be7ce543c36378881ceb17ef570222ecdab0a375e6d48\"}\n{\"source_record_index_zero_based\":54,\"question_id\":15352457,\"query\":\"sum elements at index `column` of each list in list `data`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15352457\",\"source_record_canonical_sha256\":\"101fdb2064b6dd6f8f0e351a690daaecef8126789b453b07df8076ef984014fc\",\"source_snippet_sha256\":\"71de17f9ed89a32015496f0589d8bac7de71f0e0dcf361b8582018806a8461a1\"}\n{\"source_record_index_zero_based\":55,\"question_id\":15352457,\"query\":\"sum columns of a list `array`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15352457\",\"source_record_canonical_sha256\":\"13ed091acb27f297528b95a237c19e5ddb1b2b62af45719fe9fd8aab12252c92\",\"source_snippet_sha256\":\"787e19bfeb983d1463602cc982a80e1df838ae83abc4798eb0e898c2f4953f9e\"}\n{\"source_record_index_zero_based\":56,\"question_id\":23164058,\"query\":\"encode binary string 'your string' to base64 code\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/23164058\",\"source_record_canonical_sha256\":\"1e6faae70c18523423ef9ff14a46150080fbb304b54b443b3b156105c73d3ffa\",\"source_snippet_sha256\":\"518349fbbc2ee30cf6e16b46e1a3adeaea6951ea5336f0415e4563f7cb63ee30\"}\n{\"source_record_index_zero_based\":57,\"question_id\":11533274,\"query\":\"combine list of dictionaries `dicts` with the same keys in each list to a single dictionary\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/11533274\",\"source_record_canonical_sha256\":\"fc10379e14b9442046510324a8c93f7a5c05c8aed5ae4f159f83997cdab5dabe\",\"source_snippet_sha256\":\"0de35be94394f3928d931ee6280061d0128f188214cfcc9c35366c8429d8651b\"}\n{\"source_record_index_zero_based\":58,\"question_id\":11533274,\"query\":\"Merge a nested dictionary `dicts` into a flat dictionary by concatenating nested values with the same key `k`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/11533274\",\"source_record_canonical_sha256\":\"bc5d8c647e93af24f4e79773d125d16e8c8d6e3ef4d8ce7a4bbb605819e1f4a3\",\"source_snippet_sha256\":\"5b57bb48b52168fa2e071ed3bdabdeee5d562e32444af6eec00840aadb55bc3a\"}\n{\"source_record_index_zero_based\":60,\"question_id\":11236006,\"query\":\"identify duplicate values in list `mylist`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/11236006\",\"source_record_canonical_sha256\":\"e302130856d3addf8f1e93a831c5f6788eedfb53450f9d9d92c98c87fc5cb1b7\",\"source_snippet_sha256\":\"1816f7a8516ea3bae2703bc396839e57cec984e38ee0767f8149fbb7a5d5df96\"}\n{\"source_record_index_zero_based\":61,\"question_id\":2354166,\"query\":\"Insert directory 'apps' into directory `__file__`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2354166\",\"source_record_canonical_sha256\":\"01894de90853faafbd08629a84e16393ae22225213ef74dcb12eadd815a7f544\",\"source_snippet_sha256\":\"5983e03fa011f7f266719893e3f03d5982396be61c8852f12b4415093c37f37b\"}\n{\"source_record_index_zero_based\":62,\"question_id\":2354166,\"query\":\"modify sys.path for python module `subdir`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2354166\",\"source_record_canonical_sha256\":\"001d68e4a32d6ce60ecb9b78f661effbdb93303d3cdf7f7df81260ca75cc2ae7\",\"source_snippet_sha256\":\"6c38cfb851d283dc7536e45ad07aee939f86f765390b88d78c6d8f7182cd4fc1\"}\n{\"source_record_index_zero_based\":63,\"question_id\":20211942,\"query\":\"Insert a 'None' value into a SQLite3 table.\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/20211942\",\"source_record_canonical_sha256\":\"82c0fe54ddd14d77804b1892c56b2d7dab0e863c201a7b578cdf8a5c6dab6b1f\",\"source_snippet_sha256\":\"85b65a9baa2388f4b301e71d4d9aedf5c3f0acb8e8a941f8dac5ef3f635fd452\"}\n{\"source_record_index_zero_based\":64,\"question_id\":406121,\"query\":\"flatten list `list_of_menuitems`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/406121\",\"source_record_canonical_sha256\":\"3741ffbd196305e2561d685ec39c1f003ea74e8745cbe822d40c89d1975339a7\",\"source_snippet_sha256\":\"60317a29b885f182644a71d48f1e30deab16b0c98425cd2a853debfc30d52826\"}\n{\"source_record_index_zero_based\":65,\"question_id\":4741537,\"query\":\"append elements of a set `b` to a list `a`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4741537\",\"source_record_canonical_sha256\":\"1695fbaaac685a82523d204a57730d0209a59ee7da17919c2d48f9424e4ec269\",\"source_snippet_sha256\":\"f34223929f32c2bc600bb5ae419e3a5abcdb3ae00090f3120c080655faea430b\"}\n{\"source_record_index_zero_based\":67,\"question_id\":31247198,\"query\":\"write the data of dataframe `df` into text file `np.txt`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/31247198\",\"source_record_canonical_sha256\":\"3456bd854935621c1193f3bd13536b74d9dc836a8689c2c839c2127252a70f69\",\"source_snippet_sha256\":\"f3356b9daf362f7e4bb349abac4ba9a5697b699abf890a64968d0c4e83ce5f06\"}\n{\"source_record_index_zero_based\":68,\"question_id\":31247198,\"query\":\"write content of DataFrame `df` into text file 'c:\\\\\\\\data\\\\\\\\pandas.txt'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/31247198\",\"source_record_canonical_sha256\":\"cf757aba38f8a952a92f595912392093d7d5724e1d86368a341674e629d807de\",\"source_snippet_sha256\":\"ec1b71acd9df119864eec52b48783449b5e7c7e67957888439924f8ddc0a7695\"}\n{\"source_record_index_zero_based\":69,\"question_id\":15851568,\"query\":\"Split a string `x` by last occurrence of character `-`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15851568\",\"source_record_canonical_sha256\":\"1fd3ffac051e22007743cf25bc4778e0858a9197c612fcfecee30ad03b098725\",\"source_snippet_sha256\":\"fc0d38efcf90c072b3cc5e15bd7f8baa4cc82c0834f9b085ea7c58da3b6b87df\"}\n{\"source_record_index_zero_based\":70,\"question_id\":15851568,\"query\":\"get the last part of a string before the character '-'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15851568\",\"source_record_canonical_sha256\":\"4c30c45476371cf1b514775975475404db0ed45690abeda1d73af80c6ba6ef1a\",\"source_snippet_sha256\":\"fd8eba98386fa6dbdb6c73483394b8d7dde3b4c1a1dbe5da08c463d661b7677d\"}\n{\"source_record_index_zero_based\":71,\"question_id\":17438096,\"query\":\"upload file using FTP\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17438096\",\"source_record_canonical_sha256\":\"2854838642101daec47752d9557d429fc19855946047ff6525f188811b670023\",\"source_snippet_sha256\":\"8412d0636b3f1b266e4c3907250bb19b39dba0662bd21bbe7c5da66215f48afa\"}\n{\"source_record_index_zero_based\":72,\"question_id\":15049182,\"query\":\"add one to the hidden web element with id 'XYZ' with selenium python script\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15049182\",\"source_record_canonical_sha256\":\"9ad9c1972e42b0eb1bb8de6dad491042c6e4385a45d86b59d64969c2326e1ad1\",\"source_snippet_sha256\":\"6968dbbc45d0dbf7f12725066613eed7a5979fd128121df4cbddd358f28ab14b\"}\n{\"source_record_index_zero_based\":73,\"question_id\":28742436,\"query\":\"create array containing the maximum value of respective elements of array `[2, 3, 4]` and array `[1, 5, 2]`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/28742436\",\"source_record_canonical_sha256\":\"a7487c52e1aab54f038d2e493f3b94927a7a57565f4e9bc1cae7cc83f1b36df6\",\"source_snippet_sha256\":\"3fad09fc29ad9f49b04c46bb74de360e00a9ac38f8e521d65df1841949400edf\"}\n{\"source_record_index_zero_based\":74,\"question_id\":34280147,\"query\":\"print a list `l` and move first 3 elements to the end of the list\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/34280147\",\"source_record_canonical_sha256\":\"5347eb0429eaadcee047662da3db03d87260e189e399072f004afcd89f02ed11\",\"source_snippet_sha256\":\"38ec653f0a008a8c37a7b645d40071085fd43f087d3faf5e4b58fa1788c0a286\"}\n{\"source_record_index_zero_based\":75,\"question_id\":11801309,\"query\":\"loop over files in directory '.'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/11801309\",\"source_record_canonical_sha256\":\"e4e1f411b6d46b98dcdb4c4631ece625b1f900dd75eaa63674e24b9b04d5059e\",\"source_snippet_sha256\":\"76e8964d7757e36bd219e1275bacc857bf121d0d727ece78af3eb95a6c5271fc\"}\n{\"source_record_index_zero_based\":76,\"question_id\":11801309,\"query\":\"loop over files in directory `source`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/11801309\",\"source_record_canonical_sha256\":\"ee49573863035eb7d113e75c0fefbbf614073c7da7cf74a0cf475878b42f8e93\",\"source_snippet_sha256\":\"39a8ce369174a8b0e71cf5f407217c2d138a4d253bde0131427f94dd2e3bf1f2\"}\n{\"source_record_index_zero_based\":77,\"question_id\":4172131,\"query\":\"create a random list of integers\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4172131\",\"source_record_canonical_sha256\":\"013e23fa49517287a5e3f737f03e107937fdcddae91f1f66ea7937f8ae8c728a\",\"source_snippet_sha256\":\"10f2765d83e252ed975c7f48c809aec51425cb53d0d4eb094f5d8022023d2bc9\"}\n{\"source_record_index_zero_based\":79,\"question_id\":852055,\"query\":\"Google App Engine execute GQL query 'SELECT * FROM Schedule WHERE station = $1' with parameter `foo.key()`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/852055\",\"source_record_canonical_sha256\":\"ef275c4d8cceba1c2e8f5c82dbddfac098b940861f7b9fc217da8ace98ff9b70\",\"source_snippet_sha256\":\"a1e5bd0c23266d0181d81adc47d1578fc9a518bfb6a49fbd5cc1f0e6a5f59bca\"}\n{\"source_record_index_zero_based\":80,\"question_id\":15325182,\"query\":\"filter rows in pandas starting with alphabet 'f' using regular expression.\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15325182\",\"source_record_canonical_sha256\":\"e4b2ea25b8a57c76da6f17c2a6f1b2d268ff82ffb11c141bf11c2c1388a79633\",\"source_snippet_sha256\":\"6d3b6e723b5f3f7675cbb230866896176067c8a64b7299813c2f5b23f7bd98a5\"}\n{\"source_record_index_zero_based\":81,\"question_id\":583557,\"query\":\"print a 2 dimensional list `tab` as a table with delimiters\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/583557\",\"source_record_canonical_sha256\":\"0f3d91e7acd8f070d09f68eb27821860dd9268db092feb58daabb42aa3a2cfa6\",\"source_snippet_sha256\":\"f8cb8078433815d9f1e06166f86cb9603afde881656bdc42951e3ccd26dbfdd0\"}\n{\"source_record_index_zero_based\":82,\"question_id\":38535931,\"query\":\"pandas: delete rows in dataframe `df` based on multiple columns values\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/38535931\",\"source_record_canonical_sha256\":\"b4d17faedd2416d959d4463e5fe47cc915a5ed5a26bb50641dc7671e25a20ed5\",\"source_snippet_sha256\":\"10a60d2dce27e1fd3ae1d0199fb0cf3c91a2a5f91de295491530e13d7d0028a7\"}\n{\"source_record_index_zero_based\":83,\"question_id\":13945749,\"query\":\"format the variables `self.goals` and `self.penalties` using string formatting\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13945749\",\"source_record_canonical_sha256\":\"b4ee25f1c88bd77372adbee869423f42b261b82eb175babbbaaad10f7162ad42\",\"source_snippet_sha256\":\"c8e8b272a63bae1a448fa69a6ae050138324e42fe1f530c97d604e5475394621\"}\n{\"source_record_index_zero_based\":84,\"question_id\":13945749,\"query\":\"format string \\\"({} goals, ${})\\\" with variables `goals` and `penalties`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13945749\",\"source_record_canonical_sha256\":\"3dc018f75f32812dadc786b7f086571d0d6b56e224368b689d1773ac989c2157\",\"source_snippet_sha256\":\"0efd703270f6842ad5ab7e3b493d5af34504f02cd7503f0e500797eaca5cf4b5\"}\n{\"source_record_index_zero_based\":85,\"question_id\":13945749,\"query\":\"format string \\\"({0.goals} goals, ${0.penalties})\\\"\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13945749\",\"source_record_canonical_sha256\":\"6b99742cc85fb961fcfa230f2d14013836d7d6748f0ed31f43a194022dfa7525\",\"source_snippet_sha256\":\"c8375161454ad00295b44732fb7b943ff9d793a077ead05191a49294013ff958\"}\n{\"source_record_index_zero_based\":86,\"question_id\":18524642,\"query\":\"convert list of lists `L` to list of integers\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18524642\",\"source_record_canonical_sha256\":\"5776005f0731dcffa39f9c08b6ca1bbeb9563280b1994e9e1436331b1c16184a\",\"source_snippet_sha256\":\"6d6ffa122c6e05ed8fb59fe7cab15c5fd462d3ae4de5ac431c7b7a58c53919d1\"}\n{\"source_record_index_zero_based\":87,\"question_id\":18524642,\"query\":\"combine elements of each list in list `L` into digits of a single integer\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18524642\",\"source_record_canonical_sha256\":\"1ef617ed178103212a1a1d5f3e0ce340ba547a69e5f9b72fdebc57d9a7351e71\",\"source_snippet_sha256\":\"ab8b8d0c27becee781c5e1734c974c4c548b2eb281bd7d1cf3e77f224a6fe18d\"}\n{\"source_record_index_zero_based\":88,\"question_id\":18524642,\"query\":\"convert a list of lists `L` to list of integers\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18524642\",\"source_record_canonical_sha256\":\"609a63abad6befeee8ef478b1dc88561cbe31bef1b0258c09f1706a30228c5e6\",\"source_snippet_sha256\":\"728bddc68e39d0517b093162364461ed20ea829b730f4912a8d4366f03ce308e\"}\n{\"source_record_index_zero_based\":89,\"question_id\":7138686,\"query\":\"write the elements of list `lines` concatenated by special character '\\\\n' to file `myfile`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/7138686\",\"source_record_canonical_sha256\":\"9be346a9cfd6d8df74efa7b749d526ee6e664cb68c45a5fc848da2b0584e97fe\",\"source_snippet_sha256\":\"938c995fe40f2f8d48e3888fe5bdad9c50dac909b0e06685fb8324251fc897e3\"}\n{\"source_record_index_zero_based\":90,\"question_id\":1866343,\"query\":\"removing an element from a list based on a predicate 'X' or 'N'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1866343\",\"source_record_canonical_sha256\":\"763cd55378edb07c649ce0858cd1b569ff54f5ec262900b1fc6de3804f747451\",\"source_snippet_sha256\":\"e5a4c34455a914c71765a5355a177129c1e543e619160906c0bbf163c811b7b9\"}\n{\"source_record_index_zero_based\":91,\"question_id\":17238587,\"query\":\"Remove duplicate words from a string `text` using regex\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17238587\",\"source_record_canonical_sha256\":\"c6652a581d1bf939e2e27edbfe55b91ecd1683cdad1a5b5fdb413cf37ff3606e\",\"source_snippet_sha256\":\"7e79572c94421b2a2e8cdabf47781e0b1c3326e6b156198da10614e7ea854288\"}\n{\"source_record_index_zero_based\":92,\"question_id\":26053849,\"query\":\"count non zero values in each column in pandas data frame\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/26053849\",\"source_record_canonical_sha256\":\"46717148dc8c047fef9f3572828e3f4f6d7fc7e9aa4e0a88453a0e2d4d2d3e58\",\"source_snippet_sha256\":\"60e8327b3abdca01315c6d9b1e8905363bdfb81eeb1598a493dc38800c9e85df\"}\n{\"source_record_index_zero_based\":93,\"question_id\":15534223,\"query\":\"search for string that matches regular expression pattern '(?<!Distillr)\\\\\\\\\\\\\\\\AcroTray\\\\\\\\.exe' in string 'C:\\\\\\\\SomeDir\\\\\\\\AcroTray.exe'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/15534223\",\"source_record_canonical_sha256\":\"25d7d73334d276a0434d4928577b54b2a52e38cf1d233b69d75421c66fe984a8\",\"source_snippet_sha256\":\"d4785efaa71b3210dfb2b93d122995cb865bd88b9b5a33f4256476d4697b403d\"}\n{\"source_record_index_zero_based\":94,\"question_id\":5453026,\"query\":\"split string 'QH QD JC KD JS' into a list on white spaces\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/5453026\",\"source_record_canonical_sha256\":\"e53081ad944122f89496e2dce1bb6fe0071a5c84050c4bea73535827dba8aec3\",\"source_snippet_sha256\":\"cd1240f2a3949e0a07d0a198ea6ca3326dd064f08f66b9c0f58755713a1e220b\"}\n{\"source_record_index_zero_based\":95,\"question_id\":18168684,\"query\":\"search for occurrences of regex pattern '>.*<' in xml string `line`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18168684\",\"source_record_canonical_sha256\":\"b2cdebd1094b602a113aa9cbdb6cdb073889246f570a50804909738f3e1e0ecc\",\"source_snippet_sha256\":\"5e7fad221f02ce6ab406c6044dc5776ec3b6023b8a1a54ef906c86b65cac8229\"}\n{\"source_record_index_zero_based\":96,\"question_id\":4914277,\"query\":\"erase all the contents of a file `filename`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4914277\",\"source_record_canonical_sha256\":\"7b812662382096b05065b76c6d13110ae9f8ef09254dc8d9b8ddd8ae169b4873\",\"source_snippet_sha256\":\"7192041eea16c95e92460c7f4eff41fdd902903c69cf734a9db70597644cc390\"}\n{\"source_record_index_zero_based\":97,\"question_id\":19068269,\"query\":\"convert a string into datetime using the format '%Y-%m-%d %H:%M:%S.%f'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/19068269\",\"source_record_canonical_sha256\":\"83a4f44e8e369058c739984fcf53dd492114e52acba99faf90dc15a8ea93ccd9\",\"source_snippet_sha256\":\"33dd1c1f1dda1cc1ce616153d862859724f187344948f2022e305ffe483f0806\"}\n{\"source_record_index_zero_based\":98,\"question_id\":20683167,\"query\":\"find the index of a list with the first element equal to '332' within the list of lists `thelist`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/20683167\",\"source_record_canonical_sha256\":\"625e24ef4d011883b59a0bc4f963f1e48b1e5425b3af08ef7d09d74d944dbdbc\",\"source_snippet_sha256\":\"0ff6742503366b8fb97bd9cae633676baa526d88e6292612bd3586306523b840\"}\n{\"source_record_index_zero_based\":99,\"question_id\":30693804,\"query\":\"lower a string `text` and remove non-alphanumeric characters aside from space\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/30693804\",\"source_record_canonical_sha256\":\"5f2470d69506ed21ba677c43be08ccaae1e788c99658ccd6230ed1435e25b0f0\",\"source_snippet_sha256\":\"89a2b704d58107dd48e87976b6a54e065d9aa09297a5308322e6f639952e70ff\"}\n{\"source_record_index_zero_based\":100,\"question_id\":30693804,\"query\":\"remove all non-alphanumeric characters except space from a string `text` and lower it\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/30693804\",\"source_record_canonical_sha256\":\"cbe1cbb3578a8158ce14e9fd99c857ffe20448bf32e09b37cc5ca4d0ac27ef96\",\"source_snippet_sha256\":\"d9a04dee41ae7f2d84245a1e8bfbfb3219cc87cdad2aa96273cf8d79f55f40c2\"}\n{\"source_record_index_zero_based\":101,\"question_id\":17138464,\"query\":\"subscript text 'H20' with '2' as subscripted in matplotlib labels for arrays 'x' and 'y'.\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17138464\",\"source_record_canonical_sha256\":\"4fcd5fbc144f5471fe5e5856e42a68afdf579571ca62f59177ba40a69121997b\",\"source_snippet_sha256\":\"e196e4ae0d2a73446270e4dc6666cd0a7956b1ed8e03e01a1428ffdb857a699e\"}\n{\"source_record_index_zero_based\":103,\"question_id\":9138112,\"query\":\"loop over a list `mylist` if sublists length equals 3\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/9138112\",\"source_record_canonical_sha256\":\"af0b1c80e5167cf8a11e3a7112e0976f61ca20fce4cf7685ccf01b3ff2650d21\",\"source_snippet_sha256\":\"ef0f853bd5bcf926bf90abb4c0f8ac24a9145aa3d13f06fa5dca69aa7fc9e257\"}\n{\"source_record_index_zero_based\":104,\"question_id\":1807026,\"query\":\"initialize a list `lst` of 100 objects Object()\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1807026\",\"source_record_canonical_sha256\":\"bcf0fa91feaac39f2eb97e0db12edb72e0cb7644478e079d55b8b4b099c6a304\",\"source_snippet_sha256\":\"819803aa18357c3b5bf02d736f67327176f2307884e7950e0d18885a1d59b7e6\"}\n{\"source_record_index_zero_based\":105,\"question_id\":1807026,\"query\":\"create list `lst` containing 100 instances of object `Object`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1807026\",\"source_record_canonical_sha256\":\"c5bda4567aa977a9f31627f77437461053b45a794e86a1ed70eb172ae8b1fb3a\",\"source_snippet_sha256\":\"bdd3f0ddd2e0eada3cf4d482f1913e08e001a33c9627fa010ef9a7171b562b2a\"}\n{\"source_record_index_zero_based\":106,\"question_id\":19664253,\"query\":\"get the content of child tag with`href` attribute whose parent has css `someclass`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/19664253\",\"source_record_canonical_sha256\":\"5bf5d6f7ba440be53adcc293918b909ee847401085c0e577e9a695c0f65e075d\",\"source_snippet_sha256\":\"92c479a8d40905cad55f4b18dd552a991cab8b1320b73dc39b6a36ff9d8e8da8\"}\n{\"source_record_index_zero_based\":107,\"question_id\":13793321,\"query\":\"joining data from dataframe `df1` with data from dataframe `df2` based on matching values of column 'Date_Time' in both dataframes\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/13793321\",\"source_record_canonical_sha256\":\"7debd2b2ecf00568d790ef280f3f6063059d1070e60c4854b995eb0b9ddd010a\",\"source_snippet_sha256\":\"68ba5c1304ba81feb82ba8461fdca2889676e208b873c0be0a8e52ede32b51f4\"}\n{\"source_record_index_zero_based\":108,\"question_id\":3367288,\"query\":\"use `%s` operator to print variable values `str1` inside a string\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/3367288\",\"source_record_canonical_sha256\":\"1cfe3783bdd00c351ca5f1b79ae818f7f8652fa7138fd280e92c0cf63f90725a\",\"source_snippet_sha256\":\"ffcf08f89b23baf8d93b627f79a88e1513302eb523b091345df3eee1a4272f49\"}\n{\"source_record_index_zero_based\":110,\"question_id\":273192,\"query\":\"check if directory `directory ` exists and create it if necessary\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/273192\",\"source_record_canonical_sha256\":\"1d7b1ca85db61265783cf8223e49450ef8f81f95b2624b3206200f2d7b2c8dfc\",\"source_snippet_sha256\":\"abb9c168ec878c33eacc5a909edda415620cc7bce70c688b46dd0d42901b8bb7\"}\n{\"source_record_index_zero_based\":111,\"question_id\":273192,\"query\":\"check if a directory `path` exists and create it if necessary\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/273192\",\"source_record_canonical_sha256\":\"6bd3670e0240fc824702696fa491c2125a3036f39efdf7424d97393eb0b4ddb8\",\"source_snippet_sha256\":\"c6f180d7aeaed45d9deb3e320a73d0bb6db01ce03b559d403d32f50f76e1f510\"}\n{\"source_record_index_zero_based\":114,\"question_id\":18785032,\"query\":\"Replace a separate word 'H3' by 'H1' in a string 'text'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/18785032\",\"source_record_canonical_sha256\":\"2a213ffd462b152b84e84f50ee752e41616a3f50913a0289a2b4bf9c99c1278b\",\"source_snippet_sha256\":\"0c85b7c21c7d23b58a2e3599d4eb2915ca9d42502b12f889e1dc36ca97a75581\"}\n{\"source_record_index_zero_based\":115,\"question_id\":1450897,\"query\":\"substitute ASCII letters in string 'aas30dsa20' with empty string ''\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1450897\",\"source_record_canonical_sha256\":\"99af322b38b2f3837b31c3b45dccd7d2e49a48191af235119eb8e53bb23eff80\",\"source_snippet_sha256\":\"bc65d6f51a34aab212740f267ddf0b4504272981e3117f2db10d812e2bd8d57e\"}\n{\"source_record_index_zero_based\":116,\"question_id\":1450897,\"query\":\"get digits only from a string `aas30dsa20` using lambda function\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1450897\",\"source_record_canonical_sha256\":\"19a35fbd7f5a5010ad6ca34ab9d4057fcdf4c0a5f0252506ff865fa51faa390e\",\"source_snippet_sha256\":\"62eb8384f01683e1608297cae2129b36731ef21ce1746e4e74ecd74ac51be727\"}\n{\"source_record_index_zero_based\":117,\"question_id\":14435268,\"query\":\"access a tag called \\\"name\\\" in beautifulsoup `soup`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/14435268\",\"source_record_canonical_sha256\":\"7433ad5dda77dab5925b88207476e766d94ba7d328a88de5d55c7fafa6a31427\",\"source_snippet_sha256\":\"b0f400864150e75f4e4440d59f00df74658b555f0f017fdcc668c272e0b3446e\"}\n{\"source_record_index_zero_based\":118,\"question_id\":4928274,\"query\":\"get a dictionary `records` of key-value pairs in PyMongo cursor `cursor`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4928274\",\"source_record_canonical_sha256\":\"cd6df4cbfab6307cc3eff2d3a23e305e8916275d3bc8a0c74f4388b6418f2d38\",\"source_snippet_sha256\":\"ad21667d64e89a106bfaa3be5b336a1e4d03481810764d5adf4442b8b39ed563\"}\n{\"source_record_index_zero_based\":119,\"question_id\":20180210,\"query\":\"Create new matrix object  by concatenating data from matrix A and matrix B\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/20180210\",\"source_record_canonical_sha256\":\"10669f76223a98f2231627585d76127a17ac76085ab80074846852c16984eeab\",\"source_snippet_sha256\":\"70f2e4a5aaf8312c7191b6ca371777f719931b65a9047c6898d872a09d1fd6a1\"}\n{\"source_record_index_zero_based\":120,\"question_id\":20180210,\"query\":\"concat two matrices `A` and `B` in numpy\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/20180210\",\"source_record_canonical_sha256\":\"76d25048ffa0dfd69ff4a03fc157f379c2cea90a7e4fd76e76a1a730954c4066\",\"source_snippet_sha256\":\"bed1683b5d45eba5f1f7d99a7ad24e571983bedc66df81fd52e4622eda1ebde5\"}\n{\"source_record_index_zero_based\":121,\"question_id\":2011048,\"query\":\"Get the characters count in a file `filepath`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2011048\",\"source_record_canonical_sha256\":\"6362cc6aa7e69c30f1b10f6c88389058fe60fb8257051c0e0586bea2baf78d12\",\"source_snippet_sha256\":\"f99e10d9eb5c54f5ac4b76510caeb10d146755995803d356ca22bf5d285a3e75\"}\n{\"source_record_index_zero_based\":122,\"question_id\":2600191,\"query\":\"count the occurrences of item \\\"a\\\" in list `l`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2600191\",\"source_record_canonical_sha256\":\"657931f98137c2580c471dc64450fabdad1e73c8a254343a92956f97a98000f0\",\"source_snippet_sha256\":\"ab8cae0b202dfba194ae29bb2cd085a185cb7079c69cbd2c689587ec48e11d02\"}\n{\"source_record_index_zero_based\":123,\"question_id\":2600191,\"query\":\"count the occurrences of items in list `l`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2600191\",\"source_record_canonical_sha256\":\"2c0a4c84ed8e8af8062ae96ccdc06e8c7eb598a355a718946f666c79aa4ec808\",\"source_snippet_sha256\":\"93ed12836514b0839e1eed80476bb550556a5b33eaf5af7fb7daeed9a389dc2c\"}\n{\"source_record_index_zero_based\":126,\"question_id\":2600191,\"query\":\"count the occurrences of item \\\"b\\\" in list `l`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/2600191\",\"source_record_canonical_sha256\":\"de953a0b49c2001b8e189bc3f09cde746314a3adb01af7317374191d9b02e242\",\"source_snippet_sha256\":\"52bd5371815b20f93f620800207b525c2fa446b50e913fe43a138fa71d0bad15\"}\n{\"source_record_index_zero_based\":127,\"question_id\":12842997,\"query\":\"copy file `srcfile` to directory `dstdir`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/12842997\",\"source_record_canonical_sha256\":\"7279031a77d9f044ad64163c8a5dbd8ab15a008da4091d06e85ed3fb32bde007\",\"source_snippet_sha256\":\"287b8634cf037619cb76db591c78184b17eb69bd5544557ead0c25d3aaa5b5fa\"}\n{\"source_record_index_zero_based\":128,\"question_id\":1555968,\"query\":\"find the key associated with the largest value in dictionary `x` whilst key is non-zero value\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1555968\",\"source_record_canonical_sha256\":\"106c7d0d22af40b801469ee723079bb4e67e86e75d5ab2ab1d8bc256d9f3080f\",\"source_snippet_sha256\":\"5f28919d03f4e689108e4fc092cb0104e33d8f9b31994f61dabb35457f581c2d\"}\n{\"source_record_index_zero_based\":129,\"question_id\":1555968,\"query\":\"get the largest key whose not associated with value of 0 in dictionary `x`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1555968\",\"source_record_canonical_sha256\":\"2a8763ccfbf4ff3e5058a2e95caca0077463fa747c21506d03f4fbdfff2e375d\",\"source_snippet_sha256\":\"790499f33bddd612abcc086687bc5ea592ea7a852a350cdecd32072317220f5c\"}\n{\"source_record_index_zero_based\":130,\"question_id\":1555968,\"query\":\"get the largest key in a dictionary `x` with non-zero value\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/1555968\",\"source_record_canonical_sha256\":\"c9ff3a87fbcafb6dd1f87e9b6791007a743152e199595a3e41e88ad10fbf50ea\",\"source_snippet_sha256\":\"5f28919d03f4e689108e4fc092cb0104e33d8f9b31994f61dabb35457f581c2d\"}\n{\"source_record_index_zero_based\":131,\"question_id\":17021863,\"query\":\"Put the curser at beginning of the file\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17021863\",\"source_record_canonical_sha256\":\"db715eda5696d2606e82f26ed4d9d776e16034d815fbf8f8f989b28696073245\",\"source_snippet_sha256\":\"22af718c7da0cbfaaf4e8ecff3a9126d95ea47eccc2007a37ba4f1821557d558\"}\n{\"source_record_index_zero_based\":132,\"question_id\":38152389,\"query\":\"combine values from column 'b' and column 'a' of dataframe `df`  into column 'c' of datafram `df`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/38152389\",\"source_record_canonical_sha256\":\"84f7c5d173e0851e41dc5da075a8b488e3ce9465f9b00da8b3f8582446eae50b\",\"source_snippet_sha256\":\"9fd9d9b6ed1e48dfad074ffd3d39ced7c1f8e59102e1bd89c6eeaa4058c8f601\"}\n{\"source_record_index_zero_based\":133,\"question_id\":4175686,\"query\":\"remove key 'ele' from dictionary `d`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/4175686\",\"source_record_canonical_sha256\":\"9c70bf80ea3f079967643ee58dd94091692991099121c38c96ab4e289b25b7ed\",\"source_snippet_sha256\":\"4b429c3b162e63ebd6eec1b11fc8c305d38d70abd7ef78f5e75689d566f360f1\"}\n{\"source_record_index_zero_based\":134,\"question_id\":5871168,\"query\":\"Update datetime field in `MyModel` to be the existing `timestamp` plus 100 years\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/5871168\",\"source_record_canonical_sha256\":\"43800d59675f530df8b91681d4d5f8d4135209c73f502bac586cf6cd1656eb05\",\"source_snippet_sha256\":\"9b417ea65d7d58041337aa766b5303d8ba858fd046053ca1e139e7af6f141da2\"}\n{\"source_record_index_zero_based\":135,\"question_id\":11574195,\"query\":\"merge list `['it']` and list `['was']` and list `['annoying']` into one list\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/11574195\",\"source_record_canonical_sha256\":\"d5041f045c4a75865b38214ac45222eb6820372e5f192b30d877cceeefb014e0\",\"source_snippet_sha256\":\"a6b2ecbe1fca10f1de6adc1884d6c3e31d797eecea53678169f80f5f4b10842f\"}\n{\"source_record_index_zero_based\":136,\"question_id\":587647,\"query\":\"increment a value with leading zeroes in a number `x`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/587647\",\"source_record_canonical_sha256\":\"d34d9e53545f1bfda3f2b0da985a9472ae0331019b3e9da5d11bffc9fdb6d612\",\"source_snippet_sha256\":\"b3024e01cec385f578ed977903ffd034bbe2b86c7f4d960aa4b9a2b08e09efce\"}\n{\"source_record_index_zero_based\":137,\"question_id\":17315881,\"query\":\"check if a pandas dataframe `df`'s index is sorted\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/17315881\",\"source_record_canonical_sha256\":\"c7ef4b8e9f931e72f13596e1ad859186aa3a6ee4b09bf590f4c4acb2901ccc36\",\"source_snippet_sha256\":\"456be774c00949fbbf7bcb422955a3eca9b59e6cb77da409fc0ff03a963de3de\"}\n{\"source_record_index_zero_based\":138,\"question_id\":16296643,\"query\":\"Convert tuple `t` to list\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/16296643\",\"source_record_canonical_sha256\":\"bcd87c8b813ef0dd536443b7be51f0fb33e0793fb958fb139d4ab48c7c8f87de\",\"source_snippet_sha256\":\"3cb1e880ce3b481bfc0945dcbfa640e55818e19f1c1369976de088d833e3a59b\"}\n{\"source_record_index_zero_based\":139,\"question_id\":16296643,\"query\":\"Convert list `t` to tuple\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/16296643\",\"source_record_canonical_sha256\":\"4b24ef5c6a2fef1b8d90f7bbc2714afd67323742aaa4ebf7c8c8bad8108ba25b\",\"source_snippet_sha256\":\"982f27e4e301c3bbf357f99e7af87eefd9ee60733a6f2fe5760a31395caa670a\"}\n{\"source_record_index_zero_based\":140,\"question_id\":16296643,\"query\":\"Convert tuple `level1` to list\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/16296643\",\"source_record_canonical_sha256\":\"8edf7c2b909c2e27c0de66b961ba0736981365f52aac116a3d3120830523a73d\",\"source_snippet_sha256\":\"fa93450c91cbe9df0e9363a7a28b985740831b81626a723a1dd43393af8b2591\"}\n{\"source_record_index_zero_based\":141,\"question_id\":3880399,\"query\":\"send the output of pprint object `dataobject` to file `logFile`\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/3880399\",\"source_record_canonical_sha256\":\"d12d830ffab93f57168320d19a8f8f49029d9909f33a25aa4d22dd18d14a131b\",\"source_snippet_sha256\":\"910441ea545a1578eaca342772a705beaa61ab4746fccce37b5cbd7d264a8c04\"}\n{\"source_record_index_zero_based\":142,\"question_id\":21800169,\"query\":\"get index of rows in column 'BoolCol'\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/21800169\",\"source_record_canonical_sha256\":\"e02882081b6cd263f044d8a1aee0593c9840cfb86e36ffb185123e373b6ca647\",\"source_snippet_sha256\":\"4468974d6b300bb129c110353e6a362be63aa718cd383566750282f235eb08fc\"}\n{\"source_record_index_zero_based\":143,\"question_id\":21800169,\"query\":\"Create a list containing the indexes of rows where the value of column 'BoolCol' in dataframe `df` are equal to True\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/21800169\",\"source_record_canonical_sha256\":\"c4c745559e7d42cefd175ad91d98d3c49bf8a75c5a2d58f6f82dd6b348141a12\",\"source_snippet_sha256\":\"ab251a93fb30680a5a8ac5779212842830032acd2d3e8f859bfeb282be172052\"}\n{\"source_record_index_zero_based\":144,\"question_id\":21800169,\"query\":\"get list of indexes of rows where column 'BoolCol' values match True\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/21800169\",\"source_record_canonical_sha256\":\"9c134b7babd1139d39655c6b1b26df9ad7ee14e5827ac2caab8f8c907f4e8614\",\"source_snippet_sha256\":\"9203a6c4f85500371a4137872100c3d98334571ed166c9de5f008bbbc701ec3e\"}\n{\"source_record_index_zero_based\":145,\"question_id\":21800169,\"query\":\"get index of rows in dataframe `df` which column 'BoolCol' matches value True\",\"stackoverflow_url\":\"https://stackoverflow.com/questions/21800169\",\"source_record_canonical_sha256\":\"26cb9f11c4ae520a521f12a546b46f37b6f0b5be17bda4ee80d4675f57e17bb4\",\"source_snippet_sha256\":\"6c60a866bf14b1380bdabfe632013e2d3de5f770aee578a7db710763eae93b90\"}\n"
+  },
+  "record_count": 133,
+  "records": [
+    {
+      "source_record_index_zero_based": 0,
+      "question_id": 15080500,
+      "query": "send a signal `signal.SIGUSR1` to the current process",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15080500",
+      "source_record_canonical_sha256": "4d5c4503782a6c1c276ed758e6ca70da1100f7d97427901c16bbea94487ed17b",
+      "source_snippet_sha256": "cabdacf2cfe787212fbf9efa5568f449c1c7e73459814571c759c39aaba17b09"
+    },
+    {
+      "source_record_index_zero_based": 1,
+      "question_id": 3283984,
+      "query": "decode a hex string '4a4b4c' to UTF-8.",
+      "stackoverflow_url": "https://stackoverflow.com/questions/3283984",
+      "source_record_canonical_sha256": "56b64f6393518624dd64f12c4010564647f0d1612725740ac08b02aebc66d8bd",
+      "source_snippet_sha256": "78849609bba72a7b86321ee4239b0c74c07a556bf7b1d6b25096206ef99eca8e"
+    },
+    {
+      "source_record_index_zero_based": 2,
+      "question_id": 3844801,
+      "query": "check if all elements in list `myList` are identical",
+      "stackoverflow_url": "https://stackoverflow.com/questions/3844801",
+      "source_record_canonical_sha256": "348bf00536f9f1389f01e29ffb7839599e0e2ebdc3f56451a6edbb180bb62741",
+      "source_snippet_sha256": "47ef4ee96a1af16aec3327752df8df6261b32504e4d150ab6c5a8f40cda98a8d"
+    },
+    {
+      "source_record_index_zero_based": 3,
+      "question_id": 4302166,
+      "query": "format number of spaces between strings `Python`, `:` and `Very Good` to be `20`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4302166",
+      "source_record_canonical_sha256": "8e38c1990b3c7fb7294117bad6b2b8ead22c792997cf3e21996164f1d95877d1",
+      "source_snippet_sha256": "a85512838efdcb528a3fa2399ef4a8bda2df265eef835231196ef5f08f32edd4"
+    },
+    {
+      "source_record_index_zero_based": 5,
+      "question_id": 2544710,
+      "query": "get rid of None values in dictionary `kwargs`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2544710",
+      "source_record_canonical_sha256": "c8c7a69ad4a4ecde4465b1c0bd96d0fb514c8f51be92deebfca56144c1d76a51",
+      "source_snippet_sha256": "155185291e1d0d03a3c8f42d96b33968a5ab1a4d4e060a398b4b741696d35348"
+    },
+    {
+      "source_record_index_zero_based": 7,
+      "question_id": 14971373,
+      "query": "capture final output of a chain of system commands `ps -ef | grep something | wc -l`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/14971373",
+      "source_record_canonical_sha256": "30858af9240f7b4aa6c164a4ec3e2830f2784df74da582adf5611f78dcbdb7bd",
+      "source_snippet_sha256": "da171621913513f187370eecb510aeb1bf000efbaf028895fc89f47caee0b7fa"
+    },
+    {
+      "source_record_index_zero_based": 8,
+      "question_id": 6726636,
+      "query": "concatenate a list of strings `['a', 'b', 'c']`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/6726636",
+      "source_record_canonical_sha256": "58d20673c21d01a57d44db6eeb53608e2b202e4bd3c51d874ae3bf875569481b",
+      "source_snippet_sha256": "cba3cd643826e50aa09f437163b16e1b2ead2d4065e7a8c053f3268658443315"
+    },
+    {
+      "source_record_index_zero_based": 9,
+      "question_id": 18079563,
+      "query": "find intersection data between series `s1` and series `s2`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18079563",
+      "source_record_canonical_sha256": "61aaa56fdaad98eae6aeb819a7749aaaecc5bbfa781f18423aa8e9aaccbc4451",
+      "source_snippet_sha256": "bec6fc4772579b7076b12fa44be05c25d4b0f4a1a07af42646a43ceafaadef62"
+    },
+    {
+      "source_record_index_zero_based": 10,
+      "question_id": 8315209,
+      "query": "sending http headers to `client`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/8315209",
+      "source_record_canonical_sha256": "caab66d18420688faf4f0937359c7f38f557ba5ffed8e589031b1fb7f4ef026a",
+      "source_snippet_sha256": "291b7a1d09cf02127d78992bb78313ddf1089709eae3c58ea388d52264416680"
+    },
+    {
+      "source_record_index_zero_based": 11,
+      "question_id": 26153795,
+      "query": "Format a datetime string `when` to extract date only",
+      "stackoverflow_url": "https://stackoverflow.com/questions/26153795",
+      "source_record_canonical_sha256": "9e1cf752e96c1adae6271bb7a80b5f46dd6eca14dddbe19f07f7e9af5dc0b956",
+      "source_snippet_sha256": "3e7560f9c2e239d45959023cc70dd3073522ec7a7260b0a31639303283ae137f"
+    },
+    {
+      "source_record_index_zero_based": 12,
+      "question_id": 172439,
+      "query": "split a multi-line string `inputString` into separate strings",
+      "stackoverflow_url": "https://stackoverflow.com/questions/172439",
+      "source_record_canonical_sha256": "3b52e5fa1a4c40294510b7b303c0653606e8a198c9f96006388a67853b04b827",
+      "source_snippet_sha256": "ea8537cf40a915933145e101e414e391150d155776f76d8f8ce7942e6f3c3adf"
+    },
+    {
+      "source_record_index_zero_based": 13,
+      "question_id": 172439,
+      "query": "Split a multi-line string ` a \\n b \\r\\n c ` by new line character `\\n`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/172439",
+      "source_record_canonical_sha256": "69e57e077c310019262405b66360d7c57a67fe851865b4a8936bcca9442e75ca",
+      "source_snippet_sha256": "2c0b3f89b8508fcf696c03ea1b41530604b03dbd69c4241d321b21cdc4bac9ac"
+    },
+    {
+      "source_record_index_zero_based": 14,
+      "question_id": 13954222,
+      "query": "concatenate elements of list `b` by a colon \":\"",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13954222",
+      "source_record_canonical_sha256": "7fc1a777bfb14b7446cae15ee9ff085f2914fb6ad004f14f300ba666ddaa2f78",
+      "source_snippet_sha256": "979825055045305010566f301ec5d91eb3765f3ef76b44ac42de01fc0b4cc7ed"
+    },
+    {
+      "source_record_index_zero_based": 15,
+      "question_id": 5123839,
+      "query": "get the first object from a queryset in django model `Entry`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/5123839",
+      "source_record_canonical_sha256": "76765dbb3f6d7346af61838d320e46f1001c7a04d827685b8c0f245c8b26673f",
+      "source_snippet_sha256": "0d7c4fc7e2ade801625e21ba5c5fdeca545aafebf525d351176c07b292ca32eb"
+    },
+    {
+      "source_record_index_zero_based": 16,
+      "question_id": 13567345,
+      "query": "Calculate sum over all rows of 2D numpy array",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13567345",
+      "source_record_canonical_sha256": "e846c7967dcf55ef993d5de9b25fbc3887e8a0e87d26555fe17645213d894c8c",
+      "source_snippet_sha256": "c3c10706d02f8f0bc5b23c31d939d7dbd49f822a76217f289c7433cdc4390d7d"
+    },
+    {
+      "source_record_index_zero_based": 17,
+      "question_id": 29784889,
+      "query": "enable warnings using action 'always'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/29784889",
+      "source_record_canonical_sha256": "fe30b6e7665b33bcd0de26b0d2bcd3d86e4cae6a30ce4768a4614af22f251a3a",
+      "source_snippet_sha256": "c420dcde993d9d754cb5500ad3a47bcc27dd7d635d0f51335383588f0e884292"
+    },
+    {
+      "source_record_index_zero_based": 18,
+      "question_id": 13550423,
+      "query": "concatenate items of list `l` with a space ' '",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13550423",
+      "source_record_canonical_sha256": "fba2d172c6dce0fab1609368cd6609ce3887c5d61bc62b3bfb84081a196edbdc",
+      "source_snippet_sha256": "6477f4d81d8a6f20581f54fd147ee2234bcf6bd8c4af364366c5217e69c93c02"
+    },
+    {
+      "source_record_index_zero_based": 19,
+      "question_id": 25651990,
+      "query": "run script 'hello.py' with argument 'htmlfilename.htm' on terminal using python executable",
+      "stackoverflow_url": "https://stackoverflow.com/questions/25651990",
+      "source_record_canonical_sha256": "24fd4e2202f8149ec74d51a2819a33b80bd24978697feafd356297b6aa87340f",
+      "source_snippet_sha256": "06da20ef76d1bd27e1ba1aff35b3be9371d80472bc587cd1584f8f3d9a57ecd2"
+    },
+    {
+      "source_record_index_zero_based": 21,
+      "question_id": 6633523,
+      "query": "convert a string `my_string` with dot and comma into a float number `my_float`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/6633523",
+      "source_record_canonical_sha256": "eae991fb8b6e1bb4be78e6d6d92eeb50817ef02985f6d1079549b2c964951414",
+      "source_snippet_sha256": "03dae3bf8a4105f475a70849715fd80167ad3c2809524b2ca833e7de2b6f239c"
+    },
+    {
+      "source_record_index_zero_based": 22,
+      "question_id": 6633523,
+      "query": "convert a string `123,456.908` with dot and comma into a floating number",
+      "stackoverflow_url": "https://stackoverflow.com/questions/6633523",
+      "source_record_canonical_sha256": "344db0ecd9f6652fa0105df28eec051ca03f644acb7f58910fe45895652d8242",
+      "source_snippet_sha256": "4a16ed2427dcb365fa93cc31c43156926a841bc17f2a4a81e6634d30eb88b400"
+    },
+    {
+      "source_record_index_zero_based": 23,
+      "question_id": 3108285,
+      "query": "set pythonpath in python script.",
+      "stackoverflow_url": "https://stackoverflow.com/questions/3108285",
+      "source_record_canonical_sha256": "a32035a1de29ec70d7e076edeca5c15a9c2253678d938f493cd2c44faef608c8",
+      "source_snippet_sha256": "976f6bea479974fff4d5160ec69d7547cf34c8d2254bfb0f2e543d18a9b89c2c"
+    },
+    {
+      "source_record_index_zero_based": 24,
+      "question_id": 2195340,
+      "query": "split string 'Words, words, words.' using a regex '(\\\\W+)'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2195340",
+      "source_record_canonical_sha256": "87f5bb44ea13fd2062768e487f1f415a03e868a6111e7274bd1de09e1eb429cc",
+      "source_snippet_sha256": "035a9ea5fad97c0cd4fc2ba50d7d95b4b4abafb95ba5bcf8f126bf00b574b1bf"
+    },
+    {
+      "source_record_index_zero_based": 25,
+      "question_id": 17977584,
+      "query": "open a file `Output.txt` in append mode",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17977584",
+      "source_record_canonical_sha256": "4688c991d182987c9cffc7928f8a277b19fc947140ad11c8aecb1a7183b6dc8a",
+      "source_snippet_sha256": "64dc787d01eb9f4b7b013096434726b09536790ecc952f867e9b75c3d0cd161b"
+    },
+    {
+      "source_record_index_zero_based": 26,
+      "question_id": 22676,
+      "query": "download a file \"http://www.example.com/songs/mp3.mp3\" over HTTP and save to \"mp3.mp3\"",
+      "stackoverflow_url": "https://stackoverflow.com/questions/22676",
+      "source_record_canonical_sha256": "ed9a97ee4d6d5c6d89b4f35dd15e9e51cf8a095178605e0a64088cf5e70dd52d",
+      "source_snippet_sha256": "c8d8635dd9b711122cd9bb276e62c100aab39a0c43d947d426474ebf946e131e"
+    },
+    {
+      "source_record_index_zero_based": 27,
+      "question_id": 22676,
+      "query": "download a file `url` over HTTP and save to `file_name`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/22676",
+      "source_record_canonical_sha256": "99015f790686499330f0a7d62408e973413f775218415f0298244f85f1698770",
+      "source_snippet_sha256": "5771f5b607b7d0efa7594995bfa62b42c5da65b99d2a9f2d885d510a77ca8b57"
+    },
+    {
+      "source_record_index_zero_based": 28,
+      "question_id": 22676,
+      "query": "download a file 'http://www.example.com/' over HTTP",
+      "stackoverflow_url": "https://stackoverflow.com/questions/22676",
+      "source_record_canonical_sha256": "bb5ebff109d5224b1ff32e2c979da117bf4a8c3b596fbd2e4e6e8ffdb4b99570",
+      "source_snippet_sha256": "d93d9d994d19c45472238201af7513ae79b88dde9ea80437cf2bc6c39d91caaf"
+    },
+    {
+      "source_record_index_zero_based": 30,
+      "question_id": 22676,
+      "query": "download a file `url` over HTTP and save to \"10MB\"",
+      "stackoverflow_url": "https://stackoverflow.com/questions/22676",
+      "source_record_canonical_sha256": "581675ef2b31aeeed7a6b6e8e8604117ef632aa0d30791ac70f3c9a17957e8fd",
+      "source_snippet_sha256": "9e51a99704f80b538688ebe20f881975918dbb982052a0dd5d69b4533eff13eb"
+    },
+    {
+      "source_record_index_zero_based": 31,
+      "question_id": 15405636,
+      "query": "argparse add argument with flag '--version' and version action of '%(prog)s 2.0' to parser `parser`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15405636",
+      "source_record_canonical_sha256": "a6abedd66377c504f728b8aed439fc92dfcbf1a98874714a21bc79f78573ebbb",
+      "source_snippet_sha256": "b6be50bb8f59e2974df7e865928728db4e60ebcaefe0269d4b3589291e3ac1ed"
+    },
+    {
+      "source_record_index_zero_based": 32,
+      "question_id": 17665809,
+      "query": "remove key 'c' from dictionary `d`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17665809",
+      "source_record_canonical_sha256": "09c6c3cd52689a2981e0525a8876b8f86ea12c316db99e6ff3907a512401ea98",
+      "source_snippet_sha256": "7d409a66c51eea3b1e07ff390f107228851221c62e5773b859dd2c2748426374"
+    },
+    {
+      "source_record_index_zero_based": 33,
+      "question_id": 41861705,
+      "query": "Create new DataFrame object by merging columns \"key\" of  dataframes `split_df` and `csv_df` and rename the columns from dataframes `split_df` and `csv_df` with suffix `_left` and `_right` respectively",
+      "stackoverflow_url": "https://stackoverflow.com/questions/41861705",
+      "source_record_canonical_sha256": "12ce59e0cae7fd3acb98d210468357af5520b29164e526d126b88c0717331c77",
+      "source_snippet_sha256": "cbb44d7ab62970e944fb51859d4f698f7f15d8b96061905a79d6a190cf091885"
+    },
+    {
+      "source_record_index_zero_based": 34,
+      "question_id": 10697757,
+      "query": "Split a string `s` by space with `4` splits",
+      "stackoverflow_url": "https://stackoverflow.com/questions/10697757",
+      "source_record_canonical_sha256": "4421cb382b3a44375a22663516adb2b43545f09721df12686f85f56b1819c12b",
+      "source_snippet_sha256": "41d7bb6d274ed2d65ababb6735aa91858a3811a9c8073b531246f5aa15d88944"
+    },
+    {
+      "source_record_index_zero_based": 35,
+      "question_id": 5404068,
+      "query": "read keyboard-input",
+      "stackoverflow_url": "https://stackoverflow.com/questions/5404068",
+      "source_record_canonical_sha256": "35503a23e46423da623b544b3ff7ece46106fe4147a6838313c7d6369b900e94",
+      "source_snippet_sha256": "247e3e9dd1ea8fa1d1259b1ef1f7698438819e08fdcb3781daad63ff549fac01"
+    },
+    {
+      "source_record_index_zero_based": 36,
+      "question_id": 16344756,
+      "query": "enable debug mode on Flask application `app`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/16344756",
+      "source_record_canonical_sha256": "637afd7bc70a6e89f746741e1e888fb20a886a53573e3530056eedb7105f2865",
+      "source_snippet_sha256": "e990efa17117bcff19bedfaf18baa659f70ff2a9fbdadb190ca2319a2788e318"
+    },
+    {
+      "source_record_index_zero_based": 37,
+      "question_id": 40133826,
+      "query": "python save list `mylist` to file object 'save.txt'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/40133826",
+      "source_record_canonical_sha256": "5349b3d729a4beba8ca370e315f7b9e919abc20a7f100844ade37cf4409931e3",
+      "source_snippet_sha256": "cfcb19ca709e8d6cd367b2614f5d8d06843f1404391e2487ec6538ce538271f4"
+    },
+    {
+      "source_record_index_zero_based": 38,
+      "question_id": 4490961,
+      "query": "Multiply a matrix `P` with a 3d tensor `T` in scipy",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4490961",
+      "source_record_canonical_sha256": "d136e37190f692159e145b773e5c30f02c044f42e81d3b7b6acd9533b2e52093",
+      "source_snippet_sha256": "8f9ccbdd4083f38c44d684282631eb8d64eecba85246ef0d90ab3fd01cb53dcf"
+    },
+    {
+      "source_record_index_zero_based": 39,
+      "question_id": 2173087,
+      "query": "Create 3d array of zeroes of size `(3,3,3)`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2173087",
+      "source_record_canonical_sha256": "623716a0dac5852c9c82fa5555c05c00194e85553e617939d2aa3670ac8dc139",
+      "source_snippet_sha256": "8e712a3152defcbeba1a7e8a57750090f8bfe082604ea6488951570338ff2935"
+    },
+    {
+      "source_record_index_zero_based": 40,
+      "question_id": 6266727,
+      "query": "cut off the last word of a sentence `content`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/6266727",
+      "source_record_canonical_sha256": "ef0edf8a4cdc9556b2152c84bb5504ab9f3a10f030cb46b74ce24a52038f8284",
+      "source_snippet_sha256": "faea8540262761c2857a8e75a618227d38983df0ef8b1c011c9dc893ce717a1d"
+    },
+    {
+      "source_record_index_zero_based": 41,
+      "question_id": 30385151,
+      "query": "convert scalar `x` to array",
+      "stackoverflow_url": "https://stackoverflow.com/questions/30385151",
+      "source_record_canonical_sha256": "2fcefa6fb2e9b8cbaa7408bd7f28aff3a64529e098454003bbc003d0cb23dc7a",
+      "source_snippet_sha256": "31d5b6df956fccd35773d13d8c7eaf3088ea038df6c78d81766d42eb8f734b9b"
+    },
+    {
+      "source_record_index_zero_based": 42,
+      "question_id": 15856127,
+      "query": "sum all elements of nested list `L`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15856127",
+      "source_record_canonical_sha256": "af54656ac36af18c3283c9b1a23434893b884b615aa017df2602235705487bd8",
+      "source_snippet_sha256": "2c35e1ca6161974f7cde39ee54df93c385209a0d32864f28499d0390059b070d"
+    },
+    {
+      "source_record_index_zero_based": 43,
+      "question_id": 1592158,
+      "query": "convert hex string '470FC614' to a float number",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1592158",
+      "source_record_canonical_sha256": "bc3541df02029f836fe38e67b31620f2f49e8f7c4b8b6569faf997014e261414",
+      "source_snippet_sha256": "1f36348e095fa1a4f2987a834d5be143d8877bc31110c89a1505ca1798165d45"
+    },
+    {
+      "source_record_index_zero_based": 44,
+      "question_id": 5010536,
+      "query": "Multiple each value by `2` for all keys in a dictionary `my_dict`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/5010536",
+      "source_record_canonical_sha256": "b70b91542bd5d47407ab4c28e156464cfc944bc778bc1747b7b54e6bc1aa1ea7",
+      "source_snippet_sha256": "d9f3a2b18e88cd59263714bdd0cafd356e5542e92712bae15b461aa6cbcfda7b"
+    },
+    {
+      "source_record_index_zero_based": 45,
+      "question_id": 13745648,
+      "query": "running bash script 'sleep.sh'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13745648",
+      "source_record_canonical_sha256": "8f2e62284ab21768b8b68d7ee935e3ed00668c5e7287cfe2e1188e9c79773895",
+      "source_snippet_sha256": "5e72513fafa505d45099f2add4058b244b263ccc6e723bf45d6819f231cd637a"
+    },
+    {
+      "source_record_index_zero_based": 46,
+      "question_id": 44778,
+      "query": "Join elements of list `l` with a comma `,`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/44778",
+      "source_record_canonical_sha256": "eaa881c1d055408e7d8075133b89396d695b5725e9ed105e02c2e425196398ba",
+      "source_snippet_sha256": "24ee06eb77fee9a0972243ec3fdedc0d4e2f1f78ac4cbd452ebc4eb0c7de1bcf"
+    },
+    {
+      "source_record_index_zero_based": 47,
+      "question_id": 44778,
+      "query": "make a comma-separated string from a list `myList`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/44778",
+      "source_record_canonical_sha256": "d23669681e164f8cec83d35a0dc6443fbef00717284ea60a0141313187424a1d",
+      "source_snippet_sha256": "50a4c50928c2d349accf9e66189465aee8c0a1bf106a06614f73eb218f369638"
+    },
+    {
+      "source_record_index_zero_based": 48,
+      "question_id": 7286365,
+      "query": "reverse the list that contains 1 to 10",
+      "stackoverflow_url": "https://stackoverflow.com/questions/7286365",
+      "source_record_canonical_sha256": "d760b13c4a0990eb7551be2e8fab5826d683e8a3b38462832f99260b6af34f83",
+      "source_snippet_sha256": "282a783b4d21bad4056600cf37acb46af53134fda027b8e1561c1addafc2311b"
+    },
+    {
+      "source_record_index_zero_based": 49,
+      "question_id": 18454570,
+      "query": "remove substring 'bag,' from a string 'lamp, bag, mirror'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18454570",
+      "source_record_canonical_sha256": "7a13162c7ba1e4b49a03f8e5f191e7b157d671ecc138105f42dcdeeaa43511c3",
+      "source_snippet_sha256": "282c5f888782af7f7927cbbf81c5596a0a5cab249657cceb22f733c38ef72e62"
+    },
+    {
+      "source_record_index_zero_based": 50,
+      "question_id": 4357787,
+      "query": "Reverse the order of words, delimited by `.`, in string `s`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4357787",
+      "source_record_canonical_sha256": "e2d990e626d42a1730d23b11ad7019a952e25cafc06bf4affe04b6181a4dd749",
+      "source_snippet_sha256": "bc8ce9c86bac31a9354c5447aa95b567f934240ddf00b475fd87d34db18fde4e"
+    },
+    {
+      "source_record_index_zero_based": 51,
+      "question_id": 21787496,
+      "query": "convert epoch time represented as milliseconds `s` to string using format '%Y-%m-%d %H:%M:%S.%f'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/21787496",
+      "source_record_canonical_sha256": "bdae1b996d4f8b380fc8a99e19a27f8e73006d914d7a76a787fe18809353ef90",
+      "source_snippet_sha256": "c14ab46e2fdeac74659c0c0a78d47ea7736240f1241ddc9a4b82158db24ac2f1"
+    },
+    {
+      "source_record_index_zero_based": 52,
+      "question_id": 21787496,
+      "query": "parse milliseconds epoch time '1236472051807' to format '%Y-%m-%d %H:%M:%S'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/21787496",
+      "source_record_canonical_sha256": "a9bd63762616d538a362894455acd9acd04403cdf65f3740fde9cfe32360374f",
+      "source_snippet_sha256": "1587f9029d5156295a5a5e959935a9ff22d913744fb7e40a86463165e5d3a1f1"
+    },
+    {
+      "source_record_index_zero_based": 53,
+      "question_id": 20573459,
+      "query": "get the date 7 days before the current date",
+      "stackoverflow_url": "https://stackoverflow.com/questions/20573459",
+      "source_record_canonical_sha256": "d09d668fee8dde2b7a6eed1857a708e345db4c3fab9a82ce7a2374461cd9b3d4",
+      "source_snippet_sha256": "4688de21a407f8fe8d1be7ce543c36378881ceb17ef570222ecdab0a375e6d48"
+    },
+    {
+      "source_record_index_zero_based": 54,
+      "question_id": 15352457,
+      "query": "sum elements at index `column` of each list in list `data`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15352457",
+      "source_record_canonical_sha256": "101fdb2064b6dd6f8f0e351a690daaecef8126789b453b07df8076ef984014fc",
+      "source_snippet_sha256": "71de17f9ed89a32015496f0589d8bac7de71f0e0dcf361b8582018806a8461a1"
+    },
+    {
+      "source_record_index_zero_based": 55,
+      "question_id": 15352457,
+      "query": "sum columns of a list `array`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15352457",
+      "source_record_canonical_sha256": "13ed091acb27f297528b95a237c19e5ddb1b2b62af45719fe9fd8aab12252c92",
+      "source_snippet_sha256": "787e19bfeb983d1463602cc982a80e1df838ae83abc4798eb0e898c2f4953f9e"
+    },
+    {
+      "source_record_index_zero_based": 56,
+      "question_id": 23164058,
+      "query": "encode binary string 'your string' to base64 code",
+      "stackoverflow_url": "https://stackoverflow.com/questions/23164058",
+      "source_record_canonical_sha256": "1e6faae70c18523423ef9ff14a46150080fbb304b54b443b3b156105c73d3ffa",
+      "source_snippet_sha256": "518349fbbc2ee30cf6e16b46e1a3adeaea6951ea5336f0415e4563f7cb63ee30"
+    },
+    {
+      "source_record_index_zero_based": 57,
+      "question_id": 11533274,
+      "query": "combine list of dictionaries `dicts` with the same keys in each list to a single dictionary",
+      "stackoverflow_url": "https://stackoverflow.com/questions/11533274",
+      "source_record_canonical_sha256": "fc10379e14b9442046510324a8c93f7a5c05c8aed5ae4f159f83997cdab5dabe",
+      "source_snippet_sha256": "0de35be94394f3928d931ee6280061d0128f188214cfcc9c35366c8429d8651b"
+    },
+    {
+      "source_record_index_zero_based": 58,
+      "question_id": 11533274,
+      "query": "Merge a nested dictionary `dicts` into a flat dictionary by concatenating nested values with the same key `k`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/11533274",
+      "source_record_canonical_sha256": "bc5d8c647e93af24f4e79773d125d16e8c8d6e3ef4d8ce7a4bbb605819e1f4a3",
+      "source_snippet_sha256": "5b57bb48b52168fa2e071ed3bdabdeee5d562e32444af6eec00840aadb55bc3a"
+    },
+    {
+      "source_record_index_zero_based": 60,
+      "question_id": 11236006,
+      "query": "identify duplicate values in list `mylist`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/11236006",
+      "source_record_canonical_sha256": "e302130856d3addf8f1e93a831c5f6788eedfb53450f9d9d92c98c87fc5cb1b7",
+      "source_snippet_sha256": "1816f7a8516ea3bae2703bc396839e57cec984e38ee0767f8149fbb7a5d5df96"
+    },
+    {
+      "source_record_index_zero_based": 61,
+      "question_id": 2354166,
+      "query": "Insert directory 'apps' into directory `__file__`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2354166",
+      "source_record_canonical_sha256": "01894de90853faafbd08629a84e16393ae22225213ef74dcb12eadd815a7f544",
+      "source_snippet_sha256": "5983e03fa011f7f266719893e3f03d5982396be61c8852f12b4415093c37f37b"
+    },
+    {
+      "source_record_index_zero_based": 62,
+      "question_id": 2354166,
+      "query": "modify sys.path for python module `subdir`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2354166",
+      "source_record_canonical_sha256": "001d68e4a32d6ce60ecb9b78f661effbdb93303d3cdf7f7df81260ca75cc2ae7",
+      "source_snippet_sha256": "6c38cfb851d283dc7536e45ad07aee939f86f765390b88d78c6d8f7182cd4fc1"
+    },
+    {
+      "source_record_index_zero_based": 63,
+      "question_id": 20211942,
+      "query": "Insert a 'None' value into a SQLite3 table.",
+      "stackoverflow_url": "https://stackoverflow.com/questions/20211942",
+      "source_record_canonical_sha256": "82c0fe54ddd14d77804b1892c56b2d7dab0e863c201a7b578cdf8a5c6dab6b1f",
+      "source_snippet_sha256": "85b65a9baa2388f4b301e71d4d9aedf5c3f0acb8e8a941f8dac5ef3f635fd452"
+    },
+    {
+      "source_record_index_zero_based": 64,
+      "question_id": 406121,
+      "query": "flatten list `list_of_menuitems`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/406121",
+      "source_record_canonical_sha256": "3741ffbd196305e2561d685ec39c1f003ea74e8745cbe822d40c89d1975339a7",
+      "source_snippet_sha256": "60317a29b885f182644a71d48f1e30deab16b0c98425cd2a853debfc30d52826"
+    },
+    {
+      "source_record_index_zero_based": 65,
+      "question_id": 4741537,
+      "query": "append elements of a set `b` to a list `a`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4741537",
+      "source_record_canonical_sha256": "1695fbaaac685a82523d204a57730d0209a59ee7da17919c2d48f9424e4ec269",
+      "source_snippet_sha256": "f34223929f32c2bc600bb5ae419e3a5abcdb3ae00090f3120c080655faea430b"
+    },
+    {
+      "source_record_index_zero_based": 67,
+      "question_id": 31247198,
+      "query": "write the data of dataframe `df` into text file `np.txt`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/31247198",
+      "source_record_canonical_sha256": "3456bd854935621c1193f3bd13536b74d9dc836a8689c2c839c2127252a70f69",
+      "source_snippet_sha256": "f3356b9daf362f7e4bb349abac4ba9a5697b699abf890a64968d0c4e83ce5f06"
+    },
+    {
+      "source_record_index_zero_based": 68,
+      "question_id": 31247198,
+      "query": "write content of DataFrame `df` into text file 'c:\\\\data\\\\pandas.txt'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/31247198",
+      "source_record_canonical_sha256": "cf757aba38f8a952a92f595912392093d7d5724e1d86368a341674e629d807de",
+      "source_snippet_sha256": "ec1b71acd9df119864eec52b48783449b5e7c7e67957888439924f8ddc0a7695"
+    },
+    {
+      "source_record_index_zero_based": 69,
+      "question_id": 15851568,
+      "query": "Split a string `x` by last occurrence of character `-`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15851568",
+      "source_record_canonical_sha256": "1fd3ffac051e22007743cf25bc4778e0858a9197c612fcfecee30ad03b098725",
+      "source_snippet_sha256": "fc0d38efcf90c072b3cc5e15bd7f8baa4cc82c0834f9b085ea7c58da3b6b87df"
+    },
+    {
+      "source_record_index_zero_based": 70,
+      "question_id": 15851568,
+      "query": "get the last part of a string before the character '-'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15851568",
+      "source_record_canonical_sha256": "4c30c45476371cf1b514775975475404db0ed45690abeda1d73af80c6ba6ef1a",
+      "source_snippet_sha256": "fd8eba98386fa6dbdb6c73483394b8d7dde3b4c1a1dbe5da08c463d661b7677d"
+    },
+    {
+      "source_record_index_zero_based": 71,
+      "question_id": 17438096,
+      "query": "upload file using FTP",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17438096",
+      "source_record_canonical_sha256": "2854838642101daec47752d9557d429fc19855946047ff6525f188811b670023",
+      "source_snippet_sha256": "8412d0636b3f1b266e4c3907250bb19b39dba0662bd21bbe7c5da66215f48afa"
+    },
+    {
+      "source_record_index_zero_based": 72,
+      "question_id": 15049182,
+      "query": "add one to the hidden web element with id 'XYZ' with selenium python script",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15049182",
+      "source_record_canonical_sha256": "9ad9c1972e42b0eb1bb8de6dad491042c6e4385a45d86b59d64969c2326e1ad1",
+      "source_snippet_sha256": "6968dbbc45d0dbf7f12725066613eed7a5979fd128121df4cbddd358f28ab14b"
+    },
+    {
+      "source_record_index_zero_based": 73,
+      "question_id": 28742436,
+      "query": "create array containing the maximum value of respective elements of array `[2, 3, 4]` and array `[1, 5, 2]`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/28742436",
+      "source_record_canonical_sha256": "a7487c52e1aab54f038d2e493f3b94927a7a57565f4e9bc1cae7cc83f1b36df6",
+      "source_snippet_sha256": "3fad09fc29ad9f49b04c46bb74de360e00a9ac38f8e521d65df1841949400edf"
+    },
+    {
+      "source_record_index_zero_based": 74,
+      "question_id": 34280147,
+      "query": "print a list `l` and move first 3 elements to the end of the list",
+      "stackoverflow_url": "https://stackoverflow.com/questions/34280147",
+      "source_record_canonical_sha256": "5347eb0429eaadcee047662da3db03d87260e189e399072f004afcd89f02ed11",
+      "source_snippet_sha256": "38ec653f0a008a8c37a7b645d40071085fd43f087d3faf5e4b58fa1788c0a286"
+    },
+    {
+      "source_record_index_zero_based": 75,
+      "question_id": 11801309,
+      "query": "loop over files in directory '.'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/11801309",
+      "source_record_canonical_sha256": "e4e1f411b6d46b98dcdb4c4631ece625b1f900dd75eaa63674e24b9b04d5059e",
+      "source_snippet_sha256": "76e8964d7757e36bd219e1275bacc857bf121d0d727ece78af3eb95a6c5271fc"
+    },
+    {
+      "source_record_index_zero_based": 76,
+      "question_id": 11801309,
+      "query": "loop over files in directory `source`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/11801309",
+      "source_record_canonical_sha256": "ee49573863035eb7d113e75c0fefbbf614073c7da7cf74a0cf475878b42f8e93",
+      "source_snippet_sha256": "39a8ce369174a8b0e71cf5f407217c2d138a4d253bde0131427f94dd2e3bf1f2"
+    },
+    {
+      "source_record_index_zero_based": 77,
+      "question_id": 4172131,
+      "query": "create a random list of integers",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4172131",
+      "source_record_canonical_sha256": "013e23fa49517287a5e3f737f03e107937fdcddae91f1f66ea7937f8ae8c728a",
+      "source_snippet_sha256": "10f2765d83e252ed975c7f48c809aec51425cb53d0d4eb094f5d8022023d2bc9"
+    },
+    {
+      "source_record_index_zero_based": 79,
+      "question_id": 852055,
+      "query": "Google App Engine execute GQL query 'SELECT * FROM Schedule WHERE station = $1' with parameter `foo.key()`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/852055",
+      "source_record_canonical_sha256": "ef275c4d8cceba1c2e8f5c82dbddfac098b940861f7b9fc217da8ace98ff9b70",
+      "source_snippet_sha256": "a1e5bd0c23266d0181d81adc47d1578fc9a518bfb6a49fbd5cc1f0e6a5f59bca"
+    },
+    {
+      "source_record_index_zero_based": 80,
+      "question_id": 15325182,
+      "query": "filter rows in pandas starting with alphabet 'f' using regular expression.",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15325182",
+      "source_record_canonical_sha256": "e4b2ea25b8a57c76da6f17c2a6f1b2d268ff82ffb11c141bf11c2c1388a79633",
+      "source_snippet_sha256": "6d3b6e723b5f3f7675cbb230866896176067c8a64b7299813c2f5b23f7bd98a5"
+    },
+    {
+      "source_record_index_zero_based": 81,
+      "question_id": 583557,
+      "query": "print a 2 dimensional list `tab` as a table with delimiters",
+      "stackoverflow_url": "https://stackoverflow.com/questions/583557",
+      "source_record_canonical_sha256": "0f3d91e7acd8f070d09f68eb27821860dd9268db092feb58daabb42aa3a2cfa6",
+      "source_snippet_sha256": "f8cb8078433815d9f1e06166f86cb9603afde881656bdc42951e3ccd26dbfdd0"
+    },
+    {
+      "source_record_index_zero_based": 82,
+      "question_id": 38535931,
+      "query": "pandas: delete rows in dataframe `df` based on multiple columns values",
+      "stackoverflow_url": "https://stackoverflow.com/questions/38535931",
+      "source_record_canonical_sha256": "b4d17faedd2416d959d4463e5fe47cc915a5ed5a26bb50641dc7671e25a20ed5",
+      "source_snippet_sha256": "10a60d2dce27e1fd3ae1d0199fb0cf3c91a2a5f91de295491530e13d7d0028a7"
+    },
+    {
+      "source_record_index_zero_based": 83,
+      "question_id": 13945749,
+      "query": "format the variables `self.goals` and `self.penalties` using string formatting",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13945749",
+      "source_record_canonical_sha256": "b4ee25f1c88bd77372adbee869423f42b261b82eb175babbbaaad10f7162ad42",
+      "source_snippet_sha256": "c8e8b272a63bae1a448fa69a6ae050138324e42fe1f530c97d604e5475394621"
+    },
+    {
+      "source_record_index_zero_based": 84,
+      "question_id": 13945749,
+      "query": "format string \"({} goals, ${})\" with variables `goals` and `penalties`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13945749",
+      "source_record_canonical_sha256": "3dc018f75f32812dadc786b7f086571d0d6b56e224368b689d1773ac989c2157",
+      "source_snippet_sha256": "0efd703270f6842ad5ab7e3b493d5af34504f02cd7503f0e500797eaca5cf4b5"
+    },
+    {
+      "source_record_index_zero_based": 85,
+      "question_id": 13945749,
+      "query": "format string \"({0.goals} goals, ${0.penalties})\"",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13945749",
+      "source_record_canonical_sha256": "6b99742cc85fb961fcfa230f2d14013836d7d6748f0ed31f43a194022dfa7525",
+      "source_snippet_sha256": "c8375161454ad00295b44732fb7b943ff9d793a077ead05191a49294013ff958"
+    },
+    {
+      "source_record_index_zero_based": 86,
+      "question_id": 18524642,
+      "query": "convert list of lists `L` to list of integers",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18524642",
+      "source_record_canonical_sha256": "5776005f0731dcffa39f9c08b6ca1bbeb9563280b1994e9e1436331b1c16184a",
+      "source_snippet_sha256": "6d6ffa122c6e05ed8fb59fe7cab15c5fd462d3ae4de5ac431c7b7a58c53919d1"
+    },
+    {
+      "source_record_index_zero_based": 87,
+      "question_id": 18524642,
+      "query": "combine elements of each list in list `L` into digits of a single integer",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18524642",
+      "source_record_canonical_sha256": "1ef617ed178103212a1a1d5f3e0ce340ba547a69e5f9b72fdebc57d9a7351e71",
+      "source_snippet_sha256": "ab8b8d0c27becee781c5e1734c974c4c548b2eb281bd7d1cf3e77f224a6fe18d"
+    },
+    {
+      "source_record_index_zero_based": 88,
+      "question_id": 18524642,
+      "query": "convert a list of lists `L` to list of integers",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18524642",
+      "source_record_canonical_sha256": "609a63abad6befeee8ef478b1dc88561cbe31bef1b0258c09f1706a30228c5e6",
+      "source_snippet_sha256": "728bddc68e39d0517b093162364461ed20ea829b730f4912a8d4366f03ce308e"
+    },
+    {
+      "source_record_index_zero_based": 89,
+      "question_id": 7138686,
+      "query": "write the elements of list `lines` concatenated by special character '\\n' to file `myfile`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/7138686",
+      "source_record_canonical_sha256": "9be346a9cfd6d8df74efa7b749d526ee6e664cb68c45a5fc848da2b0584e97fe",
+      "source_snippet_sha256": "938c995fe40f2f8d48e3888fe5bdad9c50dac909b0e06685fb8324251fc897e3"
+    },
+    {
+      "source_record_index_zero_based": 90,
+      "question_id": 1866343,
+      "query": "removing an element from a list based on a predicate 'X' or 'N'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1866343",
+      "source_record_canonical_sha256": "763cd55378edb07c649ce0858cd1b569ff54f5ec262900b1fc6de3804f747451",
+      "source_snippet_sha256": "e5a4c34455a914c71765a5355a177129c1e543e619160906c0bbf163c811b7b9"
+    },
+    {
+      "source_record_index_zero_based": 91,
+      "question_id": 17238587,
+      "query": "Remove duplicate words from a string `text` using regex",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17238587",
+      "source_record_canonical_sha256": "c6652a581d1bf939e2e27edbfe55b91ecd1683cdad1a5b5fdb413cf37ff3606e",
+      "source_snippet_sha256": "7e79572c94421b2a2e8cdabf47781e0b1c3326e6b156198da10614e7ea854288"
+    },
+    {
+      "source_record_index_zero_based": 92,
+      "question_id": 26053849,
+      "query": "count non zero values in each column in pandas data frame",
+      "stackoverflow_url": "https://stackoverflow.com/questions/26053849",
+      "source_record_canonical_sha256": "46717148dc8c047fef9f3572828e3f4f6d7fc7e9aa4e0a88453a0e2d4d2d3e58",
+      "source_snippet_sha256": "60e8327b3abdca01315c6d9b1e8905363bdfb81eeb1598a493dc38800c9e85df"
+    },
+    {
+      "source_record_index_zero_based": 93,
+      "question_id": 15534223,
+      "query": "search for string that matches regular expression pattern '(?<!Distillr)\\\\\\\\AcroTray\\\\.exe' in string 'C:\\\\SomeDir\\\\AcroTray.exe'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/15534223",
+      "source_record_canonical_sha256": "25d7d73334d276a0434d4928577b54b2a52e38cf1d233b69d75421c66fe984a8",
+      "source_snippet_sha256": "d4785efaa71b3210dfb2b93d122995cb865bd88b9b5a33f4256476d4697b403d"
+    },
+    {
+      "source_record_index_zero_based": 94,
+      "question_id": 5453026,
+      "query": "split string 'QH QD JC KD JS' into a list on white spaces",
+      "stackoverflow_url": "https://stackoverflow.com/questions/5453026",
+      "source_record_canonical_sha256": "e53081ad944122f89496e2dce1bb6fe0071a5c84050c4bea73535827dba8aec3",
+      "source_snippet_sha256": "cd1240f2a3949e0a07d0a198ea6ca3326dd064f08f66b9c0f58755713a1e220b"
+    },
+    {
+      "source_record_index_zero_based": 95,
+      "question_id": 18168684,
+      "query": "search for occurrences of regex pattern '>.*<' in xml string `line`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18168684",
+      "source_record_canonical_sha256": "b2cdebd1094b602a113aa9cbdb6cdb073889246f570a50804909738f3e1e0ecc",
+      "source_snippet_sha256": "5e7fad221f02ce6ab406c6044dc5776ec3b6023b8a1a54ef906c86b65cac8229"
+    },
+    {
+      "source_record_index_zero_based": 96,
+      "question_id": 4914277,
+      "query": "erase all the contents of a file `filename`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4914277",
+      "source_record_canonical_sha256": "7b812662382096b05065b76c6d13110ae9f8ef09254dc8d9b8ddd8ae169b4873",
+      "source_snippet_sha256": "7192041eea16c95e92460c7f4eff41fdd902903c69cf734a9db70597644cc390"
+    },
+    {
+      "source_record_index_zero_based": 97,
+      "question_id": 19068269,
+      "query": "convert a string into datetime using the format '%Y-%m-%d %H:%M:%S.%f'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/19068269",
+      "source_record_canonical_sha256": "83a4f44e8e369058c739984fcf53dd492114e52acba99faf90dc15a8ea93ccd9",
+      "source_snippet_sha256": "33dd1c1f1dda1cc1ce616153d862859724f187344948f2022e305ffe483f0806"
+    },
+    {
+      "source_record_index_zero_based": 98,
+      "question_id": 20683167,
+      "query": "find the index of a list with the first element equal to '332' within the list of lists `thelist`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/20683167",
+      "source_record_canonical_sha256": "625e24ef4d011883b59a0bc4f963f1e48b1e5425b3af08ef7d09d74d944dbdbc",
+      "source_snippet_sha256": "0ff6742503366b8fb97bd9cae633676baa526d88e6292612bd3586306523b840"
+    },
+    {
+      "source_record_index_zero_based": 99,
+      "question_id": 30693804,
+      "query": "lower a string `text` and remove non-alphanumeric characters aside from space",
+      "stackoverflow_url": "https://stackoverflow.com/questions/30693804",
+      "source_record_canonical_sha256": "5f2470d69506ed21ba677c43be08ccaae1e788c99658ccd6230ed1435e25b0f0",
+      "source_snippet_sha256": "89a2b704d58107dd48e87976b6a54e065d9aa09297a5308322e6f639952e70ff"
+    },
+    {
+      "source_record_index_zero_based": 100,
+      "question_id": 30693804,
+      "query": "remove all non-alphanumeric characters except space from a string `text` and lower it",
+      "stackoverflow_url": "https://stackoverflow.com/questions/30693804",
+      "source_record_canonical_sha256": "cbe1cbb3578a8158ce14e9fd99c857ffe20448bf32e09b37cc5ca4d0ac27ef96",
+      "source_snippet_sha256": "d9a04dee41ae7f2d84245a1e8bfbfb3219cc87cdad2aa96273cf8d79f55f40c2"
+    },
+    {
+      "source_record_index_zero_based": 101,
+      "question_id": 17138464,
+      "query": "subscript text 'H20' with '2' as subscripted in matplotlib labels for arrays 'x' and 'y'.",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17138464",
+      "source_record_canonical_sha256": "4fcd5fbc144f5471fe5e5856e42a68afdf579571ca62f59177ba40a69121997b",
+      "source_snippet_sha256": "e196e4ae0d2a73446270e4dc6666cd0a7956b1ed8e03e01a1428ffdb857a699e"
+    },
+    {
+      "source_record_index_zero_based": 103,
+      "question_id": 9138112,
+      "query": "loop over a list `mylist` if sublists length equals 3",
+      "stackoverflow_url": "https://stackoverflow.com/questions/9138112",
+      "source_record_canonical_sha256": "af0b1c80e5167cf8a11e3a7112e0976f61ca20fce4cf7685ccf01b3ff2650d21",
+      "source_snippet_sha256": "ef0f853bd5bcf926bf90abb4c0f8ac24a9145aa3d13f06fa5dca69aa7fc9e257"
+    },
+    {
+      "source_record_index_zero_based": 104,
+      "question_id": 1807026,
+      "query": "initialize a list `lst` of 100 objects Object()",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1807026",
+      "source_record_canonical_sha256": "bcf0fa91feaac39f2eb97e0db12edb72e0cb7644478e079d55b8b4b099c6a304",
+      "source_snippet_sha256": "819803aa18357c3b5bf02d736f67327176f2307884e7950e0d18885a1d59b7e6"
+    },
+    {
+      "source_record_index_zero_based": 105,
+      "question_id": 1807026,
+      "query": "create list `lst` containing 100 instances of object `Object`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1807026",
+      "source_record_canonical_sha256": "c5bda4567aa977a9f31627f77437461053b45a794e86a1ed70eb172ae8b1fb3a",
+      "source_snippet_sha256": "bdd3f0ddd2e0eada3cf4d482f1913e08e001a33c9627fa010ef9a7171b562b2a"
+    },
+    {
+      "source_record_index_zero_based": 106,
+      "question_id": 19664253,
+      "query": "get the content of child tag with`href` attribute whose parent has css `someclass`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/19664253",
+      "source_record_canonical_sha256": "5bf5d6f7ba440be53adcc293918b909ee847401085c0e577e9a695c0f65e075d",
+      "source_snippet_sha256": "92c479a8d40905cad55f4b18dd552a991cab8b1320b73dc39b6a36ff9d8e8da8"
+    },
+    {
+      "source_record_index_zero_based": 107,
+      "question_id": 13793321,
+      "query": "joining data from dataframe `df1` with data from dataframe `df2` based on matching values of column 'Date_Time' in both dataframes",
+      "stackoverflow_url": "https://stackoverflow.com/questions/13793321",
+      "source_record_canonical_sha256": "7debd2b2ecf00568d790ef280f3f6063059d1070e60c4854b995eb0b9ddd010a",
+      "source_snippet_sha256": "68ba5c1304ba81feb82ba8461fdca2889676e208b873c0be0a8e52ede32b51f4"
+    },
+    {
+      "source_record_index_zero_based": 108,
+      "question_id": 3367288,
+      "query": "use `%s` operator to print variable values `str1` inside a string",
+      "stackoverflow_url": "https://stackoverflow.com/questions/3367288",
+      "source_record_canonical_sha256": "1cfe3783bdd00c351ca5f1b79ae818f7f8652fa7138fd280e92c0cf63f90725a",
+      "source_snippet_sha256": "ffcf08f89b23baf8d93b627f79a88e1513302eb523b091345df3eee1a4272f49"
+    },
+    {
+      "source_record_index_zero_based": 110,
+      "question_id": 273192,
+      "query": "check if directory `directory ` exists and create it if necessary",
+      "stackoverflow_url": "https://stackoverflow.com/questions/273192",
+      "source_record_canonical_sha256": "1d7b1ca85db61265783cf8223e49450ef8f81f95b2624b3206200f2d7b2c8dfc",
+      "source_snippet_sha256": "abb9c168ec878c33eacc5a909edda415620cc7bce70c688b46dd0d42901b8bb7"
+    },
+    {
+      "source_record_index_zero_based": 111,
+      "question_id": 273192,
+      "query": "check if a directory `path` exists and create it if necessary",
+      "stackoverflow_url": "https://stackoverflow.com/questions/273192",
+      "source_record_canonical_sha256": "6bd3670e0240fc824702696fa491c2125a3036f39efdf7424d97393eb0b4ddb8",
+      "source_snippet_sha256": "c6f180d7aeaed45d9deb3e320a73d0bb6db01ce03b559d403d32f50f76e1f510"
+    },
+    {
+      "source_record_index_zero_based": 114,
+      "question_id": 18785032,
+      "query": "Replace a separate word 'H3' by 'H1' in a string 'text'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/18785032",
+      "source_record_canonical_sha256": "2a213ffd462b152b84e84f50ee752e41616a3f50913a0289a2b4bf9c99c1278b",
+      "source_snippet_sha256": "0c85b7c21c7d23b58a2e3599d4eb2915ca9d42502b12f889e1dc36ca97a75581"
+    },
+    {
+      "source_record_index_zero_based": 115,
+      "question_id": 1450897,
+      "query": "substitute ASCII letters in string 'aas30dsa20' with empty string ''",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1450897",
+      "source_record_canonical_sha256": "99af322b38b2f3837b31c3b45dccd7d2e49a48191af235119eb8e53bb23eff80",
+      "source_snippet_sha256": "bc65d6f51a34aab212740f267ddf0b4504272981e3117f2db10d812e2bd8d57e"
+    },
+    {
+      "source_record_index_zero_based": 116,
+      "question_id": 1450897,
+      "query": "get digits only from a string `aas30dsa20` using lambda function",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1450897",
+      "source_record_canonical_sha256": "19a35fbd7f5a5010ad6ca34ab9d4057fcdf4c0a5f0252506ff865fa51faa390e",
+      "source_snippet_sha256": "62eb8384f01683e1608297cae2129b36731ef21ce1746e4e74ecd74ac51be727"
+    },
+    {
+      "source_record_index_zero_based": 117,
+      "question_id": 14435268,
+      "query": "access a tag called \"name\" in beautifulsoup `soup`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/14435268",
+      "source_record_canonical_sha256": "7433ad5dda77dab5925b88207476e766d94ba7d328a88de5d55c7fafa6a31427",
+      "source_snippet_sha256": "b0f400864150e75f4e4440d59f00df74658b555f0f017fdcc668c272e0b3446e"
+    },
+    {
+      "source_record_index_zero_based": 118,
+      "question_id": 4928274,
+      "query": "get a dictionary `records` of key-value pairs in PyMongo cursor `cursor`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4928274",
+      "source_record_canonical_sha256": "cd6df4cbfab6307cc3eff2d3a23e305e8916275d3bc8a0c74f4388b6418f2d38",
+      "source_snippet_sha256": "ad21667d64e89a106bfaa3be5b336a1e4d03481810764d5adf4442b8b39ed563"
+    },
+    {
+      "source_record_index_zero_based": 119,
+      "question_id": 20180210,
+      "query": "Create new matrix object  by concatenating data from matrix A and matrix B",
+      "stackoverflow_url": "https://stackoverflow.com/questions/20180210",
+      "source_record_canonical_sha256": "10669f76223a98f2231627585d76127a17ac76085ab80074846852c16984eeab",
+      "source_snippet_sha256": "70f2e4a5aaf8312c7191b6ca371777f719931b65a9047c6898d872a09d1fd6a1"
+    },
+    {
+      "source_record_index_zero_based": 120,
+      "question_id": 20180210,
+      "query": "concat two matrices `A` and `B` in numpy",
+      "stackoverflow_url": "https://stackoverflow.com/questions/20180210",
+      "source_record_canonical_sha256": "76d25048ffa0dfd69ff4a03fc157f379c2cea90a7e4fd76e76a1a730954c4066",
+      "source_snippet_sha256": "bed1683b5d45eba5f1f7d99a7ad24e571983bedc66df81fd52e4622eda1ebde5"
+    },
+    {
+      "source_record_index_zero_based": 121,
+      "question_id": 2011048,
+      "query": "Get the characters count in a file `filepath`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2011048",
+      "source_record_canonical_sha256": "6362cc6aa7e69c30f1b10f6c88389058fe60fb8257051c0e0586bea2baf78d12",
+      "source_snippet_sha256": "f99e10d9eb5c54f5ac4b76510caeb10d146755995803d356ca22bf5d285a3e75"
+    },
+    {
+      "source_record_index_zero_based": 122,
+      "question_id": 2600191,
+      "query": "count the occurrences of item \"a\" in list `l`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2600191",
+      "source_record_canonical_sha256": "657931f98137c2580c471dc64450fabdad1e73c8a254343a92956f97a98000f0",
+      "source_snippet_sha256": "ab8cae0b202dfba194ae29bb2cd085a185cb7079c69cbd2c689587ec48e11d02"
+    },
+    {
+      "source_record_index_zero_based": 123,
+      "question_id": 2600191,
+      "query": "count the occurrences of items in list `l`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2600191",
+      "source_record_canonical_sha256": "2c0a4c84ed8e8af8062ae96ccdc06e8c7eb598a355a718946f666c79aa4ec808",
+      "source_snippet_sha256": "93ed12836514b0839e1eed80476bb550556a5b33eaf5af7fb7daeed9a389dc2c"
+    },
+    {
+      "source_record_index_zero_based": 126,
+      "question_id": 2600191,
+      "query": "count the occurrences of item \"b\" in list `l`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/2600191",
+      "source_record_canonical_sha256": "de953a0b49c2001b8e189bc3f09cde746314a3adb01af7317374191d9b02e242",
+      "source_snippet_sha256": "52bd5371815b20f93f620800207b525c2fa446b50e913fe43a138fa71d0bad15"
+    },
+    {
+      "source_record_index_zero_based": 127,
+      "question_id": 12842997,
+      "query": "copy file `srcfile` to directory `dstdir`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/12842997",
+      "source_record_canonical_sha256": "7279031a77d9f044ad64163c8a5dbd8ab15a008da4091d06e85ed3fb32bde007",
+      "source_snippet_sha256": "287b8634cf037619cb76db591c78184b17eb69bd5544557ead0c25d3aaa5b5fa"
+    },
+    {
+      "source_record_index_zero_based": 128,
+      "question_id": 1555968,
+      "query": "find the key associated with the largest value in dictionary `x` whilst key is non-zero value",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1555968",
+      "source_record_canonical_sha256": "106c7d0d22af40b801469ee723079bb4e67e86e75d5ab2ab1d8bc256d9f3080f",
+      "source_snippet_sha256": "5f28919d03f4e689108e4fc092cb0104e33d8f9b31994f61dabb35457f581c2d"
+    },
+    {
+      "source_record_index_zero_based": 129,
+      "question_id": 1555968,
+      "query": "get the largest key whose not associated with value of 0 in dictionary `x`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1555968",
+      "source_record_canonical_sha256": "2a8763ccfbf4ff3e5058a2e95caca0077463fa747c21506d03f4fbdfff2e375d",
+      "source_snippet_sha256": "790499f33bddd612abcc086687bc5ea592ea7a852a350cdecd32072317220f5c"
+    },
+    {
+      "source_record_index_zero_based": 130,
+      "question_id": 1555968,
+      "query": "get the largest key in a dictionary `x` with non-zero value",
+      "stackoverflow_url": "https://stackoverflow.com/questions/1555968",
+      "source_record_canonical_sha256": "c9ff3a87fbcafb6dd1f87e9b6791007a743152e199595a3e41e88ad10fbf50ea",
+      "source_snippet_sha256": "5f28919d03f4e689108e4fc092cb0104e33d8f9b31994f61dabb35457f581c2d"
+    },
+    {
+      "source_record_index_zero_based": 131,
+      "question_id": 17021863,
+      "query": "Put the curser at beginning of the file",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17021863",
+      "source_record_canonical_sha256": "db715eda5696d2606e82f26ed4d9d776e16034d815fbf8f8f989b28696073245",
+      "source_snippet_sha256": "22af718c7da0cbfaaf4e8ecff3a9126d95ea47eccc2007a37ba4f1821557d558"
+    },
+    {
+      "source_record_index_zero_based": 132,
+      "question_id": 38152389,
+      "query": "combine values from column 'b' and column 'a' of dataframe `df`  into column 'c' of datafram `df`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/38152389",
+      "source_record_canonical_sha256": "84f7c5d173e0851e41dc5da075a8b488e3ce9465f9b00da8b3f8582446eae50b",
+      "source_snippet_sha256": "9fd9d9b6ed1e48dfad074ffd3d39ced7c1f8e59102e1bd89c6eeaa4058c8f601"
+    },
+    {
+      "source_record_index_zero_based": 133,
+      "question_id": 4175686,
+      "query": "remove key 'ele' from dictionary `d`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/4175686",
+      "source_record_canonical_sha256": "9c70bf80ea3f079967643ee58dd94091692991099121c38c96ab4e289b25b7ed",
+      "source_snippet_sha256": "4b429c3b162e63ebd6eec1b11fc8c305d38d70abd7ef78f5e75689d566f360f1"
+    },
+    {
+      "source_record_index_zero_based": 134,
+      "question_id": 5871168,
+      "query": "Update datetime field in `MyModel` to be the existing `timestamp` plus 100 years",
+      "stackoverflow_url": "https://stackoverflow.com/questions/5871168",
+      "source_record_canonical_sha256": "43800d59675f530df8b91681d4d5f8d4135209c73f502bac586cf6cd1656eb05",
+      "source_snippet_sha256": "9b417ea65d7d58041337aa766b5303d8ba858fd046053ca1e139e7af6f141da2"
+    },
+    {
+      "source_record_index_zero_based": 135,
+      "question_id": 11574195,
+      "query": "merge list `['it']` and list `['was']` and list `['annoying']` into one list",
+      "stackoverflow_url": "https://stackoverflow.com/questions/11574195",
+      "source_record_canonical_sha256": "d5041f045c4a75865b38214ac45222eb6820372e5f192b30d877cceeefb014e0",
+      "source_snippet_sha256": "a6b2ecbe1fca10f1de6adc1884d6c3e31d797eecea53678169f80f5f4b10842f"
+    },
+    {
+      "source_record_index_zero_based": 136,
+      "question_id": 587647,
+      "query": "increment a value with leading zeroes in a number `x`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/587647",
+      "source_record_canonical_sha256": "d34d9e53545f1bfda3f2b0da985a9472ae0331019b3e9da5d11bffc9fdb6d612",
+      "source_snippet_sha256": "b3024e01cec385f578ed977903ffd034bbe2b86c7f4d960aa4b9a2b08e09efce"
+    },
+    {
+      "source_record_index_zero_based": 137,
+      "question_id": 17315881,
+      "query": "check if a pandas dataframe `df`'s index is sorted",
+      "stackoverflow_url": "https://stackoverflow.com/questions/17315881",
+      "source_record_canonical_sha256": "c7ef4b8e9f931e72f13596e1ad859186aa3a6ee4b09bf590f4c4acb2901ccc36",
+      "source_snippet_sha256": "456be774c00949fbbf7bcb422955a3eca9b59e6cb77da409fc0ff03a963de3de"
+    },
+    {
+      "source_record_index_zero_based": 138,
+      "question_id": 16296643,
+      "query": "Convert tuple `t` to list",
+      "stackoverflow_url": "https://stackoverflow.com/questions/16296643",
+      "source_record_canonical_sha256": "bcd87c8b813ef0dd536443b7be51f0fb33e0793fb958fb139d4ab48c7c8f87de",
+      "source_snippet_sha256": "3cb1e880ce3b481bfc0945dcbfa640e55818e19f1c1369976de088d833e3a59b"
+    },
+    {
+      "source_record_index_zero_based": 139,
+      "question_id": 16296643,
+      "query": "Convert list `t` to tuple",
+      "stackoverflow_url": "https://stackoverflow.com/questions/16296643",
+      "source_record_canonical_sha256": "4b24ef5c6a2fef1b8d90f7bbc2714afd67323742aaa4ebf7c8c8bad8108ba25b",
+      "source_snippet_sha256": "982f27e4e301c3bbf357f99e7af87eefd9ee60733a6f2fe5760a31395caa670a"
+    },
+    {
+      "source_record_index_zero_based": 140,
+      "question_id": 16296643,
+      "query": "Convert tuple `level1` to list",
+      "stackoverflow_url": "https://stackoverflow.com/questions/16296643",
+      "source_record_canonical_sha256": "8edf7c2b909c2e27c0de66b961ba0736981365f52aac116a3d3120830523a73d",
+      "source_snippet_sha256": "fa93450c91cbe9df0e9363a7a28b985740831b81626a723a1dd43393af8b2591"
+    },
+    {
+      "source_record_index_zero_based": 141,
+      "question_id": 3880399,
+      "query": "send the output of pprint object `dataobject` to file `logFile`",
+      "stackoverflow_url": "https://stackoverflow.com/questions/3880399",
+      "source_record_canonical_sha256": "d12d830ffab93f57168320d19a8f8f49029d9909f33a25aa4d22dd18d14a131b",
+      "source_snippet_sha256": "910441ea545a1578eaca342772a705beaa61ab4746fccce37b5cbd7d264a8c04"
+    },
+    {
+      "source_record_index_zero_based": 142,
+      "question_id": 21800169,
+      "query": "get index of rows in column 'BoolCol'",
+      "stackoverflow_url": "https://stackoverflow.com/questions/21800169",
+      "source_record_canonical_sha256": "e02882081b6cd263f044d8a1aee0593c9840cfb86e36ffb185123e373b6ca647",
+      "source_snippet_sha256": "4468974d6b300bb129c110353e6a362be63aa718cd383566750282f235eb08fc"
+    },
+    {
+      "source_record_index_zero_based": 143,
+      "question_id": 21800169,
+      "query": "Create a list containing the indexes of rows where the value of column 'BoolCol' in dataframe `df` are equal to True",
+      "stackoverflow_url": "https://stackoverflow.com/questions/21800169",
+      "source_record_canonical_sha256": "c4c745559e7d42cefd175ad91d98d3c49bf8a75c5a2d58f6f82dd6b348141a12",
+      "source_snippet_sha256": "ab251a93fb30680a5a8ac5779212842830032acd2d3e8f859bfeb282be172052"
+    },
+    {
+      "source_record_index_zero_based": 144,
+      "question_id": 21800169,
+      "query": "get list of indexes of rows where column 'BoolCol' values match True",
+      "stackoverflow_url": "https://stackoverflow.com/questions/21800169",
+      "source_record_canonical_sha256": "9c134b7babd1139d39655c6b1b26df9ad7ee14e5827ac2caab8f8c907f4e8614",
+      "source_snippet_sha256": "9203a6c4f85500371a4137872100c3d98334571ed166c9de5f008bbbc701ec3e"
+    },
+    {
+      "source_record_index_zero_based": 145,
+      "question_id": 21800169,
+      "query": "get index of rows in dataframe `df` which column 'BoolCol' matches value True",
+      "stackoverflow_url": "https://stackoverflow.com/questions/21800169",
+      "source_record_canonical_sha256": "26cb9f11c4ae520a521f12a546b46f37b6f0b5be17bda4ee80d4675f57e17bb4",
+      "source_snippet_sha256": "6c60a866bf14b1380bdabfe632013e2d3de5f770aee578a7db710763eae93b90"
+    }
+  ],
+  "provenance": {
+    "source_dataset": "CoNaLa",
+    "source_configuration": "curated",
+    "source_split": "test",
+    "source_dataset_version": "1.1.0",
+    "source_repository": "neulab/conala",
+    "source_revision": "fbc749f1c537e5c3834e93b15784302e331debe2",
+    "source_file": "data/conala-paired-test.json",
+    "source_file_url": "https://huggingface.co/datasets/neulab/conala/resolve/fbc749f1c537e5c3834e93b15784302e331debe2/data/conala-paired-test.json",
+    "source_file_sha256": "3a7e5eea6deeccb5e7c9557534af860854fd2f0ae870752b42c296ed30e53cb7",
+    "source_file_record_count": 500,
+    "source_dataset_repository_url": "https://huggingface.co/datasets/neulab/conala/tree/fbc749f1c537e5c3834e93b15784302e331debe2",
+    "source_dataset_card_url": "https://huggingface.co/datasets/neulab/conala/blob/fbc749f1c537e5c3834e93b15784302e331debe2/README.md",
+    "source_dataset_card_sha256": "326072b41743fff642a4639ade350308a47942ff67608f3dfe447014453f3e74",
+    "source_loader_url": "https://huggingface.co/datasets/neulab/conala/blob/fbc749f1c537e5c3834e93b15784302e331debe2/conala.py",
+    "source_loader_sha256": "1f106c699e97915f6d02b4f3a169a33f6de8e7306cc30b10cc1354d4b86f0f2d",
+    "source_project_url": "https://conala-corpus.github.io/",
+    "source_paper_url": "https://arxiv.org/abs/1805.08949",
+    "source_paper_doi_url": "https://doi.org/10.1145/3196398.3196408",
+    "query_origin": "conala_crowd_rewritten_intent",
+    "provenance_type": "research_dataset_adaptation",
+    "selection_version": "conala_curated_test_line_unique_133_v1",
+    "selection": "Scan the pinned curated test split in source order. Keep non-empty, single-line rewritten_intent values only when neither the candidate nor an already selected query is a substring of the other; stop after 133 records. This makes every fixed-string lookup line-unique while supplying the exact shortfall required to bring LayerMCP's active Coding single-step benchmark to 300 rows.",
+    "selected_record_count": 133,
+    "selected_question_count": 102,
+    "selected_unique_snippet_count": 132,
+    "source_license": "MIT",
+    "source_license_scope": "dataset",
+    "source_license_evidence_type": "dataset_card_metadata",
+    "source_license_evidence": "Pinned dataset-card YAML front matter (`license` includes `mit`)",
+    "source_license_evidence_sha256": "326072b41743fff642a4639ade350308a47942ff67608f3dfe447014453f3e74",
+    "source_license_url": "https://huggingface.co/datasets/neulab/conala/blob/fbc749f1c537e5c3834e93b15784302e331debe2/README.md",
+    "attribution_file": "benchmark/coding/fixtures/CONALA_ATTRIBUTION.md",
+    "adaptation": "Exact curated rewritten intents and bounded provenance metadata are normalized for fixed-string lookup. Original Stack Overflow titles and paired Python snippets are not redistributed. This evaluates lexical tool routing, not code generation or BLEU."
+  }
+}

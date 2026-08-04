@@ -6,6 +6,22 @@ to choose one tool from an available tool list and provide the expected
 arguments for that tool. Multi-step records contain an ordered sequence of
 those routing decisions.
 
+Generate a current inventory of active Math, Enterprise, Coding, and Finance
+benchmark JSON files with:
+
+```bash
+python -m analysis.benchmark_inventory
+python -m analysis.benchmark_inventory --json
+python -m analysis.benchmark_inventory \
+  --markdown-out /tmp/benchmark-inventory.md \
+  --json-out /tmp/benchmark-inventory.json
+```
+
+The inventory excludes `benchmark/archive/`, domain fixture directories, and
+cache files. Empty provenance-only JSON placeholders are listed separately and
+excluded from runnable active totals. The utility reads benchmark data but does
+not modify it.
+
 ## Current Layout
 
 | Path | Records | Domains | Purpose |
@@ -16,6 +32,7 @@ those routing decisions.
 | `math/math_public.json` | 400 | mathematics | Expanded public-derived DeepMind Mathematics and GSM8K routing set. |
 | `math/math_public_math_dataset.json` | 77 | mathematics | Executable public MATH-derived math routing set. |
 | `math/math_controlled.json` | 51 | mathematics | Controlled math routing set. |
+| `math/math_multistep_controlled.json` | 50 | mathematics | Controlled dependent math workflows with 105 executable steps. |
 | `enterprise/enterprise_controlled.json` | 35 | enterprise automation | First controlled enterprise fixture suite. |
 | `enterprise/enterprise_tau2_single_step.json` | 293 | enterprise automation | Executable tau2 retail single-step/adapted diagnostic benchmark. |
 | `enterprise/enterprise_public_workflows.json` | 69 | enterprise automation | Teacher-forced routing over tau2 retail reference action trajectories with step-level source grounding. |
@@ -25,6 +42,7 @@ those routing decisions.
 | `coding/coding_controlled.json` | 35 | coding | Controlled coding routing set. |
 | `coding/coding_upstream_inspired.json` | 28 | coding | Generated coding prompts adapted from upstream tool usage patterns. |
 | `coding/coding_codesearchnet_public_derived.json` | 97 | coding | Public CodeSearchNet-derived coding search set. |
+| `coding/coding_conala_public_derived.json` | 133 | coding | Public CoNaLa-derived curated-intent search set. |
 | `coding/coding_sweagent_multistep.json` | 5 | coding | Source-faithful SWE-agent workflows executed against bounded repository fixtures. |
 | `coding/coding_nebius_sweagent_replay_multistep.json` | 33 | coding | Offline replay of selected Nebius SWE-agent trajectories containing at most five calls. |
 | `coding/coding_nebius_swerebench_openhands_replay_multistep.json` | 0 | coding | Provenance-only zero-result placeholder; excluded from benchmark runs and results. |

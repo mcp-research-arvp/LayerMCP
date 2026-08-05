@@ -22,6 +22,16 @@ cache files. Empty provenance-only JSON placeholders are listed separately and
 excluded from runnable active totals. The utility reads benchmark data but does
 not modify it.
 
+Generate a preliminary reporting-only TSA/SVCA/SGOA scorecard from completed
+single-step run directories with:
+
+```bash
+python -m analysis.minimal_scorecard RUN_DIR [RUN_DIR ...] --output SCORECARD.md
+```
+
+The report marks SVCA unavailable for legacy runs because exact argument match
+and shallow parser diagnostics are not full raw-argument JSON Schema validation.
+
 ## Current Layout
 
 | Path | Records | Domains | Purpose |

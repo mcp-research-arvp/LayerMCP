@@ -155,7 +155,6 @@ class FinanceToolTests(unittest.TestCase):
                 "annual_metrics",
                 "convfinqa-dev-v1",
                 "finqa-public-test-program-results-v1",
-                "finqa-public-test-v1",
                 "quarterly_metrics",
                 "tatqa-public-test-gold-v1",
             ],

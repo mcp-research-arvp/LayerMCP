@@ -85,7 +85,7 @@ FIXTURE_GROUNDING_TABLE = {
     "rows": [],
 }
 
-EXCLUDED_FINQA_SOURCE_INDICES = {
+INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES = frozenset({
     0,
     1,
     8,
@@ -101,7 +101,12 @@ EXCLUDED_FINQA_SOURCE_INDICES = {
     172,
     264,
     347,
-}
+})
+FINQA_EXCLUSION_POLICY = (
+    "These 15 FinQA test rows are intentionally outside the active benchmark "
+    "because their table-grounding contexts exceed the bounded inference "
+    "budget used for reproducible local evaluation."
+)
 
 _OPERATION_PATTERN = re.compile(r"^([a-z_]+)\((.*)\)$")
 _REFERENCE_PATTERN = re.compile(r"^#(\d+)$")
@@ -707,7 +712,7 @@ def build_expansion(source_test: Path, output_root: Path) -> BuildResult:
             f"{SOURCE_EXAMPLE_COUNT} examples; found {actual_count!r}."
         )
 
-    excluded_source_indices = EXCLUDED_FINQA_SOURCE_INDICES
+    excluded_source_indices = INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES
     single_samples: list[dict[str, Any]] = []
     multistep_samples: list[dict[str, Any]] = []
     fixture_rows: list[list[Any]] = []

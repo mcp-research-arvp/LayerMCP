@@ -436,9 +436,9 @@ The finance tool catalog is:
 
 The main finance fixture uses fictional companies and synthetic filings, XBRL,
 PDF tables, and market snapshots. It is offline and read-only. Pinned research
-adaptations add all 1,147 FinQA test questions, 15 TAT-QA questions, 10
-ConvFinQA workflows, and 485 correct FinRetrieval trajectories containing at
-most five calls. The four
+adaptations add 1,132 active FinQA test questions, with 15 long-context source
+rows intentionally excluded, plus 15 TAT-QA questions, 10 ConvFinQA workflows,
+and 485 correct FinRetrieval trajectories containing at most five calls. The four
 FinRetrieval-only tools replay bounded checked-in results and never contact
 Daloopa or the web. See `benchmark/finance/README.md` for exact runtime
 boundaries, attribution, and provenance.

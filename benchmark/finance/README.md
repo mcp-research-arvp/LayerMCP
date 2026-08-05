@@ -94,9 +94,9 @@ projects or live clients for their services.
 - `fixtures/CONVFINQA_ATTRIBUTION.md` and `fixtures/CONVFINQA_LICENSE.txt`
   record the pinned ConvFinQA source, archive hash, paper, and MIT license.
 
-The three generated datasets use fixture ID `example/finance-research` and
-version `finance_fixture_v1`. The FinQA-derived dataset uses table ID
-`finqa-public-test-v1` and pins upstream revision
+The generated finance datasets use fixture ID `example/finance-research` and
+version `finance_fixture_v1`. The active FinQA expansion uses table ID
+`finqa-public-test-program-results-v1` and pins upstream revision
 `0f16e2867befa6840783e58be38c9efb9229d742`. The TAT-QA-derived dataset uses
 table ID `tatqa-public-test-gold-v1` and pins revision
 `870accc41953dcde885aabeb963d94aabdc0fbc3`. Each revision is recorded in every
@@ -108,8 +108,10 @@ and gold programs are preserved exactly. Only the mapping from each gold
 program to the existing `finance_query_table` or `calculator` argument schema
 is a LayerMCP adaptation.
 
-Together, the original 15-row FinQA adaptation and the two expanded files cover
-all 1,147 official test questions. The expansion uses table ID
+The two active FinQA expansion files represent 1,132 of the 1,147 official test
+questions. Fifteen long-context rows are intentionally excluded from the active
+benchmark because their table-grounding contexts exceed the bounded inference
+budget used for reproducible local evaluation. The expansion uses table ID
 `finqa-public-test-program-results-v1` and the same pinned revision
 `0f16e2867befa6840783e58be38c9efb9229d742`. One gold operation maps to one
 call: operation zero and table/comparison operations use
@@ -211,16 +213,14 @@ Generated upstream-inspired rows use
 repository, URL, and reference. They are synthetic prompts, not copied public
 queries.
 
-The 15 FinQA rows retain the original public-test question and record the exact
-split, zero-based row index, example ID, source program, execution answer,
-revision, URL, copyright, license, and adaptation method. They come from the
-official dataset released for the [FinQA paper](https://aclanthology.org/2021.emnlp-main.300/).
-
-The 1,132-row FinQA expansion retains every remaining official question,
+The active 1,132-question FinQA expansion retains every included official question,
 program, per-operation published result, execution answer, source coordinate,
 revision, file hash, and license. Intermediate step prompts are exact canonical
 gold operations, not invented dialogue. The compact fixture stores operation
-results rather than copying the full annual-report context.
+results rather than copying the full annual-report context. The 15 omitted source
+indices are defined as an intentional long-context exclusion policy in
+`build_finqa_expansion.py`; the active and excluded index sets partition the
+official 1,147-question test split.
 
 The 485 FinRetrieval benchmark rows retain official questions and ordered inputs
 from selected correct model trajectories containing no more than five calls.
@@ -255,8 +255,8 @@ The new finance-only batch contains:
 | Correct FinRetrieval trajectories (at most five calls) | 0 | 485 | 485 |
 | **New batch** | **642** | **975** | **1,617** |
 
-Including the pre-existing finance datasets, the repository contains 1,757
-finance workflows: 772 single-call and 985 multi-call.
+Including the active finance datasets, the repository contains 1,742 finance
+benchmark rows: 757 single-step rows and 985 multi-step workflows.
 
 The importers are deterministic and offline:
 

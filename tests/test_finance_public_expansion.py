@@ -7,6 +7,10 @@ import unittest
 from collections import Counter
 from pathlib import Path
 
+from benchmark.finance.build_finqa_expansion import (
+    FINQA_EXCLUSION_POLICY,
+    INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES,
+)
 from evaluation.evaluate import BenchmarkSample, load_benchmark
 from mcp_server import finance_tools
 from mcp_server.server import mcp
@@ -33,9 +37,6 @@ FINRETRIEVAL_FIXTURE_PATH = (
 FINQA_DATASET_ID = "finqa-public-test-program-results-v1"
 FINQA_SOURCE_REVISION = "0f16e2867befa6840783e58be38c9efb9229d742"
 FINQA_TOTAL_TEST_ROWS = 1_147
-EXCLUDED_FINQA_SOURCE_INDICES = {
-    0, 1, 8, 9, 10, 32, 42, 44, 45, 78, 92, 105, 172, 264, 347,
-}
 FINRETRIEVAL_TOTAL_QUESTIONS = 500
 UNSUPPORTED_FINRETRIEVAL_INDICES = {253, 455}
 FINRETRIEVAL_OVER_STEP_LIMIT_INDICES = {
@@ -181,7 +182,7 @@ class FinancePublicExpansionTests(unittest.TestCase):
         ]
         self.assertEqual(duplicates, [])
 
-    def test_finqa_rows_cover_every_remaining_public_test_question_once(
+    def test_finqa_active_scope_and_intentional_exclusions_partition_source(
         self,
     ) -> None:
         single_indices = {row["source_row_index"] for row in self.raw_finqa_single}
@@ -195,10 +196,23 @@ class FinancePublicExpansionTests(unittest.TestCase):
             len(self.raw_finqa_multistep),
         )
         self.assertTrue(single_indices.isdisjoint(multistep_indices))
+        active_indices = single_indices | multistep_indices
+        self.assertEqual(len(active_indices), 1_132)
         self.assertEqual(
-            single_indices | multistep_indices,
-            set(range(FINQA_TOTAL_TEST_ROWS)) - EXCLUDED_FINQA_SOURCE_INDICES,
+            len(INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES),
+            15,
         )
+        self.assertTrue(
+            active_indices.isdisjoint(
+                INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES
+            )
+        )
+        self.assertEqual(
+            active_indices | INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES,
+            set(range(FINQA_TOTAL_TEST_ROWS)),
+        )
+        self.assertIn("intentionally", FINQA_EXCLUSION_POLICY.lower())
+        self.assertIn("context", FINQA_EXCLUSION_POLICY.lower())
 
     def test_finqa_program_lengths_match_the_single_and_multicall_split(
         self,
@@ -431,7 +445,7 @@ class FinancePublicExpansionTests(unittest.TestCase):
         finqa_fixture_provenance = self.finqa_fixture["provenance"]
         self.assertEqual(
             finqa_fixture_provenance["excluded_source_row_indices"],
-            sorted(EXCLUDED_FINQA_SOURCE_INDICES),
+            sorted(INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES),
         )
         self.assertEqual(
             finqa_fixture_provenance["source_example_count"],

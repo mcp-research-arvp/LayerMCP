@@ -1,22 +1,30 @@
 # Enterprise Tool-Routing Datasets
 
-This folder contains enterprise automation single-tool routing benchmarks. Each query asks for one business or retail action, and the expected answer identifies the tool and arguments the router should select.
+This folder contains enterprise automation single-step and teacher-forced
+multi-step routing benchmarks. Each routed step identifies the tool and
+arguments the model should select.
 
 ## What v1 and v2 Mean
 
 `v1` and `v2` are tool-suite versions, not random dataset splits.
 
 - `v1` is the first small controlled enterprise fixture suite. It uses simple offline business tools such as customer lookup, order lookup, ticket routing, policy checks, and knowledge-base search.
-- `v2` is the newer retail-style enterprise suite. It uses a frozen set of 12 retail tools adapted from tau3 Retail-style workflows, including user lookup, order/product inspection, order edits, returns, exchanges, and human transfer.
+- `v2` is the newer retail-style enterprise suite. Its primary executable
+  benchmark uses 12 stable retail tool names backed by the pinned tau2 retail
+  database, including user lookup, order/product inspection, order edits,
+  returns, exchanges, and human transfer.
 
-For future files, prefer names that say both the source and the version, such as:
+The standardized active enterprise files are:
 
 ```text
-tool_routing_enterprise_controlled_v2.json
-tool_routing_enterprise_public_adapted_v2.json
+enterprise_controlled.json
+enterprise_tau2_single_step.json
+enterprise_public_workflows.json
 ```
 
-The current filenames are kept as-is for compatibility with tests and existing runs.
+The retired datasets are archived as
+`../archive/enterprise/enterprise_v2_controlled_legacy.json` and
+`../archive/enterprise/enterprise_public_adapted_legacy.json`.
 
 ## Tools Covered
 
@@ -51,7 +59,7 @@ The current filenames are kept as-is for compatibility with tests and existing r
 
 ## Dataset Files
 
-### `tool_routing_enterprise_v1.json`
+### `enterprise_controlled.json`
 
 - Records: 35
 - Source: `controlled_synthetic`
@@ -66,7 +74,7 @@ Difficulty breakdown:
 | `medium` | 12 |
 | `hard` | 7 |
 
-### `tool_routing_enterprise_v2_controlled.json`
+### `../archive/enterprise/enterprise_v2_controlled_legacy.json`
 
 - Records: 48
 - Source: `controlled_synthetic`
@@ -74,6 +82,10 @@ Difficulty breakdown:
 - Purpose: controlled examples written to map retail-style enterprise queries to one of the 12 frozen retail tools.
 
 Each tool has 4 controlled examples. The examples cover direct wording, distractors, paraphrases, and indirect requests.
+
+These rows retain IDs from the retired small LayerMCP fixture and are kept for
+historical routing-only comparison. They are not the primary executable retail
+benchmark after the tau2-native migration.
 
 Difficulty breakdown:
 
@@ -83,7 +95,7 @@ Difficulty breakdown:
 | `medium` | 24 |
 | `hard` | 12 |
 
-### `tool_routing_enterprise_public_adapted.json`
+### `../archive/enterprise/enterprise_public_adapted_legacy.json`
 
 - Records: 24
 - Source: `public_adapted`
@@ -100,12 +112,71 @@ Each v2 retail tool has 2 public-adapted examples. Records include provenance fi
 - `source_action`
 - `provenance_type`
 
+One hand-audited row per retail tool (12 rows total) includes a concise
+`expected_answer` subset verified against deterministic gold-tool execution.
+The remaining public-adapted rows retain `expected_answer: null`.
+
+These rows also retain retired small-fixture IDs and are preserved as
+historical routing-only data.
+
 Difficulty breakdown:
 
 | Difficulty | Records |
 | --- | ---: |
 | `medium` | 22 |
 | `hard` | 2 |
+
+
+### `enterprise_public_workflows.json`
+
+- Rows: 69
+- Task type: multi-step tool routing
+- Source dataset: pinned tau2-bench retail tasks
+- Source splits: 45 train workflows, 24 test workflows
+- Purpose: teacher-forced routing over one tau2 reference action trajectory per
+  public Enterprise workflow using original retail user-scenario fields.
+
+This benchmark differs from `enterprise_tau2_single_step.json`. The single-step
+file extracts individual tau2 reference actions into standalone executable
+requests. This workflow file preserves original tau2 scenario fields and keeps
+only fully supported, fully executable multi-action reference trajectories
+against the pinned LayerMCP tau2 retail fixture.
+
+Each row contains `expected_steps` from one sequence of tau2 evaluation-criteria
+actions. These actions are a reference trajectory used to derive target state;
+they are not asserted to be the uniquely correct plan, and scoring them does
+not measure tau2 task success. Evaluation is teacher-forced
+reference-trajectory action routing, not autonomous end-to-end planning. Every
+step supplies a natural-language operation and authoritative step-level source
+facts. Declared dependencies are empty, so prompt construction uses the
+evaluator's bounded recent-history policy. For execution scoring, earlier
+reference actions are replayed only to reconstruct isolated workflow state.
+Step outputs use the MCP structured-result shape. Rows explicitly declare
+`benchmark_mode: grounded_tool_execution` and
+`workflow_execution_mode: isolated_reference_prefix_replay`; both values are
+retained in evaluation result metadata.
+
+### `enterprise_tau2_single_step.json`
+
+- Records: 293
+- Source: pinned tau2-bench retail tasks
+- Domain: `enterprise_automation`
+- Purpose: one deduplicated, independently executable tau2-native gold retail
+  action per row.
+
+The source action name, arguments, and native tau2 entity IDs are preserved;
+no entity remapping is applied. Every row records the source task/action IDs,
+action index, split, original arguments, canonical task hash, committed fixture
+hash, license, transformation notes, and a non-null expected-answer subset
+verified by deterministic double execution. Rows are unique by
+`expected_tool` plus canonical `expected_args`.
+See `fixtures/TAU2_RETAIL_ATTRIBUTION.md` and
+`build_tau2_retail_expansion.py`.
+
+The three `get_item_details` actions and one
+`modify_pending_order_payment` action are excluded because those low-coverage
+tools are not registered in LayerMCP. Thirteen tau2 `calculate` actions remain
+outside the retail tranche rather than being relabeled as retail tools.
 
 ## Schema Notes
 
@@ -117,14 +188,15 @@ All enterprise files use the standard benchmark schema:
 - `difficulty`
 - `source`
 - `query`
-- `available_tools`
 - `expected_tool`
 - `expected_args`
 - `expected_answer`
 - `perturbation_type`
 - `notes`
 
-The public-adapted file also includes provenance fields. Tests in `tests/test_enterprise_v2_controlled_benchmark.py` enforce the v2 controlled/public schema, tool menu, and executable tool arguments.
+The public-adapted file also includes provenance fields. Tests in
+`tests/test_enterprise_v2_controlled_benchmark.py` enforce the v2
+controlled/public schema and executable tool arguments.
 
-New enterprise datasets should keep the same field names, use `enterprise_automation` as the domain, and only introduce a new version label when the tool menu or schema actually changes.
-
+New enterprise datasets should keep the same field names and use
+`enterprise_automation` as the domain.

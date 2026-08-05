@@ -1,0 +1,44 @@
+{
+  "repo_id": "swebench-pydicom-1458",
+  "fixture_version": "coding_sweagent_pydicom_1458_fixture_v1",
+  "description": "Bounded read-only fixture for two source-exploration actions in the official SWE-agent pydicom trajectory.",
+  "files": {
+    "pydicom/overlays/numpy_handler.py": "",
+    "pydicom/pixel_data_handlers/numpy_handler.py": {
+      "line_offset": 272,
+      "content": "            \"Unable to convert the pixel data as the transfer syntax \"\n            \"is not supported by the numpy pixel data handler.\"\n        )\n\n    # Check required elements\n    keywords = ['PixelData', 'FloatPixelData', 'DoubleFloatPixelData']\n    px_keyword = [kw for kw in keywords if kw in ds]\n    if len(px_keyword) != 1:\n        raise AttributeError(\n            \"Unable to convert the pixel data: one of Pixel Data, Float \"\n            \"Pixel Data or Double Float Pixel Data must be present in \"\n            \"the dataset\"\n        )\n\n    required_elements = [\n        'BitsAllocated', 'Rows', 'Columns', 'PixelRepresentation',\n        'SamplesPerPixel', 'PhotometricInterpretation'\n    ]\n    missing = [elem for elem in required_elements if elem not in ds]\n    if missing:\n        raise AttributeError(\n            \"Unable to convert the pixel data as the following required \"\n            \"elements are missing from the dataset: \" + \", \".join(missing)\n        )\n\n    # May be Pixel Data, Float Pixel Data or Double Float Pixel Data\n    pixel_data = getattr(ds, px_keyword[0])\n\n    # Calculate the expected length of the pixel data (in bytes)\n    #   Note: this does NOT include the trailing null byte for odd length data\n    expected_len = get_expected_length(ds)\n\n    # Check that the actual length of the pixel data is as expected\n    actual_length = len(pixel_data)\n\n    # Correct for the trailing NULL byte padding for odd length data\n    padded_expected_len = expected_len + expected_len % 2\n    if actual_length < padded_expected_len:\n        if actual_length == expected_len:\n            warnings.warn(\n                \"The odd length pixel data is missing a trailing padding byte\"\n            )\n        else:\n            raise ValueError(\n                \"The length of the pixel data in the dataset ({} bytes) \"\n                \"doesn't match the expected length ({} bytes). \"\n                \"The dataset may be corrupted or there may be an issue \"\n                \"with the pixel data handler.\"\n                .format(actual_length, padded_expected_len)\n            )\n    elif actual_length > padded_expected_len:\n        # PS 3.5, Section 8.1.1\n        msg = (\n            \"The length of the pixel data in the dataset ({} bytes) indicates \"\n            \"it contains excess padding. {} bytes will be removed from the \"\n            \"end of the data\"\n            .format(actual_length, actual_length - expected_len)\n        )\n        # PS 3.3, Annex C.7.6.3\n        if ds.PhotometricInterpretation == 'YBR_FULL_422':\n            # Check to ensure we do have subsampled YBR 422 data\n            ybr_full_length = expected_len / 2 * 3 + expected_len / 2 * 3 % 2\n            # >= as may also include excess padding\n            if actual_length >= ybr_full_length:\n                msg = (\n                    \"The Photometric Interpretation of the dataset is \"\n                    \"YBR_FULL_422, however the length of the pixel data \"\n                    \"({} bytes) is a third larger than expected ({} bytes) \"\n                    \"which indicates that this may be incorrect. You may \"\n                    \"need to change the Photometric Interpretation to \"\n                    \"the correct value.\".format(actual_length, expected_len)\n                )\n        warnings.warn(msg)\n\n    # Unpack the pixel data into a 1D ndarray\n    if ds.BitsAllocated == 1:\n        # Skip any trailing padding bits\n        nr_pixels = get_expected_length(ds, unit='pixels')\n        arr = unpack_bits(pixel_data)[:nr_pixels]\n    else:\n        # Skip the trailing padding byte(s) if present\n        dtype = pixel_dtype(ds, as_float=('Float' in px_keyword[0]))\n        arr = np.frombuffer(pixel_data[:expected_len], dtype=dtype)\n        if ds.PhotometricInterpretation == 'YBR_FULL_422':\n            # PS3.3 C.7.6.3.1.2: YBR_FULL_422 data needs to be resampled\n            # Y1 Y2 B1 R1 -> Y1 B1 R1 Y2 B1 R1\n            out = np.zeros(expected_len // 2 * 3, dtype=dtype)\n            out[::6] = arr[::4]  # Y1\n            out[3::6] = arr[1::4]  # Y2\n            out[1::6], out[4::6] = arr[2::4], arr[2::4]  # B\n            out[2::6], out[5::6] = arr[3::4], arr[3::4]  # R\n            arr = out\n\n    if should_change_PhotometricInterpretation_to_RGB(ds):\n        ds.PhotometricInterpretation = \"RGB\"\n\n    if not read_only and ds.BitsAllocated > 1:\n        return cast(\"np.ndarray\", arr.copy())\n\n    return cast(\"np.ndarray\", arr)\n"
+    },
+    "pydicom/waveforms/numpy_handler.py": ""
+  },
+  "source_issue": {
+    "instance_id": "pydicom__pydicom-1458",
+    "title": "Pixel Representation attribute should be optional for pixel data handler",
+    "text": "Pixel Representation attribute should be optional for pixel data handler\n**Describe the bug**\r\nThe NumPy pixel data handler currently [requires the Pixel Representation attribute](https://github.com/pydicom/pydicom/blob/8da0b9b215ebfad5756051c891def88e426787e7/pydicom/pixel_data_handlers/numpy_handler.py#L46). This is problematic, because in case of Float Pixel Data or Double Float Pixel Data the attribute shall be absent. Compare [Floating Point Image Pixel Module Attributes](http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.24.html) versus [Image Pixel Description Macro Attributes](http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.3.html#table_C.7-11c)\r\n\r\n**Expected behavior**\r\nI would expect the `Dataset.pixel_array` property to be able to decode a Float Pixel Data or Double Float Pixel Data element without presence of the Pixel Representation element in the metadata.\r\n\r\n**Steps To Reproduce**\r\n```python\r\nimport numpy as np\r\nfrom pydicom.dataset import Dataset, FileMetaDataset\r\n\r\n\r\nds = Dataset()\r\nds.file_meta = FileMetaDataset()\r\nds.file_meta.TransferSyntaxUID = '1.2.840.10008.1.2.1'\r\n\r\nds.BitsAllocated = 32\r\nds.SamplesPerPixel = 1\r\nds.Rows = 5\r\nds.Columns = 5\r\nds.PhotometricInterpretation = 'MONOCHROME2'\r\n\r\npixel_array = np.zeros((ds.Rows, ds.Columns), dtype=np.float32)\r\nds.FloatPixelData = pixel_array.flatten().tobytes()\r\n\r\nnp.array_equal(ds.pixel_array, pixel_array)\r\n```"
+  },
+  "source_actions": [
+    {
+      "trajectory_step_index": 3,
+      "action": "find_file \"numpy_handler.py\"",
+      "observation_kind": "file_location"
+    },
+    {
+      "trajectory_step_index": 4,
+      "action": "open pydicom/pixel_data_handlers/numpy_handler.py 293",
+      "observation_kind": "source_window"
+    }
+  ],
+  "provenance": {
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_repository": "https://github.com/SWE-agent/SWE-agent",
+    "source_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_license": "MIT",
+    "trajectory_origin": "official_sweagent_trajectory",
+    "provenance_type": "research_trajectory_adaptation",
+    "source_dataset": "SWE-bench",
+    "trajectory_path": "tests/test_data/trajectories/gpt4__swe-bench-dev-easy_first_only__default__t-0.00__p-0.95__c-3.00__install-1/pydicom__pydicom-1458.traj",
+    "trajectory_sha256": "f081b131803e16ed68cf2c65bedff8e8a60be494c98b141d0af44ce28ae56b74",
+    "repository": "pydicom/pydicom",
+    "query_origin": "swebench_issue",
+    "adaptation": "The issue and two read-only exploration actions are exact; only tool arguments and the bounded source fixture are adapted."
+  }
+}

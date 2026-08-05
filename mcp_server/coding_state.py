@@ -16,8 +16,15 @@ from typing import Any
 DEFAULT_CODING_REPOSITORY_ID = "example/research-mcp"
 CODING_FIXTURE_VERSION = "coding_fixture_v1"
 CODESEARCHNET_CODING_REPOSITORY_ID = "codesearchnet-public-v1"
-CODESEARCHNET_CODING_FIXTURE_VERSION = "coding_codesearchnet_fixture_v1"
+CODESEARCHNET_CODING_FIXTURE_VERSION = "coding_codesearchnet_fixture_v2"
 CODESEARCHNET_SOURCE_REVISION = "bb121a53a559e99a6849409355ee5c83803f2e87"
+CONALA_CODING_REPOSITORY_ID = "conala-public-test-v1"
+CONALA_CODING_FIXTURE_VERSION = "coding_conala_fixture_v1"
+CONALA_SOURCE_REVISION = "fbc749f1c537e5c3834e93b15784302e331debe2"
+SWEAGENT_CODING_REPOSITORY_ID = "swebench-marshmallow-1867"
+SWEAGENT_CODING_FIXTURE_VERSION = "coding_sweagent_marshmallow_1867_fixture_v1"
+SWEAGENT_SOURCE_REVISION = "3ea751c087f32b16e039a2233dd6eefecef325d5"
+SWEAGENT_MARSHMALLOW_BASE_COMMIT = "bfd2593d4b416122e30cdefe0c72d322ef471611"
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +34,19 @@ _CODESEARCHNET_FIXTURE_PATH = (
     / "coding"
     / "fixtures"
     / "codesearchnet_public_annotations.json"
+)
+_CONALA_FIXTURE_PATH = (
+    _PROJECT_ROOT
+    / "benchmark"
+    / "coding"
+    / "fixtures"
+    / "conala_public_test.json"
+)
+_SWEAGENT_FIXTURE_DIRECTORY = (
+    _PROJECT_ROOT
+    / "benchmark"
+    / "coding"
+    / "fixtures"
 )
 _MAX_DECLARATIVE_FILES = 100
 _MAX_DECLARATIVE_FILE_BYTES = 256 * 1024
@@ -155,23 +175,32 @@ def _validate_declarative_path(path: object) -> str:
     return pure_path.as_posix()
 
 
-def _load_codesearchnet_fixture() -> tuple[dict[str, str], dict[str, Any]]:
+def _load_public_coding_fixture(
+    fixture_path: Path,
+    *,
+    dataset_name: str,
+    expected_repo_id: str,
+    expected_fixture_version: str,
+    required_provenance: dict[str, str],
+) -> tuple[dict[str, str], dict[str, Any]]:
     try:
-        fixture = json.loads(_CODESEARCHNET_FIXTURE_PATH.read_text(encoding="utf-8"))
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise RuntimeError(
-            "Unable to load the declarative CodeSearchNet coding fixture."
+            f"Unable to load the declarative {dataset_name} coding fixture."
         ) from exc
 
     if not isinstance(fixture, dict):
-        raise RuntimeError("The CodeSearchNet coding fixture must be a JSON object.")
-    if fixture.get("repo_id") != CODESEARCHNET_CODING_REPOSITORY_ID:
         raise RuntimeError(
-            "The CodeSearchNet coding fixture has an unexpected repo_id."
+            f"The {dataset_name} coding fixture must be a JSON object."
         )
-    if fixture.get("fixture_version") != CODESEARCHNET_CODING_FIXTURE_VERSION:
+    if fixture.get("repo_id") != expected_repo_id:
         raise RuntimeError(
-            "The CodeSearchNet coding fixture has an unexpected fixture_version."
+            f"The {dataset_name} coding fixture has an unexpected repo_id."
+        )
+    if fixture.get("fixture_version") != expected_fixture_version:
+        raise RuntimeError(
+            f"The {dataset_name} coding fixture has an unexpected fixture_version."
         )
 
     raw_files = fixture.get("files")
@@ -181,7 +210,7 @@ def _load_codesearchnet_fixture() -> tuple[dict[str, str], dict[str, Any]]:
         or len(raw_files) > _MAX_DECLARATIVE_FILES
     ):
         raise RuntimeError(
-            "The CodeSearchNet coding fixture must declare between 1 and "
+            f"The {dataset_name} coding fixture must declare between 1 and "
             f"{_MAX_DECLARATIVE_FILES} files."
         )
 
@@ -199,13 +228,15 @@ def _load_codesearchnet_fixture() -> tuple[dict[str, str], dict[str, Any]]:
             ) from exc
         if content_size > _MAX_DECLARATIVE_FILE_BYTES:
             raise RuntimeError(
-                "A CodeSearchNet fixture file exceeds the bounded file size."
+                f"A {dataset_name} fixture file exceeds the bounded file size."
             )
         files[path] = content
         total_bytes += content_size
 
     if total_bytes > _MAX_DECLARATIVE_TOTAL_BYTES:
-        raise RuntimeError("The CodeSearchNet fixture exceeds the bounded total size.")
+        raise RuntimeError(
+            f"The {dataset_name} fixture exceeds the bounded total size."
+        )
     file_paths = set(files)
     for path in file_paths:
         parts = PurePosixPath(path).parts
@@ -218,19 +249,188 @@ def _load_codesearchnet_fixture() -> tuple[dict[str, str], dict[str, Any]]:
 
     provenance = fixture.get("provenance")
     if not isinstance(provenance, dict):
-        raise RuntimeError("The CodeSearchNet coding fixture requires provenance.")
+        raise RuntimeError(
+            f"The {dataset_name} coding fixture requires provenance."
+        )
+    for field, expected in required_provenance.items():
+        if provenance.get(field) != expected:
+            raise RuntimeError(
+                f"The {dataset_name} coding fixture has unexpected {field}."
+            )
+
+    return files, deepcopy(provenance)
+
+
+def _load_codesearchnet_fixture() -> tuple[dict[str, str], dict[str, Any]]:
+    return _load_public_coding_fixture(
+        _CODESEARCHNET_FIXTURE_PATH,
+        dataset_name="CodeSearchNet",
+        expected_repo_id=CODESEARCHNET_CODING_REPOSITORY_ID,
+        expected_fixture_version=CODESEARCHNET_CODING_FIXTURE_VERSION,
+        required_provenance={
+            "source_revision": CODESEARCHNET_SOURCE_REVISION,
+            "query_origin": "codesearchnet_published_query",
+            "provenance_type": "research_dataset_adaptation",
+        },
+    )
+
+
+def _load_conala_fixture() -> tuple[dict[str, str], dict[str, Any]]:
+    return _load_public_coding_fixture(
+        _CONALA_FIXTURE_PATH,
+        dataset_name="CoNaLa",
+        expected_repo_id=CONALA_CODING_REPOSITORY_ID,
+        expected_fixture_version=CONALA_CODING_FIXTURE_VERSION,
+        required_provenance={
+            "source_revision": CONALA_SOURCE_REVISION,
+            "query_origin": "conala_crowd_rewritten_intent",
+            "provenance_type": "research_dataset_adaptation",
+        },
+    )
+
+
+def _load_sweagent_fixtures() -> list[
+    tuple[str, str, str, dict[str, str], dict[str, Any]]
+]:
+    fixture_paths = sorted(_SWEAGENT_FIXTURE_DIRECTORY.glob("sweagent_*.json"))
+    if not fixture_paths:
+        raise RuntimeError("No declarative SWE-agent coding fixtures were found.")
+
+    loaded = []
+    seen_repo_ids: set[str] = set()
+    for fixture_path in fixture_paths:
+        loaded.append(_load_sweagent_fixture(fixture_path, seen_repo_ids))
+    return loaded
+
+
+def _load_sweagent_fixture(
+    fixture_path: Path,
+    seen_repo_ids: set[str],
+) -> tuple[str, str, str, dict[str, str], dict[str, Any]]:
+    try:
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            "Unable to load the declarative SWE-agent coding fixture."
+        ) from exc
+
+    if not isinstance(fixture, dict):
+        raise RuntimeError("The SWE-agent coding fixture must be a JSON object.")
+    repo_id = fixture.get("repo_id")
+    fixture_version = fixture.get("fixture_version")
+    if not isinstance(repo_id, str) or not repo_id.strip():
+        raise RuntimeError("The SWE-agent coding fixture requires a repo_id.")
+    if repo_id in seen_repo_ids:
+        raise RuntimeError("SWE-agent coding fixture repo_ids must be unique.")
+    seen_repo_ids.add(repo_id)
+    if not isinstance(fixture_version, str) or not fixture_version.strip():
+        raise RuntimeError(
+            "The SWE-agent coding fixture requires a fixture_version."
+        )
+    if repo_id == SWEAGENT_CODING_REPOSITORY_ID:
+        if fixture_version != SWEAGENT_CODING_FIXTURE_VERSION:
+            raise RuntimeError(
+                "The marshmallow SWE-agent fixture has an unexpected version."
+            )
+
+    raw_files = fixture.get("files")
+    if (
+        not isinstance(raw_files, dict)
+        or not raw_files
+        or len(raw_files) > _MAX_DECLARATIVE_FILES
+    ):
+        raise RuntimeError(
+            "The SWE-agent coding fixture must declare between 1 and "
+            f"{_MAX_DECLARATIVE_FILES} files."
+        )
+
+    files: dict[str, str] = {}
+    total_bytes = 0
+    for raw_path, raw_content in raw_files.items():
+        path = _validate_declarative_path(raw_path)
+        if isinstance(raw_content, str):
+            content = raw_content
+        elif isinstance(raw_content, dict):
+            line_offset = raw_content.get("line_offset")
+            excerpt = raw_content.get("content")
+            if (
+                isinstance(line_offset, bool)
+                or not isinstance(line_offset, int)
+                or line_offset < 0
+                or line_offset > 10_000
+                or not isinstance(excerpt, str)
+            ):
+                raise RuntimeError(
+                    "SWE-agent excerpt files require a bounded line_offset "
+                    "and string content."
+                )
+            content = ("\n" * line_offset) + excerpt
+        else:
+            raise RuntimeError(
+                "SWE-agent fixture files must contain text or excerpt objects."
+            )
+        if "\x00" in content:
+            raise RuntimeError("SWE-agent fixture files must be NUL-free.")
+        try:
+            content_size = len(content.encode("utf-8"))
+        except UnicodeEncodeError as exc:
+            raise RuntimeError(
+                "SWE-agent fixture files must contain valid UTF-8 text."
+            ) from exc
+        if content_size > _MAX_DECLARATIVE_FILE_BYTES:
+            raise RuntimeError(
+                "A SWE-agent fixture file exceeds the bounded file size."
+            )
+        files[path] = content
+        total_bytes += content_size
+
+    if total_bytes > _MAX_DECLARATIVE_TOTAL_BYTES:
+        raise RuntimeError("The SWE-agent fixture exceeds the bounded total size.")
+    file_paths = set(files)
+    for path in file_paths:
+        parts = PurePosixPath(path).parts
+        for end in range(1, len(parts)):
+            parent = PurePosixPath(*parts[:end]).as_posix()
+            if parent in file_paths:
+                raise RuntimeError(
+                    "Coding fixture paths must not use a file as a parent directory."
+                )
+
+    provenance = fixture.get("provenance")
+    if not isinstance(provenance, dict):
+        raise RuntimeError("The SWE-agent coding fixture requires provenance.")
     required_provenance = {
-        "source_revision": CODESEARCHNET_SOURCE_REVISION,
-        "query_origin": "codesearchnet_published_query",
-        "provenance_type": "research_dataset_adaptation",
+        "source_revision": SWEAGENT_SOURCE_REVISION,
+        "provenance_type": "research_trajectory_adaptation",
     }
     for field, expected in required_provenance.items():
         if provenance.get(field) != expected:
             raise RuntimeError(
-                f"The CodeSearchNet coding fixture has unexpected {field}."
+                f"The SWE-agent coding fixture has unexpected {field}."
             )
-
-    return files, deepcopy(provenance)
+    if not isinstance(provenance.get("query_origin"), str):
+        raise RuntimeError("The SWE-agent fixture requires a query_origin.")
+    if provenance.get("trajectory_origin") not in {
+        "official_sweagent_demonstration",
+        "official_sweagent_trajectory",
+    }:
+        raise RuntimeError(
+            "The SWE-agent fixture has an unexpected trajectory_origin."
+        )
+    if repo_id == SWEAGENT_CODING_REPOSITORY_ID and (
+        provenance.get("repository_base_commit") != SWEAGENT_MARSHMALLOW_BASE_COMMIT
+        or provenance.get("query_origin") != "swebench_issue"
+    ):
+        raise RuntimeError(
+            "The marshmallow SWE-agent fixture has unexpected provenance."
+        )
+    return (
+        fixture_path.stem,
+        repo_id,
+        fixture_version,
+        files,
+        deepcopy(provenance),
+    )
 
 
 def _git_environment(home: Path, timestamp: str | None = None) -> dict[str, str]:
@@ -362,10 +562,19 @@ def _create_fixture(root: Path) -> CodingRepository:
     )
 
 
-def _create_codesearchnet_fixture(root: Path) -> CodingRepository:
-    files, provenance = _load_codesearchnet_fixture()
-    repository = root / "codesearchnet-public-repository"
-    git_home = root / "codesearchnet-public-git-home"
+def _create_public_coding_fixture(
+    root: Path,
+    *,
+    fixture_name: str,
+    repo_id: str,
+    fixture_version: str,
+    files: dict[str, str],
+    provenance: dict[str, Any],
+    commit_subject: str,
+    authored_at: str,
+) -> CodingRepository:
+    repository = root / f"{fixture_name}-repository"
+    git_home = root / f"{fixture_name}-git-home"
     repository.mkdir(parents=True)
     git_home.mkdir(parents=True)
 
@@ -383,16 +592,82 @@ def _create_codesearchnet_fixture(root: Path) -> CodingRepository:
         repository,
         git_home,
         files,
-        "Initialize CodeSearchNet public annotation fixture",
-        "2024-04-10T12:00:00+00:00",
+        commit_subject,
+        authored_at,
     )
 
     base_commit = _run_git(repository, "rev-parse", "HEAD", home=git_home)
     return CodingRepository(
-        repo_id=CODESEARCHNET_CODING_REPOSITORY_ID,
+        repo_id=repo_id,
         path=repository.resolve(),
         base_commit=base_commit,
+        fixture_version=fixture_version,
+        provenance=provenance,
+    )
+
+
+def _create_codesearchnet_fixture(root: Path) -> CodingRepository:
+    files, provenance = _load_codesearchnet_fixture()
+    return _create_public_coding_fixture(
+        root,
+        fixture_name="codesearchnet-public",
+        repo_id=CODESEARCHNET_CODING_REPOSITORY_ID,
         fixture_version=CODESEARCHNET_CODING_FIXTURE_VERSION,
+        files=files,
+        provenance=provenance,
+        commit_subject="Initialize CodeSearchNet public annotation fixture",
+        authored_at="2024-04-10T12:00:00+00:00",
+    )
+
+
+def _create_conala_fixture(root: Path) -> CodingRepository:
+    files, provenance = _load_conala_fixture()
+    return _create_public_coding_fixture(
+        root,
+        fixture_name="conala-public-test",
+        repo_id=CONALA_CODING_REPOSITORY_ID,
+        fixture_version=CONALA_CODING_FIXTURE_VERSION,
+        files=files,
+        provenance=provenance,
+        commit_subject="Initialize CoNaLa public intent fixture",
+        authored_at="2024-04-11T12:00:00+00:00",
+    )
+
+
+def _create_sweagent_fixture(
+    root: Path,
+    fixture: tuple[str, str, str, dict[str, str], dict[str, Any]],
+) -> CodingRepository:
+    fixture_name, repo_id, fixture_version, files, provenance = fixture
+    repository = root / f"{fixture_name}-repository"
+    git_home = root / f"{fixture_name}-git-home"
+    repository.mkdir(parents=True)
+    git_home.mkdir(parents=True)
+
+    _run_git(repository, "init", "--quiet", "--initial-branch=main", home=git_home)
+    _run_git(repository, "config", "user.name", "LayerMCP Fixture", home=git_home)
+    _run_git(
+        repository,
+        "config",
+        "user.email",
+        "fixture@layermcp.invalid",
+        home=git_home,
+    )
+    _run_git(repository, "config", "core.autocrlf", "false", home=git_home)
+    _commit_snapshot(
+        repository,
+        git_home,
+        files,
+        f"Initialize {fixture_name} exploration fixture",
+        "2024-05-24T12:00:00+00:00",
+    )
+
+    base_commit = _run_git(repository, "rev-parse", "HEAD", home=git_home)
+    return CodingRepository(
+        repo_id=repo_id,
+        path=repository.resolve(),
+        base_commit=base_commit,
+        fixture_version=fixture_version,
         provenance=provenance,
     )
 
@@ -405,9 +680,14 @@ def _ensure_coding_state() -> None:
     workspace_directory = tempfile.TemporaryDirectory(prefix="layermcp-coding-")
     workspace_root = Path(workspace_directory.name)
     try:
-        repositories = (
+        repositories = [
             _create_fixture(workspace_root),
             _create_codesearchnet_fixture(workspace_root),
+            _create_conala_fixture(workspace_root),
+        ]
+        repositories.extend(
+            _create_sweagent_fixture(workspace_root, fixture)
+            for fixture in _load_sweagent_fixtures()
         )
     except Exception:
         workspace_directory.cleanup()

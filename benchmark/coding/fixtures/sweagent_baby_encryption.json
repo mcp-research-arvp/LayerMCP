@@ -1,0 +1,37 @@
+{
+  "repo_id": "sweagent-ctf-baby-encryption",
+  "fixture_version": "coding_sweagent_baby_encryption_fixture_v1",
+  "description": "Bounded read-only fixture for exact source-inspection actions in the official SWE-agent BabyEncryption CTF demonstration.",
+  "files": {
+    "chall.py": "import string\nfrom secret import MSG\n\ndef encryption(msg):\n    ct = []\n    for char in msg:\n        ct.append((123 * char + 18) % 256)\n    return bytes(ct)\n\nct = encryption(MSG)\nf = open('./msg.enc','w')\nf.write(ct.hex())\nf.close()\n\n\n"
+  },
+  "source_issue": {
+    "challenge_name": "BabyEncryption",
+    "text": "BabyEncryption\nYou are after an organised crime group which is responsible for the illegal weapon market in your country. As a secret agent, you have infiltrated the group enough to be included in meetings with clients. During the last negotiation, you found one of the confidential messages for the customer. It contains crucial information about the delivery. Do you think you can decrypt it?\nFiles included in the challenge: ['msg.enc', 'chall.py']"
+  },
+  "source_actions": [
+    {
+      "trajectory_step_index": 0,
+      "action": "open chall.py",
+      "observation_kind": "source_window"
+    },
+    {
+      "trajectory_step_index": 6,
+      "action": "open chall.py",
+      "observation_kind": "source_window"
+    }
+  ],
+  "provenance": {
+    "source_paper": "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering",
+    "source_repository": "https://github.com/SWE-agent/SWE-agent",
+    "source_revision": "3ea751c087f32b16e039a2233dd6eefecef325d5",
+    "source_license": "MIT",
+    "trajectory_origin": "official_sweagent_trajectory",
+    "provenance_type": "research_trajectory_adaptation",
+    "source_dataset": "SWE-agent CTF demonstrations",
+    "trajectory_path": "trajectories/demonstrations/ctf/crypto/BabyEncryption.traj",
+    "trajectory_sha256": "fe26571d9c23f2b91483c18eb20d9e953d07ec5ad82ea36b6e1e80981d35afe4",
+    "query_origin": "ctf_challenge_prompt",
+    "adaptation": "The challenge and repeated read-only source inspections are exact; mutation and execution actions are excluded."
+  }
+}

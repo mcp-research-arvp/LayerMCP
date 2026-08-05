@@ -173,7 +173,7 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         )
 
     prediction = generate_prediction(normalized_query)
-    if prediction.selected_tool == HALLUCINATED_TOOL:
+    if prediction.selected_tool not in tool_catalog:
         no_call_query = (
             f"{normalized_query}\n\n"
             "The previous response did not produce a valid call to one of the "

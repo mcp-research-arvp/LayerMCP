@@ -1,6 +1,8 @@
 # Math Tool-Routing Datasets
 
-This folder contains math-only single-tool routing benchmarks. Each query is paired with the math tool that should be called and the arguments that should be passed.
+This folder contains math-only single-step and teacher-forced multi-step routing
+benchmarks. Each expected call identifies the math tool, arguments, and
+deterministic tool result.
 
 ## Tools Covered
 
@@ -22,7 +24,7 @@ The math tool menu is implemented in `mcp_server/math_tools.py`.
 
 ## Dataset Files
 
-### `tool_routing_math_controlled.json`
+### `math_controlled.json`
 
 - Records: 51
 - Source: `controlled_synthetic`
@@ -47,13 +49,13 @@ Breakdown by expected tool:
 
 The early controlled records use difficulty labels such as `easy`, `medium`, and `hard`. The newer v2 controlled records use more targeted IDs such as `math_v2_controlled_modular_arithmetic_001`.
 
-### `tool_routing_math_public_derived.json`
+### `math_public_math_dataset.json`
 
 - Records: 77
 - Source: `public_math_derived`
 - Source dataset: `math`
 - Domain: `mathematics`
-- Purpose: examples derived from public MATH benchmark problems and converted into MCP-style single-tool routing records.
+- Purpose: executable examples derived from public MATH benchmark problems and converted into MCP-style single-tool routing records.
 
 Each record keeps provenance fields such as:
 
@@ -76,6 +78,37 @@ Breakdown by expected tool:
 | `modular_arithmetic` | 8 |
 | `base_arithmetic` | 5 |
 
+### `math_public.json`
+
+- Records: 400
+- Sources: pinned DeepMind Mathematics Dataset and GSM8K
+- Domain: `mathematics`
+- Purpose: tool-balanced, executable public-derived single-step coverage.
+
+The file contains 100 GSM8K calculator rows and 300 deterministically generated
+DeepMind rows. Every record has a non-null expected answer, source revision,
+stable source coordinate, canonical source hash, license, and transformation
+notes. DeepMind records additionally store the module, generation seed, and
+accepted generated index. See
+`fixtures/PUBLIC_EXPANSION_ATTRIBUTION.md` and
+`build_public_expansion.py`.
+
+Breakdown by expected tool:
+
+| Tool | Records |
+| --- | ---: |
+| `calculator` | 120 |
+| `simplify_expression` | 25 |
+| `solve_equation` | 35 |
+| `factor_expression` | 15 |
+| `expand_expression` | 25 |
+| `differentiate_expression` | 40 |
+| `convert_units` | 40 |
+| `integer_factorization` | 25 |
+| `gcd_lcm` | 25 |
+| `modular_arithmetic` | 20 |
+| `base_arithmetic` | 30 |
+
 This public-derived set currently does not include `convert_units` or `differentiate_expression` examples because the selected public MATH records were focused on arithmetic, algebra, number theory, and base arithmetic.
 
 Difficulty comes from the public source levels:
@@ -88,9 +121,29 @@ Difficulty comes from the public source levels:
 | `level_4` | 17 |
 | `level_5` | 6 |
 
+### `math_multistep_controlled.json`
+
+- Workflows: 50
+- Expected steps: 105
+- Source: `controlled_synthetic`
+- Domain: `mathematics`
+- Task type: `multi_step_tool_routing`
+- Purpose: deterministic sequencing coverage across existing math tools.
+
+Every workflow contains two or three connected calls. Later calls consume a
+resolved result from an earlier call, such as an arithmetic product passed to
+integer factorization, a derivative set equal to zero and solved, or a
+converted magnitude used in final arithmetic. Step-level `prompt_context`
+provides authoritative current-step inputs for teacher-forced routing. Rebuild
+the artifact with:
+
+```bash
+python benchmark/math/build_multistep_controlled.py
+```
+
 ## Schema Notes
 
-Both math files use the standard benchmark schema:
+All Math datasets use these common top-level fields:
 
 - `id`
 - `domain`
@@ -98,18 +151,33 @@ Both math files use the standard benchmark schema:
 - `difficulty`
 - `source`
 - `query`
-- `available_tools`
+- `perturbation_type`
+- `notes`
+
+The three single-step datasets store the expected call and result directly on
+each row:
+
 - `expected_tool`
 - `expected_args`
 - `expected_answer`
-- `perturbation_type`
-- `notes`
+
+The controlled multi-step dataset, `math_multistep_controlled.json`, contains
+50 workflows and 105 expected steps. Each workflow uses `expected_steps`; every
+step contains:
+
+- `expected_tool`: the tool selected for that step.
+- `expected_args`: the deterministic arguments for that call.
+- `expected_answer`: the expected result from executing that call.
+- `prompt_context`: authoritative current-step inputs and sequencing context
+  visible during teacher-forced routing.
+- `depends_on`: links to prior step IDs whose outputs or results feed the
+  current operation. Independent prerequisite steps may have an empty list.
 
 The public-derived file also includes provenance fields. New math datasets should follow the same naming and schema style:
 
 ```text
-tool_routing_math_<source>.json
+math_<source_or_purpose>.json
 ```
 
-For example, use `tool_routing_math_controlled_v2.json` only if the version marks a real tool-suite or schema change.
-
+Current examples are `math_public.json`, `math_public_math_dataset.json`,
+`math_controlled.json`, and `math_multistep_controlled.json`.

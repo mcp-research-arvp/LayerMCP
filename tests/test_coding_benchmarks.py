@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import unittest
 
+from benchmark.coding.build_codesearchnet_public_expansion import (
+    _choose_annotation_candidate,
+)
+from benchmark.coding.build_conala_public_expansion import _is_selectable_query
 from evaluation.evaluate import load_benchmark
 from mcp_server.coding_tools import (
     CODING_TOOL_NAMES,
@@ -21,13 +25,22 @@ from mcp_server.coding_tools import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CODING_BENCHMARK_ROOT = PROJECT_ROOT / "benchmark" / "coding"
+CODESEARCHNET_FIXTURE_PATH = (
+    CODING_BENCHMARK_ROOT
+    / "fixtures"
+    / "codesearchnet_public_annotations.json"
+)
+CONALA_FIXTURE_PATH = (
+    CODING_BENCHMARK_ROOT / "fixtures" / "conala_public_test.json"
+)
 BENCHMARK_PATHS = {
-    "smoke": CODING_BENCHMARK_ROOT / "tool_routing_coding_smoke.json",
-    "controlled": CODING_BENCHMARK_ROOT / "tool_routing_coding_controlled.json",
+    "smoke": CODING_BENCHMARK_ROOT / "coding_smoke.json",
+    "controlled": CODING_BENCHMARK_ROOT / "coding_controlled.json",
     "upstream": CODING_BENCHMARK_ROOT
-    / "tool_routing_coding_upstream_inspired.json",
+    / "coding_upstream_inspired.json",
     "codesearchnet": CODING_BENCHMARK_ROOT
-    / "tool_routing_coding_codesearchnet_public_derived.json",
+    / "coding_codesearchnet_public_derived.json",
+    "conala": CODING_BENCHMARK_ROOT / "coding_conala_public_derived.json",
 }
 CODING_TOOL_MENU = [
     "code_list_files",
@@ -78,15 +91,38 @@ class CodingBenchmarkTests(unittest.TestCase):
             "smoke": 7,
             "controlled": 35,
             "upstream": 28,
-            "codesearchnet": 15,
+            "codesearchnet": 97,
+            "conala": 133,
         }
         for name, path in BENCHMARK_PATHS.items():
             with self.subTest(dataset=name):
                 self.assertEqual(len(load_benchmark(path)), expected_lengths[name])
 
-    def test_ids_tool_menus_and_tool_counts_are_exact(self) -> None:
+    def test_every_coding_query_has_at_most_five_tool_calls(self) -> None:
+        benchmark_paths = sorted(CODING_BENCHMARK_ROOT.glob("coding_*.json"))
+        self.assertEqual(
+            [path.name for path in benchmark_paths],
+            [
+                "coding_codesearchnet_public_derived.json",
+                "coding_conala_public_derived.json",
+                "coding_controlled.json",
+                "coding_nebius_sweagent_replay_multistep.json",
+                "coding_nebius_swerebench_openhands_replay_multistep.json",
+                "coding_smoke.json",
+                "coding_sweagent_multistep.json",
+                "coding_upstream_inspired.json",
+            ],
+        )
+        for path in benchmark_paths:
+            for row in _load_json(path):
+                with self.subTest(dataset=path.name, row=row["id"]):
+                    call_count = len(row.get("expected_steps", [])) or 1
+                    self.assertLessEqual(call_count, 5)
+
+    def test_ids_registry_compatibility_and_tool_counts_are_exact(self) -> None:
         all_rows = [row for rows in self.datasets.values() for row in rows]
         ids = [row["id"] for row in all_rows]
+        self.assertEqual(len(all_rows), 300)
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(frozenset(CODING_TOOL_MENU), CODING_TOOL_NAMES)
 
@@ -103,14 +139,38 @@ class CodingBenchmarkTests(unittest.TestCase):
                 row["expected_tool"]
                 for row in self.datasets["codesearchnet"]
             ),
-            Counter({"code_search_text": 15}),
+            Counter({"code_search_text": 97}),
+        )
+        self.assertEqual(
+            Counter(row["expected_tool"] for row in self.datasets["conala"]),
+            Counter({"code_search_text": 133}),
         )
 
         for row in all_rows:
             self.assertEqual(row["domain"], "coding")
             self.assertEqual(row["task_type"], "single_tool_routing")
-            self.assertEqual(row["available_tools"], CODING_TOOL_MENU)
-            self.assertIn(row["expected_tool"], row["available_tools"])
+            self.assertNotIn("available_tools", row)
+            self.assertIn(row["expected_tool"], CODING_TOOL_MENU)
+
+    def test_conala_intents_do_not_duplicate_existing_single_step_text(self) -> None:
+        def normalize(text: str) -> str:
+            return " ".join(text.casefold().split())
+
+        conala_queries = {
+            normalize(row["original_query"])
+            for row in self.datasets["conala"]
+        }
+        existing_queries = {
+            normalize(row[field])
+            for dataset, rows in self.datasets.items()
+            if dataset != "conala"
+            for row in rows
+            for field in ("query", "original_query")
+            if isinstance(row.get(field), str)
+        }
+
+        self.assertEqual(len(conala_queries), 133)
+        self.assertTrue(conala_queries.isdisjoint(existing_queries))
 
     def test_all_arguments_bind_and_expected_answers_execute(self) -> None:
         for dataset, rows in self.datasets.items():
@@ -182,7 +242,7 @@ class CodingBenchmarkTests(unittest.TestCase):
         self,
     ) -> None:
         rows = self.datasets["codesearchnet"]
-        expected_coordinates = [
+        legacy_coordinates = [
             (20, 1635, "k means clustering"),
             (13, 1666, "write csv"),
             (28, 1680, "get executable path"),
@@ -206,19 +266,87 @@ class CodingBenchmarkTests(unittest.TestCase):
                     row["source_annotation_index_zero_based"],
                     row["original_query"],
                 )
+                for row in rows[:15]
+            ],
+            legacy_coordinates,
+        )
+
+        fixture = json.loads(
+            CODESEARCHNET_FIXTURE_PATH.read_text(encoding="utf-8")
+        )
+        jsonl_records = [
+            json.loads(line)
+            for line in fixture["files"][
+                "resources/annotationStore_selected.jsonl"
+            ].splitlines()
+        ]
+        fixture_records = fixture["records"]
+        self.assertEqual(fixture["record_count"], 97)
+        self.assertEqual(len(fixture_records), 97)
+        self.assertEqual(fixture_records, jsonl_records)
+        self.assertEqual(
+            fixture["files"]["resources/queries_selected.txt"].splitlines(),
+            [record["query"] for record in fixture_records],
+        )
+        self.assertEqual(
+            Counter(row["source_language"] for row in rows),
+            Counter({"Python": 95, "Go": 1, "Java": 1}),
+        )
+        selected_query_indexes = {
+            row["source_query_index_zero_based"] for row in rows
+        }
+        self.assertEqual(
+            set(range(99)) - selected_query_indexes,
+            {62, 94},
+        )
+        self.assertEqual(
+            [
+                (
+                    row["source_query_index_zero_based"],
+                    row["source_annotation_index_zero_based"],
+                    row["source_annotation_pair_multiplicity"],
+                    row["source_annotation_pair_relevance_counts"],
+                    row["source_language"],
+                    row["original_query"],
+                    row["source_github_url"],
+                    row["source_annotation_record"],
+                )
                 for row in rows
             ],
-            expected_coordinates,
+            [
+                (
+                    record["source_query_index_zero_based"],
+                    record["source_annotation_index_zero_based"],
+                    record["source_annotation_pair_multiplicity"],
+                    record["source_annotation_pair_relevance_counts"],
+                    record["language"],
+                    record["query"],
+                    record["github_url"],
+                    record["source_annotation_record"],
+                )
+                for record in fixture_records
+            ],
+        )
+        self.assertEqual(
+            fixture["provenance"]["selected_pair_rating_summary"],
+            {
+                "selected_pairs": 97,
+                "selected_pairs_with_multiple_annotations": 79,
+                "only_relevance_3_pairs": 47,
+                "mixed_relevance_pairs": 50,
+                "pairs_where_relevance_3_is_a_minority": 6,
+            },
         )
         self.assertEqual(
             [row["id"] for row in rows],
             [
                 f"coding_public_codesearchnet_search_text_{index:03d}"
-                for index in range(1, 16)
+                for index in range(1, 98)
             ],
         )
 
         for line_number, row in enumerate(rows, start=1):
+            self.assertEqual(row["benchmark_mode"], "grounded_tool_execution")
             self.assertEqual(row["source"], "public_coding_research_derived")
             self.assertEqual(
                 row["source_dataset"],
@@ -278,12 +406,16 @@ class CodingBenchmarkTests(unittest.TestCase):
                 "codesearchnet_annotation_lookup_v1",
             )
             self.assertEqual(
+                row["selection_version"],
+                "codesearchnet_relevance3_query_coverage_v2",
+            )
+            self.assertEqual(
                 row["provenance_type"], "research_dataset_adaptation"
             )
             self.assertEqual(row["perturbation_type"], "none")
             self.assertEqual(row["fixture_id"], "codesearchnet-public-v1")
             self.assertEqual(
-                row["fixture_version"], "coding_codesearchnet_fixture_v1"
+                row["fixture_version"], "coding_codesearchnet_fixture_v2"
             )
             self.assertEqual(
                 row["fixture_file"],
@@ -297,9 +429,14 @@ class CodingBenchmarkTests(unittest.TestCase):
                 row["attribution_file"],
                 "benchmark/coding/fixtures/CODESEARCHNET_ATTRIBUTION.md",
             )
-            self.assertEqual(row["source_language"], "Python")
             self.assertEqual(row["source_relevance"], 3)
-            self.assertEqual(row["source_annotation_pair_multiplicity"], 1)
+            self.assertGreaterEqual(row["source_annotation_pair_multiplicity"], 1)
+            rating_counts = row["source_annotation_pair_relevance_counts"]
+            self.assertEqual(
+                sum(rating_counts.values()),
+                row["source_annotation_pair_multiplicity"],
+            )
+            self.assertGreaterEqual(rating_counts["3"], 1)
             self.assertGreaterEqual(row["source_query_index_zero_based"], 0)
             self.assertGreaterEqual(row["source_annotation_index_zero_based"], 0)
 
@@ -313,11 +450,11 @@ class CodingBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 row["source_annotation_record"],
                 {
-                    "Language": "Python",
+                    "Language": row["source_language"],
                     "Query": row["original_query"],
                     "GitHubUrl": row["source_github_url"],
                     "Relevance": "3",
-                    "Notes": "",
+                    "Notes": fixture_records[line_number - 1]["notes"],
                 },
             )
             self.assertEqual(
@@ -333,6 +470,206 @@ class CodingBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 row["expected_answer"]["matches"][0]["line"], line_number
             )
+
+    def test_codesearchnet_builder_candidate_order_is_explicit(self) -> None:
+        def candidate(language: str) -> dict[str, str]:
+            return {
+                "Language": language,
+                "Query": "query",
+                "GitHubUrl": "https://example.invalid/source",
+                "Relevance": "3",
+                "Notes": "",
+            }
+
+        self.assertEqual(
+            _choose_annotation_candidate(
+                [(2, candidate("Go")), (8, candidate("Python"))]
+            )[0],
+            8,
+        )
+        self.assertEqual(
+            _choose_annotation_candidate(
+                [(5, candidate("Go")), (3, candidate("Java"))]
+            )[0],
+            3,
+        )
+        with self.assertRaises(ValueError):
+            _choose_annotation_candidate([])
+
+    def test_conala_rows_have_exact_fixture_and_pinned_provenance(self) -> None:
+        rows = self.datasets["conala"]
+        fixture = json.loads(CONALA_FIXTURE_PATH.read_text(encoding="utf-8"))
+        fixture_records = fixture["records"]
+        manifest_records = [
+            json.loads(line)
+            for line in fixture["files"][
+                "resources/conala_curated_test_selected.jsonl"
+            ].splitlines()
+        ]
+        queries = fixture["files"][
+            "resources/conala_curated_test_queries_selected.txt"
+        ].splitlines()
+
+        self.assertEqual(fixture["record_count"], 133)
+        self.assertEqual(len(fixture_records), 133)
+        self.assertEqual(fixture_records, manifest_records)
+        self.assertEqual(queries, [record["query"] for record in fixture_records])
+        self.assertEqual(len(queries), len(set(queries)))
+        self.assertEqual(
+            fixture_records[0]["source_record_index_zero_based"], 0
+        )
+        self.assertEqual(
+            fixture_records[-1]["source_record_index_zero_based"], 145
+        )
+        self.assertEqual(
+            fixture_records[0]["query"],
+            "send a signal `signal.SIGUSR1` to the current process",
+        )
+        self.assertEqual(
+            fixture_records[-1]["query"],
+            "get index of rows in dataframe `df` which column 'BoolCol' "
+            "matches value True",
+        )
+        self.assertEqual(
+            fixture["provenance"]["selection_version"],
+            "conala_curated_test_line_unique_133_v1",
+        )
+        self.assertEqual(
+            fixture["provenance"]["source_file_sha256"],
+            "3a7e5eea6deeccb5e7c9557534af860854fd2f0ae870752b42c296ed30e53cb7",
+        )
+        self.assertEqual(
+            [row["id"] for row in rows],
+            [
+                f"coding_public_conala_search_text_{index:03d}"
+                for index in range(1, 134)
+            ],
+        )
+        self.assertEqual(
+            [row["source_record_index_zero_based"] for row in rows],
+            [record["source_record_index_zero_based"] for record in fixture_records],
+        )
+        self.assertEqual(
+            [row["original_query"] for row in rows],
+            [record["query"] for record in fixture_records],
+        )
+
+        for line_number, row in enumerate(rows, start=1):
+            record = fixture_records[line_number - 1]
+            self.assertEqual(row["benchmark_mode"], "grounded_tool_execution")
+            self.assertEqual(row["source"], "public_coding_research_derived")
+            self.assertEqual(row["source_dataset"], "CoNaLa")
+            self.assertEqual(row["source_configuration"], "curated")
+            self.assertEqual(row["source_split"], "test")
+            self.assertEqual(row["source_dataset_version"], "1.1.0")
+            self.assertEqual(row["source_repository"], "neulab/conala")
+            self.assertEqual(
+                row["source_revision"],
+                "fbc749f1c537e5c3834e93b15784302e331debe2",
+            )
+            self.assertEqual(row["source_file_record_count"], 500)
+            self.assertEqual(row["source_question_id"], record["question_id"])
+            self.assertEqual(
+                row["source_stackoverflow_url"], record["stackoverflow_url"]
+            )
+            self.assertEqual(
+                row["source_record_canonical_sha256"],
+                record["source_record_canonical_sha256"],
+            )
+            self.assertEqual(
+                row["source_snippet_sha256"], record["source_snippet_sha256"]
+            )
+            self.assertRegex(row["source_record_canonical_sha256"], r"^[0-9a-f]{64}$")
+            self.assertRegex(row["source_snippet_sha256"], r"^[0-9a-f]{64}$")
+            self.assertFalse(row["source_original_intent_redistributed"])
+            self.assertTrue(row["source_rewritten_intent_redistributed"])
+            self.assertFalse(row["source_snippet_redistributed"])
+            self.assertEqual(row["source_license"], "MIT")
+            self.assertEqual(row["source_license_scope"], "dataset")
+            self.assertEqual(
+                row["source_license_evidence_type"],
+                "dataset_card_metadata",
+            )
+            self.assertEqual(
+                row["source_license_evidence"],
+                "Pinned dataset-card YAML front matter "
+                "(`license` includes `mit`)",
+            )
+            self.assertEqual(
+                row["source_license_evidence_sha256"],
+                "326072b41743fff642a4639ade350308a47942ff67608f3dfe447014453f3e74",
+            )
+            self.assertEqual(
+                row["source_license_url"],
+                "https://huggingface.co/datasets/neulab/conala/blob/"
+                "fbc749f1c537e5c3834e93b15784302e331debe2/README.md",
+            )
+            self.assertEqual(
+                row["original_query_origin"],
+                "conala_crowd_rewritten_intent",
+            )
+            self.assertEqual(
+                row["query_origin"], "generated_wrapper_around_conala_intent"
+            )
+            self.assertEqual(
+                row["query_wrapper_id"], "conala_curated_intent_lookup_v1"
+            )
+            self.assertEqual(
+                row["selection_version"],
+                "conala_curated_test_line_unique_133_v1",
+            )
+            self.assertEqual(row["fixture_id"], "conala-public-test-v1")
+            self.assertEqual(row["fixture_version"], "coding_conala_fixture_v1")
+            self.assertEqual(
+                row["query"],
+                "In repository conala-public-test-v1, search only "
+                "resources/conala_curated_test_queries_selected.txt for the "
+                "exact curated intent "
+                f"{json.dumps(row['original_query'], ensure_ascii=False)}. "
+                "Match case exactly and return at most one result.",
+            )
+            self.assertEqual(
+                row["expected_args"],
+                {
+                    "repo_id": "conala-public-test-v1",
+                    "pattern": row["original_query"],
+                    "path_glob": (
+                        "resources/conala_curated_test_queries_selected.txt"
+                    ),
+                    "case_sensitive": True,
+                    "max_results": 1,
+                },
+            )
+            self.assertEqual(
+                row["expected_answer"]["matches"][0]["line"], line_number
+            )
+            self.assertEqual(
+                row["expected_answer"]["matches"][0]["text"],
+                row["original_query"],
+            )
+
+    def test_conala_builder_line_unique_selection_rule_is_explicit(self) -> None:
+        self.assertFalse(_is_selectable_query(None, []))
+        self.assertFalse(_is_selectable_query("", []))
+        self.assertFalse(_is_selectable_query("x" * 501, []))
+        self.assertFalse(_is_selectable_query("nul\x00query", []))
+        self.assertFalse(_is_selectable_query("two\nlines", []))
+        self.assertTrue(_is_selectable_query("download a file", []))
+        self.assertFalse(
+            _is_selectable_query("download a file", ["download a file"])
+        )
+        self.assertFalse(
+            _is_selectable_query(
+                "download a file",
+                ["download a file over HTTP"],
+            )
+        )
+        self.assertFalse(
+            _is_selectable_query(
+                "download a file over HTTP",
+                ["download a file"],
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -26,10 +26,16 @@ from mcp_server.tool_impls import calculator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_BENCHMARK_PATH = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_public_derived.json"
+    PROJECT_ROOT / "benchmark" / "math" / "math_public_math_dataset.json"
+)
+EXPANSION_BENCHMARK_PATH = (
+    PROJECT_ROOT
+    / "benchmark"
+    / "math"
+    / "math_public.json"
 )
 CONTROLLED_BENCHMARK_PATH = (
-    PROJECT_ROOT / "benchmark" / "math" / "tool_routing_math_controlled.json"
+    PROJECT_ROOT / "benchmark" / "math" / "math_controlled.json"
 )
 MATH_V2_MENU = [
     "calculator",
@@ -68,6 +74,28 @@ CONTROLLED_EXPECTED_COUNTS = {
     "modular_arithmetic": 4,
     "base_arithmetic": 4,
 }
+EXPANSION_EXPECTED_COUNTS = {
+    "calculator": 120,
+    "simplify_expression": 25,
+    "solve_equation": 35,
+    "factor_expression": 15,
+    "expand_expression": 25,
+    "differentiate_expression": 40,
+    "convert_units": 40,
+    "integer_factorization": 25,
+    "gcd_lcm": 25,
+    "modular_arithmetic": 20,
+    "base_arithmetic": 30,
+}
+EXPANSION_PROVENANCE_FIELDS = {
+    "source_dataset",
+    "source_revision",
+    "source_id",
+    "source_split",
+    "source_hash",
+    "source_license",
+    "transformation_notes",
+}
 TOOL_FUNCTIONS = {
     "calculator": calculator,
     "simplify_expression": simplify_expression,
@@ -105,10 +133,12 @@ class MathPublicBenchmarkV2Tests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.public_samples = _load_json(PUBLIC_BENCHMARK_PATH)
         cls.controlled_samples = _load_json(CONTROLLED_BENCHMARK_PATH)
+        cls.expansion_samples = _load_json(EXPANSION_BENCHMARK_PATH)
 
     def test_public_and_controlled_benchmarks_load_with_existing_loader(self) -> None:
         self.assertEqual(len(load_benchmark(PUBLIC_BENCHMARK_PATH)), 77)
         self.assertEqual(len(load_benchmark(CONTROLLED_BENCHMARK_PATH)), 51)
+        self.assertEqual(len(load_benchmark(EXPANSION_BENCHMARK_PATH)), 400)
 
     def test_counts_and_unique_ids(self) -> None:
         all_samples = self.public_samples + self.controlled_samples
@@ -122,20 +152,45 @@ class MathPublicBenchmarkV2Tests(unittest.TestCase):
             Counter(sample["expected_tool"] for sample in self.controlled_samples),
             CONTROLLED_EXPECTED_COUNTS,
         )
+        expansion_ids = [sample["id"] for sample in self.expansion_samples]
+        self.assertEqual(len(expansion_ids), len(set(expansion_ids)))
+        self.assertEqual(
+            Counter(sample["expected_tool"] for sample in self.expansion_samples),
+            EXPANSION_EXPECTED_COUNTS,
+        )
 
     def test_tools_arguments_and_expected_answers_are_valid(self) -> None:
         registered_tools = set(mcp._tool_manager._tools)
-        for sample in self.public_samples + self.controlled_samples:
+        for sample in (
+            self.public_samples + self.controlled_samples + self.expansion_samples
+        ):
             expected_tool = sample["expected_tool"]
             self.assertIn(expected_tool, registered_tools)
-            self.assertIn(expected_tool, sample["available_tools"])
-            if sample in self.public_samples:
-                self.assertEqual(sample["available_tools"], MATH_V2_MENU)
+            self.assertNotIn("available_tools", sample)
 
             function = TOOL_FUNCTIONS[expected_tool]
             inspect.signature(function).bind(**sample["expected_args"])
             result = function(**sample["expected_args"])
             self.assertTrue(_contains(result, sample.get("expected_answer")))
+
+    def test_expansion_provenance_is_complete(self) -> None:
+        source_counts = Counter()
+        for sample in self.expansion_samples:
+            self.assertTrue(EXPANSION_PROVENANCE_FIELDS.issubset(sample))
+            self.assertEqual(sample["source"], "public_derived")
+            self.assertEqual(sample["task_type"], "single_tool_routing")
+            self.assertNotIn("available_tools", sample)
+            self.assertIsNotNone(sample["expected_answer"])
+            self.assertEqual(len(sample["source_hash"]), 64)
+            source_counts[sample["source_dataset"]] += 1
+            if sample["source_dataset"] == "mathematics_dataset":
+                self.assertIn("source_module", sample)
+                self.assertIn("source_seed", sample)
+                self.assertIn("source_generated_index", sample)
+        self.assertEqual(
+            source_counts,
+            {"grade_school_math": 100, "mathematics_dataset": 300},
+        )
 
     def test_public_provenance_fields_are_present_without_raw_dataset_dependency(self) -> None:
         for sample in self.public_samples:

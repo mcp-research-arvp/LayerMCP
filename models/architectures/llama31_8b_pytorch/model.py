@@ -121,17 +121,18 @@ class RotaryEmbedding(nn.Module):
         return torch.where(is_medium, smoothed, inv_freq_llama)
 
     def _apply_rotary(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
-        # Meta applies RoPE to interleaved pairs via view_as_complex(..., -1, 2).
-        x_even = x[..., 0::2]
-        x_odd = x[..., 1::2]
-        out = torch.stack(
+        # Hugging Face Llama checkpoints use split-half rotary channels. Meta's
+        # interleaved complex convention requires permuted Q/K weights; this
+        # loader consumes HF projection tensors unchanged, so it must match the
+        # HF rotate_half convention here.
+        x_first, x_second = x.chunk(2, dim=-1)
+        return torch.cat(
             (
-                x_even * cos - x_odd * sin,
-                x_even * sin + x_odd * cos,
+                x_first * cos - x_second * sin,
+                x_second * cos + x_first * sin,
             ),
             dim=-1,
         )
-        return out.flatten(-2)
 
     def forward(
         self, query: torch.Tensor, key: torch.Tensor, offset: torch.LongTensor

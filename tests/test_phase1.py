@@ -231,22 +231,38 @@ class ToolFixtureTests(unittest.TestCase):
 
 class BenchmarkLoaderTests(unittest.TestCase):
     def test_benchmark_loader_handles_old_schema(self) -> None:
-        samples = load_benchmark(PROJECT_ROOT / "benchmark" / "tool_routing.json")
+        samples = load_benchmark(
+            PROJECT_ROOT / "benchmark" / "archive" / "root" / "tool_routing.json"
+        )
         self.assertEqual(samples[0].id, "sample_0001")
         self.assertEqual(samples[0].domain, "unknown")
         self.assertEqual(samples[0].expected_args, {"expression": "25 * 17"})
 
     def test_benchmark_loader_handles_new_schema(self) -> None:
-        samples = load_benchmark(PROJECT_ROOT / "benchmark" / "tool_routing_smoke.json")
+        samples = load_benchmark(
+            PROJECT_ROOT
+            / "benchmark"
+            / "archive"
+            / "root"
+            / "tool_routing_smoke.json"
+        )
         self.assertEqual(samples[0].id, "smoke_finance_001")
         self.assertEqual(samples[0].domain, "finance")
         self.assertEqual(samples[0].expected_args, {"ticker": "AAPL"})
 
     def test_evaluator_can_load_all_benchmark_files(self) -> None:
         benchmark_paths = [
-            PROJECT_ROOT / "benchmark" / "tool_routing.json",
-            PROJECT_ROOT / "benchmark" / "tool_routing_smoke.json",
-            PROJECT_ROOT / "benchmark" / "tool_routing_controlled.json",
+            PROJECT_ROOT / "benchmark" / "archive" / "root" / "tool_routing.json",
+            PROJECT_ROOT
+            / "benchmark"
+            / "archive"
+            / "root"
+            / "tool_routing_smoke.json",
+            PROJECT_ROOT
+            / "benchmark"
+            / "archive"
+            / "root"
+            / "tool_routing_controlled.json",
         ]
         lengths = [len(load_benchmark(path)) for path in benchmark_paths]
         self.assertEqual(lengths, [4, 8, 40])

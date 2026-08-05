@@ -1,5 +1,12 @@
 # Benchmark Source Plan
 
+> Historical planning note. The repository now includes pinned public finance
+> and coding integrations, including multi-step FinQA/FinRetrieval workflows and
+> source selections over 1,000 successful SWE-agent/OpenHands trajectories. The
+> active coding benchmark retains only the 33 SWE-agent trajectories containing
+> at most five calls and checks in only their 139 referenced replay records. See
+> the domain READMEs for current counts, provenance, and runtime boundaries.
+
 LayerMCP will use two benchmark source categories over time: tool-use benchmarks that already provide function-calling structure, and domain-task benchmarks that provide realistic tasks and ground truth but need MCP-style wrapping.
 
 The immediate repository implementation does not integrate or download public datasets. Instead, it creates a controlled offline MCP-style benchmark inspired by these categories, using deterministic tools and fixtures.

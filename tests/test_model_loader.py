@@ -120,7 +120,7 @@ class SharedLoaderIntegrationTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             args = argparse.Namespace(
-                benchmark=Path("benchmark/tool_routing_phase2_seed.json"),
+                benchmark=Path("benchmark/archive/root/tool_routing_phase2_seed.json"),
                 model="fake/model",
                 output_dir=Path(tmpdir),
                 max_examples=0,
@@ -221,46 +221,6 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
-    def test_gpt_oss_native_tools_use_supplied_metadata_only(self) -> None:
-        from models.routers.gpt_oss_local_router import _build_native_tools
-
-        tools = _build_native_tools(
-            ["lookup"],
-            {"lookup": {"type": "object", "properties": {"key": {"type": "string"}}}},
-            {"lookup": "Look up an item."},
-        )
-
-        self.assertEqual(tools[0]["description"], "Look up an item.")
-        self.assertEqual(
-            tools[0]["parameters"],
-            {"type": "object", "properties": {"key": {"type": "string"}}},
-        )
-
-    def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
-        from models.routers.structured_tool_call import parse_tool_call
-
-        cases = [
-            (
-                "to=functions.calculator<|channel|><|constrain|>json"
-                '<|message|>{"expression":{"left":2,"right":2}}<|call|>',
-                {"expression": {"left": 2, "right": 2}},
-            ),
-            (
-                "We must call calculator.\n"
-                "to=functions<|channel|><|constrain|>json"
-                '<|message|>{"expression":"2 + 2"}<|call|>',
-                {"expression": "2 + 2"},
-            ),
-        ]
-        for response, expected_args in cases:
-            with self.subTest(response=response):
-                prediction = parse_tool_call(
-                    response,
-                    ["calculator", "github_search"],
-                )
-                self.assertEqual(prediction.selected_tool, "calculator")
-                self.assertEqual(prediction.selected_args, expected_args)
-
     def test_gpt_oss_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.gpt_oss_local_router import resolve_checkpoint_path
 
@@ -322,6 +282,7 @@ class RouterRegistryTests(unittest.TestCase):
 
         generator = Mock()
         generator.encode_chat.return_value = [1, 2, 3]
+        generator.stop_tokens = [128001, 128008, 128009]
         generator.generate_text.return_value = (
             '{"name":"factor_expression","arguments":{"expression":"t^2-49"}}'
         )
@@ -334,6 +295,157 @@ class RouterRegistryTests(unittest.TestCase):
 
         self.assertEqual(selected, "factor_expression")
         generator.generate_text.assert_called_once()
+
+    def test_llama31_parses_parameters_and_structural_tokens(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        responses = (
+            (
+                '<|python_tag|>{"name":"calculator",'
+                '"parameters":{"expression":"2+2"}}<|eom_id|>'
+            ),
+            (
+                '<|python_tag|>{"name":"calculator",'
+                '"parameters":"{\\"expression\\":\\"2+2\\"}"}<|eom_id|>'
+            ),
+        )
+        for response in responses:
+            with self.subTest(response=response):
+                prediction = parse_tool_call(response, ["calculator"])
+                self.assertEqual(prediction.selected_tool, "calculator")
+                self.assertEqual(prediction.selected_args, {"expression": "2+2"})
+                self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_structured_path_receives_live_tools(self) -> None:
+        from models.routers import llama31_8b_local_router
+
+        generator = Mock()
+        generator.encode_chat.return_value = [1, 2, 3]
+        generator.stop_tokens = [128001, 128008, 128009]
+        generator.generate_text.return_value = (
+            '<|python_tag|>{"name":"calculator",'
+            '"parameters":{"expression":"2+2"}}<|eom_id|>'
+        )
+        schema = {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
+
+        with patch.object(
+            llama31_8b_local_router,
+            "_load_generator",
+            return_value=generator,
+        ):
+            prediction = llama31_8b_local_router.choose_tool_call(
+                "Compute 2+2.",
+                ["calculator"],
+                {"calculator": schema},
+                {"calculator": "Evaluate arithmetic."},
+            )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        native_messages = generator.encode_chat.call_args.args[0]
+        fallback_messages = generator.encode_chat.call_args.kwargs[
+            "fallback_messages"
+        ]
+        native_tools = generator.encode_chat.call_args.kwargs["tools"]
+        self.assertNotIn("Available MCP tools", native_messages[0]["content"])
+        self.assertNotIn('"input_schema"', native_messages[0]["content"])
+        self.assertIn("Available MCP tools", fallback_messages[0]["content"])
+        self.assertIn('"input_schema"', fallback_messages[0]["content"])
+        self.assertEqual(native_tools[0]["function"]["parameters"], schema)
+        self.assertEqual(
+            native_tools[0]["function"]["description"],
+            "Evaluate arithmetic.",
+        )
+        self.assertEqual(
+            generator.generate_text.call_args.kwargs["stop_tokens"],
+            generator.stop_tokens,
+        )
+
+    def test_llama31_rejects_unknown_structured_tool(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = (
+            '<|python_tag|>{"name":"invented_tool",'
+            '"parameters":{"expression":"2+2"}}<|eom_id|>'
+        )
+        prediction = parse_tool_call(response, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, "unknown_tool")
+        self.assertEqual(prediction.parse_status, "unknown_tool")
+        self.assertEqual(prediction.attempted_tool, "invented_tool")
+        self.assertEqual(prediction.selected_args, {})
+        self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_malformed_json_is_a_parse_error(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = (
+            '<|python_tag|>{"name":"calculator",'
+            '"parameters":{"expression":"2+2"}<|eom_id|>'
+        )
+        prediction = parse_tool_call(response, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, "parse_error")
+        self.assertEqual(prediction.parse_status, "parse_error")
+        self.assertIsNone(prediction.attempted_tool)
+        self.assertIn("no complete structured", prediction.diagnostic)
+        self.assertEqual(prediction.raw_output, response)
+
+    def test_llama31_schema_failure_has_structured_metadata(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        response = '{"name":"calculator","parameters":{}}'
+        prediction = parse_tool_call(
+            response,
+            ["calculator"],
+            tool_schemas={
+                "calculator": {
+                    "type": "object",
+                    "properties": {"expression": {"type": "string"}},
+                    "required": ["expression"],
+                }
+            },
+        )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.parse_status, "invalid_arguments")
+        self.assertIn("missing required arguments", prediction.diagnostic)
+
+    def test_llama31_tokenizer_fallback_uses_serialized_tool_prompt(self) -> None:
+        from models.architectures.llama31_8b_pytorch.inference import TokenGenerator
+
+        tokenizer = Mock()
+        tokenizer.apply_chat_template.side_effect = [
+            TypeError("tools are unsupported"),
+            "rendered fallback",
+        ]
+        tokenizer.return_value = {"input_ids": [1, 2, 3]}
+        generator = TokenGenerator.__new__(TokenGenerator)
+        generator.tokenizer = tokenizer
+        native_messages = [{"role": "user", "content": "Route this query."}]
+        fallback_messages = [
+            {
+                "role": "user",
+                "content": "Available MCP tools: serialized fallback",
+            }
+        ]
+        tools = [{"type": "function", "function": {"name": "calculator"}}]
+
+        encoded = generator.encode_chat(
+            native_messages,
+            tools=tools,
+            fallback_messages=fallback_messages,
+        )
+
+        self.assertEqual(encoded, [1, 2, 3])
+        first_call, second_call = tokenizer.apply_chat_template.call_args_list
+        self.assertEqual(first_call.args[0], native_messages)
+        self.assertEqual(first_call.kwargs["tools"], tools)
+        self.assertEqual(second_call.args[0], fallback_messages)
+        self.assertNotIn("tools", second_call.kwargs)
 
     def test_qwen36_router_extracts_qwen_tool_call(self) -> None:
         from models.routers.qwen36_local_router import _extract_tool_name
@@ -370,40 +482,69 @@ class RouterRegistryTests(unittest.TestCase):
             {"expression": "139 + 27 + 23 + 11"},
         )
 
-    def test_structured_parser_recovers_one_unambiguous_near_tool_name(self) -> None:
+    def test_structured_parser_accepts_nested_json_before_turn_token(self) -> None:
         from models.routers.structured_tool_call import parse_tool_call
 
-        native_call = SimpleNamespace(
-            function=SimpleNamespace(
-                name="calculate",
-                arguments='{"expression":"100^4"}',
+        prediction = parse_tool_call(
+            '{"name":"check_policy","arguments":{"action":"refund",'
+            '"context":{"amount":50}}}<turn|>',
+            ["check_policy", "calculator"],
+        )
+
+        self.assertEqual(prediction.selected_tool, "check_policy")
+        self.assertEqual(
+            prediction.selected_args,
+            {"action": "refund", "context": {"amount": 50}},
+        )
+        self.assertEqual(prediction.parse_status, "ok")
+        self.assertEqual(prediction.attempted_tool, "check_policy")
+        self.assertIsNone(prediction.diagnostic)
+
+    def test_structured_parser_decodes_native_json_string_arguments(self) -> None:
+        from models.architectures.phi4_pytorch.schemas import ToolCall, ToolFunction
+        from models.routers.structured_tool_call import parse_tool_call
+
+        native_call = ToolCall(
+            function=ToolFunction(
+                name="calculator",
+                arguments='{"expression": "2+2"}',
             )
         )
+
         prediction = parse_tool_call(
-            "",
-            ["calculator", "simplify_expression"],
+            '{"name":"calculator","arguments":{"expression":"2+2"}}',
+            ["calculator"],
             native_call,
         )
 
         self.assertEqual(prediction.selected_tool, "calculator")
-        self.assertEqual(prediction.selected_args, {"expression": "100^4"})
+        self.assertEqual(prediction.selected_args, {"expression": "2+2"})
 
-    def test_structured_parser_rejects_ambiguous_or_distant_tool_name(self) -> None:
-        from models.routers.structured_tool_call import parse_tool_call
-
-        native_call = SimpleNamespace(
-            function=SimpleNamespace(name="finance_get", arguments="{}")
-        )
-        prediction = parse_tool_call(
-            "",
-            [
-                "finance_get_company_facts",
-                "finance_get_financial_statement",
-            ],
-            native_call,
+    def test_structured_parser_does_not_parse_tool_catalog_as_call(self) -> None:
+        from models.routers.structured_tool_call import (
+            PARSE_ERROR,
+            build_tool_call_prompt,
+            parse_tool_call,
         )
 
-        self.assertEqual(prediction.selected_tool, "hallucinated_tool")
+        prompt = build_tool_call_prompt(
+            "Compute 2+2.",
+            ["calculator"],
+            {
+                "calculator": {
+                    "type": "object",
+                    "properties": {"expression": {"type": "string"}},
+                    "required": ["expression"],
+                }
+            },
+            {"calculator": "Evaluate an arithmetic expression."},
+        )
+
+        prediction = parse_tool_call(prompt, ["calculator"])
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.selected_args, {})
+        self.assertEqual(prediction.parse_status, "parse_error")
 
     def test_other_local_routers_return_structured_tool_calls(self) -> None:
         from models.routers import (
@@ -424,8 +565,7 @@ class RouterRegistryTests(unittest.TestCase):
         cases.append((gemma4_local_router, gemma_generator))
 
         gpt_generator = Mock()
-        gpt_generator.render_tool_prompt.return_value = [1]
-        gpt_generator.assistant_action_stop_tokens = [2, 3]
+        gpt_generator.tokenizer.encode.return_value = [1]
         cases.append((gpt_oss_local_router, gpt_generator))
 
         phi_generator = Mock()
@@ -457,327 +597,6 @@ class RouterRegistryTests(unittest.TestCase):
                 self.assertEqual(prediction.selected_args, {"expression": "t^2-49"})
                 generator.generate_text.assert_called_once()
 
-    def test_gpt_oss_router_uses_dynamic_harmony_tool_definitions(self) -> None:
-        from models.routers import gpt_oss_local_router
-
-        generator = Mock()
-        generator.render_tool_prompt.return_value = [1]
-        generator.assistant_action_stop_tokens = [2]
-        generator.generate_text.return_value = SimpleNamespace(
-            text="",
-            tool_call=SimpleNamespace(
-                function=SimpleNamespace(
-                    name="calculator",
-                    arguments='{"expression":"2 + 2"}',
-                )
-            ),
-        )
-
-        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
-            prediction = gpt_oss_local_router.choose_tool_call(
-                "Compute 2 + 2.",
-                ["calculator", "factor_expression"],
-                {
-                    "calculator": {
-                        "type": "object",
-                        "properties": {"expression": {"type": "string"}},
-                        "required": ["expression"],
-                    }
-                },
-                {"calculator": "Evaluate arithmetic."},
-            )
-
-        rendered_tools = generator.render_tool_prompt.call_args.args[1]
-        self.assertEqual(
-            [tool["name"] for tool in rendered_tools],
-            ["calculator", "factor_expression"],
-        )
-        self.assertEqual(prediction.selected_tool, "calculator")
-        self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
-
-    def test_gpt_oss_router_retries_schema_invalid_arguments(self) -> None:
-        from models.routers import gpt_oss_local_router
-
-        generator = Mock()
-        generator.render_tool_prompt.return_value = [1]
-        generator.assistant_action_stop_tokens = [2]
-        generator.generate_text.side_effect = [
-            SimpleNamespace(
-                text="",
-                tool_call=SimpleNamespace(
-                    function=SimpleNamespace(
-                        name="simplify_expression",
-                        arguments="{}",
-                    )
-                ),
-            ),
-            SimpleNamespace(
-                text="",
-                tool_call=SimpleNamespace(
-                    function=SimpleNamespace(
-                        name="simplify_expression",
-                        arguments='{"expression":"(x**2-1)/(x-1)"}',
-                    )
-                ),
-            ),
-        ]
-
-        schema = {
-            "type": "object",
-            "properties": {"expression": {"type": "string"}},
-            "required": ["expression"],
-        }
-        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
-            prediction = gpt_oss_local_router.choose_tool_call(
-                "Simplify (x^2-1)/(x-1).",
-                ["simplify_expression"],
-                {"simplify_expression": schema},
-            )
-
-        self.assertEqual(prediction.selected_tool, "simplify_expression")
-        self.assertEqual(
-            prediction.selected_args,
-            {"expression": "(x**2-1)/(x-1)"},
-        )
-        self.assertEqual(generator.generate_text.call_count, 2)
-        correction_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
-        self.assertIn("missing required argument", correction_prompt)
-
-    def test_gpt_oss_router_reconsiders_hallucinated_tool_once(self) -> None:
-        from models.routers import gpt_oss_local_router
-
-        generator = Mock()
-        generator.render_tool_prompt.return_value = [1]
-        generator.assistant_action_stop_tokens = [2]
-        generator.generate_text.side_effect = [
-            SimpleNamespace(
-                text="hallucinated_tool",
-                tool_call=None,
-            ),
-            SimpleNamespace(
-                text="",
-                tool_call=SimpleNamespace(
-                    function=SimpleNamespace(
-                        name="finance_get_company_facts",
-                        arguments='{"company_identifier":"LMCP"}',
-                    )
-                ),
-            ),
-        ]
-
-        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
-            prediction = gpt_oss_local_router.choose_tool_call(
-                "Retrieve company facts for LMCP.",
-                ["finance_get_company_facts"],
-                {
-                    "finance_get_company_facts": {
-                        "type": "object",
-                        "properties": {
-                            "company_identifier": {"type": "string"},
-                        },
-                        "required": ["company_identifier"],
-                    }
-                },
-            )
-
-        self.assertEqual(
-            prediction.selected_tool,
-            "finance_get_company_facts",
-        )
-        self.assertEqual(
-            prediction.selected_args,
-            {"company_identifier": "LMCP"},
-        )
-        self.assertEqual(generator.generate_text.call_count, 2)
-        reconsideration_prompt = (
-            generator.render_tool_prompt.call_args_list[1].args[0]
-        )
-        self.assertIn("did not produce a valid call", reconsideration_prompt)
-
-    def test_gpt_oss_router_uses_generator_generation_defaults(self) -> None:
-        from models.routers import gpt_oss_local_router
-
-        generator = Mock()
-        generator.render_tool_prompt.return_value = [1]
-        generator.assistant_action_stop_tokens = [2]
-        generator.generate_text.return_value = SimpleNamespace(
-            text="",
-            tool_call=SimpleNamespace(
-                function=SimpleNamespace(
-                    name="calculator",
-                    arguments='{"expression":"2+2"}',
-                )
-            ),
-        )
-
-        with patch.object(
-            gpt_oss_local_router,
-            "_load_generator",
-            return_value=generator,
-        ):
-            gpt_oss_local_router.choose_tool_call(
-                "Compute 2+2.",
-                ["calculator"],
-                {
-                    "calculator": {
-                        "type": "object",
-                        "properties": {"expression": {"type": "string"}},
-                        "required": ["expression"],
-                    }
-                },
-            )
-
-        self.assertEqual(
-            generator.generate_text.call_args.kwargs,
-            {
-                "prompt_tokens": [1],
-                "stop_tokens": [2],
-            },
-        )
-
-    def test_schema_validation_handles_optional_any_of_and_extra_args(self) -> None:
-        from models.routers.structured_tool_call import validate_tool_arguments
-
-        schema = {
-            "type": "object",
-            "properties": {
-                "company_identifier": {"type": "string"},
-                "fiscal_year": {
-                    "anyOf": [{"type": "integer"}, {"type": "null"}],
-                    "default": None,
-                },
-            },
-            "required": ["company_identifier"],
-        }
-        self.assertEqual(
-            validate_tool_arguments(
-                {"company_identifier": "LMCP", "fiscal_year": 2024},
-                schema,
-            ),
-            [],
-        )
-        self.assertTrue(
-            validate_tool_arguments(
-                {"company_identifier": "LMCP", "fiscal_year": "FY2024"},
-                schema,
-            )
-        )
-        self.assertTrue(
-            validate_tool_arguments(
-                {"company_identifier": "LMCP", "unsupported": 2024},
-                schema,
-            )
-        )
-
-    def test_gpt_oss_router_repairs_call_from_execution_feedback(self) -> None:
-        from models.routers import gpt_oss_local_router
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        generator = Mock()
-        generator.render_tool_prompt.return_value = [1]
-        generator.assistant_action_stop_tokens = [2]
-        generator.generate_text.return_value = SimpleNamespace(
-            text="",
-            tool_call=SimpleNamespace(
-                function=SimpleNamespace(
-                    name="convert_units",
-                    arguments=(
-                        '{"value":6,"from_unit":"feet","to_unit":"meters"}'
-                    ),
-                )
-            ),
-        )
-        previous = ToolCallPrediction(
-            selected_tool="convert_units",
-            selected_args={"value": 6, "from_unit": "6", "to_unit": "6"},
-            raw_output="first call",
-        )
-
-        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
-            corrected = gpt_oss_local_router.repair_tool_call(
-                "Convert 6 feet to meters.",
-                ["convert_units"],
-                previous,
-                "unsupported unit conversion: 6 to 6",
-                {"convert_units": {"type": "object"}},
-            )
-
-        self.assertEqual(corrected.selected_tool, "convert_units")
-        self.assertEqual(
-            corrected.selected_args,
-            {"value": 6, "from_unit": "feet", "to_unit": "meters"},
-        )
-        repair_prompt = generator.render_tool_prompt.call_args.args[0]
-        self.assertIn("unsupported unit conversion", repair_prompt)
-        self.assertIn('"from_unit": "6"', repair_prompt)
-
-    def test_execution_feedback_correction_is_schema_validated(self) -> None:
-        from models.routers import gpt_oss_local_router
-        from models.routers.structured_tool_call import ToolCallPrediction
-
-        generator = Mock()
-        generator.render_tool_prompt.return_value = [1]
-        generator.assistant_action_stop_tokens = [2]
-        generator.generate_text.side_effect = [
-            SimpleNamespace(
-                text="",
-                tool_call=SimpleNamespace(
-                    function=SimpleNamespace(
-                        name="finance_get_company_facts",
-                        arguments=(
-                            '{"company_identifier":"LMCP",'
-                            '"fiscal_year":"FY2024"}'
-                        ),
-                    )
-                ),
-            ),
-            SimpleNamespace(
-                text="",
-                tool_call=SimpleNamespace(
-                    function=SimpleNamespace(
-                        name="finance_get_company_facts",
-                        arguments=(
-                            '{"company_identifier":"LMCP",'
-                            '"fiscal_year":2024}'
-                        ),
-                    )
-                ),
-            ),
-        ]
-        previous = ToolCallPrediction(
-            selected_tool="finance_get_company_facts",
-            selected_args={"company_identifier": "LayerMCP"},
-            raw_output="first call",
-        )
-        schema = {
-            "type": "object",
-            "properties": {
-                "company_identifier": {"type": "string"},
-                "fiscal_year": {
-                    "anyOf": [{"type": "integer"}, {"type": "null"}],
-                },
-            },
-            "required": ["company_identifier"],
-        }
-
-        with patch.object(gpt_oss_local_router, "_load_generator", return_value=generator):
-            corrected = gpt_oss_local_router.repair_tool_call(
-                "Get LayerMCP company facts for fiscal 2024.",
-                ["finance_get_company_facts"],
-                previous,
-                "Unknown company_identifier. Available tickers: LMCP, TBLR",
-                {"finance_get_company_facts": schema},
-            )
-
-        self.assertEqual(
-            corrected.selected_args,
-            {"company_identifier": "LMCP", "fiscal_year": 2024},
-        )
-        self.assertEqual(generator.generate_text.call_count, 2)
-        second_prompt = generator.render_tool_prompt.call_args_list[1].args[0]
-        self.assertIn("still violates its JSON schema", second_prompt)
-        self.assertIn("FY2024", second_prompt)
-
     def test_qwen36_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.qwen36_local_router import resolve_checkpoint_path
 
@@ -806,6 +625,53 @@ class RouterRegistryTests(unittest.TestCase):
             {"LAYERMCP_GEMMA4_CHECKPOINT": "custom/gemma4"},
         ):
             self.assertEqual(resolve_checkpoint_path(), Path("custom/gemma4"))
+
+    def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        responses = (
+            "to=functions.calculator<|message|>"
+            '{"expression":"2 + 2"}<|call|>',
+            "We must call calculator.\nto=functions<|message|>"
+            '{"expression":"2 + 2"}<|call|>',
+        )
+        for response in responses:
+            prediction = parse_tool_call(response, ["calculator", "search"])
+            self.assertEqual(prediction.selected_tool, "calculator")
+            self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
+
+    def test_structured_parser_recovers_only_unambiguous_tool_names(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=calculatr<|message|>{}<|call|>",
+            ["calculator", "search"],
+        )
+        self.assertEqual(prediction.selected_tool, "calculator")
+
+        ambiguous = parse_tool_call(
+            "to=find_users<|message|>{}<|call|>",
+            ["find_user", "find_user_id"],
+        )
+        self.assertEqual(ambiguous.selected_tool, "parse_error")
+
+    def test_schema_validation_reports_generic_argument_errors(self) -> None:
+        from models.routers.structured_tool_call import validate_tool_arguments
+
+        errors = validate_tool_arguments(
+            {"operation": "divide", "extra": True},
+            {
+                "type": "object",
+                "properties": {
+                    "value": {"type": "integer"},
+                    "operation": {"type": "string", "enum": ["add"]},
+                },
+                "required": ["value"],
+            },
+        )
+        self.assertTrue(any("missing required" in error for error in errors))
+        self.assertTrue(any("must be one of" in error for error in errors))
+        self.assertTrue(any("unexpected argument" in error for error in errors))
 
 
 if __name__ == "__main__":

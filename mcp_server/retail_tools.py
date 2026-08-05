@@ -49,6 +49,8 @@ def _get_user(user_id: str) -> dict[str, Any]:
 
 def _get_order(order_id: str) -> dict[str, Any]:
     order_id = _normalize(order_id, "order_id")
+    if order_id.startswith("W") and order_id[1:].isdigit():
+        order_id = f"#{order_id}"
     try:
         return _state()["orders"][order_id]
     except KeyError as exc:

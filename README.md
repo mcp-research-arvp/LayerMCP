@@ -544,7 +544,9 @@ source selectors, and other required call coordinates are visible to the model.
 The field is routing input, not hidden scoring metadata. For tools such as
 `finance_query_table`, executable final-outcome accuracy is the semantic measure;
 exact argument match remains a stricter diagnostic because equivalent SQL can be
-written in more than one way.
+written in more than one way. Finance table outcomes compare the bounded returned
+rows, row count, truncation flag, and dataset identifier; SQL output-column aliases
+such as `result` and `numeric_result` do not affect semantic outcome scoring.
 
 ### 7. Runtime Flow
 

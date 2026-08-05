@@ -13,6 +13,7 @@ from evaluation.evaluate import (
     BenchmarkSample,
     BenchmarkStep,
     FINAL_OUTCOME_MATCHER,
+    FINANCE_QUERY_TABLE_RESULT_MATCHER,
     MULTISTEP_EVALUATION_PROTOCOL,
     MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
     MULTISTEP_HISTORY_ITEM_CHAR_LIMIT,
@@ -610,6 +611,62 @@ class EvaluateMetricTests(unittest.TestCase):
 
         self.assertFalse(score.correct)
         self.assertEqual(score.status, "result_extraction_error")
+
+    def test_finance_query_result_ignores_column_alias(self) -> None:
+        score = _score_final_outcome(
+            expected_answer={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["result"],
+                "rows": [[0.25]],
+                "row_count": 1,
+                "truncated": False,
+            },
+            tool_result_value={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["numeric_result"],
+                "rows": [[0.25]],
+                "row_count": 1,
+                "truncated": False,
+            },
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="finance_query_table",
+            called_tool="finance_query_table",
+        )
+
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, FINANCE_QUERY_TABLE_RESULT_MATCHER)
+
+    def test_finance_query_result_rejects_extra_rows(self) -> None:
+        score = _score_final_outcome(
+            expected_answer={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["result"],
+                "rows": [[0.25]],
+                "row_count": 1,
+                "truncated": False,
+            },
+            tool_result_value={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["numeric_result"],
+                "rows": [[0.25], [0.5]],
+                "row_count": 2,
+                "truncated": False,
+            },
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="finance_query_table",
+            called_tool="finance_query_table",
+        )
+
+        self.assertFalse(score.correct)
+        self.assertIn("$.rows", score.diagnostic)
 
     def test_summary_denominator_includes_no_call_and_execution_error(self) -> None:
         records = [

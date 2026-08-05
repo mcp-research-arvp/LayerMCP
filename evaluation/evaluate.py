@@ -218,6 +218,7 @@ class FinalOutcomeScore:
 
 
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
+FINANCE_QUERY_TABLE_RESULT_MATCHER = "finance_query_table_rows_v1"
 NUMERIC_REL_TOL = 1e-9
 NUMERIC_ABS_TOL = 1e-6
 _SYMBOLIC_MATH_FIELDS = {
@@ -433,6 +434,19 @@ def _match_expected_answer(
     return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
 
 
+def _match_finance_query_table_result(actual: Any, expected: Any) -> OutcomeMatch:
+    """Match a table-query result by its bounded data payload, not SQL aliases."""
+    if not isinstance(expected, dict):
+        return _match_expected_answer(actual, expected, domain="finance")
+
+    required_keys = ("dataset_id", "rows", "row_count", "truncated")
+    if not all(key in expected for key in required_keys):
+        return _match_expected_answer(actual, expected, domain="finance")
+
+    expected_payload = {key: expected[key] for key in required_keys}
+    return _match_expected_answer(actual, expected_payload, domain="finance")
+
+
 def _score_final_outcome(
     *,
     expected_answer: Any,
@@ -442,6 +456,8 @@ def _score_final_outcome(
     call_predicted_tools: bool,
     no_tool_call: bool,
     execution_success: bool,
+    expected_tool: str | None = None,
+    called_tool: str | None = None,
 ) -> FinalOutcomeScore:
     if expected_answer is None:
         return FinalOutcomeScore(
@@ -479,15 +495,23 @@ def _score_final_outcome(
             result_extraction_diagnostic,
         )
 
-    match = _match_expected_answer(
-        tool_result_value,
-        expected_answer,
-        domain=domain,
-    )
+    if expected_tool == called_tool == "finance_query_table":
+        match = _match_finance_query_table_result(
+            tool_result_value,
+            expected_answer,
+        )
+        matcher = FINANCE_QUERY_TABLE_RESULT_MATCHER
+    else:
+        match = _match_expected_answer(
+            tool_result_value,
+            expected_answer,
+            domain=domain,
+        )
+        matcher = FINAL_OUTCOME_MATCHER
     return FinalOutcomeScore(
         match.matched,
         "correct" if match.matched else "mismatch",
-        FINAL_OUTCOME_MATCHER,
+        matcher,
         match.diagnostic,
     )
 
@@ -1216,6 +1240,8 @@ async def _evaluate_multistep_with_server(
                         call_predicted_tools=call_predicted_tools,
                         no_tool_call=no_tool_call,
                         execution_success=execution_success,
+                        expected_tool=step.expected_tool,
+                        called_tool=called_tool,
                     )
                     step_record = {
                         "sample_id": sample.id,
@@ -1542,6 +1568,8 @@ async def _evaluate_with_server(
                     call_predicted_tools=call_predicted_tools,
                     no_tool_call=no_tool_call,
                     execution_success=execution_success,
+                    expected_tool=sample.expected_tool,
+                    called_tool=called_tool,
                 )
                 record = {
                     "sample_id": sample.id,

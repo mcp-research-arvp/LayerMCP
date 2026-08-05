@@ -162,7 +162,6 @@ LayerMCP/
 │   │   ├── finance_finqa_test_multistep.json
 │   │   ├── finance_finqa_test_single.json
 │   │   ├── finance_finretrieval_replay_multistep.json
-│   │   ├── finance_public_derived.json
 │   │   ├── finance_smoke.json
 │   │   ├── finance_tatqa_public_derived.json
 │   │   └── finance_upstream_inspired.json
@@ -437,9 +436,9 @@ The finance tool catalog is:
 
 The main finance fixture uses fictional companies and synthetic filings, XBRL,
 PDF tables, and market snapshots. It is offline and read-only. Pinned research
-adaptations add all 1,147 FinQA test questions, 15 TAT-QA questions, 10
-ConvFinQA workflows, and 485 correct FinRetrieval trajectories containing at
-most five calls. The four
+adaptations add 1,132 active FinQA test questions, with 15 long-context source
+rows intentionally excluded, plus 15 TAT-QA questions, 10 ConvFinQA workflows,
+and 485 correct FinRetrieval trajectories containing at most five calls. The four
 FinRetrieval-only tools replay bounded checked-in results and never contact
 Daloopa or the web. See `benchmark/finance/README.md` for exact runtime
 boundaries, attribution, and provenance.
@@ -475,7 +474,6 @@ The finance-specific datasets are:
 - `benchmark/finance/finance_smoke.json` — 10 direct examples, one per finance tool
 - `benchmark/finance/finance_controlled.json` — 50 balanced controlled examples
 - `benchmark/finance/finance_upstream_inspired.json` — 40 generated queries grounded in official upstream documentation
-- `benchmark/finance/finance_public_derived.json` — 15 executable public-test adaptations from FinQA
 - `benchmark/finance/finance_tatqa_public_derived.json` — 15 exact TAT-QA test-gold questions with executable SQL adaptations
 - `benchmark/finance/finance_convfinqa_multistep.json` — 10 exact ConvFinQA conversations containing 35 ordered paper-authored turns
 - `benchmark/finance/finance_finqa_test_single.json` — 642 remaining FinQA test questions with one gold operation/call

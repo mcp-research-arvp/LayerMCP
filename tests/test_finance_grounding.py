@@ -114,11 +114,11 @@ class FinanceGroundingTests(unittest.TestCase):
                         kind_counts[kind] = kind_counts.get(kind, 0) + 1
                         self._assert_call_context(call, payload)
 
-        self.assertEqual(call_count, 3_408)
+        self.assertEqual(call_count, 3_393)
         self.assertEqual(
             kind_counts,
             {
-                TABLE_GROUNDING_KIND: 1_192,
+                TABLE_GROUNDING_KIND: 1_177,
                 CALCULATOR_GROUNDING_KIND: 636,
                 RECORDED_CALL_GROUNDING_KIND: 1_490,
                 NORMALIZED_CALL_GROUNDING_KIND: 90,

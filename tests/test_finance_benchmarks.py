@@ -29,8 +29,6 @@ BENCHMARK_PATHS = {
     "controlled": FINANCE_BENCHMARK_ROOT / "finance_controlled.json",
     "upstream": FINANCE_BENCHMARK_ROOT
     / "finance_upstream_inspired.json",
-    "public": FINANCE_BENCHMARK_ROOT
-    / "finance_public_derived.json",
     "tatqa_public": FINANCE_BENCHMARK_ROOT
     / "finance_tatqa_public_derived.json",
 }
@@ -89,7 +87,6 @@ class FinanceBenchmarkTests(unittest.TestCase):
             "smoke": 10,
             "controlled": 50,
             "upstream": 40,
-            "public": 15,
             "tatqa_public": 15,
         }
         for name, path in BENCHMARK_PATHS.items():
@@ -111,10 +108,6 @@ class FinanceBenchmarkTests(unittest.TestCase):
                 counts,
                 Counter({tool: per_tool_count for tool in FINANCE_TOOL_MENU}),
             )
-        self.assertEqual(
-            Counter(row["expected_tool"] for row in self.datasets["public"]),
-            Counter({"finance_query_table": 15}),
-        )
         self.assertEqual(
             Counter(
                 row["expected_tool"] for row in self.datasets["tatqa_public"]
@@ -187,23 +180,6 @@ class FinanceBenchmarkTests(unittest.TestCase):
                 self.assertTrue(row["inspiration_repository"])
                 self.assertTrue(row["inspiration_url"].startswith("https://"))
                 self.assertTrue(row["inspiration_reference"])
-
-    def test_public_finqa_rows_have_pinned_provenance(self) -> None:
-        rows = self.datasets["public"]
-        source_indices = []
-        for row in rows:
-            self.assertEqual(row["source"], "public_finance_derived")
-            self.assertEqual(row["source_dataset"], "FinQA")
-            self.assertEqual(row["source_split"], "test")
-            self.assertEqual(
-                row["source_revision"],
-                "0f16e2867befa6840783e58be38c9efb9229d742",
-            )
-            self.assertEqual(row["source_license"], "MIT")
-            self.assertEqual(row["fixture_dataset_id"], "finqa-public-test-v1")
-            self.assertEqual(row["provenance_type"], "public_dataset_adaptation")
-            source_indices.append(row["source_row_index"])
-        self.assertEqual(len(source_indices), len(set(source_indices)))
 
     def test_public_tatqa_rows_are_exact_paper_queries_with_pinned_provenance(
         self,

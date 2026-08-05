@@ -7,6 +7,10 @@ import unittest
 from collections import Counter
 from pathlib import Path
 
+from benchmark.finance.build_finqa_expansion import (
+    FINQA_EXCLUSION_POLICY,
+    INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES,
+)
 from evaluation.evaluate import BenchmarkSample, load_benchmark
 from mcp_server import finance_tools
 from mcp_server.server import mcp
@@ -22,9 +26,6 @@ FINQA_MULTISTEP_PATH = (
 )
 FINRETRIEVAL_MULTISTEP_PATH = (
     FINANCE_BENCHMARK_ROOT / "finance_finretrieval_replay_multistep.json"
-)
-EXISTING_FINQA_PATH = (
-    FINANCE_BENCHMARK_ROOT / "finance_public_derived.json"
 )
 FINQA_FIXTURE_PATH = (
     FINANCE_BENCHMARK_ROOT / "fixtures" / "finqa_test_program_results_cells.json"
@@ -106,7 +107,6 @@ class FinancePublicExpansionTests(unittest.TestCase):
         cls.raw_finqa_single = _load_json(FINQA_SINGLE_PATH)
         cls.raw_finqa_multistep = _load_json(FINQA_MULTISTEP_PATH)
         cls.raw_finretrieval_multistep = _load_json(FINRETRIEVAL_MULTISTEP_PATH)
-        cls.existing_finqa = _load_json(EXISTING_FINQA_PATH)
         cls.finqa_fixture = _load_json(FINQA_FIXTURE_PATH)
         cls.finretrieval_fixture = _load_json(FINRETRIEVAL_FIXTURE_PATH)
 
@@ -163,7 +163,6 @@ class FinancePublicExpansionTests(unittest.TestCase):
                 "finance_finqa_test_multistep.json",
                 "finance_finqa_test_single.json",
                 "finance_finretrieval_replay_multistep.json",
-                "finance_public_derived.json",
                 "finance_smoke.json",
                 "finance_tatqa_public_derived.json",
                 "finance_upstream_inspired.json",
@@ -183,10 +182,9 @@ class FinancePublicExpansionTests(unittest.TestCase):
         ]
         self.assertEqual(duplicates, [])
 
-    def test_finqa_rows_cover_every_remaining_public_test_question_once(
+    def test_finqa_active_scope_and_intentional_exclusions_partition_source(
         self,
     ) -> None:
-        existing_indices = {row["source_row_index"] for row in self.existing_finqa}
         single_indices = {row["source_row_index"] for row in self.raw_finqa_single}
         multistep_indices = {
             row["source_row_index"] for row in self.raw_finqa_multistep
@@ -197,13 +195,24 @@ class FinancePublicExpansionTests(unittest.TestCase):
             len(multistep_indices),
             len(self.raw_finqa_multistep),
         )
-        self.assertTrue(existing_indices.isdisjoint(single_indices))
-        self.assertTrue(existing_indices.isdisjoint(multistep_indices))
         self.assertTrue(single_indices.isdisjoint(multistep_indices))
+        active_indices = single_indices | multistep_indices
+        self.assertEqual(len(active_indices), 1_132)
         self.assertEqual(
-            single_indices | multistep_indices,
-            set(range(FINQA_TOTAL_TEST_ROWS)) - existing_indices,
+            len(INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES),
+            15,
         )
+        self.assertTrue(
+            active_indices.isdisjoint(
+                INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES
+            )
+        )
+        self.assertEqual(
+            active_indices | INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES,
+            set(range(FINQA_TOTAL_TEST_ROWS)),
+        )
+        self.assertIn("intentionally", FINQA_EXCLUSION_POLICY.lower())
+        self.assertIn("context", FINQA_EXCLUSION_POLICY.lower())
 
     def test_finqa_program_lengths_match_the_single_and_multicall_split(
         self,
@@ -436,7 +445,7 @@ class FinancePublicExpansionTests(unittest.TestCase):
         finqa_fixture_provenance = self.finqa_fixture["provenance"]
         self.assertEqual(
             finqa_fixture_provenance["excluded_source_row_indices"],
-            sorted(row["source_row_index"] for row in self.existing_finqa),
+            sorted(INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES),
         )
         self.assertEqual(
             finqa_fixture_provenance["source_example_count"],

@@ -49,7 +49,6 @@ not modify it.
 | `finance/finance_smoke.json` | 10 | finance | Small direct finance tool smoke set. |
 | `finance/finance_controlled.json` | 50 | finance | Controlled finance routing set. |
 | `finance/finance_upstream_inspired.json` | 40 | finance | Generated finance prompts adapted from upstream tool usage patterns. |
-| `finance/finance_public_derived.json` | 15 | finance | Public FinQA-derived finance table set. |
 | `finance/finance_tatqa_public_derived.json` | 15 | finance | Public TAT-QA-derived finance table set. |
 | `finance/finance_convfinqa_multistep.json` | 10 | finance | Paper-authored ConvFinQA conversations adapted to grounded tool calls. |
 | `finance/finance_finqa_test_single.json` | 642 | finance | One-operation FinQA gold programs adapted to grounded tool calls. |

@@ -547,6 +547,28 @@ exact argument match remains a stricter diagnostic because equivalent SQL can be
 written in more than one way. Finance table outcomes compare the bounded returned
 rows, row count, truncation flag, and dataset identifier; SQL output-column aliases
 such as `result` and `numeric_result` do not affect semantic outcome scoring.
+The result must still include a `columns` list with the same number of columns as
+the expected result.
+
+#### Reproducing a saved-result rescore
+
+The evaluator writes one JSONL record per routed sample in `results/`. To rescore
+an archived run after a matcher change without rerunning the model, preserve that
+JSONL and run:
+
+```bash
+python analysis/rescore_saved_evaluation.py \
+  --samples results/<saved-run>_samples.jsonl \
+  --output results/<saved-run>_rescored_samples.jsonl \
+  --replay-retail-order-lookups
+```
+
+This reuses every saved model decision. Finance table rows are rescored from their
+saved tool result; the optional flag replays only recorded `get_order_details`
+calls against the local TAU2 retail fixture, which is required when evaluating the
+unprefixed `W...` order-ID normalization. The command prints the input SHA-256,
+the changed sample IDs, and the resulting aggregate metrics, so the reported
+score can be tied to one exact saved run.
 
 ### 7. Runtime Flow
 

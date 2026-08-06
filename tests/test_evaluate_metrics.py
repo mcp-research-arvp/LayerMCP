@@ -668,6 +668,61 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertFalse(score.correct)
         self.assertIn("$.rows", score.diagnostic)
 
+    def test_finance_query_result_rejects_missing_columns(self) -> None:
+        score = _score_final_outcome(
+            expected_answer={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["result"],
+                "rows": [],
+                "row_count": 0,
+                "truncated": False,
+            },
+            tool_result_value={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "rows": [],
+                "row_count": 0,
+                "truncated": False,
+            },
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="finance_query_table",
+            called_tool="finance_query_table",
+        )
+
+        self.assertFalse(score.correct)
+        self.assertIn("$.columns", score.diagnostic)
+
+    def test_finance_query_result_rejects_wrong_column_count(self) -> None:
+        score = _score_final_outcome(
+            expected_answer={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["result"],
+                "rows": [],
+                "row_count": 0,
+                "truncated": False,
+            },
+            tool_result_value={
+                "dataset_id": "finqa-public-test-program-results-v1",
+                "columns": ["first", "second"],
+                "rows": [],
+                "row_count": 0,
+                "truncated": False,
+            },
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="finance_query_table",
+            called_tool="finance_query_table",
+        )
+
+        self.assertFalse(score.correct)
+        self.assertIn("$.columns", score.diagnostic)
+
     def test_summary_denominator_includes_no_call_and_execution_error(self) -> None:
         records = [
             self._aggregate_record(True),

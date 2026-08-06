@@ -439,11 +439,33 @@ def _match_finance_query_table_result(actual: Any, expected: Any) -> OutcomeMatc
     if not isinstance(expected, dict):
         return _match_expected_answer(actual, expected, domain="finance")
 
-    required_keys = ("dataset_id", "rows", "row_count", "truncated")
+    required_keys = ("dataset_id", "columns", "rows", "row_count", "truncated")
     if not all(key in expected for key in required_keys):
         return _match_expected_answer(actual, expected, domain="finance")
 
-    expected_payload = {key: expected[key] for key in required_keys}
+    if not isinstance(actual, dict):
+        return OutcomeMatch(False, f"$: expected object, got {type(actual).__name__}")
+
+    expected_columns = expected["columns"]
+    actual_columns = actual.get("columns")
+    if not isinstance(expected_columns, list):
+        return _match_expected_answer(actual, expected, domain="finance")
+    if not isinstance(actual_columns, list):
+        return OutcomeMatch(
+            False,
+            "$.columns: expected a list with "
+            f"{len(expected_columns)} columns, got {actual_columns!r}",
+        )
+    if len(actual_columns) != len(expected_columns):
+        return OutcomeMatch(
+            False,
+            "$.columns: expected "
+            f"{len(expected_columns)} columns, got {len(actual_columns)}",
+        )
+
+    expected_payload = {
+        key: expected[key] for key in required_keys if key != "columns"
+    }
     return _match_expected_answer(actual, expected_payload, domain="finance")
 
 

@@ -1,0 +1,260 @@
+#!/bin/bash
+# Submit with a job name that identifies all run dimensions, for example:
+# sbatch --job-name=phi-4-local-standard_prompt-smoke \
+#   --export=ALL,MODEL=phi-4-local,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
+# sbatch --job-name=llama-3.1-8b-local-standard_prompt-primary \
+#   --export=ALL,MODEL=llama-3.1-8b-local,RUN_KIND=primary scripts/slurm/run_single_step.sbatch
+#SBATCH --job-name=lmcp-std-pr30
+#SBATCH --account=def-yousefne_gpu
+#SBATCH --gres=gpu:h100:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=slurm-%x-%j.out
+#SBATCH --error=slurm-%x-%j.err
+
+set -euo pipefail
+
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$SCRATCH/layermcp/LayerMCP"
+
+module load python/3.11
+source "$HOME/venvs/layermcp/bin/activate"
+
+export HF_HOME="$SCRATCH/hf_cache"
+export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
+unset TRANSFORMERS_CACHE || true
+
+ACTUAL_COMMIT="$(git rev-parse HEAD)"
+
+if grep -Eq "MAX_TOOL_CORRECTIONS|repair_tool_call" evaluation/evaluate.py; then
+  echo "Refusing to run: retry/repair behavior from PR #19 is present." >&2
+  exit 1
+fi
+
+: "${MODEL:?Set MODEL to phi-4-local or llama-3.1-8b-local}"
+: "${RUN_KIND:?Set RUN_KIND to smoke or primary}"
+: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
+: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
+
+REGISTRY_METADATA_TMP="$(mktemp)"
+trap 'rm -f "$REGISTRY_METADATA_TMP"' EXIT
+python -m analysis.run_artifacts \
+  --capture-live-registry \
+  --server mcp_server/server.py \
+  --registry-metadata-out "$REGISTRY_METADATA_TMP"
+mapfile -t REGISTRY_VALUES < <(python - "$REGISTRY_METADATA_TMP" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+metadata = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for field in (
+    "tool_pool",
+    "tool_count",
+    "tool_registry_fingerprint",
+    "tool_registry_fingerprint_version",
+):
+    value = metadata.get(field)
+    if value is None or value == "":
+        raise SystemExit(f"Missing captured registry metadata: {field}")
+    print(value)
+PY
+)
+if [[ "${#REGISTRY_VALUES[@]}" -ne 4 ]]; then
+  echo "Live registry metadata capture returned an unexpected shape." >&2
+  exit 2
+fi
+TOOL_POOL="${REGISTRY_VALUES[0]}"
+TOOL_COUNT="${REGISTRY_VALUES[1]}"
+EXPECTED_REGISTRY_FINGERPRINT="${REGISTRY_VALUES[2]}"
+REGISTRY_FINGERPRINT_VERSION="${REGISTRY_VALUES[3]}"
+[[ "$TOOL_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid live tool count" >&2; exit 2; }
+[[ "$EXPECTED_REGISTRY_FINGERPRINT" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+  echo "Invalid live registry fingerprint" >&2
+  exit 2
+}
+rm -f "$REGISTRY_METADATA_TMP"
+trap - EXIT
+
+safe_component() {
+  local label="$1"
+  local value="$2"
+  python -m analysis.run_artifacts --safe-component "$label" "$value"
+}
+
+case "$MODEL" in
+  phi-4-local)
+    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/phi-4"
+    CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"
+    PROMPT_TEMPLATE_ID="tool_name_only_v1"
+    EXPECTED_MODEL_NAME="microsoft/phi-4"
+    ;;
+  llama-3.1-8b-local)
+    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
+    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"
+    PROMPT_TEMPLATE_ID="structured_tool_call_v1"
+    EXPECTED_MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
+    ;;
+  *)
+    echo "Unsupported MODEL: $MODEL" >&2
+    exit 2
+    ;;
+esac
+
+test -f "$CHECKPOINT/config.json"
+
+SMOKE_BENCHMARKS=(
+  "benchmark/coding/coding_smoke.json"
+  "benchmark/finance/finance_smoke.json"
+)
+
+PRIMARY_BENCHMARKS=(
+  "benchmark/math/math_controlled.json"
+  "benchmark/math/math_public.json"
+  "benchmark/math/math_public_math_dataset.json"
+  "benchmark/enterprise/enterprise_controlled.json"
+  "benchmark/enterprise/enterprise_tau2_single_step.json"
+  "benchmark/coding/coding_controlled.json"
+  "benchmark/coding/coding_upstream_inspired.json"
+  "benchmark/coding/coding_codesearchnet_public_derived.json"
+  "benchmark/coding/coding_conala_public_derived.json"
+  "benchmark/finance/finance_controlled.json"
+  "benchmark/finance/finance_upstream_inspired.json"
+  "benchmark/finance/finance_tatqa_public_derived.json"
+  "benchmark/finance/finance_finqa_test_single.json"
+)
+
+case "$RUN_KIND" in
+  smoke) BENCHMARKS=("${SMOKE_BENCHMARKS[@]}") ;;
+  primary) BENCHMARKS=("${PRIMARY_BENCHMARKS[@]}") ;;
+  *)
+    echo "Unsupported RUN_KIND: $RUN_KIND" >&2
+    exit 2
+    ;;
+esac
+
+PROMPT_MODE="standard_prompt"
+MODEL_COMPONENT="$(safe_component model "$MODEL")"
+PROMPT_COMPONENT="$(safe_component prompt_condition "$PROMPT_MODE")"
+RUN_KIND_COMPONENT="$(safe_component run_kind "$RUN_KIND")"
+JOB_ID_COMPONENT="$(safe_component slurm_job_id "$SLURM_JOB_ID")"
+JOB_NAME_COMPONENT="$(safe_component slurm_job_name "$SLURM_JOB_NAME")"
+for required_name_part in "$MODEL_COMPONENT" "$PROMPT_COMPONENT" "$RUN_KIND_COMPONENT"; do
+  if [[ "$JOB_NAME_COMPONENT" != *"$required_name_part"* ]]; then
+    echo "Slurm job name must identify model, prompt condition, and run kind: " \
+      "$SLURM_JOB_NAME is missing $required_name_part" >&2
+    exit 2
+  fi
+done
+
+RUNS_ROOT="results/runs/single_step"
+RUN_DATE="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${PROMPT_COMPONENT}_${RUN_KIND_COMPONENT}"
+mkdir -p "$RUNS_ROOT"
+mkdir "$RUN_DIR"
+
+SLURM_STDOUT_PATH="$SUBMIT_DIR/slurm-${JOB_NAME_COMPONENT}-${JOB_ID_COMPONENT}.out"
+SLURM_STDERR_PATH="$SUBMIT_DIR/slurm-${JOB_NAME_COMPONENT}-${JOB_ID_COMPONENT}.err"
+
+: "${RUN_DIR:?RUN_DIR must be set before preserving the launcher}"
+LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
+cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"
+sha256sum "$LAUNCHER_PATH" > "$RUN_DIR/launcher.sha256"
+
+for benchmark in "${BENCHMARKS[@]}"; do
+  test -f "$benchmark"
+  realpath "$benchmark"
+done > "$RUN_DIR/resolved_datasets.txt"
+
+python - "$RUN_DIR/run_metadata.json" "$RUN_DIR/resolved_datasets.txt" <<PY
+import json
+from pathlib import Path
+import sys
+
+metadata_path = Path(sys.argv[1])
+datasets = Path(sys.argv[2]).read_text(encoding="utf-8").splitlines()
+metadata = {
+    "git_branch": "$(git branch --show-current)",
+    "git_commit": "$ACTUAL_COMMIT",
+    "slurm_job_id": "$SLURM_JOB_ID",
+    "slurm_job_name": "$SLURM_JOB_NAME",
+    "slurm_stdout_path": "$SLURM_STDOUT_PATH",
+    "slurm_stderr_path": "$SLURM_STDERR_PATH",
+    "model": "$MODEL",
+    "expected_model_name": "$EXPECTED_MODEL_NAME",
+    "checkpoint": "$CHECKPOINT",
+    "prompt_condition": "$PROMPT_MODE",
+    "run_kind": "$RUN_KIND",
+    "prompt_template_id": "$PROMPT_TEMPLATE_ID",
+    "benchmark_mode": "grounded_tool_execution",
+    "benchmark_paths": datasets,
+    "tool_pool": "$TOOL_POOL",
+    "tool_count": $TOOL_COUNT,
+    "tool_registry_fingerprint": "$EXPECTED_REGISTRY_FINGERPRINT",
+    "tool_registry_fingerprint_version": "$REGISTRY_FINGERPRINT_VERSION",
+    "registry_metadata_source": "live_mcp_registry_at_job_startup",
+    "evaluation_protocol": "single_step_tool_routing_v1",
+    "final_outcome_matchers": [
+        "recursive_json_subset_v1",
+        "finance_query_table_rows_v1",
+    ],
+    "generation": {
+        "temperature": 0.0,
+        "max_tokens": 128,
+        "seed": "not_applicable_deterministic_greedy",
+    },
+    "model_attempts_per_sample": 1,
+    "tool_call_retries": 0,
+}
+with metadata_path.open("x", encoding="utf-8") as handle:
+    json.dump(metadata, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+PY
+
+python -m compileall benchmark evaluation mcp_server tests
+
+for benchmark in "${BENCHMARKS[@]}"; do
+  test -f "$benchmark"
+  domain="$(safe_component domain "$(printf '%s' "$benchmark" | cut -d/ -f2)")"
+  name="$(safe_component dataset "$(basename "$benchmark" .json)")"
+  dataset_dir="$RUN_DIR/domains/$domain/$name"
+  mkdir -p "$(dirname "$dataset_dir")"
+  mkdir "$dataset_dir"
+  log_path="$dataset_dir/evaluation.log"
+
+  echo "------------------------------------------------------------"
+  echo "Model: $MODEL"
+  echo "Benchmark: $benchmark"
+  echo "Log: $log_path"
+  echo "------------------------------------------------------------"
+
+  python -m evaluation.evaluate \
+    --dataset "$benchmark" \
+    --router "$MODEL" \
+    --call-predicted-tools \
+    --output-dir "$dataset_dir" \
+    2>&1 | tee "$log_path"
+
+  python -m analysis.run_artifacts \
+    --dataset-dir "$dataset_dir" \
+    --index "$RUN_DIR/artifact_index.jsonl" \
+    --benchmark "$benchmark" \
+    --model "$EXPECTED_MODEL_NAME" \
+    --prompt-template "$PROMPT_TEMPLATE_ID" \
+    --registry-fingerprint "$EXPECTED_REGISTRY_FINGERPRINT" \
+    --registry-fingerprint-version "$REGISTRY_FINGERPRINT_VERSION" \
+    --tool-count "$TOOL_COUNT" \
+    --tool-pool "$TOOL_POOL"
+done
+
+python -m analysis.run_artifacts \
+  --validate-run \
+  --index "$RUN_DIR/artifact_index.jsonl" \
+  --resolved-datasets "$RUN_DIR/resolved_datasets.txt"
+
+test ! -e "$RUN_DIR/RUN_COMPLETE"
+( set -o noclobber; printf 'git_commit=%s\n' "$ACTUAL_COMMIT" > "$RUN_DIR/RUN_COMPLETE" )
+echo "Completed $MODEL $RUN_KIND evaluation."
+echo "Results saved under: $RUN_DIR"

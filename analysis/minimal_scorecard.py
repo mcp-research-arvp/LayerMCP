@@ -80,6 +80,38 @@ def _artifact_from_log(
     return _resolve_artifact(matches[-1], log_path=log_path)
 
 
+def _artifacts_from_index(run_directory: Path) -> list[tuple[Path, Path]]:
+    index_path = run_directory / "artifact_index.jsonl"
+    if not index_path.exists():
+        return []
+    if not (run_directory / "RUN_COMPLETE").is_file():
+        raise ValueError(
+            f"Indexed run is incomplete (missing RUN_COMPLETE): {run_directory}"
+        )
+    pairs: list[tuple[Path, Path]] = []
+    for line_number, record in enumerate(_load_jsonl(index_path), start=1):
+        try:
+            summary_raw = str(record["summary_path"])
+            samples_raw = str(record["samples_path"])
+        except KeyError as exc:
+            raise ValueError(
+                f"{index_path}:{line_number} is missing {exc.args[0]!r}"
+            ) from exc
+
+        def resolve(raw: str) -> Path:
+            path = Path(raw).expanduser()
+            if not path.is_absolute():
+                path = run_directory / path
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"Artifact referenced by {index_path} does not exist: {path}"
+                )
+            return path.resolve()
+
+        pairs.append((resolve(summary_raw), resolve(samples_raw)))
+    return pairs
+
+
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
@@ -182,23 +214,37 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
     for run_directory in sorted(Path(path).resolve() for path in run_directories):
         if not run_directory.is_dir():
             raise FileNotFoundError(f"Run directory does not exist: {run_directory}")
-        logs = sorted(run_directory.glob("*.log"))
-        if not logs:
-            raise ValueError(f"Run directory contains no .log files: {run_directory}")
+        indexed_artifacts = _artifacts_from_index(run_directory)
+        if indexed_artifacts:
+            artifacts = indexed_artifacts
+        else:
+            logs = sorted(run_directory.glob("*.log"))
+            if not logs:
+                raise ValueError(
+                    f"Run directory contains no artifact index or .log files: "
+                    f"{run_directory}"
+                )
+            artifacts = [
+                (
+                    _artifact_from_log(
+                        log_path,
+                        pattern=SUMMARY_PATTERN,
+                        label="Summary",
+                    ),
+                    _artifact_from_log(
+                        log_path,
+                        pattern=RESULTS_PATTERN,
+                        label="Results",
+                    ),
+                )
+                for log_path in logs
+            ]
 
-        for log_path in logs:
-            summary_path = _artifact_from_log(
-                log_path,
-                pattern=SUMMARY_PATTERN,
-                label="Summary",
-            )
-            samples_path = _artifact_from_log(
-                log_path,
-                pattern=RESULTS_PATTERN,
-                label="Results",
-            )
+        for summary_path, samples_path in artifacts:
             if summary_path in seen_summaries or samples_path in seen_samples:
-                raise ValueError(f"Duplicate result artifact referenced by {log_path}")
+                raise ValueError(
+                    f"Duplicate result artifact in run directory: {run_directory}"
+                )
             seen_summaries.add(summary_path)
             seen_samples.add(samples_path)
 
@@ -209,7 +255,7 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
             _validate_single_step(summary, samples, summary_path=summary_path)
 
             model = str(summary.get("model_name") or run_directory.name)
-            benchmark_path = str(summary.get("benchmark_path") or log_path.stem)
+            benchmark_path = str(summary.get("benchmark_path") or summary_path.parent.name)
             family = _benchmark_family(benchmark_path, samples)
 
             fingerprint, fingerprint_version, tool_count, tool_pool = (

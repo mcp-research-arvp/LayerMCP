@@ -604,6 +604,56 @@ class MinimalScorecardTests(unittest.TestCase):
                 )
             self.assertEqual(build_scorecard(runs), build_scorecard(list(reversed(runs))))
 
+    def test_loads_completed_organized_run_from_artifact_index(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            run = Path(temporary_directory) / "run"
+            dataset = run / "domains" / "coding" / "coding_public"
+            dataset.mkdir(parents=True)
+            sample = self._correct_sample("model")
+            sample["benchmark_path"] = "benchmark/coding/coding_public.json"
+            samples_path = dataset / "samples.jsonl"
+            summary_path = dataset / "summary.json"
+            samples_path.write_text(json.dumps(sample) + "\n", encoding="utf-8")
+            summary_path.write_text(
+                json.dumps(
+                    {
+                        "model_name": "model",
+                        "benchmark_path": "benchmark/coding/coding_public.json",
+                        "evaluation_protocol": "single_step_tool_routing_v1",
+                        "total_samples": 1,
+                        "tool_pool": "full_mcp_registry",
+                        "tool_count": 60,
+                        "tool_registry_fingerprint": "sha256:organized",
+                        "tool_registry_fingerprint_version": (
+                            "tool_registry_name_schema_description_v1"
+                        ),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (dataset / "evaluation.log").write_text("complete\n", encoding="utf-8")
+            (run / "artifact_index.jsonl").write_text(
+                json.dumps(
+                    {
+                        "samples_path": "domains/coding/coding_public/samples.jsonl",
+                        "summary_path": "domains/coding/coding_public/summary.json",
+                        "evaluation_log_path": (
+                            "domains/coding/coding_public/evaluation.log"
+                        ),
+                    },
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (run / "RUN_COMPLETE").write_text("complete\n", encoding="utf-8")
+
+            loaded = load_runs([run])
+
+            self.assertEqual(len(loaded.records), 1)
+            self.assertEqual(loaded.records[0].model, "model")
+            self.assertEqual(loaded.fingerprints, ("sha256:organized",))
+
 
 if __name__ == "__main__":
     unittest.main()

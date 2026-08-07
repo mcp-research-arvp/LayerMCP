@@ -25,7 +25,6 @@ export HF_HOME="$SCRATCH/hf_cache"
 export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
 unset TRANSFORMERS_CACHE || true
 
-EXPECTED_REGISTRY_FINGERPRINT="sha256:4d26fde17da4f3b46c2ebf99d3b277b3ff7669091782f6e1fe9cfcf681034257"
 ACTUAL_COMMIT="$(git rev-parse HEAD)"
 
 if grep -Eq "MAX_TOOL_CORRECTIONS|repair_tool_call" evaluation/evaluate.py; then
@@ -37,6 +36,46 @@ fi
 : "${RUN_KIND:?Set RUN_KIND to smoke or primary}"
 : "${SLURM_JOB_ID:?This launcher must run under Slurm}"
 : "${SLURM_JOB_NAME:?Slurm must provide a job name}"
+
+REGISTRY_METADATA_TMP="$(mktemp)"
+trap 'rm -f "$REGISTRY_METADATA_TMP"' EXIT
+python -m analysis.run_artifacts \
+  --capture-live-registry \
+  --server mcp_server/server.py \
+  --registry-metadata-out "$REGISTRY_METADATA_TMP"
+mapfile -t REGISTRY_VALUES < <(python - "$REGISTRY_METADATA_TMP" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+metadata = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for field in (
+    "tool_pool",
+    "tool_count",
+    "tool_registry_fingerprint",
+    "tool_registry_fingerprint_version",
+):
+    value = metadata.get(field)
+    if value is None or value == "":
+        raise SystemExit(f"Missing captured registry metadata: {field}")
+    print(value)
+PY
+)
+if [[ "${#REGISTRY_VALUES[@]}" -ne 4 ]]; then
+  echo "Live registry metadata capture returned an unexpected shape." >&2
+  exit 2
+fi
+TOOL_POOL="${REGISTRY_VALUES[0]}"
+TOOL_COUNT="${REGISTRY_VALUES[1]}"
+EXPECTED_REGISTRY_FINGERPRINT="${REGISTRY_VALUES[2]}"
+REGISTRY_FINGERPRINT_VERSION="${REGISTRY_VALUES[3]}"
+[[ "$TOOL_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid live tool count" >&2; exit 2; }
+[[ "$EXPECTED_REGISTRY_FINGERPRINT" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+  echo "Invalid live registry fingerprint" >&2
+  exit 2
+}
+rm -f "$REGISTRY_METADATA_TMP"
+trap - EXIT
 
 safe_component() {
   local label="$1"
@@ -151,10 +190,11 @@ metadata = {
     "prompt_template_id": "$PROMPT_TEMPLATE_ID",
     "benchmark_mode": "grounded_tool_execution",
     "benchmark_paths": datasets,
-    "tool_pool": "full_mcp_registry",
-    "expected_tool_count": 60,
-    "expected_tool_registry_fingerprint": "$EXPECTED_REGISTRY_FINGERPRINT",
-    "tool_registry_fingerprint_version": "tool_registry_name_schema_description_v1",
+    "tool_pool": "$TOOL_POOL",
+    "tool_count": $TOOL_COUNT,
+    "tool_registry_fingerprint": "$EXPECTED_REGISTRY_FINGERPRINT",
+    "tool_registry_fingerprint_version": "$REGISTRY_FINGERPRINT_VERSION",
+    "registry_metadata_source": "live_mcp_registry_at_job_startup",
     "evaluation_protocol": "single_step_tool_routing_v1",
     "final_outcome_matchers": [
         "recursive_json_subset_v1",
@@ -203,7 +243,10 @@ for benchmark in "${BENCHMARKS[@]}"; do
     --benchmark "$benchmark" \
     --model "$EXPECTED_MODEL_NAME" \
     --prompt-template "$PROMPT_TEMPLATE_ID" \
-    --registry-fingerprint "$EXPECTED_REGISTRY_FINGERPRINT"
+    --registry-fingerprint "$EXPECTED_REGISTRY_FINGERPRINT" \
+    --registry-fingerprint-version "$REGISTRY_FINGERPRINT_VERSION" \
+    --tool-count "$TOOL_COUNT" \
+    --tool-pool "$TOOL_POOL"
 done
 
 python -m analysis.run_artifacts \

@@ -592,6 +592,10 @@ single-step layout. Multi-step launchers must use the reserved `multi_step`
 root and the same per-dataset artifact convention. Each run preserves
 `run_metadata.json`, `resolved_datasets.txt`, the exact
 `launcher.sbatch` and its SHA-256, and a validated `artifact_index.jsonl`.
+Before model loading, the single-step launcher captures the pool, tool count,
+fingerprint, and fingerprint version from the live MCP registry through the
+evaluator's canonical registry implementation. Every dataset summary must
+match that startup snapshot before it can be added to the artifact index.
 Dataset artifacts live together under
 `domains/<domain>/<dataset>/samples.jsonl`, `summary.json`, and
 `evaluation.log`. `RUN_COMPLETE` is created only after every expected dataset

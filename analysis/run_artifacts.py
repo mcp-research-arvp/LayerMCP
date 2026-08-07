@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 from collections import Counter
 import json
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any
 
 
 SAFE_PATH_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+REGISTRY_FINGERPRINT = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 def safe_path_component(value: str, *, label: str) -> str:
@@ -75,6 +77,56 @@ def _existing_index_records(index_path: Path) -> list[dict[str, Any]]:
     return _load_jsonl_objects(index_path)
 
 
+def _required_registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    required = (
+        "tool_pool",
+        "tool_count",
+        "tool_registry_fingerprint",
+        "tool_registry_fingerprint_version",
+    )
+    missing = [field for field in required if metadata.get(field) in (None, "")]
+    if missing:
+        raise ValueError("Live registry metadata is missing: " + ", ".join(missing))
+    if not isinstance(metadata["tool_pool"], str) or not metadata["tool_pool"].strip():
+        raise ValueError("Live registry tool_pool must be a nonempty string")
+    if (
+        isinstance(metadata["tool_count"], bool)
+        or not isinstance(metadata["tool_count"], int)
+        or metadata["tool_count"] <= 0
+    ):
+        raise ValueError("Live registry tool_count must be a positive integer")
+    if REGISTRY_FINGERPRINT.fullmatch(metadata["tool_registry_fingerprint"]) is None:
+        raise ValueError("Live registry fingerprint must be a sha256 digest")
+    if (
+        not isinstance(metadata["tool_registry_fingerprint_version"], str)
+        or not metadata["tool_registry_fingerprint_version"].strip()
+    ):
+        raise ValueError("Live registry fingerprint version must be a nonempty string")
+    return {field: metadata[field] for field in required}
+
+
+async def capture_live_registry_metadata(server_path: Path) -> dict[str, Any]:
+    """Build metadata through the evaluator's canonical live-registry path."""
+    from evaluation.evaluate import (
+        _run_server_session,
+        _tool_pool_metadata,
+        _tool_schema,
+    )
+
+    async with _run_server_session(server_path) as session:
+        listed_tools = await session.list_tools()
+        registered_tools = listed_tools.tools
+        live_tools = [tool.name for tool in registered_tools]
+        tool_schemas = {tool.name: _tool_schema(tool) for tool in registered_tools}
+        tool_descriptions = {
+            tool.name: str(getattr(tool, "description", "") or "")
+            for tool in registered_tools
+        }
+    return _required_registry_metadata(
+        _tool_pool_metadata(live_tools, tool_schemas, tool_descriptions)
+    )
+
+
 def validate_and_index_dataset(
     *,
     dataset_directory: Path,
@@ -83,6 +135,9 @@ def validate_and_index_dataset(
     expected_model: str,
     expected_prompt_template: str,
     expected_registry_fingerprint: str,
+    expected_registry_fingerprint_version: str,
+    expected_tool_count: int,
+    expected_tool_pool: str,
 ) -> dict[str, Any]:
     dataset_directory = dataset_directory.resolve()
     index_path = index_path.resolve()
@@ -149,6 +204,18 @@ def validate_and_index_dataset(
             f"{summary.get('tool_registry_fingerprint')!r} != "
             f"{expected_registry_fingerprint!r}"
         )
+    expected_registry = {
+        "tool_pool": expected_tool_pool,
+        "tool_count": expected_tool_count,
+        "tool_registry_fingerprint": expected_registry_fingerprint,
+        "tool_registry_fingerprint_version": expected_registry_fingerprint_version,
+    }
+    for field, expected_value in expected_registry.items():
+        if summary.get(field) != expected_value:
+            raise ValueError(
+                f"Unexpected registry metadata {field!r} in {summary_path}: "
+                f"{summary.get(field)!r} != {expected_value!r}"
+            )
 
     shared_fields = (
         "model_name",
@@ -264,12 +331,18 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--validate-run", action="store_true")
     parser.add_argument("--safe-component", nargs=2, metavar=("LABEL", "VALUE"))
+    parser.add_argument("--capture-live-registry", action="store_true")
+    parser.add_argument("--registry-metadata-out", type=Path)
+    parser.add_argument("--server", type=Path)
     parser.add_argument("--dataset-dir", type=Path)
     parser.add_argument("--index", type=Path)
     parser.add_argument("--benchmark", type=Path)
     parser.add_argument("--model")
     parser.add_argument("--prompt-template")
     parser.add_argument("--registry-fingerprint")
+    parser.add_argument("--registry-fingerprint-version")
+    parser.add_argument("--tool-count", type=int)
+    parser.add_argument("--tool-pool")
     parser.add_argument("--resolved-datasets", type=Path)
     return parser
 
@@ -279,6 +352,17 @@ def main() -> None:
     if args.safe_component is not None:
         label, value = args.safe_component
         print(safe_path_component(value, label=label))
+        return
+    if args.capture_live_registry:
+        if args.server is None or args.registry_metadata_out is None:
+            raise SystemExit(
+                "--capture-live-registry requires --server and "
+                "--registry-metadata-out"
+            )
+        metadata = asyncio.run(capture_live_registry_metadata(args.server))
+        with args.registry_metadata_out.open("w", encoding="utf-8") as handle:
+            json.dump(metadata, handle, indent=2, sort_keys=True)
+            handle.write("\n")
         return
     if args.validate_run:
         if args.index is None or args.resolved_datasets is None:
@@ -300,6 +384,9 @@ def main() -> None:
         "--model": args.model,
         "--prompt-template": args.prompt_template,
         "--registry-fingerprint": args.registry_fingerprint,
+        "--registry-fingerprint-version": args.registry_fingerprint_version,
+        "--tool-count": args.tool_count,
+        "--tool-pool": args.tool_pool,
     }
     missing = [name for name, value in required.items() if value is None]
     if missing:
@@ -311,6 +398,9 @@ def main() -> None:
         expected_model=args.model,
         expected_prompt_template=args.prompt_template,
         expected_registry_fingerprint=args.registry_fingerprint,
+        expected_registry_fingerprint_version=args.registry_fingerprint_version,
+        expected_tool_count=args.tool_count,
+        expected_tool_pool=args.tool_pool,
     )
 
 

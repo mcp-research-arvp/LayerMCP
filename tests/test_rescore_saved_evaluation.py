@@ -1,6 +1,6 @@
 import unittest
 
-from analysis.rescore_saved_evaluation import rescore_records
+from analysis.rescore_saved_evaluation import change_breakdown, rescore_records
 from mcp_server.retail_state import snapshot_retail_state
 
 
@@ -36,6 +36,39 @@ class RescoreSavedEvaluationTests(unittest.TestCase):
         self.assertEqual(changed, ["finance-alias"])
         self.assertTrue(records[0]["final_outcome_correct"])
 
+    def test_leaves_invalid_retail_order_id_as_a_failure(self) -> None:
+        original = [
+            {
+                "sample_id": "invalid-retail-order-id",
+                "domain": "enterprise",
+                "expected_tool": "get_order_details",
+                "called_tool": "get_order_details",
+                "selected_args": {"order_id": "W999999999"},
+                "expected_answer": {"order_id": "#W999999999"},
+                "tool_result_value": None,
+                "execution_success": False,
+                "final_outcome_correct": False,
+                "final_outcome_status": "execution_error",
+                "final_outcome_matcher": "recursive_json_subset_v1",
+                "final_outcome_diagnostic": (
+                    "The predicted tool did not execute successfully."
+                ),
+            }
+        ]
+
+        records, changed = rescore_records(
+            original,
+            replay_retail_order_lookups=True,
+        )
+
+        self.assertEqual(changed, [])
+        self.assertFalse(records[0]["execution_success"])
+        self.assertFalse(records[0]["final_outcome_correct"])
+        self.assertEqual(
+            change_breakdown(original, records),
+            {"finance_alias_changes": 0, "retail_order_id_changes": 0},
+        )
+
     def test_replays_saved_unprefixed_retail_order_lookup(self) -> None:
         order_id = next(iter(snapshot_retail_state()["orders"]))
         self.assertTrue(order_id.startswith("#W"))
@@ -60,3 +93,22 @@ class RescoreSavedEvaluationTests(unittest.TestCase):
         self.assertTrue(records[0]["execution_success"])
         self.assertTrue(records[0]["final_outcome_correct"])
         self.assertEqual(records[0]["tool_result_value"]["order_id"], order_id)
+        self.assertEqual(
+            change_breakdown(
+                [
+                    {
+                        "sample_id": "retail-order-id",
+                        "domain": "enterprise",
+                        "expected_tool": "get_order_details",
+                        "called_tool": "get_order_details",
+                        "selected_args": {"order_id": order_id[1:]},
+                        "expected_answer": {"order_id": order_id},
+                        "tool_result_value": None,
+                        "execution_success": False,
+                        "final_outcome_correct": False,
+                    }
+                ],
+                records,
+            ),
+            {"finance_alias_changes": 0, "retail_order_id_changes": 1},
+        )

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -21,20 +22,34 @@ from mcp_server.retail_state import reset_retail_state
 from mcp_server.retail_tools import get_order_details
 
 
-def _replay_retail_order_lookup(record: dict[str, Any]) -> dict[str, Any] | None:
-    """Replay one recorded, read-only retail order lookup when applicable."""
+def _is_replayable_retail_order_lookup(record: dict[str, Any]) -> bool:
+    """Whether a saved call is exactly the order-ID normalization case."""
+    if bool(record.get("execution_success", False)):
+        return False
+    if record.get("expected_tool") != "get_order_details":
+        return False
     if record.get("called_tool") != "get_order_details":
-        return None
+        return False
 
     selected_args = record.get("selected_args")
     if not isinstance(selected_args, dict):
-        raise ValueError(
-            f"Sample {record.get('sample_id', '<unknown>')!r} has non-object "
-            "selected_args for get_order_details."
-        )
+        return False
+    order_id = selected_args.get("order_id")
+    return isinstance(order_id, str) and re.fullmatch(r"W\d+", order_id) is not None
+
+
+def _replay_retail_order_lookup(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Replay only the saved, failed unprefixed-TAU2-order-ID lookup case."""
+    if not _is_replayable_retail_order_lookup(record):
+        return None
 
     reset_retail_state()
-    return get_order_details(**selected_args)
+    try:
+        return get_order_details(**record["selected_args"])
+    except ValueError:
+        # An invented ID can share the old unprefixed spelling. It was not fixed
+        # by normalization, so retain its recorded failure instead of aborting.
+        return None
 
 
 def rescore_records(
@@ -79,6 +94,52 @@ def rescore_records(
         rescored.append(record)
 
     return rescored, changed_sample_ids
+
+
+def _changed_final_outcome_fields(
+    original: dict[str, Any], rescored: dict[str, Any]
+) -> bool:
+    return any(
+        original.get(field) != rescored.get(field)
+        for field in (
+            "final_outcome_correct",
+            "final_outcome_status",
+            "final_outcome_matcher",
+            "final_outcome_diagnostic",
+        )
+    )
+
+
+def change_breakdown(
+    original_records: list[dict[str, Any]], rescored_records: list[dict[str, Any]]
+) -> dict[str, int]:
+    """Count changed outcomes attributable to each PR #29 correction."""
+    finance_alias_changes = 0
+    retail_order_id_changes = 0
+
+    for original, rescored in zip(original_records, rescored_records, strict=True):
+        if not _changed_final_outcome_fields(original, rescored):
+            continue
+
+        expected_answer = original.get("expected_answer")
+        actual_result = original.get("tool_result_value")
+        if (
+            original.get("expected_tool") == "finance_query_table"
+            and original.get("called_tool") == "finance_query_table"
+            and isinstance(expected_answer, dict)
+            and isinstance(actual_result, dict)
+            and isinstance(expected_answer.get("columns"), list)
+            and isinstance(actual_result.get("columns"), list)
+            and expected_answer["columns"] != actual_result["columns"]
+        ):
+            finance_alias_changes += 1
+        if _is_replayable_retail_order_lookup(original):
+            retail_order_id_changes += 1
+
+    return {
+        "finance_alias_changes": finance_alias_changes,
+        "retail_order_id_changes": retail_order_id_changes,
+    }
 
 
 def _load_records(path: Path) -> list[dict[str, Any]]:
@@ -133,6 +194,8 @@ def main() -> None:
         "output_samples": str(args.output),
         "replay_retail_order_lookups": args.replay_retail_order_lookups,
         "changed_sample_ids": changed_sample_ids,
+        "changed_sample_count": len(changed_sample_ids),
+        "change_breakdown": change_breakdown(records, rescored),
         **_build_aggregate_metrics(rescored),
     }
     print(json.dumps(report, ensure_ascii=True, indent=2))

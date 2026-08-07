@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import fields, replace
 import hashlib
 import json
@@ -33,6 +34,8 @@ from evaluation.evaluate import (
     _exact_argument_match,
     _extract_structured_tool_result,
     _evaluation_artifact_paths,
+    _evaluate_multistep_with_server,
+    _evaluate_with_server,
     _final_outcome_record_fields,
     _gold_history_item,
     _is_no_tool_call,
@@ -148,6 +151,78 @@ class EvaluateMetricTests(unittest.TestCase):
                 list(output_dir.glob(".summary.json.incomplete-*")),
                 [],
             )
+
+    def test_multistep_dispatch_preserves_caller_output_directory(self) -> None:
+        step = BenchmarkStep(
+            id="step-1",
+            query="Calculate 2 + 2.",
+            expected_tool="calculator",
+            expected_args={"expression": "2 + 2"},
+            expected_answer={"result": 4},
+            depends_on=(),
+            source_program=None,
+        )
+        sample = replace(
+            self._sample(),
+            task_type="multi_step_tool_routing",
+            expected_steps=(step, step),
+        )
+
+        with TemporaryDirectory() as temporary_directory, patch(
+            "evaluation.evaluate._evaluate_multistep_with_server"
+        ) as evaluate_multistep:
+            asyncio.run(
+                _evaluate_with_server(
+                    dataset=[sample],
+                    benchmark_path=Path("benchmark/math/workflow.json"),
+                    server_path=Path("mcp_server/server.py"),
+                    call_predicted_tools=False,
+                    router_name="test-router",
+                    output_dir=Path(temporary_directory) / "multi-step",
+                )
+            )
+
+        self.assertEqual(
+            evaluate_multistep.await_args.args[-1],
+            Path(temporary_directory) / "multi-step",
+        )
+
+    def test_multistep_rejects_existing_output_artifacts_before_execution(self) -> None:
+        step = BenchmarkStep(
+            id="step-1",
+            query="Calculate 2 + 2.",
+            expected_tool="calculator",
+            expected_args={"expression": "2 + 2"},
+            expected_answer={"result": 4},
+            depends_on=(),
+            source_program=None,
+        )
+        sample = replace(
+            self._sample(),
+            task_type="multi_step_tool_routing",
+            expected_steps=(step, step),
+        )
+
+        with TemporaryDirectory() as temporary_directory:
+            output_dir = Path(temporary_directory) / "multi-step"
+            artifacts = _evaluation_artifact_paths(output_dir, "first")
+            with _open_samples_exclusive(artifacts.samples):
+                pass
+
+            with self.assertRaisesRegex(
+                FileExistsError,
+                str(artifacts.samples),
+            ):
+                asyncio.run(
+                    _evaluate_multistep_with_server(
+                        dataset=[sample],
+                        benchmark_path=Path("benchmark/math/workflow.json"),
+                        server_path=Path("mcp_server/server.py"),
+                        call_predicted_tools=False,
+                        router_name="test-router",
+                        output_dir=output_dir,
+                    )
+                )
 
     def test_router_receives_full_live_catalog_for_every_sample(self) -> None:
         live_tools = ["calculator", "factor_expression", "customer_lookup"]

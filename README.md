@@ -579,13 +579,18 @@ to one exact saved run.
 
 #### Organized evaluation runs
 
-The tracked `scripts/slurm/run_single_step.sbatch` launcher creates new runs at:
+The organized result namespace reserves separate roots for each evaluation
+protocol:
 
 ```text
 results/runs/single_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kind>/
+results/runs/multi_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kind>/
 ```
 
-Each run preserves `run_metadata.json`, `resolved_datasets.txt`, the exact
+The tracked `scripts/slurm/run_single_step.sbatch` launcher implements the
+single-step layout. Multi-step launchers must use the reserved `multi_step`
+root and the same per-dataset artifact convention. Each run preserves
+`run_metadata.json`, `resolved_datasets.txt`, the exact
 `launcher.sbatch` and its SHA-256, and a validated `artifact_index.jsonl`.
 Dataset artifacts live together under
 `domains/<domain>/<dataset>/samples.jsonl`, `summary.json`, and

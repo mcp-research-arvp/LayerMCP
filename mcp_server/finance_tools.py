@@ -916,14 +916,7 @@ def finance_query_table(
     sql: str,
     max_rows: int = 100,
 ) -> dict[str, Any]:
-    """Query an offline finance benchmark table with bounded read-only SQLite.
-
-    The selected dataset is exposed as one SQLite table named ``data``. Use
-    ``dataset_id`` to select the dataset, never as a SQL table name. Generate
-    one read-only SELECT statement using columns described by the selected
-    dataset's metadata or by tool errors. Queries that only calculate from
-    constants do not need a FROM clause.
-    """
+    """Run bounded read-only SQLite over one allowlisted in-memory table named data."""
     normalized_dataset = _required_text(dataset_id, "dataset_id", maximum=100)
     query = _normalize_sql(sql)
     maximum = _bounded_integer(max_rows, "max_rows", 1, _MAX_SQL_ROWS)

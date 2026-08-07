@@ -186,7 +186,9 @@ def github_search(query: str) -> dict[str, Any]:
 
 def read_code_file(path: str) -> dict[str, Any]:
     """
-    Return deterministic fake repository file contents for offline coding tasks.
+    Read deterministic file contents from the legacy synthetic coding fixture.
+    Accepts only a fixture-relative path and does not accept a repository ID or
+    a repository-prefixed path.
     """
     normalized = path.strip().replace("\\", "/")
     if normalized not in _CODE_FILES:

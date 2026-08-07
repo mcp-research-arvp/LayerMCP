@@ -9,6 +9,9 @@ from analysis.minimal_scorecard import build_scorecard, load_runs
 from evaluation.evaluate import DEFAULT_BENCHMARK_MODE
 
 
+_MISSING = object()
+
+
 def _sample(
     sample_id: str,
     *,
@@ -20,7 +23,7 @@ def _sample(
     final: bool | None,
     failure: str,
     matcher: str = "recursive_json_subset_v1",
-    benchmark_mode: str | None = DEFAULT_BENCHMARK_MODE,
+    benchmark_mode: str | None | object = DEFAULT_BENCHMARK_MODE,
 ) -> dict:
     sample = {
         "sample_id": sample_id,
@@ -36,7 +39,7 @@ def _sample(
         "source": "public_derived",
         "task_type": "single_tool_routing",
     }
-    if benchmark_mode is not None:
+    if benchmark_mode is not _MISSING:
         sample["benchmark_mode"] = benchmark_mode
     return sample
 
@@ -365,7 +368,7 @@ class MinimalScorecardTests(unittest.TestCase):
                         benchmark_mode="offline_trace_replay",
                     ),
                     _sample(
-                        "defaulted",
+                        "missing",
                         model="model",
                         domain="coding",
                         tool=False,
@@ -373,6 +376,17 @@ class MinimalScorecardTests(unittest.TestCase):
                         execution=False,
                         final=False,
                         failure="wrong_tool",
+                        benchmark_mode=_MISSING,
+                    ),
+                    _sample(
+                        "null",
+                        model="model",
+                        domain="coding",
+                        tool=True,
+                        args=True,
+                        execution=True,
+                        final=True,
+                        failure="correct",
                         benchmark_mode=None,
                     ),
                 ],
@@ -385,7 +399,13 @@ class MinimalScorecardTests(unittest.TestCase):
                 markdown,
             )
             self.assertIn(
-                "| model | grounded_tool_execution | defaulted | 1 | 0.0% |",
+                "| model | grounded_tool_execution | defaulted (missing) | 1 | "
+                "0.0% |",
+                markdown,
+            )
+            self.assertIn(
+                "| model | grounded_tool_execution | defaulted (null) | 1 | "
+                "100.0% |",
                 markdown,
             )
             self.assertIn(
@@ -393,11 +413,14 @@ class MinimalScorecardTests(unittest.TestCase):
                 markdown,
             )
             self.assertIn(
-                "`grounded_tool_execution (defaulted)`, "
+                "`grounded_tool_execution (defaulted (missing))`, "
+                "`grounded_tool_execution (defaulted (null))`, "
                 "`grounded_tool_execution (explicit)`, "
                 "`offline_trace_replay (explicit)`",
                 markdown,
             )
+            self.assertNotIn("| None |", markdown)
+            self.assertEqual(markdown, build_scorecard([run]))
 
     def test_rejects_incompatible_registry_fingerprints(self) -> None:
         with TemporaryDirectory() as temporary_directory:

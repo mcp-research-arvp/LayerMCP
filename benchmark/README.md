@@ -42,7 +42,9 @@ names observed separately for each model, including valid PR #29 mixtures of
 Grounded and offline/replay benchmark modes are always reported in separate
 metric rows. A missing `benchmark_mode` uses
 `evaluation.evaluate.DEFAULT_BENCHMARK_MODE`, but the report visibly marks its
-mode source as `defaulted` rather than pooling it with explicit rows.
+mode source as `defaulted (missing)`. An explicitly null mode also uses the
+evaluator default and is marked `defaulted (null)`; neither is pooled with an
+explicit mode value.
 
 Every loaded summary must provide a nonempty tool-registry fingerprint,
 fingerprint version, tool count, and tool pool. Legacy artifacts missing any of

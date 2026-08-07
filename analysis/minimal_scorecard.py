@@ -228,17 +228,20 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                         f"{model!r} != {sample_model!r}"
                     )
                 domain = str(sample.get("domain") or "unknown")
-                mode_is_explicit = "benchmark_mode" in sample
-                benchmark_mode = str(
-                    sample["benchmark_mode"]
-                    if mode_is_explicit
-                    else DEFAULT_BENCHMARK_MODE
-                )
+                if "benchmark_mode" not in sample:
+                    benchmark_mode = DEFAULT_BENCHMARK_MODE
+                    mode_source = "defaulted (missing)"
+                elif sample["benchmark_mode"] is None:
+                    benchmark_mode = DEFAULT_BENCHMARK_MODE
+                    mode_source = "defaulted (null)"
+                else:
+                    benchmark_mode = str(sample["benchmark_mode"])
+                    mode_source = "explicit"
                 records.append(
                     RunRecord(
                         model=model,
                         benchmark_mode=benchmark_mode,
-                        mode_source="explicit" if mode_is_explicit else "defaulted",
+                        mode_source=mode_source,
                         benchmark=Path(benchmark_path).stem,
                         benchmark_family=family,
                         domain=domain,

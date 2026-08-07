@@ -34,6 +34,8 @@ def _is_replayable_retail_order_lookup(record: dict[str, Any]) -> bool:
     selected_args = record.get("selected_args")
     if not isinstance(selected_args, dict):
         return False
+    if set(selected_args) != {"order_id"}:
+        return False
     order_id = selected_args.get("order_id")
     return isinstance(order_id, str) and re.fullmatch(r"W\d+", order_id) is not None
 
@@ -46,7 +48,7 @@ def _replay_retail_order_lookup(record: dict[str, Any]) -> dict[str, Any] | None
     reset_retail_state()
     try:
         return get_order_details(**record["selected_args"])
-    except ValueError:
+    except (TypeError, ValueError):
         # An invented ID can share the old unprefixed spelling. It was not fixed
         # by normalization, so retain its recorded failure instead of aborting.
         return None
@@ -55,9 +57,9 @@ def _replay_retail_order_lookup(record: dict[str, Any]) -> dict[str, Any] | None
 def rescore_records(
     records: list[dict[str, Any]], *, replay_retail_order_lookups: bool = False
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Return rescored records and the IDs whose final-outcome fields changed."""
+    """Return rescored records and IDs whose outcome changed from false to true."""
     rescored: list[dict[str, Any]] = []
-    changed_sample_ids: list[str] = []
+    corrected_sample_ids: list[str] = []
 
     for original in records:
         record = deepcopy(original)
@@ -87,38 +89,33 @@ def rescore_records(
             called_tool=called_tool,
         )
         new_fields = _final_outcome_record_fields(score)
-        if any(record.get(key) != value for key, value in new_fields.items()):
-            changed_sample_ids.append(str(record.get("sample_id", "<unknown>")))
+        if record.get("final_outcome_correct") is False and score.correct is True:
+            corrected_sample_ids.append(str(record.get("sample_id", "<unknown>")))
         record["execution_success"] = execution_success
         record.update(new_fields)
         rescored.append(record)
 
-    return rescored, changed_sample_ids
+    return rescored, corrected_sample_ids
 
 
-def _changed_final_outcome_fields(
+def _is_false_to_true_correction(
     original: dict[str, Any], rescored: dict[str, Any]
 ) -> bool:
-    return any(
-        original.get(field) != rescored.get(field)
-        for field in (
-            "final_outcome_correct",
-            "final_outcome_status",
-            "final_outcome_matcher",
-            "final_outcome_diagnostic",
-        )
+    return (
+        original.get("final_outcome_correct") is False
+        and rescored.get("final_outcome_correct") is True
     )
 
 
 def change_breakdown(
     original_records: list[dict[str, Any]], rescored_records: list[dict[str, Any]]
 ) -> dict[str, int]:
-    """Count changed outcomes attributable to each PR #29 correction."""
+    """Count false-to-true corrections attributable to each PR #29 change."""
     finance_alias_changes = 0
     retail_order_id_changes = 0
 
     for original, rescored in zip(original_records, rescored_records, strict=True):
-        if not _changed_final_outcome_fields(original, rescored):
+        if not _is_false_to_true_correction(original, rescored):
             continue
 
         expected_answer = original.get("expected_answer")
@@ -181,7 +178,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = _build_parser().parse_args()
     records = _load_records(args.samples)
-    rescored, changed_sample_ids = rescore_records(
+    rescored, corrected_sample_ids = rescore_records(
         records,
         replay_retail_order_lookups=args.replay_retail_order_lookups,
     )
@@ -193,8 +190,8 @@ def main() -> None:
         "input_sha256": input_sha256,
         "output_samples": str(args.output),
         "replay_retail_order_lookups": args.replay_retail_order_lookups,
-        "changed_sample_ids": changed_sample_ids,
-        "changed_sample_count": len(changed_sample_ids),
+        "false_to_true_correction_ids": corrected_sample_ids,
+        "false_to_true_correction_count": len(corrected_sample_ids),
         "change_breakdown": change_breakdown(records, rescored),
         **_build_aggregate_metrics(rescored),
     }

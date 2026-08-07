@@ -38,6 +38,17 @@ when public behavior, benchmark coverage, validation procedure, or durable
 project guidance actually changes. Do not update documentation merely to make
 a patch appear more complete.
 
+## Single-step reporting
+
+Use `analysis/minimal_scorecard.py` as the standard reporting utility for
+completed single-step runs. Keep it and `tests/test_minimal_scorecard.py` in
+sync with changes to evaluator output fields, benchmark classification, log
+artifact paths, tool-registry metadata, metric names, or report formatting.
+Exact argument match is a diagnostic and must not be renamed or treated as
+SVCA; SVCA remains unavailable until full raw JSON Schema validation exists.
+Execution success is also diagnostic, not task success. Continue rejecting
+runs with incompatible tool registries, tool pools, or fingerprint versions.
+
 ## Validation
 
 Run validation proportional to the change. Targeted tests for every touched

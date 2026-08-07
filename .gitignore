@@ -23,6 +23,12 @@ results/
 slurm_logs/
 job*.sh
 
+# Keep only the canonical evaluation launcher; other local Slurm helpers remain local.
+!scripts/
+!scripts/slurm/
+scripts/slurm/*
+!scripts/slurm/run_single_step.sbatch
+
 # Local model checkpoints and heavyweight downloaded weights.
 checkpoints/
 weights/

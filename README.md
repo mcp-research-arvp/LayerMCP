@@ -552,8 +552,12 @@ the expected result.
 
 #### Reproducing a saved-result rescore
 
-The evaluator writes one JSONL record per routed sample in `results/`. To rescore
-an archived run after a matcher change without rerunning the model, preserve that
+The evaluator writes one JSONL record per routed sample. Pass `--output-dir PATH`
+to place collision-safe `samples.jsonl` and `summary.json` artifacts in a
+caller-owned dataset directory; existing artifacts are never overwritten. When
+the option is omitted, the legacy timestamp-named files under `results/` remain
+available for compatibility but are also opened exclusively. To rescore an
+archived run after a matcher change without rerunning the model, preserve its
 JSONL and run:
 
 ```bash
@@ -572,6 +576,25 @@ all other failures remain failures. The command prints the input SHA-256,
 false-to-true correction IDs and count, a Finance alias/retail-order-ID correction
 breakdown, and the resulting aggregate metrics, so the reported score can be tied
 to one exact saved run.
+
+#### Organized evaluation runs
+
+The tracked `scripts/slurm/run_single_step.sbatch` launcher creates new runs at:
+
+```text
+results/runs/single_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kind>/
+```
+
+Each run preserves `run_metadata.json`, `resolved_datasets.txt`, the exact
+`launcher.sbatch` and its SHA-256, and a validated `artifact_index.jsonl`.
+Dataset artifacts live together under
+`domains/<domain>/<dataset>/samples.jsonl`, `summary.json`, and
+`evaluation.log`. `RUN_COMPLETE` is created only after every expected dataset
+has exactly one validated index entry; its absence means the run is incomplete
+and it must not be reported as a completed baseline. Standard-prompt and
+chain-of-thought conditions must use separate run directories. The former flat,
+timestamp-named files directly under `results/` are retained only for historical
+compatibility and should not be used for new concurrent jobs.
 
 ### 7. Runtime Flow
 

@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import fields, replace
 import hashlib
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from evaluation.evaluate import (
     DEFAULT_BENCHMARK_MODE,
@@ -24,10 +27,12 @@ from evaluation.evaluate import (
     SINGLE_STEP_EVALUATION_PROTOCOL,
     TOOL_REGISTRY_FINGERPRINT_VERSION,
     _build_aggregate_metrics,
+    _build_parser,
     _build_multistep_metrics,
     _bounded_prompt_text,
     _exact_argument_match,
     _extract_structured_tool_result,
+    _evaluation_artifact_paths,
     _final_outcome_record_fields,
     _gold_history_item,
     _is_no_tool_call,
@@ -37,12 +42,14 @@ from evaluation.evaluate import (
     _normalize_json,
     _normalize_sample,
     _normalize_workflow_execution_mode,
+    _open_samples_exclusive,
     _query_with_context,
     _route_sample,
     _score_sample,
     _score_final_outcome,
     _tool_pool_metadata,
     _validate_expected_tools,
+    _write_summary_exclusive,
 )
 
 
@@ -65,6 +72,82 @@ class EvaluateMetricTests(unittest.TestCase):
 
     def test_benchmark_sample_has_no_row_level_tool_catalog(self) -> None:
         self.assertNotIn("available_tools", {field.name for field in fields(BenchmarkSample)})
+
+    def test_caller_provided_output_directory_uses_stable_names(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            output_dir = Path(temporary_directory) / "dataset"
+            artifacts = _evaluation_artifact_paths(
+                output_dir,
+                "20260807T062202011138Z",
+            )
+
+            self.assertEqual(artifacts.directory, output_dir)
+            self.assertEqual(artifacts.samples, output_dir / "samples.jsonl")
+            self.assertEqual(artifacts.summary, output_dir / "summary.json")
+
+    def test_output_directory_cli_option_is_parsed(self) -> None:
+        args = _build_parser().parse_args(["--output-dir", "run/dataset"])
+        self.assertEqual(args.output_dir, Path("run/dataset"))
+
+    def test_omitted_output_directory_keeps_legacy_timestamp_names(self) -> None:
+        with TemporaryDirectory() as temporary_directory, patch(
+            "evaluation.evaluate.RESULTS_DIR",
+            Path(temporary_directory),
+        ):
+            artifacts = _evaluation_artifact_paths(None, "fixed-timestamp")
+
+            self.assertEqual(
+                artifacts.samples,
+                Path(temporary_directory) / "fixed-timestamp_samples.jsonl",
+            )
+            self.assertEqual(
+                artifacts.summary,
+                Path(temporary_directory) / "fixed-timestamp_summary.json",
+            )
+
+    def test_same_timestamp_is_safe_in_distinct_output_directories(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            timestamp = "20260807T062202011138Z"
+            phi = _evaluation_artifact_paths(root / "phi", timestamp)
+            llama = _evaluation_artifact_paths(root / "llama", timestamp)
+
+            with _open_samples_exclusive(phi.samples) as handle:
+                handle.write('{"model":"phi"}\n')
+            with _open_samples_exclusive(llama.samples) as handle:
+                handle.write('{"model":"llama"}\n')
+            _write_summary_exclusive(phi.summary, {"model": "phi"})
+            _write_summary_exclusive(llama.summary, {"model": "llama"})
+
+            self.assertNotEqual(phi.samples, llama.samples)
+            self.assertIn("phi", phi.samples.read_text(encoding="utf-8"))
+            self.assertIn("llama", llama.samples.read_text(encoding="utf-8"))
+
+    def test_existing_artifacts_and_same_directory_collisions_are_rejected(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            output_dir = Path(temporary_directory) / "dataset"
+            artifacts = _evaluation_artifact_paths(output_dir, "same-time")
+            with _open_samples_exclusive(artifacts.samples):
+                pass
+
+            with self.assertRaisesRegex(
+                FileExistsError,
+                "Refusing to overwrite existing evaluation artifact",
+            ):
+                _evaluation_artifact_paths(output_dir, "same-time")
+            with self.assertRaisesRegex(
+                FileExistsError,
+                str(artifacts.samples),
+            ):
+                _open_samples_exclusive(artifacts.samples)
+
+            _write_summary_exclusive(artifacts.summary, {"complete": True})
+            with self.assertRaisesRegex(FileExistsError, str(artifacts.summary)):
+                _write_summary_exclusive(artifacts.summary, {"complete": False})
+            self.assertEqual(
+                list(output_dir.glob(".summary.json.incomplete-*")),
+                [],
+            )
 
     def test_router_receives_full_live_catalog_for_every_sample(self) -> None:
         live_tools = ["calculator", "factor_expression", "customer_lookup"]

@@ -12,6 +12,7 @@ import math
 from pathlib import Path
 import sys
 import time
+from types import SimpleNamespace
 from typing import Any
 
 from tqdm import tqdm
@@ -46,6 +47,7 @@ MULTISTEP_CURRENT_STEP_CHAR_LIMIT = 16_000
 MULTISTEP_HISTORY_STEP_LIMIT = 2
 MULTISTEP_HISTORY_ITEM_CHAR_LIMIT = 3_500
 PROMPT_CONTEXT_CHAR_LIMIT = MULTISTEP_CURRENT_STEP_CHAR_LIMIT
+MAX_TOOL_CORRECTIONS = 2
 
 SINGLE_STEP_EVALUATION_PROTOCOL = "single_step_tool_routing_v1"
 MULTISTEP_EVALUATION_PROTOCOL = "teacher_forced_step_routing_v1"
@@ -1549,26 +1551,70 @@ async def _evaluate_with_server(
                     called_tool = selected_tool
                     execution_attempted = True
                     try:
-                        call_result = await _call_tool_with_sample_isolation(
-                            session,
-                            server_path,
-                            selected_tool,
-                            selected_args,
+                        prediction = SimpleNamespace(
+                            selected_tool=selected_tool,
+                            selected_args=selected_args,
+                            raw_output=raw_model_output,
                         )
-                        executed_tool_calls += 1
-                        tool_result = _summarize_tool_result(call_result)
-                        extracted_result = _extract_structured_tool_result(call_result)
-                        tool_result_value = extracted_result.value
-                        result_extraction_diagnostic = extracted_result.diagnostic
-                        execution_success = not bool(
-                            getattr(call_result, "isError", False)
-                        )
-                        if execution_success:
-                            print(f"Tool call: {tool_result}")
-                        else:
-                            errors_count += 1
+                        for correction_count in range(MAX_TOOL_CORRECTIONS + 1):
+                            call_result = await _call_tool_with_sample_isolation(
+                                session,
+                                server_path,
+                                selected_tool,
+                                selected_args,
+                            )
+                            executed_tool_calls += 1
+                            tool_result = _summarize_tool_result(call_result)
+                            extracted_result = _extract_structured_tool_result(call_result)
+                            tool_result_value = extracted_result.value
+                            result_extraction_diagnostic = extracted_result.diagnostic
+                            execution_success = not bool(
+                                getattr(call_result, "isError", False)
+                            )
+                            if execution_success:
+                                tool_error = None
+                                print(f"Tool call: {tool_result}")
+                                break
+
                             tool_error = tool_result
-                            print(f"Tool call error: {tool_error}")
+                            can_correct = (
+                                hasattr(router, "repair_tool_call")
+                                and correction_count < MAX_TOOL_CORRECTIONS
+                            )
+                            if not can_correct:
+                                print(f"Tool call error: {tool_error}")
+                                break
+
+                            print(
+                                "Initial tool call failed"
+                                if correction_count == 0
+                                else f"Correction {correction_count} failed",
+                                f"; requesting correction {correction_count + 1}/"
+                                f"{MAX_TOOL_CORRECTIONS}: {tool_error}",
+                            )
+                            repair_start = time.perf_counter()
+                            corrected = router.repair_tool_call(
+                                routed_query,
+                                live_tools,
+                                prediction,
+                                tool_error,
+                                tool_schemas,
+                                tool_descriptions,
+                            )
+                            latency += time.perf_counter() - repair_start
+                            latencies[-1] = latency
+                            if corrected.selected_tool not in live_tool_set:
+                                tool_error = "Correction did not select a live tool."
+                                print(f"Tool call retry error: {tool_error}")
+                                break
+                            selected_tool = corrected.selected_tool
+                            selected_args = corrected.selected_args
+                            raw_model_output = corrected.raw_output
+                            prediction = corrected
+                            called_tool = selected_tool
+                            print(f"Retrying tool call: {selected_tool} {selected_args}")
+                        if not execution_success:
+                            errors_count += 1
                     except Exception as exc:  # pragma: no cover - exercised by integration runs
                         errors_count += 1
                         tool_error = str(exc)

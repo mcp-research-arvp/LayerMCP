@@ -12,7 +12,11 @@ from models.architectures.gpt_oss_pytorch.config import (
     DEFAULT_CHECKPOINT_PATH,
 )
 from models.routers.tool_catalog import format_tool_catalog
-from models.routers.structured_tool_call import ToolCallPrediction, build_tool_call_prompt, parse_tool_call
+from models.routers.structured_tool_call import (
+    ToolCallPrediction,
+    parse_tool_call,
+    validate_tool_arguments,
+)
 
 MODEL_ID = "openai/gpt-oss-20b"
 MODEL_NAME = MODEL_ID
@@ -21,10 +25,9 @@ ROUTER_BACKEND = "local_gpt_oss_pytorch"
 ARCHITECTURE_SOURCE = "models.architectures.gpt_oss_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
-PROMPT_TEMPLATE = "tool_name_only_v1"
+PROMPT_TEMPLATE = "harmony_structured_context_sql_v2"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
-
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
     if checkpoint_path is not None:
@@ -115,6 +118,38 @@ def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: M
     return choose_tool_call(query, available_tools, None, tool_descriptions).selected_tool
 
 
+def _build_native_tools(
+    tool_catalog: Sequence[str],
+    schemas: Mapping[str, Any],
+    descriptions: Mapping[str, str],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": name,
+            "description": " ".join(descriptions.get(name, "").split()),
+            "parameters": schemas.get(name) or {
+                "type": "object",
+                "properties": {},
+            },
+        }
+        for name in tool_catalog
+    ]
+
+
+def _generate_prediction(
+    generator: Any,
+    prompt_query: str,
+    tool_catalog: Sequence[str],
+    native_tools: list[dict[str, Any]],
+) -> ToolCallPrediction:
+    prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
+    result = generator.generate_text(
+        prompt_tokens=prompt_tokens,
+        stop_tokens=generator.assistant_action_stop_tokens,
+    )
+    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+
+
 def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: Mapping[str, Any] | None = None, tool_descriptions: Mapping[str, str] | None = None) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
@@ -125,12 +160,170 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         raise ValueError("available_tools must not be empty.")
 
     generator = _load_generator()
-    prompt = build_tool_call_prompt(normalized_query, tool_catalog, tool_schemas, tool_descriptions)
-    prompt_tokens = generator.tokenizer.encode(prompt, allowed_special="all")
-    result = generator.generate_text(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=[generator.call_token, generator.end_token, generator.return_token, generator.eot_token],
-        temperature=0.0,
-        max_tokens=128,
+    schemas = tool_schemas or {}
+    descriptions = tool_descriptions or {}
+    native_tools = _build_native_tools(tool_catalog, schemas, descriptions)
+
+    def generate_prediction(prompt_query: str) -> ToolCallPrediction:
+        return _generate_prediction(
+            generator,
+            prompt_query,
+            tool_catalog,
+            native_tools,
+        )
+
+    prediction = generate_prediction(normalized_query)
+    if prediction.selected_tool not in tool_catalog:
+        no_call_query = (
+            f"{normalized_query}\n\n"
+            "The previous response did not produce a valid call to one of the "
+            "available functions.\n"
+            f"Previous response:\n{prediction.raw_output}\n"
+            "Reconsider the request using the provided function descriptions "
+            "and JSON schemas. This is a tool-routing benchmark: do not answer "
+            "the request directly and do not ask a clarification question. "
+            "Call exactly one available function when one can perform the "
+            "request, using its exact function name. Use hallucinated_tool "
+            "only when none of the available functions applies."
+        )
+        reconsidered = generate_prediction(no_call_query)
+        prediction = ToolCallPrediction(
+            selected_tool=reconsidered.selected_tool,
+            selected_args=reconsidered.selected_args,
+            raw_output=(
+                f"{prediction.raw_output}\n"
+                f"[no-call-correction]\n{reconsidered.raw_output}"
+            ),
+        )
+
+    selected_schema = schemas.get(prediction.selected_tool, {})
+    argument_errors = validate_tool_arguments(
+        prediction.selected_args,
+        selected_schema,
     )
-    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+    if not argument_errors:
+        return prediction
+
+    correction_query = (
+        f"{normalized_query}\n\n"
+        "The previous function call had invalid arguments:\n"
+        f"{json.dumps(prediction.selected_args, ensure_ascii=True)}\n"
+        "Validation errors:\n- "
+        + "\n- ".join(argument_errors)
+        + "\nCall exactly one available function again using arguments that "
+        "conform to its provided JSON schema."
+    )
+    corrected = generate_prediction(correction_query)
+    corrected_errors = validate_tool_arguments(
+        corrected.selected_args,
+        schemas.get(corrected.selected_tool, {}),
+    )
+    if corrected_errors:
+        second_correction_query = (
+            f"{correction_query}\n\n"
+            "The corrected call is still invalid.\n"
+            f"Corrected function: {corrected.selected_tool}\n"
+            "Corrected arguments:\n"
+            f"{json.dumps(corrected.selected_args, ensure_ascii=True)}\n"
+            "Remaining validation errors:\n- "
+            + "\n- ".join(corrected_errors)
+            + "\nCall exactly one available function again and fix every "
+            "remaining validation error."
+        )
+        second_corrected = generate_prediction(second_correction_query)
+        corrected = ToolCallPrediction(
+            selected_tool=second_corrected.selected_tool,
+            selected_args=second_corrected.selected_args,
+            raw_output=(
+                f"{corrected.raw_output}\n"
+                f"[second-schema-correction]\n{second_corrected.raw_output}"
+            ),
+        )
+    return ToolCallPrediction(
+        selected_tool=corrected.selected_tool,
+        selected_args=corrected.selected_args,
+        raw_output=(
+            f"{prediction.raw_output}\n"
+            f"[schema-correction]\n{corrected.raw_output}"
+        ),
+    )
+
+
+def repair_tool_call(
+    query: str,
+    available_tools: Sequence[str],
+    previous_prediction: ToolCallPrediction,
+    tool_error: str,
+    tool_schemas: Mapping[str, Any] | None = None,
+    tool_descriptions: Mapping[str, str] | None = None,
+) -> ToolCallPrediction:
+    """Make one model-driven correction using an MCP execution error."""
+    normalized_query = query.strip()
+    normalized_error = tool_error.strip()
+    tool_catalog = tuple(tool.lower() for tool in available_tools)
+    if not normalized_query or not normalized_error or not tool_catalog:
+        return previous_prediction
+
+    schemas = tool_schemas or {}
+    descriptions = tool_descriptions or {}
+    native_tools = _build_native_tools(tool_catalog, schemas, descriptions)
+    correction_query = (
+        f"{normalized_query}\n\n"
+        "The previous function call failed.\n"
+        f"Failed function: {previous_prediction.selected_tool}\n"
+        "Failed arguments:\n"
+        f"{json.dumps(previous_prediction.selected_args, ensure_ascii=True)}\n"
+        "Failed function JSON schema:\n"
+        f"{json.dumps(schemas.get(previous_prediction.selected_tool, {}), ensure_ascii=True)}\n"
+        f"Tool error:\n{normalized_error}\n"
+        "Call exactly one available function again with corrected arguments. "
+        "Use the original user request, the tool error, and the provided JSON "
+        "schemas. Do not repeat arguments that the tool error says are invalid. "
+        "When the error reports unsupported syntax or an invalid value, rewrite "
+        "that argument into the format required by the function instead of "
+        "copying the failed value."
+    )
+    corrected = _generate_prediction(
+        _load_generator(),
+        correction_query,
+        tool_catalog,
+        native_tools,
+    )
+    corrected_errors = validate_tool_arguments(
+        corrected.selected_args,
+        schemas.get(corrected.selected_tool, {}),
+    )
+    if corrected_errors:
+        schema_correction_query = (
+            f"{correction_query}\n\n"
+            "The corrected call still violates its JSON schema.\n"
+            f"Corrected function: {corrected.selected_tool}\n"
+            "Corrected arguments:\n"
+            f"{json.dumps(corrected.selected_args, ensure_ascii=True)}\n"
+            "Schema validation errors:\n- "
+            + "\n- ".join(corrected_errors)
+            + "\nCall exactly one available function with schema-valid arguments."
+        )
+        second_correction = _generate_prediction(
+            _load_generator(),
+            schema_correction_query,
+            tool_catalog,
+            native_tools,
+        )
+        corrected = ToolCallPrediction(
+            selected_tool=second_correction.selected_tool,
+            selected_args=second_correction.selected_args,
+            raw_output=(
+                f"{corrected.raw_output}\n"
+                f"[execution-schema-correction]\n"
+                f"{second_correction.raw_output}"
+            ),
+        )
+    return ToolCallPrediction(
+        selected_tool=corrected.selected_tool,
+        selected_args=corrected.selected_args,
+        raw_output=(
+            f"{previous_prediction.raw_output}\n"
+            f"[execution-correction]\n{corrected.raw_output}"
+        ),
+    )

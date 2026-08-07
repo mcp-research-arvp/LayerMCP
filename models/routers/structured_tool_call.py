@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 import json
 import re
 from typing import Any, Mapping, Sequence
@@ -19,6 +20,90 @@ class ToolCallPrediction:
     parse_status: str = "ok"
     attempted_tool: str | None = None
     diagnostic: str | None = None
+
+
+def _resolve_catalog_name(name: str, catalog: set[str]) -> str | None:
+    normalized = name.strip().lower()
+    if normalized in catalog or normalized == HALLUCINATED_TOOL:
+        return normalized
+    ranked = sorted(
+        ((SequenceMatcher(None, normalized, item).ratio(), item) for item in catalog),
+        reverse=True,
+    )
+    if not ranked or ranked[0][0] < 0.82:
+        return None
+    if len(ranked) > 1 and ranked[0][0] - ranked[1][0] < 0.08:
+        return None
+    return ranked[0][1]
+
+
+def validate_tool_arguments(
+    arguments: Mapping[str, Any],
+    schema: Mapping[str, Any] | None,
+) -> list[str]:
+    """Return basic JSON-Schema violations without domain-specific rules."""
+    if not schema:
+        return []
+
+    errors: list[str] = []
+    required = schema.get("required", [])
+    if isinstance(required, list):
+        for name in required:
+            if isinstance(name, str) and name not in arguments:
+                errors.append(f"missing required argument {name!r}")
+
+    properties = schema.get("properties", {})
+    if not isinstance(properties, Mapping):
+        return errors
+    json_types: dict[str, tuple[type, ...]] = {
+        "string": (str,),
+        "number": (int, float),
+        "integer": (int,),
+        "boolean": (bool,),
+        "object": (dict,),
+        "array": (list,),
+        "null": (type(None),),
+    }
+
+    def matches(value: Any, value_schema: Mapping[str, Any]) -> bool:
+        alternatives = value_schema.get("anyOf") or value_schema.get("oneOf")
+        if isinstance(alternatives, list):
+            usable = [item for item in alternatives if isinstance(item, Mapping)]
+            return not usable or any(matches(value, item) for item in usable)
+        expected = value_schema.get("type")
+        expected_types = expected if isinstance(expected, list) else [expected]
+        allowed = tuple(
+            python_type
+            for json_type in expected_types
+            for python_type in json_types.get(json_type, ())
+        )
+        if not allowed:
+            return True
+        if any(item in {"integer", "number"} for item in expected_types):
+            if isinstance(value, bool):
+                return False
+        return isinstance(value, allowed)
+
+    for name, value in arguments.items():
+        property_schema = properties.get(name)
+        if not isinstance(property_schema, Mapping):
+            if properties or schema.get("additionalProperties") is False:
+                errors.append(f"unexpected argument {name!r}")
+            continue
+        if not matches(value, property_schema):
+            expected = (
+                property_schema.get("anyOf")
+                or property_schema.get("oneOf")
+                or property_schema.get("type")
+            )
+            errors.append(
+                f"argument {name!r} must have JSON type "
+                f"{json.dumps(expected, ensure_ascii=True)}"
+            )
+        enum = property_schema.get("enum")
+        if isinstance(enum, list) and value not in enum:
+            errors.append(f"argument {name!r} must be one of {enum!r}")
+    return errors
 
 
 def build_native_tools(
@@ -108,6 +193,47 @@ def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
     return function_match.group(1).strip(), arguments
 
 
+def _parse_harmony_native_call(
+    response: str,
+    catalog: set[str],
+) -> tuple[str, dict[str, Any]] | None:
+    """Parse official and legacy GPT-OSS Harmony function calls."""
+    normalized_name = None
+    for name in reversed(re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", response)):
+        candidate = name.removeprefix("functions.")
+        if candidate.lower() == "functions":
+            continue
+        resolved = _resolve_catalog_name(candidate, catalog)
+        if resolved in catalog:
+            normalized_name = resolved
+            break
+
+    if normalized_name is None and "to=functions" in response:
+        mentioned = [
+            tool for tool in catalog
+            if re.search(
+                rf"(?<![A-Za-z0-9_]){re.escape(tool)}(?![A-Za-z0-9_])",
+                response,
+            )
+        ]
+        if len(mentioned) == 1:
+            normalized_name = mentioned[0]
+    if normalized_name is None:
+        return None
+
+    arguments: dict[str, Any] = {}
+    marker_index = response.rfind("<|message|>")
+    if marker_index >= 0:
+        raw = response[marker_index + len("<|message|>"):].lstrip()
+        try:
+            payload, _ = json.JSONDecoder().raw_decode(raw)
+            if isinstance(payload, dict):
+                arguments = payload
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return normalized_name, arguments
+
+
 def _decode_arguments(arguments: Any) -> tuple[dict[str, Any], str | None]:
     if isinstance(arguments, dict):
         return arguments, None
@@ -186,7 +312,8 @@ def parse_tool_call(
         name = getattr(function, "name", None)
         arguments = _argument_payload(function)
         if isinstance(name, str):
-            normalized = name.strip().lower()
+            attempted_name = name.strip().lower()
+            normalized = _resolve_catalog_name(name, catalog)
             if normalized in catalog:
                 decoded_arguments, argument_error = _decode_arguments(arguments)
                 schema_error = _argument_schema_error(
@@ -211,14 +338,28 @@ def parse_tool_call(
                 {},
                 response,
                 parse_status="unknown_tool",
-                attempted_tool=normalized,
+                attempted_tool=attempted_name,
                 diagnostic="tool name is not in the live MCP catalog",
             )
+
+    harmony_call = _parse_harmony_native_call(response, catalog)
+    if harmony_call is not None:
+        name, arguments = harmony_call
+        schema_error = _argument_schema_error(name, arguments, tool_schemas)
+        return ToolCallPrediction(
+            name,
+            arguments,
+            response,
+            parse_status="invalid_arguments" if schema_error else "ok",
+            attempted_tool=name,
+            diagnostic=schema_error,
+        )
 
     qwen_call = _parse_qwen_native_call(response)
     if qwen_call is not None:
         name, arguments = qwen_call
-        normalized = name.lower()
+        attempted_name = name.strip().lower()
+        normalized = _resolve_catalog_name(name, catalog)
         if normalized in catalog:
             schema_error = _argument_schema_error(
                 normalized,
@@ -238,7 +379,7 @@ def parse_tool_call(
             {},
             response,
             parse_status="unknown_tool",
-            attempted_tool=normalized,
+            attempted_tool=attempted_name,
             diagnostic="tool name is not in the live MCP catalog",
         )
 
@@ -267,7 +408,8 @@ def parse_tool_call(
         if argument_key is None:
             continue
         arguments = payload[argument_key]
-        normalized = name.strip().lower()
+        attempted_name = name.strip().lower()
+        normalized = _resolve_catalog_name(name, catalog)
         decoded_arguments, argument_error = _decode_arguments(arguments)
         if normalized in catalog:
             schema_error = _argument_schema_error(
@@ -300,7 +442,7 @@ def parse_tool_call(
             {},
             response,
             parse_status="unknown_tool",
-            attempted_tool=normalized,
+            attempted_tool=attempted_name,
             diagnostic="tool name is not in the live MCP catalog",
         )
 

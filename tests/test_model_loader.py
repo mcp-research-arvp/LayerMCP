@@ -626,6 +626,53 @@ class RouterRegistryTests(unittest.TestCase):
         ):
             self.assertEqual(resolve_checkpoint_path(), Path("custom/gemma4"))
 
+    def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        responses = (
+            "to=functions.calculator<|message|>"
+            '{"expression":"2 + 2"}<|call|>',
+            "We must call calculator.\nto=functions<|message|>"
+            '{"expression":"2 + 2"}<|call|>',
+        )
+        for response in responses:
+            prediction = parse_tool_call(response, ["calculator", "search"])
+            self.assertEqual(prediction.selected_tool, "calculator")
+            self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
+
+    def test_structured_parser_recovers_only_unambiguous_tool_names(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=calculatr<|message|>{}<|call|>",
+            ["calculator", "search"],
+        )
+        self.assertEqual(prediction.selected_tool, "calculator")
+
+        ambiguous = parse_tool_call(
+            "to=find_users<|message|>{}<|call|>",
+            ["find_user", "find_user_id"],
+        )
+        self.assertEqual(ambiguous.selected_tool, "parse_error")
+
+    def test_schema_validation_reports_generic_argument_errors(self) -> None:
+        from models.routers.structured_tool_call import validate_tool_arguments
+
+        errors = validate_tool_arguments(
+            {"operation": "divide", "extra": True},
+            {
+                "type": "object",
+                "properties": {
+                    "value": {"type": "integer"},
+                    "operation": {"type": "string", "enum": ["add"]},
+                },
+                "required": ["value"],
+            },
+        )
+        self.assertTrue(any("missing required" in error for error in errors))
+        self.assertTrue(any("must be one of" in error for error in errors))
+        self.assertTrue(any("unexpected argument" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -39,6 +39,14 @@ Valid Arguments / Schema-Valid Tool Call remains unavailable until full raw JSON
 Schema validation is implemented. Reports also list the final-outcome matcher
 names observed separately for each model, including valid PR #29 mixtures of
 `finance_query_table_rows_v1` and `recursive_json_subset_v1`.
+Grounded and offline/replay benchmark modes are always reported in separate
+metric rows. A missing `benchmark_mode` uses
+`evaluation.evaluate.DEFAULT_BENCHMARK_MODE`, but the report visibly marks its
+mode source as `defaulted` rather than pooling it with explicit rows.
+
+Every loaded summary must provide a nonempty tool-registry fingerprint,
+fingerprint version, tool count, and tool pool. Legacy artifacts missing any of
+that metadata cannot be pooled into a verified scorecard.
 
 ## Current Layout
 

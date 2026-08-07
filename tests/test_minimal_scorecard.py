@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from analysis.minimal_scorecard import build_scorecard, load_runs
+from evaluation.evaluate import DEFAULT_BENCHMARK_MODE
 
 
 def _sample(
@@ -19,8 +20,9 @@ def _sample(
     final: bool | None,
     failure: str,
     matcher: str = "recursive_json_subset_v1",
+    benchmark_mode: str | None = DEFAULT_BENCHMARK_MODE,
 ) -> dict:
-    return {
+    sample = {
         "sample_id": sample_id,
         "model_name": model,
         "domain": domain,
@@ -34,6 +36,9 @@ def _sample(
         "source": "public_derived",
         "task_type": "single_tool_routing",
     }
+    if benchmark_mode is not None:
+        sample["benchmark_mode"] = benchmark_mode
+    return sample
 
 
 def _write_result(
@@ -44,6 +49,8 @@ def _write_result(
     domain: str,
     fingerprint: str,
     samples: list[dict],
+    summary_overrides: dict | None = None,
+    missing_registry_field: str | None = None,
 ) -> None:
     artifacts = run / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -53,23 +60,22 @@ def _write_result(
         "".join(json.dumps(sample) + "\n" for sample in samples),
         encoding="utf-8",
     )
-    summary_path.write_text(
-        json.dumps(
-            {
-                "model_name": model,
-                "benchmark_path": f"benchmark/{domain}/{name}.json",
-                "evaluation_protocol": "single_step_tool_routing_v1",
-                "total_samples": len(samples),
-                "tool_pool": "full_mcp_registry",
-                "tool_count": 60,
-                "tool_registry_fingerprint": fingerprint,
-                "tool_registry_fingerprint_version": (
-                    "tool_registry_name_schema_description_v1"
-                ),
-            }
+    summary = {
+        "model_name": model,
+        "benchmark_path": f"benchmark/{domain}/{name}.json",
+        "evaluation_protocol": "single_step_tool_routing_v1",
+        "total_samples": len(samples),
+        "tool_pool": "full_mcp_registry",
+        "tool_count": 60,
+        "tool_registry_fingerprint": fingerprint,
+        "tool_registry_fingerprint_version": (
+            "tool_registry_name_schema_description_v1"
         ),
-        encoding="utf-8",
-    )
+    }
+    summary.update(summary_overrides or {})
+    if missing_registry_field is not None:
+        summary.pop(missing_registry_field)
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
     (run / f"{name}.log").write_text(
         f"Results: {samples_path}\nSummary: {summary_path}\n",
         encoding="utf-8",
@@ -77,6 +83,19 @@ def _write_result(
 
 
 class MinimalScorecardTests(unittest.TestCase):
+    @staticmethod
+    def _correct_sample(model: str) -> dict:
+        return _sample(
+            model,
+            model=model,
+            domain="coding",
+            tool=True,
+            args=True,
+            execution=True,
+            final=True,
+            failure="correct",
+        )
+
     def test_generates_minimal_tables_and_diagnostics(self) -> None:
         with TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -137,21 +156,28 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([llama, phi])
 
             self.assertIn(
-                "| phi | 2 | 50.0% | 2/2 (100.0%) | 50.0% | — |",
+                "| phi | grounded_tool_execution | explicit | 2 | 50.0% | "
+                "2/2 (100.0%) | 50.0% | — |",
                 markdown,
             )
             self.assertIn(
-                "| llama | Finance | 1 | 0.0% | 1/1 (100.0%) | 100.0% | — |",
+                "| llama | grounded_tool_execution | explicit | Finance | 1 | "
+                "0.0% | 1/1 (100.0%) | 100.0% | — |",
                 markdown,
             )
             self.assertIn("public/source-derived", markdown)
-            self.assertIn("| phi | 0.0% | 50.0% | 0.0% | 1 | 1 | 1 | 0 |", markdown)
+            self.assertIn(
+                "| phi | grounded_tool_execution | explicit | 0.0% | 50.0% | "
+                "0.0% | 1 | 1 | 1 | 0 |",
+                markdown,
+            )
             self.assertIn("Valid Arguments / Schema-Valid Tool Call (SVCA)", markdown)
             self.assertIn("Exact Reference Argument Match", markdown)
             self.assertNotIn("Exact canonical args", markdown)
             header = (
-                "| Model | N | Final Outcome Accuracy | Final Outcome Coverage | "
-                "Tool Selection Accuracy | Valid Arguments / SVCA |"
+                "| Model | Benchmark mode | Mode source | N | Final Outcome "
+                "Accuracy | Final Outcome Coverage | Tool Selection Accuracy | "
+                "Valid Arguments / SVCA |"
             )
             self.assertIn(header, markdown)
             self.assertLess(
@@ -194,7 +220,8 @@ class MinimalScorecardTests(unittest.TestCase):
             )
             markdown = build_scorecard([run])
             self.assertIn(
-                "| model | 2 | 100.0% | 1/2 (50.0%) | 100.0% | — |",
+                "| model | grounded_tool_execution | explicit | 2 | 100.0% | "
+                "1/2 (50.0%) | 100.0% | — |",
                 markdown,
             )
 
@@ -226,7 +253,8 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([run])
 
             self.assertIn(
-                "| model | 2 | — | 0/2 (0.0%) | 100.0% | — |",
+                "| model | grounded_tool_execution | explicit | 2 | — | "
+                "0/2 (0.0%) | 100.0% | — |",
                 markdown,
             )
 
@@ -292,12 +320,82 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([other_run, run])
 
             self.assertIn(
-                "| model | `finance_query_table_rows_v1`, "
+                "| model | `grounded_tool_execution (explicit)` | "
+                "`finance_query_table_rows_v1`, "
                 "`recursive_json_subset_v1` |",
                 markdown,
             )
             self.assertIn(
-                "| other-model | `recursive_json_subset_v1` |",
+                "| other-model | `grounded_tool_execution (explicit)` | "
+                "`recursive_json_subset_v1` |",
+                markdown,
+            )
+
+    def test_benchmark_modes_and_default_provenance_are_not_pooled(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            run = Path(temporary_directory) / "run"
+            run.mkdir()
+            _write_result(
+                run,
+                "mixed_modes",
+                model="model",
+                domain="coding",
+                fingerprint="sha256:one",
+                samples=[
+                    _sample(
+                        "grounded",
+                        model="model",
+                        domain="coding",
+                        tool=True,
+                        args=True,
+                        execution=True,
+                        final=True,
+                        failure="correct",
+                        benchmark_mode="grounded_tool_execution",
+                    ),
+                    _sample(
+                        "replay",
+                        model="model",
+                        domain="coding",
+                        tool=False,
+                        args=False,
+                        execution=False,
+                        final=False,
+                        failure="wrong_tool",
+                        benchmark_mode="offline_trace_replay",
+                    ),
+                    _sample(
+                        "defaulted",
+                        model="model",
+                        domain="coding",
+                        tool=False,
+                        args=False,
+                        execution=False,
+                        final=False,
+                        failure="wrong_tool",
+                        benchmark_mode=None,
+                    ),
+                ],
+            )
+
+            markdown = build_scorecard([run])
+
+            self.assertIn(
+                "| model | grounded_tool_execution | explicit | 1 | 100.0% |",
+                markdown,
+            )
+            self.assertIn(
+                "| model | grounded_tool_execution | defaulted | 1 | 0.0% |",
+                markdown,
+            )
+            self.assertIn(
+                "| model | offline_trace_replay | explicit | 1 | 0.0% |",
+                markdown,
+            )
+            self.assertIn(
+                "`grounded_tool_execution (defaulted)`, "
+                "`grounded_tool_execution (explicit)`, "
+                "`offline_trace_replay (explicit)`",
                 markdown,
             )
 
@@ -329,6 +427,132 @@ class MinimalScorecardTests(unittest.TestCase):
                 )
             with self.assertRaisesRegex(ValueError, "incompatible tool registry"):
                 load_runs(runs)
+
+    def test_single_run_missing_each_registry_field_is_rejected(self) -> None:
+        required_fields = (
+            "tool_registry_fingerprint",
+            "tool_registry_fingerprint_version",
+            "tool_count",
+            "tool_pool",
+        )
+        for field in required_fields:
+            with self.subTest(field=field), TemporaryDirectory() as temporary_directory:
+                run = Path(temporary_directory) / "run"
+                run.mkdir()
+                _write_result(
+                    run,
+                    "coding_public",
+                    model="model",
+                    domain="coding",
+                    fingerprint="sha256:one",
+                    samples=[self._correct_sample("model")],
+                    missing_registry_field=field,
+                )
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    rf"coding_public_summary\.json.*{field}.*"
+                    "registry compatibility cannot be verified",
+                ):
+                    load_runs([run])
+
+    def test_verified_run_plus_missing_registry_metadata_is_rejected(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            verified = root / "verified"
+            legacy = root / "legacy"
+            verified.mkdir()
+            legacy.mkdir()
+            _write_result(
+                verified,
+                "coding_public",
+                model="verified",
+                domain="coding",
+                fingerprint="sha256:one",
+                samples=[self._correct_sample("verified")],
+            )
+            _write_result(
+                legacy,
+                "finance_public",
+                model="legacy",
+                domain="finance",
+                fingerprint="sha256:one",
+                samples=[self._correct_sample("legacy")],
+                missing_registry_field="tool_pool",
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "finance_public_summary.json.*tool_pool.*"
+                "registry compatibility cannot be verified",
+            ):
+                load_runs([verified, legacy])
+
+    def test_matching_complete_registry_metadata_is_accepted(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            runs = [root / "one", root / "two"]
+            for run in runs:
+                run.mkdir()
+                _write_result(
+                    run,
+                    f"{run.name}_coding_public",
+                    model=run.name,
+                    domain="coding",
+                    fingerprint="sha256:same",
+                    samples=[self._correct_sample(run.name)],
+                )
+
+            loaded = load_runs(runs)
+
+            self.assertEqual(len(loaded.records), 2)
+            self.assertEqual(loaded.fingerprints, ("sha256:same",))
+
+    def test_differing_populated_registry_metadata_is_rejected(self) -> None:
+        cases = (
+            (
+                "fingerprint",
+                {},
+                {"tool_registry_fingerprint": "sha256:different"},
+                "incompatible tool registry fingerprints",
+            ),
+            (
+                "fingerprint_version",
+                {},
+                {"tool_registry_fingerprint_version": "different_version"},
+                "incompatible registry fingerprint versions",
+            ),
+            (
+                "tool_count",
+                {},
+                {"tool_count": 61},
+                "different tool counts",
+            ),
+            (
+                "tool_pool",
+                {},
+                {"tool_pool": "different_pool"},
+                "different tool pools",
+            ),
+        )
+        for label, first_overrides, second_overrides, message in cases:
+            with self.subTest(field=label), TemporaryDirectory() as temporary_directory:
+                root = Path(temporary_directory)
+                runs = [root / "one", root / "two"]
+                for run, overrides in zip(runs, (first_overrides, second_overrides)):
+                    run.mkdir()
+                    _write_result(
+                        run,
+                        f"{run.name}_coding_public",
+                        model=run.name,
+                        domain="coding",
+                        fingerprint="sha256:same",
+                        samples=[self._correct_sample(run.name)],
+                        summary_overrides=overrides,
+                    )
+
+                with self.assertRaisesRegex(ValueError, message):
+                    load_runs(runs)
 
     def test_output_is_deterministic_for_run_order(self) -> None:
         with TemporaryDirectory() as temporary_directory:

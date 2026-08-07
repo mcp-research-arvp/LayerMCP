@@ -11,6 +11,7 @@ import re
 from typing import Any, Iterable, Sequence
 
 from analysis.benchmark_inventory import infer_benchmark_class
+from evaluation.evaluate import DEFAULT_BENCHMARK_MODE
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +31,8 @@ DOMAIN_LABELS = {
 @dataclass(frozen=True)
 class RunRecord:
     model: str
+    benchmark_mode: str
+    mode_source: str
     benchmark: str
     benchmark_family: str
     domain: str
@@ -136,6 +139,34 @@ def _validate_single_step(
             )
 
 
+def _require_registry_metadata(
+    summary: dict[str, Any], *, summary_path: Path
+) -> tuple[str, str, int, str]:
+    required_fields = (
+        "tool_registry_fingerprint",
+        "tool_registry_fingerprint_version",
+        "tool_count",
+        "tool_pool",
+    )
+    for field in required_fields:
+        value = summary.get(field)
+        if (
+            value is None
+            or (isinstance(value, str) and not value.strip())
+            or value == 0
+        ):
+            raise ValueError(
+                f"{summary_path} is missing required registry field {field!r}; "
+                "registry compatibility cannot be verified."
+            )
+    return (
+        str(summary["tool_registry_fingerprint"]),
+        str(summary["tool_registry_fingerprint_version"]),
+        int(summary["tool_count"]),
+        str(summary["tool_pool"]),
+    )
+
+
 def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
     if not run_directories:
         raise ValueError("At least one run directory is required.")
@@ -181,18 +212,13 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
             benchmark_path = str(summary.get("benchmark_path") or log_path.stem)
             family = _benchmark_family(benchmark_path, samples)
 
-            fingerprint = summary.get("tool_registry_fingerprint")
-            if fingerprint:
-                fingerprints.add(str(fingerprint))
-            fingerprint_version = summary.get("tool_registry_fingerprint_version")
-            if fingerprint_version:
-                fingerprint_versions.add(str(fingerprint_version))
-            tool_count = summary.get("tool_count")
-            if tool_count is not None:
-                tool_counts.add(int(tool_count))
-            tool_pool = summary.get("tool_pool")
-            if tool_pool:
-                tool_pools.add(str(tool_pool))
+            fingerprint, fingerprint_version, tool_count, tool_pool = (
+                _require_registry_metadata(summary, summary_path=summary_path)
+            )
+            fingerprints.add(fingerprint)
+            fingerprint_versions.add(fingerprint_version)
+            tool_counts.add(tool_count)
+            tool_pools.add(tool_pool)
 
             for sample in samples:
                 sample_model = str(sample.get("model_name") or model)
@@ -202,9 +228,17 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                         f"{model!r} != {sample_model!r}"
                     )
                 domain = str(sample.get("domain") or "unknown")
+                mode_is_explicit = "benchmark_mode" in sample
+                benchmark_mode = str(
+                    sample["benchmark_mode"]
+                    if mode_is_explicit
+                    else DEFAULT_BENCHMARK_MODE
+                )
                 records.append(
                     RunRecord(
                         model=model,
+                        benchmark_mode=benchmark_mode,
+                        mode_source="explicit" if mode_is_explicit else "defaulted",
                         benchmark=Path(benchmark_path).stem,
                         benchmark_family=family,
                         domain=domain,
@@ -331,9 +365,16 @@ def _table(headers: Sequence[str], rows: Iterable[Sequence[Any]]) -> str:
 
 def render_markdown(loaded: LoadedRuns) -> str:
     records = loaded.records
-    models = _group_records(records, ("model",))
-    domains = _group_records(records, ("model", "domain"))
-    families = _group_records(records, ("model", "domain", "benchmark_family"))
+    models = _group_records(records, ("model", "benchmark_mode", "mode_source"))
+    domains = _group_records(
+        records,
+        ("model", "benchmark_mode", "mode_source", "domain"),
+    )
+    families = _group_records(
+        records,
+        ("model", "benchmark_mode", "mode_source", "domain", "benchmark_family"),
+    )
+    records_by_model = _group_records(records, ("model",))
 
     registry_parts = []
     if loaded.tool_pools:
@@ -346,18 +387,13 @@ def render_markdown(loaded: LoadedRuns) -> str:
     overall_rows = []
     diagnostics_rows = []
     matcher_rows = []
-    for (model,), group in models:
+    for (model, benchmark_mode, mode_source), group in models:
         metrics = _metrics(group)
-        matchers = sorted(
-            {
-                str(record.sample["final_outcome_matcher"])
-                for record in group
-                if record.sample.get("final_outcome_matcher")
-            }
-        )
         overall_rows.append(
             (
                 model,
+                benchmark_mode,
+                mode_source,
                 metrics["n"],
                 metrics["sgoa"],
                 metrics["final_coverage"],
@@ -365,17 +401,11 @@ def render_markdown(loaded: LoadedRuns) -> str:
                 SCHEMA_VALID_UNAVAILABLE,
             )
         )
-        matcher_rows.append(
-            (
-                model,
-                ", ".join(f"`{matcher}`" for matcher in matchers)
-                if matchers
-                else "matcher metadata unavailable",
-            )
-        )
         diagnostics_rows.append(
             (
                 model,
+                benchmark_mode,
+                mode_source,
                 metrics["exact_args"],
                 metrics["execution"],
                 metrics["no_call"],
@@ -387,11 +417,13 @@ def render_markdown(loaded: LoadedRuns) -> str:
         )
 
     domain_rows = []
-    for (model, domain), group in domains:
+    for (model, benchmark_mode, mode_source, domain), group in domains:
         metrics = _metrics(group)
         domain_rows.append(
             (
                 model,
+                benchmark_mode,
+                mode_source,
                 _domain_label(domain),
                 metrics["n"],
                 metrics["sgoa"],
@@ -402,11 +434,13 @@ def render_markdown(loaded: LoadedRuns) -> str:
         )
 
     family_rows = []
-    for (model, domain, family), group in families:
+    for (model, benchmark_mode, mode_source, domain, family), group in families:
         metrics = _metrics(group)
         family_rows.append(
             (
                 model,
+                benchmark_mode,
+                mode_source,
                 _domain_label(domain),
                 family,
                 metrics["n"],
@@ -414,6 +448,27 @@ def render_markdown(loaded: LoadedRuns) -> str:
                 metrics["final_coverage"],
                 metrics["tsa"],
                 SCHEMA_VALID_UNAVAILABLE,
+            )
+        )
+
+    for (model,), group in records_by_model:
+        matchers = sorted(
+            {
+                str(record.sample["final_outcome_matcher"])
+                for record in group
+                if record.sample.get("final_outcome_matcher")
+            }
+        )
+        modes = sorted(
+            {f"{record.benchmark_mode} ({record.mode_source})" for record in group}
+        )
+        matcher_rows.append(
+            (
+                model,
+                ", ".join(f"`{mode}`" for mode in modes),
+                ", ".join(f"`{matcher}`" for matcher in matchers)
+                if matchers
+                else "matcher metadata unavailable",
             )
         )
 
@@ -436,13 +491,22 @@ def render_markdown(loaded: LoadedRuns) -> str:
             "",
             "## Scoring provenance",
             "",
-            _table(("Model", "Observed final-outcome matchers"), matcher_rows),
+            _table(
+                (
+                    "Model",
+                    "Observed benchmark modes",
+                    "Observed final-outcome matchers",
+                ),
+                matcher_rows,
+            ),
             "",
             "## Overall model scorecard",
             "",
             _table(
                 (
                     "Model",
+                    "Benchmark mode",
+                    "Mode source",
                     "N",
                     "Final Outcome Accuracy",
                     "Final Outcome Coverage",
@@ -457,6 +521,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Benchmark mode",
+                    "Mode source",
                     "Domain",
                     "N",
                     "Final Outcome Accuracy",
@@ -472,6 +538,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Benchmark mode",
+                    "Mode source",
                     "Domain",
                     "Benchmark family",
                     "N",
@@ -488,6 +556,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Benchmark mode",
+                    "Mode source",
                     "Exact Reference Argument Match",
                     "Runtime execution",
                     "No/unknown call",
@@ -502,6 +572,9 @@ def render_markdown(loaded: LoadedRuns) -> str:
             "## Caveats",
             "",
             "- Results use the full MCP registry setting shown above.",
+            "- Benchmark modes and their explicit/defaulted provenance are reported "
+            "in separate metric rows; grounded and offline/replay results are never "
+            "silently pooled.",
             "- Benchmark families must not be silently pooled; use the family table for "
             "research comparisons and treat the overall/domain tables as run summaries.",
             "- Final-outcome scoring uses the matcher names reported above. PR #29 "

@@ -32,9 +32,12 @@ python -m analysis.minimal_scorecard RUN_DIR [RUN_DIR ...] --output SCORECARD.md
 The report treats Final Outcome Accuracy as the primary success metric and Tool
 Selection Accuracy as the second headline metric. Exact Reference Argument
 Match is a secondary diagnostic against one reference call; it is not SVCA.
+Final Outcome Accuracy uses only rows with a recorded outcome score as its
+denominator, and every headline table displays `scored/total` Final Outcome
+Coverage alongside it.
 Valid Arguments / Schema-Valid Tool Call remains unavailable until full raw JSON
 Schema validation is implemented. Reports also list the final-outcome matcher
-names observed, including valid PR #29 mixtures of
+names observed separately for each model, including valid PR #29 mixtures of
 `finance_query_table_rows_v1` and `recursive_json_subset_v1`.
 
 ## Current Layout

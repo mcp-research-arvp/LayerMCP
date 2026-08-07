@@ -43,7 +43,6 @@ class LoadedRuns:
     fingerprint_versions: tuple[str, ...]
     tool_counts: tuple[int, ...]
     tool_pools: tuple[str, ...]
-    final_outcome_matchers: tuple[str, ...]
 
 
 def _resolve_artifact(raw_path: str, *, log_path: Path) -> Path:
@@ -146,7 +145,6 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
     fingerprint_versions: set[str] = set()
     tool_counts: set[int] = set()
     tool_pools: set[str] = set()
-    final_outcome_matchers: set[str] = set()
     seen_summaries: set[Path] = set()
     seen_samples: set[Path] = set()
 
@@ -204,9 +202,6 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                         f"{model!r} != {sample_model!r}"
                     )
                 domain = str(sample.get("domain") or "unknown")
-                matcher = sample.get("final_outcome_matcher")
-                if matcher:
-                    final_outcome_matchers.add(str(matcher))
                 records.append(
                     RunRecord(
                         model=model,
@@ -246,7 +241,6 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
         fingerprint_versions=tuple(sorted(fingerprint_versions)),
         tool_counts=tuple(sorted(tool_counts)),
         tool_pools=tuple(sorted(tool_pools)),
-        final_outcome_matchers=tuple(sorted(final_outcome_matchers)),
     )
 
 
@@ -258,6 +252,11 @@ def _rate(numerator: int, denominator: int) -> str:
     )
 
 
+def _coverage(scored: int, total: int) -> str:
+    percentage = 100 * scored / total if total else 0.0
+    return f"{scored}/{total} ({percentage:.1f}%)"
+
+
 def _metrics(records: Iterable[RunRecord]) -> dict[str, Any]:
     rows = list(records)
     total = len(rows)
@@ -266,6 +265,8 @@ def _metrics(records: Iterable[RunRecord]) -> dict[str, Any]:
     )
     return {
         "n": total,
+        "final_scored": final_scored,
+        "final_coverage": _coverage(final_scored, total),
         "tsa": _rate(
             sum(record.sample.get("tool_selection_correct") is True for record in rows),
             total,
@@ -342,23 +343,34 @@ def render_markdown(loaded: LoadedRuns) -> str:
     if loaded.fingerprints:
         registry_parts.append(f"fingerprint `{loaded.fingerprints[0]}`")
     registry_note = ", ".join(registry_parts) or "registry metadata unavailable"
-    matcher_note = (
-        ", ".join(f"`{matcher}`" for matcher in loaded.final_outcome_matchers)
-        if loaded.final_outcome_matchers
-        else "matcher metadata unavailable"
-    )
-
     overall_rows = []
     diagnostics_rows = []
+    matcher_rows = []
     for (model,), group in models:
         metrics = _metrics(group)
+        matchers = sorted(
+            {
+                str(record.sample["final_outcome_matcher"])
+                for record in group
+                if record.sample.get("final_outcome_matcher")
+            }
+        )
         overall_rows.append(
             (
                 model,
                 metrics["n"],
                 metrics["sgoa"],
+                metrics["final_coverage"],
                 metrics["tsa"],
                 SCHEMA_VALID_UNAVAILABLE,
+            )
+        )
+        matcher_rows.append(
+            (
+                model,
+                ", ".join(f"`{matcher}`" for matcher in matchers)
+                if matchers
+                else "matcher metadata unavailable",
             )
         )
         diagnostics_rows.append(
@@ -383,6 +395,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
                 _domain_label(domain),
                 metrics["n"],
                 metrics["sgoa"],
+                metrics["final_coverage"],
                 metrics["tsa"],
                 SCHEMA_VALID_UNAVAILABLE,
             )
@@ -398,6 +411,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
                 family,
                 metrics["n"],
                 metrics["sgoa"],
+                metrics["final_coverage"],
                 metrics["tsa"],
                 SCHEMA_VALID_UNAVAILABLE,
             )
@@ -419,7 +433,10 @@ def render_markdown(loaded: LoadedRuns) -> str:
             "reference call; it is not SVCA or a primary correctness score.",
             "",
             f"Registry compatibility check: {registry_note}.",
-            f"Final-outcome matchers observed: {matcher_note}.",
+            "",
+            "## Scoring provenance",
+            "",
+            _table(("Model", "Observed final-outcome matchers"), matcher_rows),
             "",
             "## Overall model scorecard",
             "",
@@ -428,6 +445,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
                     "Model",
                     "N",
                     "Final Outcome Accuracy",
+                    "Final Outcome Coverage",
                     "Tool Selection Accuracy",
                     "Valid Arguments / SVCA",
                 ),
@@ -442,6 +460,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
                     "Domain",
                     "N",
                     "Final Outcome Accuracy",
+                    "Final Outcome Coverage",
                     "Tool Selection Accuracy",
                     "Valid Arguments / SVCA",
                 ),
@@ -457,6 +476,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
                     "Benchmark family",
                     "N",
                     "Final Outcome Accuracy",
+                    "Final Outcome Coverage",
                     "Tool Selection Accuracy",
                     "Valid Arguments / SVCA",
                 ),

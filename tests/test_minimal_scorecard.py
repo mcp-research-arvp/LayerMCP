@@ -136,16 +136,22 @@ class MinimalScorecardTests(unittest.TestCase):
 
             markdown = build_scorecard([llama, phi])
 
-            self.assertIn("| phi | 2 | 50.0% | 50.0% | — |", markdown)
-            self.assertIn("| llama | Finance | 1 | 0.0% | 100.0% | — |", markdown)
+            self.assertIn(
+                "| phi | 2 | 50.0% | 2/2 (100.0%) | 50.0% | — |",
+                markdown,
+            )
+            self.assertIn(
+                "| llama | Finance | 1 | 0.0% | 1/1 (100.0%) | 100.0% | — |",
+                markdown,
+            )
             self.assertIn("public/source-derived", markdown)
             self.assertIn("| phi | 0.0% | 50.0% | 0.0% | 1 | 1 | 1 | 0 |", markdown)
             self.assertIn("Valid Arguments / Schema-Valid Tool Call (SVCA)", markdown)
             self.assertIn("Exact Reference Argument Match", markdown)
             self.assertNotIn("Exact canonical args", markdown)
             header = (
-                "| Model | N | Final Outcome Accuracy | Tool Selection Accuracy | "
-                "Valid Arguments / SVCA |"
+                "| Model | N | Final Outcome Accuracy | Final Outcome Coverage | "
+                "Tool Selection Accuracy | Valid Arguments / SVCA |"
             )
             self.assertIn(header, markdown)
             self.assertLess(
@@ -187,12 +193,50 @@ class MinimalScorecardTests(unittest.TestCase):
                 ],
             )
             markdown = build_scorecard([run])
-            self.assertIn("| model | 2 | 100.0% | 100.0% | — |", markdown)
+            self.assertIn(
+                "| model | 2 | 100.0% | 1/2 (50.0%) | 100.0% | — |",
+                markdown,
+            )
 
-    def test_reports_mixed_pr29_matchers_without_rejecting_run(self) -> None:
+    def test_zero_scored_rows_show_unavailable_accuracy_and_zero_coverage(self) -> None:
         with TemporaryDirectory() as temporary_directory:
             run = Path(temporary_directory) / "run"
             run.mkdir()
+            _write_result(
+                run,
+                "math_public",
+                model="model",
+                domain="math",
+                fingerprint="sha256:one",
+                samples=[
+                    _sample(
+                        sample_id,
+                        model="model",
+                        domain="mathematics",
+                        tool=True,
+                        args=True,
+                        execution=False,
+                        final=None,
+                        failure="correct",
+                    )
+                    for sample_id in ("one", "two")
+                ],
+            )
+
+            markdown = build_scorecard([run])
+
+            self.assertIn(
+                "| model | 2 | — | 0/2 (0.0%) | 100.0% | — |",
+                markdown,
+            )
+
+    def test_reports_mixed_pr29_matchers_without_rejecting_run(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            run = root / "mixed"
+            other_run = root / "other"
+            run.mkdir()
+            other_run.mkdir()
             _write_result(
                 run,
                 "finance_public",
@@ -224,12 +268,36 @@ class MinimalScorecardTests(unittest.TestCase):
                     ),
                 ],
             )
+            _write_result(
+                other_run,
+                "coding_public",
+                model="other-model",
+                domain="coding",
+                fingerprint="sha256:one",
+                samples=[
+                    _sample(
+                        "coding",
+                        model="other-model",
+                        domain="coding",
+                        tool=True,
+                        args=True,
+                        execution=True,
+                        final=True,
+                        failure="correct",
+                        matcher="recursive_json_subset_v1",
+                    )
+                ],
+            )
 
-            markdown = build_scorecard([run])
+            markdown = build_scorecard([other_run, run])
 
             self.assertIn(
-                "Final-outcome matchers observed: "
-                "`finance_query_table_rows_v1`, `recursive_json_subset_v1`.",
+                "| model | `finance_query_table_rows_v1`, "
+                "`recursive_json_subset_v1` |",
+                markdown,
+            )
+            self.assertIn(
+                "| other-model | `recursive_json_subset_v1` |",
                 markdown,
             )
 

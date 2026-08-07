@@ -16,7 +16,7 @@ from analysis.benchmark_inventory import infer_benchmark_class
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_PATTERN = re.compile(r"^Results:\s*(.+?)\s*$", re.MULTILINE)
 SUMMARY_PATTERN = re.compile(r"^Summary:\s*(.+?)\s*$", re.MULTILINE)
-SVCA_UNAVAILABLE = "—"
+SCHEMA_VALID_UNAVAILABLE = "—"
 
 DOMAIN_LABELS = {
     "coding": "Coding",
@@ -43,6 +43,7 @@ class LoadedRuns:
     fingerprint_versions: tuple[str, ...]
     tool_counts: tuple[int, ...]
     tool_pools: tuple[str, ...]
+    final_outcome_matchers: tuple[str, ...]
 
 
 def _resolve_artifact(raw_path: str, *, log_path: Path) -> Path:
@@ -145,6 +146,7 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
     fingerprint_versions: set[str] = set()
     tool_counts: set[int] = set()
     tool_pools: set[str] = set()
+    final_outcome_matchers: set[str] = set()
     seen_summaries: set[Path] = set()
     seen_samples: set[Path] = set()
 
@@ -202,6 +204,9 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                         f"{model!r} != {sample_model!r}"
                     )
                 domain = str(sample.get("domain") or "unknown")
+                matcher = sample.get("final_outcome_matcher")
+                if matcher:
+                    final_outcome_matchers.add(str(matcher))
                 records.append(
                     RunRecord(
                         model=model,
@@ -241,11 +246,16 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
         fingerprint_versions=tuple(sorted(fingerprint_versions)),
         tool_counts=tuple(sorted(tool_counts)),
         tool_pools=tuple(sorted(tool_pools)),
+        final_outcome_matchers=tuple(sorted(final_outcome_matchers)),
     )
 
 
 def _rate(numerator: int, denominator: int) -> str:
-    return f"{100 * numerator / denominator:.1f}%" if denominator else SVCA_UNAVAILABLE
+    return (
+        f"{100 * numerator / denominator:.1f}%"
+        if denominator
+        else SCHEMA_VALID_UNAVAILABLE
+    )
 
 
 def _metrics(records: Iterable[RunRecord]) -> dict[str, Any]:
@@ -332,13 +342,24 @@ def render_markdown(loaded: LoadedRuns) -> str:
     if loaded.fingerprints:
         registry_parts.append(f"fingerprint `{loaded.fingerprints[0]}`")
     registry_note = ", ".join(registry_parts) or "registry metadata unavailable"
+    matcher_note = (
+        ", ".join(f"`{matcher}`" for matcher in loaded.final_outcome_matchers)
+        if loaded.final_outcome_matchers
+        else "matcher metadata unavailable"
+    )
 
     overall_rows = []
     diagnostics_rows = []
     for (model,), group in models:
         metrics = _metrics(group)
         overall_rows.append(
-            (model, metrics["n"], metrics["tsa"], SVCA_UNAVAILABLE, metrics["sgoa"])
+            (
+                model,
+                metrics["n"],
+                metrics["sgoa"],
+                metrics["tsa"],
+                SCHEMA_VALID_UNAVAILABLE,
+            )
         )
         diagnostics_rows.append(
             (
@@ -361,9 +382,9 @@ def render_markdown(loaded: LoadedRuns) -> str:
                 model,
                 _domain_label(domain),
                 metrics["n"],
-                metrics["tsa"],
-                SVCA_UNAVAILABLE,
                 metrics["sgoa"],
+                metrics["tsa"],
+                SCHEMA_VALID_UNAVAILABLE,
             )
         )
 
@@ -376,9 +397,9 @@ def render_markdown(loaded: LoadedRuns) -> str:
                 _domain_label(domain),
                 family,
                 metrics["n"],
-                metrics["tsa"],
-                SVCA_UNAVAILABLE,
                 metrics["sgoa"],
+                metrics["tsa"],
+                SCHEMA_VALID_UNAVAILABLE,
             )
         )
 
@@ -388,27 +409,57 @@ def render_markdown(loaded: LoadedRuns) -> str:
             "",
             "## Executive note",
             "",
-            "These are preliminary audited baselines. SVCA is unavailable because "
-            "these runs predate full raw-argument JSON "
-            "Schema validation. Exact canonical argument match is diagnostic only and "
-            "must not be interpreted as SVCA. Strict grounded-outcome accuracy (SGOA) "
-            "compares executed predicted MCP output with the benchmark's declared "
-            "structured expected answer; it is not natural-language answer accuracy.",
+            "These are preliminary audited baselines. Final Outcome Accuracy is the "
+            "primary reported success metric; it compares executed predicted MCP "
+            "output with the benchmark's declared structured expected answer and is "
+            "not natural-language answer accuracy. Tool Selection Accuracy is the "
+            "second headline metric. Valid Arguments / Schema-Valid Tool Call (SVCA) "
+            "is unavailable until full raw JSON Schema validation is implemented. "
+            "Exact Reference Argument Match is a secondary diagnostic against one "
+            "reference call; it is not SVCA or a primary correctness score.",
             "",
             f"Registry compatibility check: {registry_note}.",
+            f"Final-outcome matchers observed: {matcher_note}.",
             "",
             "## Overall model scorecard",
             "",
-            _table(("Model", "N", "TSA", "SVCA", "SGOA"), overall_rows),
+            _table(
+                (
+                    "Model",
+                    "N",
+                    "Final Outcome Accuracy",
+                    "Tool Selection Accuracy",
+                    "Valid Arguments / SVCA",
+                ),
+                overall_rows,
+            ),
             "",
             "## Model × domain scorecard",
             "",
-            _table(("Model", "Domain", "N", "TSA", "SVCA", "SGOA"), domain_rows),
+            _table(
+                (
+                    "Model",
+                    "Domain",
+                    "N",
+                    "Final Outcome Accuracy",
+                    "Tool Selection Accuracy",
+                    "Valid Arguments / SVCA",
+                ),
+                domain_rows,
+            ),
             "",
             "## Model × domain × benchmark-family scorecard",
             "",
             _table(
-                ("Model", "Domain", "Benchmark family", "N", "TSA", "SVCA", "SGOA"),
+                (
+                    "Model",
+                    "Domain",
+                    "Benchmark family",
+                    "N",
+                    "Final Outcome Accuracy",
+                    "Tool Selection Accuracy",
+                    "Valid Arguments / SVCA",
+                ),
                 family_rows,
             ),
             "",
@@ -417,7 +468,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
-                    "Exact canonical args",
+                    "Exact Reference Argument Match",
                     "Runtime execution",
                     "No/unknown call",
                     "Wrong tool",
@@ -433,14 +484,17 @@ def render_markdown(loaded: LoadedRuns) -> str:
             "- Results use the full MCP registry setting shown above.",
             "- Benchmark families must not be silently pooled; use the family table for "
             "research comparisons and treat the overall/domain tables as run summaries.",
-            "- Finance SGOA is a strict structured-output contract, including declared "
-            "table column aliases where present in `expected_answer`.",
+            "- Final-outcome scoring uses the matcher names reported above. PR #29 "
+            "Finance table rows may use `finance_query_table_rows_v1`, while other "
+            "rows may use `recursive_json_subset_v1`; this valid mixture is reported "
+            "rather than rejected.",
             "- Llama Coding includes outcomes from calls whose scalar strings were "
             "coerced by MCP/Pydantic at runtime; SVCA is intentionally unavailable.",
             "- Enterprise tau2 single-step rows are adapted standalone action routing, "
             "not autonomous tau2 task success.",
-            "- Exact arguments, runtime execution, no-call behavior, coercion, aliases, "
-            "and canonicalization remain diagnostics rather than headline metrics.",
+            "- Exact Reference Argument Match, runtime execution, no-call behavior, "
+            "coercion, aliases, and canonicalization remain diagnostics rather than "
+            "headline correctness metrics.",
             "",
         ]
     )
@@ -452,7 +506,10 @@ def build_scorecard(run_directories: Sequence[Path]) -> str:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate a reporting-only TSA/SVCA/SGOA scorecard.",
+        description=(
+            "Generate a reporting-only final-outcome/tool-selection scorecard with "
+            "schema-valid calls marked unavailable."
+        ),
     )
     parser.add_argument("run_directories", nargs="+", type=Path)
     parser.add_argument("--output", type=Path)

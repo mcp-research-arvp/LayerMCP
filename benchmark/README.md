@@ -22,15 +22,20 @@ cache files. Empty provenance-only JSON placeholders are listed separately and
 excluded from runnable active totals. The utility reads benchmark data but does
 not modify it.
 
-Generate a preliminary reporting-only TSA/SVCA/SGOA scorecard from completed
-single-step run directories with:
+Generate the reporting-only minimal scorecard for completed single-step run
+directories with:
 
 ```bash
 python -m analysis.minimal_scorecard RUN_DIR [RUN_DIR ...] --output SCORECARD.md
 ```
 
-The report marks SVCA unavailable for legacy runs because exact argument match
-and shallow parser diagnostics are not full raw-argument JSON Schema validation.
+The report treats Final Outcome Accuracy as the primary success metric and Tool
+Selection Accuracy as the second headline metric. Exact Reference Argument
+Match is a secondary diagnostic against one reference call; it is not SVCA.
+Valid Arguments / Schema-Valid Tool Call remains unavailable until full raw JSON
+Schema validation is implemented. Reports also list the final-outcome matcher
+names observed, including valid PR #29 mixtures of
+`finance_query_table_rows_v1` and `recursive_json_subset_v1`.
 
 ## Current Layout
 

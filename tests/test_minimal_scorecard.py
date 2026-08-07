@@ -18,6 +18,7 @@ def _sample(
     execution: bool,
     final: bool | None,
     failure: str,
+    matcher: str = "recursive_json_subset_v1",
 ) -> dict:
     return {
         "sample_id": sample_id,
@@ -28,6 +29,7 @@ def _sample(
         "argument_match_correct": args,
         "execution_success": execution,
         "final_outcome_correct": final,
+        "final_outcome_matcher": matcher,
         "failure_category": failure,
         "source": "public_derived",
         "task_type": "single_tool_routing",
@@ -134,12 +136,22 @@ class MinimalScorecardTests(unittest.TestCase):
 
             markdown = build_scorecard([llama, phi])
 
-            self.assertIn("| phi | 2 | 50.0% | — | 50.0% |", markdown)
-            self.assertIn("| llama | Finance | 1 | 100.0% | — | 0.0% |", markdown)
+            self.assertIn("| phi | 2 | 50.0% | 50.0% | — |", markdown)
+            self.assertIn("| llama | Finance | 1 | 0.0% | 100.0% | — |", markdown)
             self.assertIn("public/source-derived", markdown)
             self.assertIn("| phi | 0.0% | 50.0% | 0.0% | 1 | 1 | 1 | 0 |", markdown)
-            self.assertIn("SVCA is unavailable", markdown)
-            self.assertIn("strict structured-output contract", markdown)
+            self.assertIn("Valid Arguments / Schema-Valid Tool Call (SVCA)", markdown)
+            self.assertIn("Exact Reference Argument Match", markdown)
+            self.assertNotIn("Exact canonical args", markdown)
+            header = (
+                "| Model | N | Final Outcome Accuracy | Tool Selection Accuracy | "
+                "Valid Arguments / SVCA |"
+            )
+            self.assertIn(header, markdown)
+            self.assertLess(
+                markdown.index("Final Outcome Accuracy"),
+                markdown.index("Tool Selection Accuracy"),
+            )
 
     def test_sgoa_uses_scored_denominator(self) -> None:
         with TemporaryDirectory() as temporary_directory:
@@ -175,7 +187,51 @@ class MinimalScorecardTests(unittest.TestCase):
                 ],
             )
             markdown = build_scorecard([run])
-            self.assertIn("| model | 2 | 100.0% | — | 100.0% |", markdown)
+            self.assertIn("| model | 2 | 100.0% | 100.0% | — |", markdown)
+
+    def test_reports_mixed_pr29_matchers_without_rejecting_run(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            run = Path(temporary_directory) / "run"
+            run.mkdir()
+            _write_result(
+                run,
+                "finance_public",
+                model="model",
+                domain="finance",
+                fingerprint="sha256:one",
+                samples=[
+                    _sample(
+                        "finance",
+                        model="model",
+                        domain="finance",
+                        tool=True,
+                        args=False,
+                        execution=True,
+                        final=True,
+                        failure="wrong_args",
+                        matcher="finance_query_table_rows_v1",
+                    ),
+                    _sample(
+                        "other",
+                        model="model",
+                        domain="finance",
+                        tool=True,
+                        args=True,
+                        execution=True,
+                        final=True,
+                        failure="correct",
+                        matcher="recursive_json_subset_v1",
+                    ),
+                ],
+            )
+
+            markdown = build_scorecard([run])
+
+            self.assertIn(
+                "Final-outcome matchers observed: "
+                "`finance_query_table_rows_v1`, `recursive_json_subset_v1`.",
+                markdown,
+            )
 
     def test_rejects_incompatible_registry_fingerprints(self) -> None:
         with TemporaryDirectory() as temporary_directory:

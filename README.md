@@ -521,6 +521,13 @@ Evaluation records and summaries store the sorted tool names plus a versioned
 SHA-256 fingerprint over tool names, input schemas, and descriptions. Compare
 model results only when this registry fingerprint matches.
 
+The Coding file-reader scope clarification changes the model-visible
+descriptions for `read_code_file` and `code_read_file`, and therefore changes
+the full MCP registry fingerprint. Results produced with the earlier
+descriptions are historical and are not directly comparable with new runs.
+Fresh evaluations are required for post-change comparisons, and scorecards
+must not combine runs carrying the old and new fingerprints.
+
 Reports must also keep two benchmark modes separate:
 
 - `grounded_tool_execution` covers controlled and source-faithful rows targeting

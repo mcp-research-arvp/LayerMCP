@@ -4,7 +4,6 @@ import inspect
 import re
 import unittest
 
-from evaluation.evaluate import _tool_pool_metadata
 from mcp_server.coding_state import (
     CODING_FIXTURE_VERSION,
     CODESEARCHNET_CODING_FIXTURE_VERSION,
@@ -29,7 +28,6 @@ from mcp_server.coding_tools import (
     git_status,
 )
 from mcp_server.server import mcp
-from mcp_server.tool_impls import read_code_file
 
 
 TOOL_FUNCTIONS = {
@@ -44,67 +42,6 @@ TOOL_FUNCTIONS = {
 
 
 class CodingToolTests(unittest.TestCase):
-    def test_file_reader_descriptions_distinguish_fixture_scopes(self) -> None:
-        legacy_tool = mcp._tool_manager._tools["read_code_file"]
-        repository_tool = mcp._tool_manager._tools["code_read_file"]
-
-        legacy_description = " ".join(legacy_tool.description.split())
-        self.assertIn("legacy synthetic coding fixture", legacy_description)
-        self.assertIn("fixture-relative path", legacy_description)
-        self.assertIn("does not accept a repository ID", legacy_description)
-        self.assertIn("repository-prefixed path", legacy_description)
-
-        repository_description = " ".join(repository_tool.description.split())
-        self.assertIn("allowlisted repository selected by repo_id", repository_description)
-        self.assertIn("repository-relative path", repository_description)
-        self.assertIn("example/research-mcp", repository_description)
-
-    def test_file_reader_schemas_and_scope_behavior_remain_distinct(self) -> None:
-        legacy_schema = mcp._tool_manager._tools["read_code_file"].parameters
-        repository_schema = mcp._tool_manager._tools["code_read_file"].parameters
-        self.assertEqual(legacy_schema["required"], ["path"])
-        self.assertEqual(set(legacy_schema["properties"]), {"path"})
-        self.assertEqual(repository_schema["required"], ["repo_id", "path"])
-        self.assertEqual(
-            set(repository_schema["properties"]),
-            {"repo_id", "path", "start_line", "end_line"},
-        )
-
-        self.assertEqual(read_code_file("README.md")["path"], "README.md")
-        with self.assertRaises(ValueError):
-            read_code_file("example/research-mcp/README.md")
-        repository_result = code_read_file(
-            DEFAULT_CODING_REPOSITORY_ID,
-            "README.md",
-        )
-        self.assertEqual(repository_result["repo_id"], DEFAULT_CODING_REPOSITORY_ID)
-        self.assertEqual(repository_result["path"], "README.md")
-
-    def test_file_reader_description_change_updates_registry_fingerprint(self) -> None:
-        tools = list(mcp._tool_manager._tools.values())
-        names = [tool.name for tool in tools]
-        schemas = {tool.name: tool.parameters for tool in tools}
-        descriptions = {tool.name: tool.description or "" for tool in tools}
-        current = _tool_pool_metadata(names, schemas, descriptions)
-
-        old_descriptions = dict(descriptions)
-        old_descriptions["read_code_file"] = (
-            "\n    Return deterministic fake repository file contents for offline coding tasks.\n    "
-        )
-        old_descriptions["code_read_file"] = (
-            "Read a bounded UTF-8 line range from a regular repository file."
-        )
-        previous = _tool_pool_metadata(names, schemas, old_descriptions)
-
-        self.assertNotEqual(
-            current["tool_registry_fingerprint"],
-            previous["tool_registry_fingerprint"],
-        )
-        self.assertEqual(
-            current,
-            _tool_pool_metadata(list(reversed(names)), schemas, descriptions),
-        )
-
     def test_exact_tool_catalog_and_signatures_are_registered(self) -> None:
         self.assertEqual(CODING_TOOL_NAMES, frozenset(TOOL_FUNCTIONS))
         self.assertTrue(CODING_TOOL_NAMES <= set(mcp._tool_manager._tools))

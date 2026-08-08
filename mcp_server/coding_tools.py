@@ -392,7 +392,10 @@ def code_read_file(
     start_line: int = 1,
     end_line: int | None = None,
 ) -> dict[str, Any]:
-    """Read a bounded UTF-8 line range from a regular repository file."""
+    """Read a bounded UTF-8 line range from an allowlisted repository selected
+    by repo_id. Pass repo_id separately from the repository-relative path; use
+    this tool for named repositories such as example/research-mcp.
+    """
     if (
         isinstance(start_line, bool)
         or not isinstance(start_line, int)

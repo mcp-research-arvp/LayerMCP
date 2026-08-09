@@ -71,6 +71,7 @@ ALLOWED_BENCHMARK_MODES = frozenset(
     }
 )
 DEFAULT_WORKFLOW_EXECUTION_MODE = "isolated_step"
+REASONING_MODES = ("direct", "reasoning")
 REFERENCE_PREFIX_REPLAY_MODE = "isolated_reference_prefix_replay"
 ALLOWED_WORKFLOW_EXECUTION_MODES = frozenset(
     {DEFAULT_WORKFLOW_EXECUTION_MODE, REFERENCE_PREFIX_REPLAY_MODE}
@@ -745,6 +746,27 @@ def _tool_schema(tool: Any) -> dict[str, Any]:
     return schema if isinstance(schema, dict) else {}
 
 
+def _reasoning_metadata(router: Any, reasoning_mode: str) -> dict[str, str]:
+    if reasoning_mode not in REASONING_MODES:
+        raise ValueError(
+            f"Unsupported reasoning mode {reasoning_mode!r}; "
+            f"expected one of: {', '.join(REASONING_MODES)}."
+        )
+    supports_reasoning = bool(getattr(router, "SUPPORTS_REASONING_MODE", False))
+    if reasoning_mode == "reasoning" and not supports_reasoning:
+        raise ValueError(
+            f"Router {getattr(router, 'ROUTER_ID', 'unknown')!r} does not "
+            "implement reasoning mode yet."
+        )
+    method = "none"
+    if supports_reasoning and hasattr(router, "reasoning_method"):
+        method = str(router.reasoning_method(reasoning_mode))
+    return {
+        "reasoning_mode": reasoning_mode,
+        "reasoning_method": method,
+    }
+
+
 def _validate_expected_tools(
     dataset: list[BenchmarkSample],
     live_tool_set: set[str],
@@ -769,15 +791,25 @@ def _route_query(
     live_tools: list[str],
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
+    reasoning_mode: str = "direct",
 ) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
     if hasattr(router, "choose_tool_call"):
         if getattr(router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False):
-            prediction = router.choose_tool_call(
-                query,
-                live_tools,
-                tool_schemas,
-                tool_descriptions,
-            )
+            if getattr(router, "SUPPORTS_REASONING_MODE", False):
+                prediction = router.choose_tool_call(
+                    query,
+                    live_tools,
+                    tool_schemas,
+                    tool_descriptions,
+                    reasoning_mode=reasoning_mode,
+                )
+            else:
+                prediction = router.choose_tool_call(
+                    query,
+                    live_tools,
+                    tool_schemas,
+                    tool_descriptions,
+                )
         else:
             prediction = router.choose_tool_call(
                 query,
@@ -816,6 +848,7 @@ def _route_sample(
     live_tools: list[str],
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
+    reasoning_mode: str = "direct",
 ) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
     return _route_query(
         router,
@@ -823,6 +856,7 @@ def _route_sample(
         live_tools,
         tool_schemas,
         tool_descriptions,
+        reasoning_mode,
     )
 
 
@@ -1083,6 +1117,7 @@ async def _evaluate_multistep_with_server(
     server_path: Path,
     call_predicted_tools: bool,
     router_name: str,
+    reasoning_mode: str,
 ) -> None:
     from models.routers.registry import load_router
 
@@ -1116,6 +1151,7 @@ async def _evaluate_multistep_with_server(
         _validate_expected_tools(dataset, live_tool_set)
 
         router = load_router(router_name)
+        reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
@@ -1152,6 +1188,7 @@ async def _evaluate_multistep_with_server(
                         live_tools,
                         tool_schemas,
                         tool_descriptions,
+                        reasoning_mode,
                     )
                     latency = time.perf_counter() - start
                     latencies.append(latency)
@@ -1250,6 +1287,7 @@ async def _evaluate_multistep_with_server(
                         "attempted_tool": attempted_tool,
                         "parse_diagnostic": parse_diagnostic,
                         "latency_seconds": latency,
+                        **reasoning_metadata,
                         "called_tool": called_tool,
                         "tool_result": tool_result,
                         "tool_result_value": tool_result_value,
@@ -1307,6 +1345,7 @@ async def _evaluate_multistep_with_server(
                         router, "ROUTER_BACKEND", "unknown"
                     ),
                     "prompt_template": prompt_template,
+                    **reasoning_metadata,
                 }
                 workflow_records.append(workflow_record)
                 sample_handle.write(
@@ -1328,6 +1367,7 @@ async def _evaluate_multistep_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        **reasoning_metadata,
         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             MULTISTEP_EVALUATION_PROTOCOL
@@ -1402,6 +1442,7 @@ async def _evaluate_with_server(
     server_path: Path,
     call_predicted_tools: bool,
     router_name: str,
+    reasoning_mode: str = "direct",
 ) -> None:
     if any(sample.expected_steps for sample in dataset):
         await _evaluate_multistep_with_server(
@@ -1410,6 +1451,7 @@ async def _evaluate_with_server(
             server_path,
             call_predicted_tools,
             router_name,
+            reasoning_mode,
         )
         return
 
@@ -1436,6 +1478,7 @@ async def _evaluate_with_server(
         _validate_expected_tools(dataset, live_tool_set)
 
         router = load_router(router_name)
+        reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
@@ -1468,6 +1511,7 @@ async def _evaluate_with_server(
                     live_tools,
                     tool_schemas,
                     tool_descriptions,
+                    reasoning_mode,
                 )
                 latency = time.perf_counter() - start
 
@@ -1584,6 +1628,7 @@ async def _evaluate_with_server(
                     ),
                     "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
                     "prompt_template": prompt_template,
+                    **reasoning_metadata,
                     "called_tool": called_tool,
                     "tool_result": tool_result,
                     "tool_result_value": tool_result_value,
@@ -1604,6 +1649,7 @@ async def _evaluate_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        **reasoning_metadata,
         "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             SINGLE_STEP_EVALUATION_PROTOCOL
@@ -1681,6 +1727,15 @@ def _build_parser() -> argparse.ArgumentParser:
             "Qwen baseline or gpt-oss-local for the local GPT-OSS PyTorch router."
         ),
     )
+    parser.add_argument(
+        "--reasoning-mode",
+        choices=REASONING_MODES,
+        default="direct",
+        help=(
+            "Inference condition. 'direct' requests an immediate tool call; "
+            "'reasoning' enables the router's supported reasoning mechanism."
+        ),
+    )
     return parser
 
 
@@ -1693,6 +1748,7 @@ async def _async_main(args: argparse.Namespace) -> None:
         server_path=args.server,
         call_predicted_tools=args.call_predicted_tools,
         router_name=args.router,
+        reasoning_mode=args.reasoning_mode,
     )
 
 

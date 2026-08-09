@@ -29,6 +29,22 @@ HALLUCINATED_TOOL = "hallucinated_tool"
 PROMPT_TEMPLATE = "tool_name_only_v1"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
+SUPPORTS_REASONING_MODE = True
+REASONING_METHODS = {
+    "direct": "native_disabled",
+    "reasoning": "native_enabled",
+}
+MAX_GENERATED_TOKENS = 4096
+
+
+def reasoning_method(reasoning_mode: str) -> str:
+    try:
+        return REASONING_METHODS[reasoning_mode]
+    except KeyError as exc:
+        allowed = ", ".join(REASONING_METHODS)
+        raise ValueError(
+            f"Unsupported reasoning mode {reasoning_mode!r}; expected one of: {allowed}."
+        ) from exc
 
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
@@ -119,6 +135,7 @@ def choose_tool_call(
     available_tools: Sequence[str],
     tool_schemas: Mapping[str, Any] | None = None,
     tool_descriptions: Mapping[str, str] | None = None,
+    reasoning_mode: str = "direct",
 ) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
@@ -126,6 +143,7 @@ def choose_tool_call(
     tool_catalog = tuple(tool.lower() for tool in available_tools)
     if not tool_catalog:
         raise ValueError("available_tools must not be empty.")
+    reasoning_method(reasoning_mode)
 
     generator = _load_generator()
     prompt = build_tool_call_prompt(
@@ -148,11 +166,12 @@ def choose_tool_call(
             tool_descriptions,
         ),
         fallback_prompt=prompt,
+        enable_thinking=reasoning_mode == "reasoning",
     )
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.stop_tokens,
         temperature=0.0,
-        max_tokens=256,
+        max_tokens=MAX_GENERATED_TOKENS,
     )
     return parse_tool_call(result.text, tool_catalog, result.tool_call)

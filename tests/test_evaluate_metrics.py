@@ -37,6 +37,7 @@ from evaluation.evaluate import (
     _normalize_sample,
     _normalize_workflow_execution_mode,
     _query_with_context,
+    _reasoning_metadata,
     _route_sample,
     _score_sample,
     _score_final_outcome,
@@ -64,6 +65,29 @@ class EvaluateMetricTests(unittest.TestCase):
 
     def test_benchmark_sample_has_no_row_level_tool_catalog(self) -> None:
         self.assertNotIn("available_tools", {field.name for field in fields(BenchmarkSample)})
+
+    def test_reasoning_metadata_uses_router_specific_method(self) -> None:
+        router = SimpleNamespace(
+            ROUTER_ID="qwen36_local_router",
+            SUPPORTS_REASONING_MODE=True,
+            reasoning_method=lambda mode: (
+                "native_enabled" if mode == "reasoning" else "native_disabled"
+            ),
+        )
+
+        self.assertEqual(
+            _reasoning_metadata(router, "reasoning"),
+            {
+                "reasoning_mode": "reasoning",
+                "reasoning_method": "native_enabled",
+            },
+        )
+
+    def test_reasoning_mode_fails_for_unsupported_router(self) -> None:
+        router = SimpleNamespace(ROUTER_ID="legacy_router")
+
+        with self.assertRaisesRegex(ValueError, "does not implement reasoning mode"):
+            _reasoning_metadata(router, "reasoning")
 
     def test_router_receives_full_live_catalog_for_every_sample(self) -> None:
         live_tools = ["calculator", "factor_expression", "customer_lookup"]

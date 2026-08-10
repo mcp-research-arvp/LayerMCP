@@ -107,24 +107,32 @@ def _required_registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
 
 async def capture_live_registry_metadata(server_path: Path) -> dict[str, Any]:
     """Build metadata through the evaluator's canonical live-registry path."""
-    from evaluation.evaluate import (
-        _run_server_session,
-        _tool_pool_metadata,
-        _tool_schema,
+    return _required_registry_metadata(
+        await capture_live_registry_snapshot(server_path)
     )
+
+
+async def capture_live_registry_snapshot(server_path: Path) -> dict[str, Any]:
+    """Capture canonical registry metadata plus the exact model-visible catalog."""
+    from evaluation.evaluate import _run_server_session, _tool_pool_metadata, _tool_schema
 
     async with _run_server_session(server_path) as session:
         listed_tools = await session.list_tools()
-        registered_tools = listed_tools.tools
-        live_tools = [tool.name for tool in registered_tools]
-        tool_schemas = {tool.name: _tool_schema(tool) for tool in registered_tools}
-        tool_descriptions = {
-            tool.name: str(getattr(tool, "description", "") or "")
-            for tool in registered_tools
+        registered = listed_tools.tools
+        names = [tool.name for tool in registered]
+        schemas = {tool.name: _tool_schema(tool) for tool in registered}
+        descriptions = {
+            tool.name: str(getattr(tool, "description", "") or "") for tool in registered
         }
-    return _required_registry_metadata(
-        _tool_pool_metadata(live_tools, tool_schemas, tool_descriptions)
+    metadata = _required_registry_metadata(
+        _tool_pool_metadata(names, schemas, descriptions)
     )
+    return {
+        **metadata,
+        "tool_names": names,
+        "tool_schemas": schemas,
+        "tool_descriptions": descriptions,
+    }
 
 
 def validate_and_index_dataset(
@@ -362,6 +370,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--validate-run", action="store_true")
     parser.add_argument("--safe-component", nargs=2, metavar=("LABEL", "VALUE"))
     parser.add_argument("--capture-live-registry", action="store_true")
+    parser.add_argument("--include-catalog", action="store_true")
     parser.add_argument("--registry-metadata-out", type=Path)
     parser.add_argument("--server", type=Path)
     parser.add_argument("--dataset-dir", type=Path)
@@ -389,7 +398,12 @@ def main() -> None:
                 "--capture-live-registry requires --server and "
                 "--registry-metadata-out"
             )
-        metadata = asyncio.run(capture_live_registry_metadata(args.server))
+        capture = (
+            capture_live_registry_snapshot
+            if args.include_catalog
+            else capture_live_registry_metadata
+        )
+        metadata = asyncio.run(capture(args.server))
         with args.registry_metadata_out.open("w", encoding="utf-8") as handle:
             json.dump(metadata, handle, indent=2, sort_keys=True)
             handle.write("\n")

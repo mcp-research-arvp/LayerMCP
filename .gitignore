@@ -28,6 +28,7 @@ job*.sh
 !scripts/slurm/
 scripts/slurm/*
 !scripts/slurm/run_single_step.sbatch
+!scripts/slurm/run_multi_step.sbatch
 
 # Local model checkpoints and heavyweight downloaded weights.
 checkpoints/

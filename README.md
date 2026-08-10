@@ -608,9 +608,20 @@ results/runs/single_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kin
 results/runs/multi_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kind>/
 ```
 
-The tracked `scripts/slurm/run_single_step.sbatch` launcher implements the
-single-step layout. Multi-step launchers must use the reserved `multi_step`
-root and the same per-dataset artifact convention. Each run preserves
+The tracked `scripts/slurm/run_single_step.sbatch` and
+`scripts/slurm/run_multi_step.sbatch` launchers implement these layouts. The
+multi-step launcher covers seven dataset groups and evaluates
+`teacher_forced_step_routing_v1`: workflow counts and routed-step counts are
+distinct, and this is not autonomous planning or end-to-end task success.
+The groups are `coding_sweagent`, `coding_nebius_replay`, `enterprise_tau2`,
+`convfinqa`, `finqa`, `finretrieval_replay`, and `mathematics`; the empty
+OpenHands provenance placeholder is intentionally excluded.
+Grounded, controlled, and offline-replay results must be reported separately.
+Use `RUN_KIND=preflight` for deterministic worst-case one-workflow subsets and
+`RUN_KIND=full` with exactly one dataset group; preflight results are non-headline
+and removable after the corresponding full run completes. Finance remains in
+scope because the readiness audit found no structurally invalid workflows.
+Each run preserves
 `run_metadata.json`, `resolved_datasets.txt`, the exact
 `launcher.sbatch` and its SHA-256, and a validated `artifact_index.jsonl`.
 Before model loading, the single-step launcher captures the pool, tool count,
@@ -625,6 +636,20 @@ and it must not be reported as a completed baseline. Standard-prompt and
 chain-of-thought conditions must use separate run directories. The former flat,
 timestamp-named files directly under `results/` are retained only for historical
 compatibility and should not be used for new concurrent jobs.
+
+Multi-step examples:
+
+```bash
+sbatch --time=02:00:00 --job-name=phi-4-local-standard_prompt-preflight-all \
+  --export=ALL,MODEL=phi-4-local,DATASET_GROUP=all,RUN_KIND=preflight \
+  scripts/slurm/run_multi_step.sbatch
+
+sbatch --job-name=llama-3.1-8b-local-standard_prompt-full-finqa \
+  --export=ALL,MODEL=llama-3.1-8b-local,DATASET_GROUP=finqa,RUN_KIND=full \
+  scripts/slurm/run_multi_step.sbatch
+```
+
+An interrupted or partial run lacks `RUN_COMPLETE` and must not be reported.
 
 ### 7. Runtime Flow
 

@@ -313,6 +313,20 @@ mkdir checkpoints
 hf download openai/gpt-oss-20b --local-dir checkpoints/gpt-oss-20b
 ```
 
+### GPT-OSS OpenAI-compatible API
+
+Install the project dependencies, then start the local API from the repository
+root:
+
+```powershell
+python -m uvicorn models.architectures.gpt_oss_pytorch.api:app --host 0.0.0.0 --port 8000
+```
+
+The server exposes `GET /health`, `GET /v1/models`, and
+`POST /v1/chat/completions`, including streaming responses and function tool
+calls. The model checkpoint is loaded lazily on the first completion request.
+Set `LAYERMCP_GPT_OSS_CHECKPOINT` to override the default checkpoint directory.
+
 If your checkpoint lives somewhere else, set:
 
 ```powershell

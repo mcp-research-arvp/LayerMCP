@@ -111,6 +111,12 @@ class RetailToolTests(unittest.TestCase):
         self.assertIn("fulfillments", order)
         self.assertIsInstance(product["variants"], dict)
 
+    def test_order_lookup_accepts_an_unprefixed_tau2_order_id(self) -> None:
+        order_id = self.example["get_order_details"]["expected_args"]["order_id"]
+        self.assertTrue(order_id.startswith("#W"))
+        result = get_order_details(order_id[1:])
+        self.assertEqual(result["order_id"], order_id)
+
     def test_cancel_pending_order(self) -> None:
         result = self._call_example("cancel_pending_order")
         self.assertEqual(result["status"], "cancelled")

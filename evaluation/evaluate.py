@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import sys
 import time
@@ -110,6 +111,66 @@ class BenchmarkSample:
     expected_steps: tuple[BenchmarkStep, ...] = ()
     benchmark_mode: str = DEFAULT_BENCHMARK_MODE
     workflow_execution_mode: str = DEFAULT_WORKFLOW_EXECUTION_MODE
+
+
+@dataclass(frozen=True)
+class EvaluationArtifactPaths:
+    directory: Path
+    samples: Path
+    summary: Path
+
+
+def _evaluation_artifact_paths(
+    output_dir: Path | None,
+    timestamp: str,
+) -> EvaluationArtifactPaths:
+    if output_dir is None:
+        directory = RESULTS_DIR
+        samples_name = f"{timestamp}_samples.jsonl"
+        summary_name = f"{timestamp}_summary.json"
+    else:
+        directory = Path(output_dir)
+        samples_name = "samples.jsonl"
+        summary_name = "summary.json"
+
+    directory.mkdir(parents=True, exist_ok=True)
+    paths = EvaluationArtifactPaths(
+        directory=directory,
+        samples=directory / samples_name,
+        summary=directory / summary_name,
+    )
+    for path in (paths.samples, paths.summary):
+        if path.exists():
+            raise FileExistsError(
+                f"Refusing to overwrite existing evaluation artifact: {path}"
+            )
+    return paths
+
+
+def _open_samples_exclusive(path: Path):
+    try:
+        return path.open("x", encoding="utf-8")
+    except FileExistsError as exc:
+        raise FileExistsError(
+            f"Refusing to overwrite existing evaluation artifact: {path}"
+        ) from exc
+
+
+def _write_summary_exclusive(path: Path, summary: dict[str, Any]) -> None:
+    temporary_path = path.with_name(f".{path.name}.incomplete-{os.getpid()}")
+    try:
+        with temporary_path.open("x", encoding="utf-8") as summary_handle:
+            json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+            summary_handle.write("\n")
+            summary_handle.flush()
+            os.fsync(summary_handle.fileno())
+        os.link(temporary_path, path)
+    except FileExistsError as exc:
+        raise FileExistsError(
+            f"Refusing to overwrite existing evaluation artifact: {path}"
+        ) from exc
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _normalize_prompt_context(value: Any, location: str) -> str:
@@ -222,6 +283,7 @@ class FinalOutcomeScore:
 
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
 WORKFLOW_FINAL_ANSWER_MATCHER = "formatted_final_scalar_v1"
+FINANCE_QUERY_TABLE_RESULT_MATCHER = "finance_query_table_rows_v1"
 NUMERIC_REL_TOL = 1e-9
 NUMERIC_ABS_TOL = 1e-6
 _SYMBOLIC_MATH_FIELDS = {
@@ -437,6 +499,41 @@ def _match_expected_answer(
     return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
 
 
+def _match_finance_query_table_result(actual: Any, expected: Any) -> OutcomeMatch:
+    """Match a table-query result by its bounded data payload, not SQL aliases."""
+    if not isinstance(expected, dict):
+        return _match_expected_answer(actual, expected, domain="finance")
+
+    required_keys = ("dataset_id", "columns", "rows", "row_count", "truncated")
+    if not all(key in expected for key in required_keys):
+        return _match_expected_answer(actual, expected, domain="finance")
+
+    if not isinstance(actual, dict):
+        return OutcomeMatch(False, f"$: expected object, got {type(actual).__name__}")
+
+    expected_columns = expected["columns"]
+    actual_columns = actual.get("columns")
+    if not isinstance(expected_columns, list):
+        return _match_expected_answer(actual, expected, domain="finance")
+    if not isinstance(actual_columns, list):
+        return OutcomeMatch(
+            False,
+            "$.columns: expected a list with "
+            f"{len(expected_columns)} columns, got {actual_columns!r}",
+        )
+    if len(actual_columns) != len(expected_columns):
+        return OutcomeMatch(
+            False,
+            "$.columns: expected "
+            f"{len(expected_columns)} columns, got {len(actual_columns)}",
+        )
+
+    expected_payload = {
+        key: expected[key] for key in required_keys if key != "columns"
+    }
+    return _match_expected_answer(actual, expected_payload, domain="finance")
+
+
 def _score_final_outcome(
     *,
     expected_answer: Any,
@@ -446,6 +543,8 @@ def _score_final_outcome(
     call_predicted_tools: bool,
     no_tool_call: bool,
     execution_success: bool,
+    expected_tool: str | None = None,
+    called_tool: str | None = None,
 ) -> FinalOutcomeScore:
     if expected_answer is None:
         return FinalOutcomeScore(
@@ -483,15 +582,23 @@ def _score_final_outcome(
             result_extraction_diagnostic,
         )
 
-    match = _match_expected_answer(
-        tool_result_value,
-        expected_answer,
-        domain=domain,
-    )
+    if expected_tool == called_tool == "finance_query_table":
+        match = _match_finance_query_table_result(
+            tool_result_value,
+            expected_answer,
+        )
+        matcher = FINANCE_QUERY_TABLE_RESULT_MATCHER
+    else:
+        match = _match_expected_answer(
+            tool_result_value,
+            expected_answer,
+            domain=domain,
+        )
+        matcher = FINAL_OUTCOME_MATCHER
     return FinalOutcomeScore(
         match.matched,
         "correct" if match.matched else "mismatch",
-        FINAL_OUTCOME_MATCHER,
+        matcher,
         match.diagnostic,
     )
 
@@ -1282,7 +1389,8 @@ async def _evaluate_multistep_with_server(
     server_path: Path,
     call_predicted_tools: bool,
     router_name: str,
-    reasoning_mode: str,
+    reasoning_mode: str = "direct",
+    output_dir: Path | None = None,
 ) -> None:
     from models.routers.registry import load_router
 
@@ -1292,9 +1400,9 @@ async def _evaluate_multistep_with_server(
         )
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    RESULTS_DIR.mkdir(exist_ok=True)
-    samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
-    summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
+    artifacts = _evaluation_artifact_paths(output_dir, timestamp)
+    samples_path = artifacts.samples
+    summary_path = artifacts.summary
 
     workflow_records: list[dict[str, Any]] = []
     step_records: list[dict[str, Any]] = []
@@ -1332,7 +1440,7 @@ async def _evaluate_multistep_with_server(
             f"{EVALUATION_PROTOCOL_DESCRIPTIONS[MULTISTEP_EVALUATION_PROTOCOL]}"
         )
 
-        with samples_path.open("w", encoding="utf-8") as sample_handle:
+        with _open_samples_exclusive(samples_path) as sample_handle:
             for sample in tqdm(dataset):
                 history: list[dict[str, Any]] = []
                 workflow_steps: list[dict[str, Any]] = []
@@ -1417,9 +1525,12 @@ async def _evaluate_multistep_with_server(
                         call_predicted_tools=call_predicted_tools,
                         no_tool_call=no_tool_call,
                         execution_success=execution_success,
+                        expected_tool=step.expected_tool,
+                        called_tool=called_tool,
                     )
                     step_record = {
                         "sample_id": sample.id,
+                        "benchmark_path": str(benchmark_path),
                         "step_id": step.id,
                         "step_index": step_index,
                         "domain": sample.domain,
@@ -1477,6 +1588,7 @@ async def _evaluate_multistep_with_server(
                 )
                 workflow_record = {
                     "sample_id": sample.id,
+                    "benchmark_path": str(benchmark_path),
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
                     "workflow_execution_mode": PREDICTED_ROLLOUT_EXECUTION_MODE,
@@ -1569,8 +1681,7 @@ async def _evaluate_multistep_with_server(
         "executed_tool_calls": executed_tool_calls,
         "errors_count": errors_count,
     }
-    with summary_path.open("w", encoding="utf-8") as summary_handle:
-        json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+    _write_summary_exclusive(summary_path, summary)
 
     print("\n===================")
     print(f"Evaluation protocol: {MULTISTEP_EVALUATION_PROTOCOL}")
@@ -1638,6 +1749,7 @@ async def _evaluate_with_server(
     call_predicted_tools: bool,
     router_name: str,
     reasoning_mode: str = "direct",
+    output_dir: Path | None = None,
 ) -> None:
     if any(sample.expected_steps for sample in dataset):
         await _evaluate_multistep_with_server(
@@ -1646,7 +1758,8 @@ async def _evaluate_with_server(
             server_path,
             call_predicted_tools,
             router_name,
-            reasoning_mode,
+            reasoning_mode=reasoning_mode,
+            output_dir=output_dir,
         )
         return
 
@@ -1657,9 +1770,9 @@ async def _evaluate_with_server(
     errors_count = 0
     records: list[dict[str, Any]] = []
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    RESULTS_DIR.mkdir(exist_ok=True)
-    samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
-    summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
+    artifacts = _evaluation_artifact_paths(output_dir, timestamp)
+    samples_path = artifacts.samples
+    summary_path = artifacts.summary
 
     async with _run_server_session(server_path) as session:
         listed_tools = await session.list_tools()
@@ -1686,7 +1799,7 @@ async def _evaluate_with_server(
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
         print(f"Evaluation protocol: {SINGLE_STEP_EVALUATION_PROTOCOL}")
 
-        with samples_path.open("w", encoding="utf-8") as sample_handle:
+        with _open_samples_exclusive(samples_path) as sample_handle:
             for sample in tqdm(dataset):
                 query = sample.query
                 routed_query = _query_with_context(query, sample.prompt_context)
@@ -1781,9 +1894,12 @@ async def _evaluate_with_server(
                     call_predicted_tools=call_predicted_tools,
                     no_tool_call=no_tool_call,
                     execution_success=execution_success,
+                    expected_tool=sample.expected_tool,
+                    called_tool=called_tool,
                 )
                 record = {
                     "sample_id": sample.id,
+                    "benchmark_path": str(benchmark_path),
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
                     "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
@@ -1855,8 +1971,7 @@ async def _evaluate_with_server(
         "errors_count": errors_count,
         **metrics,
     }
-    with summary_path.open("w", encoding="utf-8") as summary_handle:
-        json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+    _write_summary_exclusive(summary_path, summary)
 
     print("\n===================")
     print(f"Total: {metrics['total_samples']}")
@@ -1910,6 +2025,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to the MCP server entrypoint.",
     )
     parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "Write samples.jsonl and summary.json inside this directory. "
+            "Existing artifacts are never overwritten."
+        ),
+    )
+    parser.add_argument(
         "--call-predicted-tools",
         action="store_true",
         help="Call the predicted MCP tool using sample.tool_args when present.",
@@ -1944,6 +2067,7 @@ async def _async_main(args: argparse.Namespace) -> None:
         call_predicted_tools=args.call_predicted_tools,
         router_name=args.router,
         reasoning_mode=args.reasoning_mode,
+        output_dir=args.output_dir,
     )
 
 

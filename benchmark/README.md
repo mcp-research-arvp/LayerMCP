@@ -22,6 +22,34 @@ cache files. Empty provenance-only JSON placeholders are listed separately and
 excluded from runnable active totals. The utility reads benchmark data but does
 not modify it.
 
+Generate the reporting-only minimal scorecard for completed single-step run
+directories with:
+
+```bash
+python -m analysis.minimal_scorecard RUN_DIR [RUN_DIR ...] --output SCORECARD.md
+```
+
+The report treats Final Outcome Accuracy as the primary success metric and Tool
+Selection Accuracy as the second headline metric. Exact Reference Argument
+Match is a secondary diagnostic against one reference call; it is not SVCA.
+Final Outcome Accuracy uses only rows with a recorded outcome score as its
+denominator, and every headline table displays `scored/total` Final Outcome
+Coverage alongside it.
+Valid Arguments / Schema-Valid Tool Call remains unavailable until full raw JSON
+Schema validation is implemented. Reports also list the final-outcome matcher
+names observed separately for each model, including valid PR #29 mixtures of
+`finance_query_table_rows_v1` and `recursive_json_subset_v1`.
+Grounded and offline/replay benchmark modes are always reported in separate
+metric rows. A missing `benchmark_mode` uses
+`evaluation.evaluate.DEFAULT_BENCHMARK_MODE`, but the report visibly marks its
+mode source as `defaulted (missing)`. An explicitly null mode also uses the
+evaluator default and is marked `defaulted (null)`; neither is pooled with an
+explicit mode value.
+
+Every loaded summary must provide a nonempty tool-registry fingerprint,
+fingerprint version, tool count, and tool pool. Legacy artifacts missing any of
+that metadata cannot be pooled into a verified scorecard.
+
 ## Current Layout
 
 | Path | Records | Domains | Purpose |

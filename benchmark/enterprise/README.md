@@ -133,7 +133,7 @@ Difficulty breakdown:
 - Task type: multi-step tool routing
 - Source dataset: pinned tau2-bench retail tasks
 - Source splits: 45 train workflows, 24 test workflows
-- Purpose: teacher-forced routing over one tau2 reference action trajectory per
+- Purpose: guided predicted rollout over one tau2 reference action trajectory per
   public Enterprise workflow using original retail user-scenario fields.
 
 This benchmark differs from `enterprise_tau2_single_step.json`. The single-step
@@ -145,16 +145,17 @@ against the pinned LayerMCP tau2 retail fixture.
 Each row contains `expected_steps` from one sequence of tau2 evaluation-criteria
 actions. These actions are a reference trajectory used to derive target state;
 they are not asserted to be the uniquely correct plan, and scoring them does
-not measure tau2 task success. Evaluation is teacher-forced
-reference-trajectory action routing, not autonomous end-to-end planning. Every
+not measure tau2 task success. Evaluation follows the supplied reference steps
+but passes predicted calls and results forward, not gold history. Every
 step supplies a natural-language operation and authoritative step-level source
 facts. Declared dependencies are empty, so prompt construction uses the
 evaluator's bounded recent-history policy. For execution scoring, earlier
-reference actions are replayed only to reconstruct isolated workflow state.
+predicted actions are replayed to reconstruct isolated workflow state.
 Step outputs use the MCP structured-result shape. Rows explicitly declare
 `benchmark_mode: grounded_tool_execution` and
-`workflow_execution_mode: isolated_reference_prefix_replay`; both values are
-retained in evaluation result metadata.
+`workflow_execution_mode: isolated_reference_prefix_replay`; that legacy
+declaration is retained as metadata while effective execution is recorded as
+`predicted_sequence`.
 
 ### `enterprise_tau2_single_step.json`
 

@@ -28,8 +28,9 @@ from evaluation.evaluate import (
     _exact_argument_match,
     _extract_structured_tool_result,
     _final_outcome_record_fields,
-    _gold_history_item,
+    _predicted_history_item,
     _is_no_tool_call,
+    _is_gold_resolved_step_context,
     _match_expected_answer,
     _multistep_query,
     _normalize_benchmark_mode,
@@ -41,6 +42,7 @@ from evaluation.evaluate import (
     _route_sample,
     _score_sample,
     _score_final_outcome,
+    _score_workflow_final_answer,
     _tool_pool_metadata,
     _validate_expected_tools,
 )
@@ -309,30 +311,52 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertIn('"step_id": "step-3"', routed)
         self.assertIn('"step_id": "step-4"', routed)
 
-    def test_gold_history_is_independent_of_model_predictions(self) -> None:
-        step = BenchmarkStep(
-            id="step-1",
-            query="Look up the source row.",
-            expected_tool="finance_query_table",
-            expected_args={"dataset_id": "public-v1", "sql": "SELECT 1"},
-            expected_answer={"rows": [{"1": 1}]},
-            depends_on=(),
-            source_program=None,
-        )
-
+    def test_rollout_history_contains_predictions_and_no_gold(self) -> None:
         self.assertEqual(
-            _gold_history_item(step),
+            _predicted_history_item(
+                {
+                    "step_id": "step-1",
+                    "query": "Look up the source row.",
+                    "selected_tool": "calculator",
+                    "selected_args": {"expression": "1 + 1"},
+                    "execution_success": True,
+                    "tool_result_value": {"result": 2},
+                    "tool_error": None,
+                }
+            ),
             {
                 "step_id": "step-1",
                 "query": "Look up the source row.",
-                "expected_tool": "finance_query_table",
-                "expected_args": {
-                    "dataset_id": "public-v1",
-                    "sql": "SELECT 1",
-                },
-                "expected_answer": {"rows": [{"1": 1}]},
+                "selected_tool": "calculator",
+                "selected_args": {"expression": "1 + 1"},
+                "execution_success": True,
+                "tool_result_value": {"result": 2},
+                "tool_error": None,
             },
         )
+
+    def test_dependent_step_does_not_receive_gold_resolved_context(self) -> None:
+        sample = replace(self._sample(), task_type="multi_step_tool_routing")
+        step = BenchmarkStep(
+            id="step-2",
+            query="divide(#0, 10)",
+            expected_tool="calculator",
+            expected_args={"expression": "2 / 10"},
+            expected_answer={"result": 0.2},
+            depends_on=("step-1",),
+            source_program="divide(#0, 10)",
+            prompt_context=(
+                '{"kind":"finance_calculator_call_grounding_v1",'
+                '"expression":"2 / 10"}'
+            ),
+        )
+        history = [{"step_id": "step-1", "tool_result_value": {"result": 3}}]
+
+        routed = _multistep_query(sample, step, history)
+
+        self.assertNotIn('"expression":"2 / 10"', routed)
+        self.assertIn('"result": 3', routed)
+        self.assertTrue(_is_gold_resolved_step_context(step))
 
     def test_unregistered_predicted_tool_is_rejected(self) -> None:
         self.assertTrue(
@@ -460,10 +484,10 @@ class EvaluateMetricTests(unittest.TestCase):
         )
         self.assertEqual(
             MULTISTEP_EVALUATION_PROTOCOL,
-            "teacher_forced_step_routing_v1",
+            "guided_predicted_rollout_v1",
         )
         self.assertIn(
-            "does not evaluate autonomous end-to-end planning",
+            "not autonomous planning",
             EVALUATION_PROTOCOL_DESCRIPTIONS[MULTISTEP_EVALUATION_PROTOCOL],
         )
 
@@ -621,6 +645,44 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertFalse(score.correct)
         self.assertEqual(score.status, "execution_error")
 
+    def test_workflow_final_percentage_uses_published_rounding(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="9.9%",
+            final_tool_result_value={"result": 0.09864188706218716},
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+        self.assertEqual(score.status, "correct")
+
+    def test_workflow_final_plain_number_uses_published_rounding(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="719.7",
+            final_tool_result_value={"result": 719.6833393306945},
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+
+    def test_workflow_final_text_is_case_insensitive(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="yes",
+            final_tool_result_value={"rows": [["YES"]]},
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+
+    def test_empty_workflow_final_answer_is_unscored(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="",
+            final_tool_result_value={"result": 1.0},
+            call_predicted_tools=True,
+        )
+
+        self.assertIsNone(score.correct)
+        self.assertEqual(score.status, "missing_expected_final_answer")
+
     def test_result_extraction_error_counts_incorrect(self) -> None:
         score = _score_final_outcome(
             expected_answer={"result": 4},
@@ -698,6 +760,7 @@ class EvaluateMetricTests(unittest.TestCase):
                 "sequence_tool_selection_correct": True,
                 "sequence_argument_match_correct": True,
                 "sequence_semantic_output_correct": True,
+                "workflow_final_answer_correct": True,
                 "expected_final_answer": "done",
             },
             {
@@ -705,6 +768,7 @@ class EvaluateMetricTests(unittest.TestCase):
                 "sequence_tool_selection_correct": False,
                 "sequence_argument_match_correct": False,
                 "sequence_semantic_output_correct": False,
+                "workflow_final_answer_correct": False,
                 "expected_final_answer": None,
             },
         ]
@@ -734,7 +798,10 @@ class EvaluateMetricTests(unittest.TestCase):
         steps_by_mode = metrics["step_metrics_by_benchmark_mode"]
 
         self.assertEqual(metrics["workflow_exact_sequence_accuracy"], 0.5)
+        self.assertEqual(metrics["workflow_final_answer_accuracy"], 0.5)
+        self.assertEqual(metrics["workflow_all_arguments_correct_accuracy"], 0.5)
         self.assertEqual(metrics["step_tool_selection_accuracy"], 1 / 3)
+        self.assertEqual(metrics["step_correct_tool_accuracy"], 1 / 3)
         self.assertEqual(
             workflow_by_mode["grounded_tool_execution"][
                 "workflow_exact_sequence_accuracy"

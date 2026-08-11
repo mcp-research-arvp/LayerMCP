@@ -48,15 +48,16 @@ MULTISTEP_HISTORY_ITEM_CHAR_LIMIT = 3_500
 PROMPT_CONTEXT_CHAR_LIMIT = MULTISTEP_CURRENT_STEP_CHAR_LIMIT
 
 SINGLE_STEP_EVALUATION_PROTOCOL = "single_step_tool_routing_v1"
-MULTISTEP_EVALUATION_PROTOCOL = "teacher_forced_step_routing_v1"
+MULTISTEP_EVALUATION_PROTOCOL = "guided_predicted_rollout_v1"
 EVALUATION_PROTOCOL_DESCRIPTIONS = {
     SINGLE_STEP_EVALUATION_PROTOCOL: (
         "Each sample is evaluated as one independently routed tool call."
     ),
     MULTISTEP_EVALUATION_PROTOCOL: (
-        "Each gold step is routed independently using the overall task, current "
-        "step, current-step grounding context, and gold prior-step context; this "
-        "does not evaluate autonomous end-to-end planning."
+        "The benchmark supplies each step instruction, while every subsequent "
+        "step receives only the model's predicted calls and executed results from "
+        "earlier steps. Gold prior-step answers and gold state replay are not used. "
+        "This evaluates error-propagating guided rollout, not autonomous planning."
     ),
 }
 
@@ -71,6 +72,7 @@ ALLOWED_BENCHMARK_MODES = frozenset(
     }
 )
 DEFAULT_WORKFLOW_EXECUTION_MODE = "isolated_step"
+PREDICTED_ROLLOUT_EXECUTION_MODE = "predicted_sequence"
 REASONING_MODES = ("direct", "reasoning")
 REFERENCE_PREFIX_REPLAY_MODE = "isolated_reference_prefix_replay"
 ALLOWED_WORKFLOW_EXECUTION_MODES = frozenset(
@@ -219,6 +221,7 @@ class FinalOutcomeScore:
 
 
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
+WORKFLOW_FINAL_ANSWER_MATCHER = "formatted_final_scalar_v1"
 NUMERIC_REL_TOL = 1e-9
 NUMERIC_ABS_TOL = 1e-6
 _SYMBOLIC_MATH_FIELDS = {
@@ -502,6 +505,113 @@ def _final_outcome_record_fields(score: FinalOutcomeScore) -> dict[str, Any]:
     }
 
 
+def _extract_workflow_final_scalar(tool_result_value: Any) -> tuple[Any, str | None]:
+    if isinstance(tool_result_value, dict):
+        if "result" in tool_result_value:
+            return tool_result_value["result"], None
+        rows = tool_result_value.get("rows")
+        if (
+            isinstance(rows, list)
+            and len(rows) == 1
+            and isinstance(rows[0], list)
+            and len(rows[0]) == 1
+        ):
+            return rows[0][0], None
+        return None, "Final tool result does not expose one scalar result."
+    if isinstance(tool_result_value, (str, int, float, bool)):
+        return tool_result_value, None
+    return None, "Final tool result is not a supported scalar value."
+
+
+def _display_decimal_places(value: str) -> int:
+    normalized = value.strip().rstrip("%").replace(",", "")
+    if "." not in normalized:
+        return 0
+    return len(normalized.rsplit(".", 1)[1])
+
+
+def _parse_display_number(value: str) -> float | None:
+    normalized = value.strip().rstrip("%").replace(",", "").replace("$", "")
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def _score_workflow_final_answer(
+    *,
+    expected_final_answer: Any,
+    final_tool_result_value: Any,
+    call_predicted_tools: bool,
+) -> FinalOutcomeScore:
+    if expected_final_answer is None or expected_final_answer == "":
+        return FinalOutcomeScore(
+            None,
+            "missing_expected_final_answer",
+            None,
+            "Benchmark workflow does not provide a non-empty expected_final_answer.",
+        )
+    if not call_predicted_tools:
+        return FinalOutcomeScore(
+            None,
+            "execution_disabled",
+            None,
+            "Predicted-tool execution is disabled.",
+        )
+
+    actual, extraction_error = _extract_workflow_final_scalar(
+        final_tool_result_value
+    )
+    if extraction_error is not None:
+        return FinalOutcomeScore(
+            False,
+            "result_extraction_error",
+            WORKFLOW_FINAL_ANSWER_MATCHER,
+            extraction_error,
+        )
+
+    if isinstance(expected_final_answer, str):
+        expected_number = _parse_display_number(expected_final_answer)
+        if expected_number is not None and isinstance(actual, (int, float)):
+            actual_number = float(actual)
+            if expected_final_answer.strip().endswith("%"):
+                actual_number *= 100.0
+            decimal_places = _display_decimal_places(expected_final_answer)
+            matched = math.isclose(
+                round(actual_number, decimal_places),
+                expected_number,
+                rel_tol=0.0,
+                abs_tol=10 ** (-(decimal_places + 6)),
+            )
+            return FinalOutcomeScore(
+                matched,
+                "correct" if matched else "mismatch",
+                WORKFLOW_FINAL_ANSWER_MATCHER,
+                None
+                if matched
+                else (
+                    f"Expected displayed final answer {expected_final_answer!r}, "
+                    f"got scalar {actual!r}."
+                ),
+            )
+        matched = str(actual).strip().casefold() == expected_final_answer.strip().casefold()
+    else:
+        matched = _match_expected_answer(
+            actual,
+            expected_final_answer,
+            domain="finance",
+        ).matched
+
+    return FinalOutcomeScore(
+        matched,
+        "correct" if matched else "mismatch",
+        WORKFLOW_FINAL_ANSWER_MATCHER,
+        None
+        if matched
+        else f"Expected final answer {expected_final_answer!r}, got {actual!r}.",
+    )
+
+
 def _score_sample(
     *,
     expected_tool: str,
@@ -708,11 +818,15 @@ async def _call_tool_with_workflow_isolation(
     server_path: Path,
     tool_name: str,
     tool_args: dict[str, Any],
-    prior_steps: tuple[BenchmarkStep, ...],
-    workflow_execution_mode: str,
+    prior_predictions: list[dict[str, Any]],
 ) -> Any:
-    """Execute a prediction using the sample-declared state setup policy."""
-    if workflow_execution_mode != REFERENCE_PREFIX_REPLAY_MODE:
+    """Execute against predicted, never gold, workflow state.
+
+    Retail tools mutate server state. Recreate that state in an isolated server
+    by replaying earlier successful predicted calls before the current call.
+    Other tool families are non-mutating and can use the evaluation session.
+    """
+    if tool_name not in RETAIL_TOOL_NAMES:
         return await _call_tool_with_sample_isolation(
             session,
             server_path,
@@ -721,20 +835,22 @@ async def _call_tool_with_workflow_isolation(
         )
 
     async with _run_server_session(server_path) as isolated_session:
-        for prior_step in prior_steps:
-            if prior_step.expected_tool not in RETAIL_TOOL_NAMES:
-                raise ValueError(
-                    "Retail workflow state setup contains a non-retail tool: "
-                    f"{prior_step.expected_tool}"
-                )
+        for prior_step in prior_predictions:
+            prior_tool = prior_step.get("called_tool")
+            if (
+                prior_tool not in RETAIL_TOOL_NAMES
+                or not prior_step.get("execution_success", False)
+            ):
+                continue
             setup_result = await isolated_session.call_tool(
-                prior_step.expected_tool,
-                prior_step.expected_args,
+                prior_tool,
+                prior_step.get("selected_args", {}),
             )
             if bool(getattr(setup_result, "isError", False)):
                 raise RuntimeError(
-                    "Reference workflow state setup failed at "
-                    f"{prior_step.id}: {_summarize_tool_result(setup_result)}"
+                    "Predicted workflow state replay failed at "
+                    f"{prior_step.get('step_id')}: "
+                    f"{_summarize_tool_result(setup_result)}"
                 )
         return await isolated_session.call_tool(tool_name, tool_args)
 
@@ -911,26 +1027,31 @@ def _multistep_step_metrics(
         for step in step_records
         if step["final_outcome_correct"] is not None
     ]
+    tool_accuracy = (
+        sum(step["tool_selection_correct"] for step in step_records) / total_steps
+        if total_steps
+        else 0.0
+    )
+    argument_accuracy = (
+        sum(step["argument_match_correct"] for step in step_records) / total_steps
+        if total_steps
+        else 0.0
+    )
+    result_accuracy = (
+        sum(score is True for score in semantic_output_scores)
+        / len(semantic_output_scores)
+        if semantic_output_scores
+        else None
+    )
     return {
         "total_steps": total_steps,
-        "step_tool_selection_accuracy": (
-            sum(step["tool_selection_correct"] for step in step_records)
-            / total_steps
-            if total_steps
-            else 0.0
-        ),
-        "step_exact_argument_match_accuracy": (
-            sum(step["argument_match_correct"] for step in step_records)
-            / total_steps
-            if total_steps
-            else 0.0
-        ),
-        "step_semantic_output_accuracy": (
-            sum(score is True for score in semantic_output_scores)
-            / len(semantic_output_scores)
-            if semantic_output_scores
-            else None
-        ),
+        "step_correct_tool_accuracy": tool_accuracy,
+        "step_correct_arguments_accuracy": argument_accuracy,
+        "step_correct_result_accuracy": result_accuracy,
+        # Backwards-compatible metric names retained for historical consumers.
+        "step_tool_selection_accuracy": tool_accuracy,
+        "step_exact_argument_match_accuracy": argument_accuracy,
+        "step_semantic_output_accuracy": result_accuracy,
         "step_semantic_output_scored": len(semantic_output_scores),
     }
 
@@ -944,37 +1065,61 @@ def _multistep_workflow_metrics(
         for workflow in workflow_records
         if workflow["sequence_semantic_output_correct"] is not None
     ]
+    final_answer_scores = [
+        workflow["workflow_final_answer_correct"]
+        for workflow in workflow_records
+        if workflow.get("workflow_final_answer_correct") is not None
+    ]
+    all_tools_accuracy = (
+        sum(
+            workflow["sequence_tool_selection_correct"]
+            for workflow in workflow_records
+        )
+        / total_workflows
+        if total_workflows
+        else 0.0
+    )
+    all_arguments_accuracy = (
+        sum(
+            workflow["sequence_argument_match_correct"]
+            for workflow in workflow_records
+        )
+        / total_workflows
+        if total_workflows
+        else 0.0
+    )
+    all_step_results_accuracy = (
+        sum(score is True for score in semantic_output_scores)
+        / len(semantic_output_scores)
+        if semantic_output_scores
+        else None
+    )
+    final_answer_accuracy = (
+        sum(score is True for score in final_answer_scores)
+        / len(final_answer_scores)
+        if final_answer_scores
+        else None
+    )
     return {
         "total_workflows": total_workflows,
-        "workflow_tool_sequence_accuracy": (
-            sum(
-                workflow["sequence_tool_selection_correct"]
-                for workflow in workflow_records
-            )
-            / total_workflows
-            if total_workflows
-            else 0.0
+        "workflow_all_tools_correct_accuracy": all_tools_accuracy,
+        "workflow_all_arguments_correct_accuracy": all_arguments_accuracy,
+        "workflow_all_step_results_correct_accuracy": all_step_results_accuracy,
+        "workflow_final_answer_accuracy": final_answer_accuracy,
+        "workflow_final_answer_scored": len(final_answer_scores),
+        "workflow_final_answer_gold": sum(
+            workflow.get("expected_final_answer") not in {None, ""}
+            for workflow in workflow_records
         ),
-        "workflow_exact_sequence_accuracy": (
-            sum(
-                workflow["sequence_argument_match_correct"]
-                for workflow in workflow_records
-            )
-            / total_workflows
-            if total_workflows
-            else 0.0
-        ),
-        "workflow_semantic_output_sequence_accuracy": (
-            sum(score is True for score in semantic_output_scores)
-            / len(semantic_output_scores)
-            if semantic_output_scores
-            else None
-        ),
+        # Backwards-compatible metric names retained for historical consumers.
+        "workflow_tool_sequence_accuracy": all_tools_accuracy,
+        "workflow_exact_sequence_accuracy": all_arguments_accuracy,
+        "workflow_semantic_output_sequence_accuracy": all_step_results_accuracy,
         "workflow_semantic_output_sequence_scored": len(
             semantic_output_scores
         ),
         "workflow_expected_final_answer_gold": sum(
-            workflow["expected_final_answer"] is not None
+            workflow.get("expected_final_answer") not in {None, ""}
             for workflow in workflow_records
         ),
     }
@@ -1012,14 +1157,16 @@ def _build_multistep_metrics(
     }
 
 
-def _gold_history_item(step: BenchmarkStep) -> dict[str, Any]:
-    """Build the deterministic teacher-forced context for a completed step."""
+def _predicted_history_item(step_record: dict[str, Any]) -> dict[str, Any]:
+    """Build rollout context containing predictions and execution only."""
     return {
-        "step_id": step.id,
-        "query": step.query,
-        "expected_tool": step.expected_tool,
-        "expected_args": step.expected_args,
-        "expected_answer": step.expected_answer,
+        "step_id": step_record["step_id"],
+        "query": step_record["query"],
+        "selected_tool": step_record["selected_tool"],
+        "selected_args": step_record["selected_args"],
+        "execution_success": step_record["execution_success"],
+        "tool_result_value": step_record["tool_result_value"],
+        "tool_error": step_record["tool_error"],
     }
 
 
@@ -1048,7 +1195,10 @@ def _multistep_query(
                 MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
             )
         )
-    if step.prompt_context.strip():
+    # Some dependent-step contexts contain expressions resolved with gold prior
+    # answers. Supplying those would silently restore teacher forcing. Other
+    # contexts (for example repository coordinates) remain necessary grounding.
+    if step.prompt_context.strip() and not _is_gold_resolved_step_context(step):
         parts.append(
             "Current-step grounding context: "
             + _bounded_prompt_text(
@@ -1072,7 +1222,7 @@ def _multistep_query(
             if item.get("step_id") in visible_step_ids
         ]
         omitted_count = len(history) - len(visible_history)
-        history_heading = "Gold prior-step context"
+        history_heading = "Prior predicted calls and executed results"
         if omitted_count:
             history_heading += (
                 f" (showing every declared dependency and up to the latest "
@@ -1092,6 +1242,21 @@ def _multistep_query(
         )
     parts.append("Choose and call the one tool needed for the current step.")
     return "\n\n".join(parts)
+
+
+def _is_gold_resolved_step_context(step: BenchmarkStep) -> bool:
+    if not step.depends_on or not step.prompt_context.strip():
+        return False
+    try:
+        context = json.loads(step.prompt_context)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(context, dict):
+        return False
+    return context.get("kind") in {
+        "finance_calculator_call_grounding_v1",
+        "math_controlled_current_step_v1",
+    }
 
 
 def _bounded_prompt_text(value: str, maximum_chars: int) -> str:
@@ -1215,8 +1380,7 @@ async def _evaluate_multistep_with_server(
                                 server_path,
                                 selected_tool,
                                 selected_args,
-                                sample.expected_steps[:step_index],
-                                sample.workflow_execution_mode,
+                                workflow_steps,
                             )
                             executed_tool_calls += 1
                             tool_result = _summarize_tool_result(call_result)
@@ -1260,7 +1424,10 @@ async def _evaluate_multistep_with_server(
                         "step_index": step_index,
                         "domain": sample.domain,
                         "benchmark_mode": sample.benchmark_mode,
-                        "workflow_execution_mode": sample.workflow_execution_mode,
+                        "workflow_execution_mode": PREDICTED_ROLLOUT_EXECUTION_MODE,
+                        "declared_workflow_execution_mode": (
+                            sample.workflow_execution_mode
+                        ),
                         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
                         "evaluation_protocol_description": (
                             EVALUATION_PROTOCOL_DESCRIPTIONS[
@@ -1296,13 +1463,26 @@ async def _evaluate_multistep_with_server(
                     }
                     step_records.append(step_record)
                     workflow_steps.append(step_record)
-                    history.append(_gold_history_item(step))
+                    history.append(_predicted_history_item(step_record))
 
+                final_step_result_value = (
+                    workflow_steps[-1]["tool_result_value"]
+                    if workflow_steps
+                    else None
+                )
+                workflow_final_answer = _score_workflow_final_answer(
+                    expected_final_answer=sample.expected_final_answer,
+                    final_tool_result_value=final_step_result_value,
+                    call_predicted_tools=call_predicted_tools,
+                )
                 workflow_record = {
                     "sample_id": sample.id,
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
-                    "workflow_execution_mode": sample.workflow_execution_mode,
+                    "workflow_execution_mode": PREDICTED_ROLLOUT_EXECUTION_MODE,
+                    "declared_workflow_execution_mode": (
+                        sample.workflow_execution_mode
+                    ),
                     "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
                     "evaluation_protocol_description": (
                         EVALUATION_PROTOCOL_DESCRIPTIONS[
@@ -1312,6 +1492,11 @@ async def _evaluate_multistep_with_server(
                     "query": sample.query,
                     "prompt_context": sample.prompt_context,
                     "expected_final_answer": sample.expected_final_answer,
+                    "final_step_result_value": final_step_result_value,
+                    "workflow_final_answer_correct": workflow_final_answer.correct,
+                    "workflow_final_answer_status": workflow_final_answer.status,
+                    "workflow_final_answer_matcher": workflow_final_answer.matcher,
+                    "workflow_final_answer_diagnostic": workflow_final_answer.diagnostic,
                     "task_type": sample.task_type,
                     "difficulty": sample.difficulty,
                     "source": sample.source,
@@ -1372,7 +1557,8 @@ async def _evaluate_multistep_with_server(
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             MULTISTEP_EVALUATION_PROTOCOL
         ],
-        "workflow_execution_modes": sorted(
+        "workflow_execution_modes": [PREDICTED_ROLLOUT_EXECUTION_MODE],
+        "declared_workflow_execution_modes": sorted(
             {sample.workflow_execution_mode for sample in dataset}
         ),
         **tool_pool_metadata,
@@ -1388,20 +1574,20 @@ async def _evaluate_multistep_with_server(
 
     print("\n===================")
     print(f"Evaluation protocol: {MULTISTEP_EVALUATION_PROTOCOL}")
-    print("Metric scope: teacher-forced current-step routing (not autonomous planning)")
+    print("Metric scope: guided rollout with predicted-result error propagation")
     print(f"Workflows: {total_workflows}")
     print(f"Steps: {total_steps}")
     print(
-        "Teacher-forced step tool-selection accuracy: "
-        f"{summary['step_tool_selection_accuracy']:.2%}"
+        "Correct tool per provided step: "
+        f"{summary['step_correct_tool_accuracy']:.2%}"
     )
     print(
-        "Teacher-forced exact workflow-sequence accuracy: "
-        f"{summary['workflow_exact_sequence_accuracy']:.2%}"
+        "Correct arguments per provided step: "
+        f"{summary['step_correct_arguments_accuracy']:.2%}"
     )
-    step_semantic_output_accuracy = summary["step_semantic_output_accuracy"]
+    step_semantic_output_accuracy = summary["step_correct_result_accuracy"]
     print(
-        "Teacher-forced step semantic-output accuracy: "
+        "Correct result per provided step: "
         + (
             f"{step_semantic_output_accuracy:.2%}"
             if step_semantic_output_accuracy is not None
@@ -1409,13 +1595,22 @@ async def _evaluate_multistep_with_server(
         )
     )
     workflow_semantic_output_accuracy = summary[
-        "workflow_semantic_output_sequence_accuracy"
+        "workflow_all_step_results_correct_accuracy"
     ]
     print(
-        "Teacher-forced workflow semantic-output sequence accuracy: "
+        "All provided step results correct: "
         + (
             f"{workflow_semantic_output_accuracy:.2%}"
             if workflow_semantic_output_accuracy is not None
+            else "not scored"
+        )
+    )
+    workflow_final_answer_accuracy = summary["workflow_final_answer_accuracy"]
+    print(
+        "Final answer accuracy: "
+        + (
+            f"{workflow_final_answer_accuracy:.2%}"
+            if workflow_final_answer_accuracy is not None
             else "not scored"
         )
     )
@@ -1426,10 +1621,10 @@ async def _evaluate_multistep_with_server(
         print(
             f"Benchmark mode {mode}: "
             f"workflows={workflow_metrics['total_workflows']}, "
-            "exact teacher-forced sequence accuracy="
+            "all-step argument accuracy="
             f"{workflow_metrics['workflow_exact_sequence_accuracy']:.2%}, "
             f"steps={step_metrics.get('total_steps', 0)}, "
-            "teacher-forced step tool-selection accuracy="
+            "provided-step tool-selection accuracy="
             f"{step_metrics.get('step_tool_selection_accuracy', 0.0):.2%}"
         )
     print(f"Results: {samples_path}")

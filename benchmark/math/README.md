@@ -134,7 +134,7 @@ Every workflow contains two or three connected calls. Later calls consume a
 resolved result from an earlier call, such as an arithmetic product passed to
 integer factorization, a derivative set equal to zero and solved, or a
 converted magnitude used in final arithmetic. Step-level `prompt_context`
-provides authoritative current-step inputs for teacher-forced routing. Rebuild
+provides authoritative current-step inputs for guided rollout. Rebuild
 the artifact with:
 
 ```bash
@@ -168,8 +168,9 @@ step contains:
 - `expected_tool`: the tool selected for that step.
 - `expected_args`: the deterministic arguments for that call.
 - `expected_answer`: the expected result from executing that call.
-- `prompt_context`: authoritative current-step inputs and sequencing context
-  visible during teacher-forced routing.
+- `prompt_context`: authoritative current-step inputs and sequencing context.
+  For a dependent step, the evaluator withholds this field when it could reveal
+  a gold-resolved prior value and instead exposes predicted rollout history.
 - `depends_on`: links to prior step IDs whose outputs or results feed the
   current operation. Independent prerequisite steps may have an empty list.
 

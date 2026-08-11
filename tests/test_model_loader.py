@@ -661,6 +661,46 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
+    def test_gemma4_router_toggles_native_reasoning_with_shared_safety_cap(self) -> None:
+        from models.routers import gemma4_local_router
+
+        generator = Mock()
+        generator.tokenizer.apply_chat_template.return_value = [1, 2, 3]
+        generator.stop_tokens = [99]
+        generator.generate_text.return_value = SimpleNamespace(
+            text='{"name":"calculator","arguments":{"expression":"2+2"}}',
+            tool_call=None,
+        )
+
+        with patch.object(gemma4_local_router, "_load_generator", return_value=generator):
+            direct = gemma4_local_router.choose_tool_call(
+                "Calculate 2+2.",
+                ["calculator"],
+                reasoning_mode="direct",
+            )
+            reasoning = gemma4_local_router.choose_tool_call(
+                "Calculate 2+2.",
+                ["calculator"],
+                reasoning_mode="reasoning",
+            )
+
+        self.assertEqual(direct.selected_tool, "calculator")
+        self.assertEqual(reasoning.selected_tool, "calculator")
+        template_calls = generator.tokenizer.apply_chat_template.call_args_list
+        self.assertFalse(template_calls[0].kwargs["enable_thinking"])
+        self.assertTrue(template_calls[1].kwargs["enable_thinking"])
+        for generation_call in generator.generate_text.call_args_list:
+            self.assertEqual(
+                generation_call.kwargs["max_tokens"],
+                gemma4_local_router.MAX_GENERATED_TOKENS,
+            )
+
+    def test_gemma4_rejects_unknown_reasoning_mode(self) -> None:
+        from models.routers.gemma4_local_router import reasoning_method
+
+        with self.assertRaisesRegex(ValueError, "Unsupported reasoning mode"):
+            reasoning_method("verbose")
+
     def test_gemma4_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.gemma4_local_router import resolve_checkpoint_path
 

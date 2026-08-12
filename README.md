@@ -604,22 +604,25 @@ The organized result namespace reserves separate roots for each evaluation
 protocol:
 
 ```text
-results/runs/single_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kind>/
-results/runs/multi_step/<UTC-date>_<job-id>_<model>_<prompt-condition>_<run-kind>/
+results/runs/single_step/<UTC-date>_<job-id>_<model>_<reasoning-mode>_<run-kind>/
+results/runs/multi_step/<UTC-date>_<job-id>_<model>_<reasoning-mode>_<run-kind>_<dataset-group>/
 ```
 
 The tracked `scripts/slurm/run_single_step.sbatch` and
 `scripts/slurm/run_multi_step.sbatch` launchers implement these layouts. The
 multi-step launcher covers seven dataset groups and evaluates
-`teacher_forced_step_routing_v1`: workflow counts and routed-step counts are
+`guided_predicted_rollout_v1`: workflow counts and routed-step counts are
 distinct, and this is not autonomous planning or end-to-end task success.
 The groups are `coding_sweagent`, `coding_nebius_replay`, `enterprise_tau2`,
-`convfinqa`, `finqa`, `finretrieval_replay`, and `mathematics`; the empty
+`finance_convfinqa`, `finance_finqa`, `finance_finretrieval_replay`, and
+`math_controlled`; the empty
 OpenHands provenance placeholder is intentionally excluded.
 Grounded, controlled, and offline-replay results must be reported separately.
-Use `RUN_KIND=preflight` for deterministic worst-case one-workflow subsets and
-`RUN_KIND=full` with exactly one dataset group; preflight results are non-headline
-and removable after the corresponding full run completes. Finance remains in
+Use `RUN_KIND=short_test` for deterministic longest-workflow subsets and
+`RUN_KIND=full` with exactly one dataset group; short-test results are explicitly
+non-headline and removable after the corresponding full run completes. Gemma
+short tests select up to three longest workflows; other models select one.
+Finance remains in
 scope because the readiness audit found no structurally invalid workflows.
 Each run preserves
 `run_metadata.json`, `resolved_datasets.txt`, the exact
@@ -632,20 +635,39 @@ Dataset artifacts live together under
 `domains/<domain>/<dataset>/samples.jsonl`, `summary.json`, and
 `evaluation.log`. `RUN_COMPLETE` is created only after every expected dataset
 has exactly one validated index entry; its absence means the run is incomplete
-and it must not be reported as a completed baseline. Standard-prompt and
-chain-of-thought conditions must use separate run directories. The former flat,
+and it must not be reported as a completed baseline. Direct and native
+reasoning conditions must use separate run directories. The former flat,
 timestamp-named files directly under `results/` are retained only for historical
 compatibility and should not be used for new concurrent jobs.
+
+Both launchers require `REASONING_MODE=direct|reasoning`. Phi and Llama support
+direct only; Qwen 3.6 and Gemma 4 support direct and native reasoning. The
+launchers record the mode, model-specific reasoning method, and effective token
+generation limit in run metadata, samples, summaries, and the artifact index.
+
+Single-step examples from a fresh clone:
+
+```bash
+MODEL="qwen-3.6-local"
+REASONING_MODE="reasoning"
+sbatch --job-name="${MODEL}-${REASONING_MODE}-smoke" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",RUN_KIND=smoke \
+  scripts/slurm/run_single_step.sbatch
+```
 
 Multi-step examples:
 
 ```bash
-sbatch --time=02:00:00 --job-name=phi-4-local-standard_prompt-preflight-all \
-  --export=ALL,MODEL=phi-4-local,DATASET_GROUP=all,RUN_KIND=preflight \
+MODEL="gemma-4-local"
+REASONING_MODE="reasoning"
+sbatch --time=02:00:00 --job-name="${MODEL}-${REASONING_MODE}-short_test-all" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=all,RUN_KIND=short_test \
   scripts/slurm/run_multi_step.sbatch
 
-sbatch --job-name=llama-3.1-8b-local-standard_prompt-full-finqa \
-  --export=ALL,MODEL=llama-3.1-8b-local,DATASET_GROUP=finqa,RUN_KIND=full \
+MODEL="llama-3.1-8b-local"
+REASONING_MODE="direct"
+sbatch --job-name="${MODEL}-${REASONING_MODE}-full-finance_finqa" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=finance_finqa,RUN_KIND=full \
   scripts/slurm/run_multi_step.sbatch
 ```
 
@@ -680,10 +702,9 @@ guided rollout, not autonomous planning or end-to-end issue resolution.
 ### Notes
 
 - The evaluation path no longer uses a hardcoded static tool list.
-- Tracked FinQA array launchers are available at
-  `scripts/slurm/run_qwen_finqa.sbatch` and
-  `scripts/slurm/run_gemma4_finqa.sbatch`; each runs single-step and multistep
-  direct/reasoning conditions and records the 4096-token effective limit.
+- Qwen 3.6 and Gemma 4 use a 4096-token effective generation limit in both
+  launchers. Their direct and reasoning conditions always use distinct run
+  directories and must be reported separately.
 - The router defaults to `Qwen/Qwen2.5-3B-Instruct`. You can override that with the `LAYERMCP_MODEL_NAME` environment variable.
 - If the model is not already cached locally, the first run will download it from the Hugging Face Hub.
 

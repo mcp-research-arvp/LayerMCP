@@ -332,6 +332,7 @@ def validate_complete_run(
     *,
     index_path: Path,
     expected_benchmarks: list[Path],
+    run_metadata_path: Path | None = None,
 ) -> None:
     index_path = index_path.resolve()
     run_directory = index_path.parent
@@ -363,6 +364,45 @@ def validate_complete_run(
             used_paths.append(path)
     if len(used_paths) != len(set(used_paths)):
         raise ValueError("Run artifact index reuses an artifact path")
+    if run_metadata_path is not None:
+        validate_run_metadata(index_path=index_path, metadata_path=run_metadata_path)
+
+
+def validate_run_metadata(*, index_path: Path, metadata_path: Path) -> None:
+    """Require every indexed dataset to match the launcher's run contract."""
+    metadata = _load_json_object(metadata_path.resolve())
+    records = _existing_index_records(index_path.resolve())
+    if not records:
+        raise ValueError("Run artifact index is empty")
+    expected = {
+        "model_name": metadata.get("expected_model_name"),
+        "prompt_template": metadata.get("prompt_template_id"),
+        "reasoning_mode": metadata.get("reasoning_mode"),
+        "reasoning_method": metadata.get("reasoning_method"),
+        "effective_generation_limit": metadata.get("effective_generation_limit"),
+        "effective_generation_limit_unit": metadata.get(
+            "effective_generation_limit_unit"
+        ),
+        "evaluation_protocol": metadata.get("evaluation_protocol"),
+        "tool_pool": metadata.get("tool_pool"),
+        "tool_count": metadata.get("tool_count"),
+        "tool_registry_fingerprint": metadata.get("tool_registry_fingerprint"),
+        "tool_registry_fingerprint_version": metadata.get(
+            "tool_registry_fingerprint_version"
+        ),
+    }
+    missing = [field for field, value in expected.items() if value in (None, "")]
+    if missing:
+        raise ValueError(
+            f"Run metadata is missing required fields: {', '.join(sorted(missing))}"
+        )
+    for line_number, record in enumerate(records, start=1):
+        for field, value in expected.items():
+            if record.get(field) != value:
+                raise ValueError(
+                    f"Run metadata mismatch for {field!r} at "
+                    f"{index_path}:{line_number}: {record.get(field)!r} != {value!r}"
+                )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -383,6 +423,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tool-count", type=int)
     parser.add_argument("--tool-pool")
     parser.add_argument("--resolved-datasets", type=Path)
+    parser.add_argument("--run-metadata", type=Path)
     return parser
 
 
@@ -419,6 +460,7 @@ def main() -> None:
         validate_complete_run(
             index_path=args.index,
             expected_benchmarks=expected_benchmarks,
+            run_metadata_path=args.run_metadata,
         )
         return
     required = {

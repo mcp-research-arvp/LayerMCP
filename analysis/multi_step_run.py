@@ -16,12 +16,13 @@ from analysis.run_artifacts import (
     _load_json_object,
     _load_jsonl_objects,
     _resolve_index_path,
+    validate_run_metadata,
 )
 from evaluation.evaluate import (
     DEFAULT_BENCHMARK_MODE,
     DEFAULT_WORKFLOW_EXECUTION_MODE,
     MULTISTEP_EVALUATION_PROTOCOL,
-    _gold_history_item,
+    PREDICTED_ROLLOUT_EXECUTION_MODE,
     _multistep_query,
     load_benchmark,
 )
@@ -33,12 +34,12 @@ DATASET_GROUPS = {
         "benchmark/coding/coding_nebius_sweagent_replay_multistep.json"
     ),
     "enterprise_tau2": Path("benchmark/enterprise/enterprise_public_workflows.json"),
-    "convfinqa": Path("benchmark/finance/finance_convfinqa_multistep.json"),
-    "finqa": Path("benchmark/finance/finance_finqa_test_multistep.json"),
-    "finretrieval_replay": Path(
+    "finance_convfinqa": Path("benchmark/finance/finance_convfinqa_multistep.json"),
+    "finance_finqa": Path("benchmark/finance/finance_finqa_test_multistep.json"),
+    "finance_finretrieval_replay": Path(
         "benchmark/finance/finance_finretrieval_replay_multistep.json"
     ),
-    "mathematics": Path("benchmark/math/math_multistep_controlled.json"),
+    "math_controlled": Path("benchmark/math/math_multistep_controlled.json"),
 }
 EMPTY_PLACEHOLDER = Path(
     "benchmark/coding/coding_nebius_swerebench_openhands_replay_multistep.json"
@@ -46,11 +47,11 @@ EMPTY_PLACEHOLDER = Path(
 
 
 def resolve_dataset_groups(group: str, run_kind: str) -> list[tuple[str, Path]]:
-    if run_kind not in {"preflight", "full"}:
+    if run_kind not in {"short_test", "full"}:
         raise ValueError(f"Unsupported RUN_KIND: {run_kind}")
     if group == "all":
-        if run_kind != "preflight":
-            raise ValueError("DATASET_GROUP=all is allowed only for RUN_KIND=preflight")
+        if run_kind != "short_test":
+            raise ValueError("DATASET_GROUP=all is allowed only for RUN_KIND=short_test")
         return list(DATASET_GROUPS.items())
     if group not in DATASET_GROUPS:
         raise ValueError(f"Unsupported DATASET_GROUP: {group}")
@@ -81,10 +82,13 @@ def dataset_counts(path: Path) -> tuple[int, int]:
     return len(rows), steps
 
 
-def select_longest_workflow(
+def select_longest_workflows(
     path: Path,
     prompt_length: Callable[[str], int],
-) -> tuple[dict[str, Any], dict[str, Any]]:
+    count: int = 1,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if count <= 0:
+        raise ValueError("Short-test workflow count must be positive")
     raw_rows = json.loads(path.read_text(encoding="utf-8"))
     samples = load_benchmark(path)
     candidates: list[tuple[int, str, int]] = []
@@ -93,59 +97,94 @@ def select_longest_workflow(
         maximum = 0
         for step in sample.expected_steps:
             maximum = max(maximum, prompt_length(_multistep_query(sample, step, history)))
-            history.append(_gold_history_item(step))
+            # Selection only: approximate the maximum rendered history size with
+            # reference-shaped values. These values are never written into the
+            # evaluated subset or supplied to the model during guided rollout.
+            history.append(
+                {
+                    "step_id": step.id,
+                    "query": step.query,
+                    "selected_tool": step.expected_tool,
+                    "selected_args": step.expected_args,
+                    "execution_success": True,
+                    "tool_result_value": step.expected_answer,
+                    "tool_error": None,
+                }
+            )
         candidates.append((maximum, sample.id, sample_index))
-    maximum, workflow_id, sample_index = max(candidates, key=lambda item: (item[0], item[1]))
-    selected = raw_rows[sample_index]
+    ranked = sorted(candidates, key=lambda item: (item[0], item[1]), reverse=True)
+    selected_candidates = ranked[: min(count, len(ranked))]
+    selected = [raw_rows[item[2]] for item in selected_candidates]
     source_bytes = path.read_bytes()
     metadata = {
         "original_benchmark_path": str(path.resolve()),
         "original_benchmark_sha256": hashlib.sha256(source_bytes).hexdigest(),
-        "selected_workflow_id": workflow_id,
-        "selected_workflow_steps": len(selected["expected_steps"]),
+        "selected_workflow_ids": [item[1] for item in selected_candidates],
+        "selected_workflow_steps": [len(row["expected_steps"]) for row in selected],
+        "selected_workflow_count": len(selected),
         "selection_rule": (
-            "workflow containing the largest exactly rendered step prompt for the "
-            "selected model; ties broken by lexicographically greatest workflow ID"
+            "workflows with the largest exactly rendered step prompt for the "
+            "selected model; ties broken by reverse lexicographic workflow ID"
         ),
-        "largest_prompt_tokens": maximum,
+        "largest_prompt_tokens": [item[0] for item in selected_candidates],
         "headline_eligible": False,
         "retention": "removable_after_corresponding_full_run_completes",
     }
     return selected, metadata
 
 
-def write_preflight_subset(
+def select_longest_workflow(
+    path: Path,
+    prompt_length: Callable[[str], int],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Backward-compatible one-workflow selection helper."""
+    selected, metadata = select_longest_workflows(path, prompt_length, 1)
+    metadata["selected_workflow_id"] = metadata["selected_workflow_ids"][0]
+    return selected[0], metadata
+
+
+def write_short_test_subset(
     path: Path,
     subset_path: Path,
     provenance_path: Path,
     prompt_length: Callable[[str], int],
+    count: int = 1,
 ) -> dict[str, Any]:
-    selected, metadata = select_longest_workflow(path, prompt_length)
-    payload = json.dumps([selected], ensure_ascii=True, indent=2) + "\n"
+    selected, metadata = select_longest_workflows(path, prompt_length, count)
+    payload = json.dumps(selected, ensure_ascii=True, indent=2) + "\n"
     subset_path.parent.mkdir(parents=True, exist_ok=True)
     with subset_path.open("x", encoding="utf-8") as handle:
         handle.write(payload)
-    metadata["preflight_subset_path"] = str(subset_path.resolve())
-    metadata["preflight_subset_sha256"] = hashlib.sha256(payload.encode()).hexdigest()
+    metadata["short_test_subset_path"] = str(subset_path.resolve())
+    metadata["short_test_subset_sha256"] = hashlib.sha256(payload.encode()).hexdigest()
     with provenance_path.open("x", encoding="utf-8") as handle:
         json.dump(metadata, handle, indent=2, sort_keys=True)
         handle.write("\n")
     return metadata
 
 
-def write_model_preflight_subset(
+def write_model_short_test_subset(
     *, source: Path, subset: Path, provenance: Path, model: str,
-    checkpoint: Path, registry_snapshot: Path,
+    checkpoint: Path, registry_snapshot: Path, reasoning_mode: str,
 ) -> dict[str, Any]:
     """Render the production router prompt with a tokenizer, never model weights."""
-    from transformers import AutoTokenizer
     from models.routers.structured_tool_call import build_native_tools, build_tool_call_prompt
 
     snapshot = _load_json_object(registry_snapshot)
     names = snapshot["tool_names"]
     schemas = snapshot["tool_schemas"]
     descriptions = snapshot["tool_descriptions"]
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint, trust_remote_code=True)
+    if model == "gemma-4-local":
+        from models.architectures.gemma4_pytorch.inference import get_tokenizer
+    elif model == "qwen-3.6-local":
+        from models.architectures.qwen36_pytorch.inference import get_tokenizer
+    elif model == "phi-4-local":
+        from models.architectures.phi4_pytorch.inference import get_tokenizer
+    elif model == "llama-3.1-8b-local":
+        from models.architectures.llama31_8b_pytorch.inference import get_tokenizer
+    else:
+        raise ValueError(f"Unsupported short-test model: {model}")
+    tokenizer = get_tokenizer(str(checkpoint))
 
     def prompt_length(query: str) -> int:
         if model == "llama-3.1-8b-local":
@@ -167,11 +206,35 @@ def write_model_preflight_subset(
                 tokenize=False,
                 add_generation_prompt=True,
             )
+        elif model == "gemma-4-local":
+            content = build_tool_call_prompt(query, names, schemas, descriptions)
+            rendered = tokenizer.apply_chat_template(
+                [{"role": "user", "content": content}],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=reasoning_mode == "reasoning",
+            )
+        elif model == "qwen-3.6-local":
+            content = (
+                "This is a tool-routing benchmark. You must call exactly one of "
+                "the provided functions and must not answer the request directly, "
+                "even if you can solve it without a tool.\n\nUser request:\n" + query
+            )
+            rendered = tokenizer.apply_chat_template(
+                [{"role": "user", "content": content}],
+                tools=build_native_tools(names, schemas, descriptions),
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=reasoning_mode == "reasoning",
+            )
         else:
-            raise ValueError(f"Unsupported preflight model: {model}")
+            raise ValueError(f"Unsupported short-test model: {model}")
         return len(tokenizer.encode(rendered, add_special_tokens=False))
 
-    return write_preflight_subset(source, subset, provenance, prompt_length)
+    count = 3 if model == "gemma-4-local" else 1
+    return write_short_test_subset(
+        source, subset, provenance, prompt_length, count=count
+    )
 
 
 def validate_and_index_multistep(
@@ -179,7 +242,9 @@ def validate_and_index_multistep(
     evaluated_benchmark: Path, expected_model: str, expected_prompt_template: str,
     expected_registry_fingerprint: str, expected_registry_fingerprint_version: str,
     expected_tool_count: int, expected_tool_pool: str,
-    preflight_provenance: Path | None = None,
+    expected_reasoning_mode: str, expected_reasoning_method: str,
+    expected_generation_limit: int,
+    short_test_provenance: Path | None = None,
 ) -> dict[str, Any]:
     dataset_directory = dataset_directory.resolve()
     index_path = index_path.resolve()
@@ -209,6 +274,10 @@ def validate_and_index_multistep(
         "model_name": expected_model,
         "prompt_template": expected_prompt_template,
         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
+        "reasoning_mode": expected_reasoning_mode,
+        "reasoning_method": expected_reasoning_method,
+        "effective_generation_limit": expected_generation_limit,
+        "effective_generation_limit_unit": "tokens",
         "tool_pool": expected_tool_pool,
         "tool_count": expected_tool_count,
         "tool_registry_fingerprint": expected_registry_fingerprint,
@@ -235,6 +304,11 @@ def validate_and_index_multistep(
             raise ValueError(f"Unexpected benchmark in workflow {workflow_id}")
         if record.get("evaluation_protocol") != MULTISTEP_EVALUATION_PROTOCOL:
             raise ValueError(f"Unexpected evaluation protocol in workflow {workflow_id}")
+        for field, value in required_summary.items():
+            if record.get(field) != value:
+                raise ValueError(
+                    f"Metadata mismatch for {field} in workflow {workflow_id}"
+                )
         steps = record.get("steps")
         if not isinstance(steps, list):
             raise ValueError(f"Missing routed steps in workflow {workflow_id}")
@@ -252,6 +326,10 @@ def validate_and_index_multistep(
         raise ValueError("Summary benchmark-mode distribution does not match workflows")
     if set(summary.get("workflow_execution_modes", [])) != execution_modes:
         raise ValueError("Summary workflow-execution modes do not match workflows")
+    if execution_modes != {PREDICTED_ROLLOUT_EXECUTION_MODE}:
+        raise ValueError(
+            "PR35 multi-step artifacts must use predicted_sequence execution"
+        )
     indexed = {
         "samples_path": _index_path_value(paths[0], run_directory),
         "summary_path": _index_path_value(paths[1], run_directory),
@@ -272,19 +350,31 @@ def validate_and_index_multistep(
         "final_outcome_matchers": sorted(matchers),
         "model_name": expected_model,
         "prompt_template": expected_prompt_template,
+        "reasoning_mode": summary["reasoning_mode"],
+        "reasoning_method": summary["reasoning_method"],
+        "effective_generation_limit": summary["effective_generation_limit"],
+        "effective_generation_limit_unit": summary[
+            "effective_generation_limit_unit"
+        ],
         **{field: summary[field] for field in (
             "tool_pool", "tool_count", "tool_registry_fingerprint",
             "tool_registry_fingerprint_version")},
         **indexed,
     }
-    if preflight_provenance is not None:
-        record["preflight_provenance_path"] = _index_path_value(preflight_provenance, run_directory)
+    if short_test_provenance is not None:
+        record["short_test_provenance_path"] = _index_path_value(
+            short_test_provenance, run_directory
+        )
     with index_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
     return record
 
 
-def validate_complete_multistep_run(index_path: Path, expected_benchmarks: list[Path]) -> None:
+def validate_complete_multistep_run(
+    index_path: Path,
+    expected_benchmarks: list[Path],
+    run_metadata_path: Path | None = None,
+) -> None:
     index_path = index_path.resolve()
     run_directory = index_path.parent
     records = _existing_index_records(index_path)
@@ -301,9 +391,9 @@ def validate_complete_multistep_run(index_path: Path, expected_benchmarks: list[
             if not artifact.is_file():
                 raise FileNotFoundError(f"Indexed artifact does not exist: {artifact}")
             artifact_paths.append(artifact)
-        provenance = record.get("preflight_provenance_path")
+        provenance = record.get("short_test_provenance_path")
         if provenance and not _resolve_index_path(str(provenance), run_directory).is_file():
-            raise FileNotFoundError("Indexed preflight provenance does not exist")
+            raise FileNotFoundError("Indexed short-test provenance does not exist")
     if len(artifact_paths) != len(set(artifact_paths)):
         raise ValueError("Run artifact index reuses an artifact path")
     modes = {mode for record in records for mode in record.get("benchmark_modes", [])}
@@ -311,16 +401,65 @@ def validate_complete_multistep_run(index_path: Path, expected_benchmarks: list[
         # Mixed modes are permitted only as distinct index entries; never pooled.
         if any(len(record.get("benchmark_modes", [])) != 1 for record in records):
             raise ValueError("A dataset index entry pools multiple benchmark modes")
+    if run_metadata_path is not None:
+        validate_run_metadata(index_path=index_path, metadata_path=run_metadata_path)
+        metadata = _load_json_object(run_metadata_path)
+        if metadata.get("evaluation_protocol") != MULTISTEP_EVALUATION_PROTOCOL:
+            raise ValueError("Run metadata uses an obsolete multi-step protocol")
+        if metadata.get("workflow_execution_mode") != PREDICTED_ROLLOUT_EXECUTION_MODE:
+            raise ValueError("Run metadata does not declare predicted_sequence")
+        run_kind = metadata.get("run_kind")
+        if run_kind not in {"short_test", "full"}:
+            raise ValueError(f"Unsupported run kind in metadata: {run_kind!r}")
+        if metadata.get("headline_eligible") is not (run_kind == "full"):
+            raise ValueError("Run headline eligibility does not match run kind")
+        source_counts = metadata.get("source_counts")
+        if not isinstance(source_counts, dict):
+            raise ValueError("Run metadata is missing source_counts")
+        for record in records:
+            source = str(Path(record["benchmark_path"]).resolve())
+            counts = source_counts.get(source)
+            if not isinstance(counts, dict):
+                raise ValueError(f"Run metadata is missing counts for {source}")
+            if run_kind == "full" and (
+                record.get("workflow_count") != counts.get("workflows")
+                or record.get("expected_step_count") != counts.get("routed_steps")
+            ):
+                raise ValueError(f"Full-run counts do not match source counts for {source}")
+        if run_kind == "short_test" and not metadata.get("short_test_selection"):
+            raise ValueError("Short-test metadata is missing exact selection provenance")
+        if run_kind == "short_test":
+            declared_selections = list(metadata["short_test_selection"].values())
+            for record in records:
+                provenance_value = record.get("short_test_provenance_path")
+                if not provenance_value:
+                    raise ValueError("Short-test index is missing selection provenance")
+                provenance = _load_json_object(
+                    _resolve_index_path(str(provenance_value), run_directory)
+                )
+                if provenance not in declared_selections:
+                    raise ValueError(
+                        "Indexed short-test selection does not match run metadata"
+                    )
+                samples = _load_jsonl_objects(
+                    _resolve_index_path(str(record["samples_path"]), run_directory)
+                )
+                observed_ids = [str(sample.get("sample_id")) for sample in samples]
+                if observed_ids != provenance.get("selected_workflow_ids"):
+                    raise ValueError(
+                        "Short-test samples do not match the recorded selection"
+                    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--counts", type=Path)
-    parser.add_argument("--make-preflight", action="store_true")
+    parser.add_argument("--make-short-test", action="store_true")
     parser.add_argument("--subset", type=Path)
     parser.add_argument("--provenance", type=Path)
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--registry-snapshot", type=Path)
+    parser.add_argument("--reasoning-mode")
     parser.add_argument("--validate-index", action="store_true")
     parser.add_argument("--dataset-dir", type=Path)
     parser.add_argument("--index", type=Path)
@@ -332,24 +471,32 @@ def main() -> None:
     parser.add_argument("--registry-fingerprint-version")
     parser.add_argument("--tool-count", type=int)
     parser.add_argument("--tool-pool")
-    parser.add_argument("--preflight-provenance", type=Path)
+    parser.add_argument("--reasoning-method")
+    parser.add_argument("--generation-limit", type=int)
+    parser.add_argument("--short-test-provenance", type=Path)
+    parser.add_argument("--run-metadata", type=Path)
     args = parser.parse_args()
     if args.counts:
         workflows, steps = dataset_counts(args.counts)
         print(f"{workflows} {steps}")
         return
-    if args.make_preflight:
-        write_model_preflight_subset(
+    if args.make_short_test:
+        write_model_short_test_subset(
             source=args.source_benchmark,
             subset=args.subset,
             provenance=args.provenance,
             model=args.model,
             checkpoint=args.checkpoint,
             registry_snapshot=args.registry_snapshot,
+            reasoning_mode=args.reasoning_mode,
         )
         return
     if args.validate_index:
-        validate_complete_multistep_run(args.index, [Path(line) for line in args.source_benchmark.read_text().splitlines() if line])
+        validate_complete_multistep_run(
+            args.index,
+            [Path(line) for line in args.source_benchmark.read_text().splitlines() if line],
+            args.run_metadata,
+        )
         return
     validate_and_index_multistep(
         dataset_directory=args.dataset_dir, index_path=args.index,
@@ -359,7 +506,10 @@ def main() -> None:
         expected_registry_fingerprint=args.registry_fingerprint,
         expected_registry_fingerprint_version=args.registry_fingerprint_version,
         expected_tool_count=args.tool_count, expected_tool_pool=args.tool_pool,
-        preflight_provenance=args.preflight_provenance,
+        expected_reasoning_mode=args.reasoning_mode,
+        expected_reasoning_method=args.reasoning_method,
+        expected_generation_limit=args.generation_limit,
+        short_test_provenance=args.short_test_provenance,
     )
 
 

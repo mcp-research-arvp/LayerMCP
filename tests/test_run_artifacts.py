@@ -12,6 +12,7 @@ from analysis.run_artifacts import (
     safe_path_component,
     validate_and_index_dataset,
     validate_complete_run,
+    validate_run_metadata,
 )
 
 
@@ -252,6 +253,61 @@ class RunArtifactTests(unittest.TestCase):
                     index_path=index,
                     expected_benchmarks=[benchmark, root / "missing.json"],
                 )
+
+    def test_run_metadata_must_match_indexed_reasoning_contract(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            benchmark = self._benchmark(root)
+            run = root / "run"
+            dataset_dir = _write_dataset_artifacts(run, benchmark)
+            index = run / "artifact_index.jsonl"
+            validate_and_index_dataset(
+                dataset_directory=dataset_dir,
+                index_path=index,
+                expected_benchmark=benchmark,
+                expected_model=MODEL,
+                expected_prompt_template=PROMPT,
+                **REGISTRY_EXPECTATIONS,
+            )
+            metadata = {
+                "expected_model_name": MODEL,
+                "prompt_template_id": PROMPT,
+                "reasoning_mode": "direct",
+                "reasoning_method": "none",
+                "effective_generation_limit": 128,
+                "effective_generation_limit_unit": "tokens",
+                "evaluation_protocol": "single_step_tool_routing_v1",
+                "tool_pool": TOOL_POOL,
+                "tool_count": TOOL_COUNT,
+                "tool_registry_fingerprint": FINGERPRINT,
+                "tool_registry_fingerprint_version": FINGERPRINT_VERSION,
+            }
+            metadata_path = run / "run_metadata.json"
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            validate_run_metadata(index_path=index, metadata_path=metadata_path)
+            metadata["reasoning_mode"] = "reasoning"
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "reasoning_mode"):
+                validate_run_metadata(index_path=index, metadata_path=metadata_path)
+
+    def test_single_step_launcher_separates_and_passes_reasoning_mode(self) -> None:
+        launcher = (Path(__file__).resolve().parents[1] / "scripts/slurm/run_single_step.sbatch").read_text()
+        self.assertIn("${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}", launcher)
+        self.assertIn('--reasoning-mode "$REASONING_MODE"', launcher)
+        self.assertIn('--run-metadata "$RUN_DIR/run_metadata.json"', launcher)
+        self.assertNotRegex(launcher, r"sha256:[0-9a-f]{64}")
+        self.assertNotRegex(launcher, r"TOOL_COUNT=[0-9]+")
+        for model in (
+            "phi-4-local",
+            "llama-3.1-8b-local",
+            "qwen-3.6-local",
+            "gemma-4-local",
+        ):
+            self.assertIn(model, launcher)
+        self.assertLess(
+            launcher.index("does not implement reasoning mode"),
+            launcher.index("--capture-live-registry"),
+        )
 
     def test_live_registry_metadata_uses_evaluator_canonical_implementation(self) -> None:
         tools = [

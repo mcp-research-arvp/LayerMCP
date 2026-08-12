@@ -701,6 +701,36 @@ class RouterRegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsupported reasoning mode"):
             reasoning_method("verbose")
 
+    def test_gemma4_long_workflow_steps_keep_bounded_generation(self) -> None:
+        from models.routers import gemma4_local_router
+
+        generator = Mock()
+        generator.tokenizer.apply_chat_template.return_value = list(range(2048))
+        generator.stop_tokens = [99]
+        generator.generate_text.return_value = SimpleNamespace(
+            text='{"name":"calculator","arguments":{"expression":"2+2"}}',
+            tool_call=None,
+        )
+        long_steps = [
+            f"Overall task: finance workflow {index}\n" + ("evidence " * 1800)
+            for index in range(6)
+        ]
+
+        with patch.object(gemma4_local_router, "_load_generator", return_value=generator):
+            for index, query in enumerate(long_steps):
+                gemma4_local_router.choose_tool_call(
+                    query,
+                    ["calculator"],
+                    reasoning_mode="reasoning" if index % 2 else "direct",
+                )
+
+        self.assertEqual(generator.generate_text.call_count, len(long_steps))
+        for call in generator.generate_text.call_args_list:
+            self.assertEqual(
+                call.kwargs["max_tokens"],
+                gemma4_local_router.MAX_GENERATED_TOKENS,
+            )
+
     def test_gemma4_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.gemma4_local_router import resolve_checkpoint_path
 

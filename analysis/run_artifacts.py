@@ -217,10 +217,34 @@ def validate_and_index_dataset(
                 f"{summary.get(field)!r} != {expected_value!r}"
             )
 
+    if summary.get("reasoning_mode") not in {"direct", "reasoning"}:
+        raise ValueError(f"Invalid or missing reasoning_mode in {summary_path}")
+    if not isinstance(summary.get("reasoning_method"), str) or not summary[
+        "reasoning_method"
+    ].strip():
+        raise ValueError(f"Invalid or missing reasoning_method in {summary_path}")
+    generation_limit = summary.get("effective_generation_limit")
+    if (
+        isinstance(generation_limit, bool)
+        or not isinstance(generation_limit, int)
+        or generation_limit <= 0
+    ):
+        raise ValueError(
+            f"Invalid or missing effective_generation_limit in {summary_path}"
+        )
+    if summary.get("effective_generation_limit_unit") != "tokens":
+        raise ValueError(
+            f"Invalid or missing effective_generation_limit_unit in {summary_path}"
+        )
+
     shared_fields = (
         "model_name",
         "prompt_template",
         "evaluation_protocol",
+        "reasoning_mode",
+        "reasoning_method",
+        "effective_generation_limit",
+        "effective_generation_limit_unit",
         "tool_pool",
         "tool_count",
         "tool_registry_fingerprint",
@@ -276,6 +300,12 @@ def validate_and_index_dataset(
         "final_outcome_matchers": sorted(matchers),
         "model_name": expected_model,
         "prompt_template": expected_prompt_template,
+        "reasoning_mode": summary["reasoning_mode"],
+        "reasoning_method": summary["reasoning_method"],
+        "effective_generation_limit": summary["effective_generation_limit"],
+        "effective_generation_limit_unit": summary[
+            "effective_generation_limit_unit"
+        ],
         "tool_count": summary["tool_count"],
         "tool_pool": summary["tool_pool"],
         "tool_registry_fingerprint": summary["tool_registry_fingerprint"],

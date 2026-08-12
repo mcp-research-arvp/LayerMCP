@@ -24,6 +24,8 @@ def _sample(
     failure: str,
     matcher: str = "recursive_json_subset_v1",
     benchmark_mode: str | None | object = DEFAULT_BENCHMARK_MODE,
+    reasoning_mode: str = "direct",
+    reasoning_method: str = "none",
 ) -> dict:
     sample = {
         "sample_id": sample_id,
@@ -38,6 +40,8 @@ def _sample(
         "failure_category": failure,
         "source": "public_derived",
         "task_type": "single_tool_routing",
+        "reasoning_mode": reasoning_mode,
+        "reasoning_method": reasoning_method,
     }
     if benchmark_mode is not _MISSING:
         sample["benchmark_mode"] = benchmark_mode
@@ -54,6 +58,8 @@ def _write_result(
     samples: list[dict],
     summary_overrides: dict | None = None,
     missing_registry_field: str | None = None,
+    reasoning_mode: str = "direct",
+    reasoning_method: str = "none",
 ) -> None:
     artifacts = run / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -67,6 +73,8 @@ def _write_result(
         "model_name": model,
         "benchmark_path": f"benchmark/{domain}/{name}.json",
         "evaluation_protocol": "single_step_tool_routing_v1",
+        "reasoning_mode": reasoning_mode,
+        "reasoning_method": reasoning_method,
         "total_samples": len(samples),
         "tool_pool": "full_mcp_registry",
         "tool_count": 60,
@@ -159,18 +167,18 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([llama, phi])
 
             self.assertIn(
-                "| phi | grounded_tool_execution | explicit | 2 | 50.0% | "
+                "| phi | direct | none | grounded_tool_execution | explicit | 2 | 50.0% | "
                 "2/2 (100.0%) | 50.0% | — |",
                 markdown,
             )
             self.assertIn(
-                "| llama | grounded_tool_execution | explicit | Finance | 1 | "
+                "| llama | direct | none | grounded_tool_execution | explicit | Finance | 1 | "
                 "0.0% | 1/1 (100.0%) | 100.0% | — |",
                 markdown,
             )
             self.assertIn("public/source-derived", markdown)
             self.assertIn(
-                "| phi | grounded_tool_execution | explicit | 0.0% | 50.0% | "
+                "| phi | direct | none | grounded_tool_execution | explicit | 0.0% | 50.0% | "
                 "0.0% | 1 | 1 | 1 | 0 |",
                 markdown,
             )
@@ -178,7 +186,7 @@ class MinimalScorecardTests(unittest.TestCase):
             self.assertIn("Exact Reference Argument Match", markdown)
             self.assertNotIn("Exact canonical args", markdown)
             header = (
-                "| Model | Benchmark mode | Mode source | N | Final Outcome "
+                "| Model | Reasoning mode | Reasoning method | Benchmark mode | Mode source | N | Final Outcome "
                 "Accuracy | Final Outcome Coverage | Tool Selection Accuracy | "
                 "Valid Arguments / SVCA |"
             )
@@ -186,6 +194,47 @@ class MinimalScorecardTests(unittest.TestCase):
             self.assertLess(
                 markdown.index("Final Outcome Accuracy"),
                 markdown.index("Tool Selection Accuracy"),
+            )
+
+    def test_direct_and_reasoning_conditions_cannot_be_combined(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            run = Path(temporary_directory) / "run"
+            run.mkdir()
+            for mode, method, correct in (
+                ("direct", "native_disabled", True),
+                ("reasoning", "native_enabled", False),
+            ):
+                _write_result(
+                    run,
+                    f"finance_{mode}",
+                    model="gemma",
+                    domain="finance",
+                    fingerprint="sha256:one",
+                    reasoning_mode=mode,
+                    reasoning_method=method,
+                    samples=[
+                        _sample(
+                            mode,
+                            model="gemma",
+                            domain="finance",
+                            tool=correct,
+                            args=correct,
+                            execution=correct,
+                            final=correct,
+                            failure="correct" if correct else "wrong_tool",
+                            reasoning_mode=mode,
+                            reasoning_method=method,
+                        )
+                    ],
+                )
+
+            markdown = build_scorecard([run])
+
+            self.assertIn("| gemma | direct | native_disabled |", markdown)
+            self.assertIn("| gemma | reasoning | native_enabled |", markdown)
+            self.assertNotIn(
+                "| gemma | direct | native_disabled | grounded_tool_execution | explicit | 2 |",
+                markdown,
             )
 
     def test_sgoa_uses_scored_denominator(self) -> None:
@@ -223,7 +272,7 @@ class MinimalScorecardTests(unittest.TestCase):
             )
             markdown = build_scorecard([run])
             self.assertIn(
-                "| model | grounded_tool_execution | explicit | 2 | 100.0% | "
+                "| model | direct | none | grounded_tool_execution | explicit | 2 | 100.0% | "
                 "1/2 (50.0%) | 100.0% | — |",
                 markdown,
             )
@@ -256,7 +305,7 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([run])
 
             self.assertIn(
-                "| model | grounded_tool_execution | explicit | 2 | — | "
+                "| model | direct | none | grounded_tool_execution | explicit | 2 | — | "
                 "0/2 (0.0%) | 100.0% | — |",
                 markdown,
             )
@@ -323,13 +372,13 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([other_run, run])
 
             self.assertIn(
-                "| model | `grounded_tool_execution (explicit)` | "
+                "| model | direct | none | `grounded_tool_execution (explicit)` | "
                 "`finance_query_table_rows_v1`, "
                 "`recursive_json_subset_v1` |",
                 markdown,
             )
             self.assertIn(
-                "| other-model | `grounded_tool_execution (explicit)` | "
+                "| other-model | direct | none | `grounded_tool_execution (explicit)` | "
                 "`recursive_json_subset_v1` |",
                 markdown,
             )
@@ -395,21 +444,21 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([run])
 
             self.assertIn(
-                "| model | grounded_tool_execution | explicit | 1 | 100.0% |",
+                "| model | direct | none | grounded_tool_execution | explicit | 1 | 100.0% |",
                 markdown,
             )
             self.assertIn(
-                "| model | grounded_tool_execution | defaulted (missing) | 1 | "
+                "| model | direct | none | grounded_tool_execution | defaulted (missing) | 1 | "
                 "0.0% |",
                 markdown,
             )
             self.assertIn(
-                "| model | grounded_tool_execution | defaulted (null) | 1 | "
+                "| model | direct | none | grounded_tool_execution | defaulted (null) | 1 | "
                 "100.0% |",
                 markdown,
             )
             self.assertIn(
-                "| model | offline_trace_replay | explicit | 1 | 0.0% |",
+                "| model | direct | none | offline_trace_replay | explicit | 1 | 0.0% |",
                 markdown,
             )
             self.assertIn(
@@ -620,6 +669,8 @@ class MinimalScorecardTests(unittest.TestCase):
                         "model_name": "model",
                         "benchmark_path": "benchmark/coding/coding_public.json",
                         "evaluation_protocol": "single_step_tool_routing_v1",
+                        "reasoning_mode": "direct",
+                        "reasoning_method": "none",
                         "total_samples": 1,
                         "tool_pool": "full_mcp_registry",
                         "tool_count": 60,

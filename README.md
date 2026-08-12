@@ -285,6 +285,9 @@ Result samples and summaries record `reasoning_mode` and `reasoning_method`.
 Gemma 4 uses the same labels and shared emergency ceiling through its native
 `enable_thinking` chat-template option. Other local routers currently reject
 the `reasoning` condition until their model-specific implementations are added.
+Samples, summaries, and Slurm run metadata also record the effective generation
+limit in tokens. Scorecards keep direct and reasoning conditions in separate
+rows and reject missing or inconsistent reasoning metadata.
 
 Router naming:
 
@@ -652,6 +655,10 @@ guided rollout, not autonomous planning or end-to-end issue resolution.
 ### Notes
 
 - The evaluation path no longer uses a hardcoded static tool list.
+- Tracked FinQA array launchers are available at
+  `scripts/slurm/run_qwen_finqa.sbatch` and
+  `scripts/slurm/run_gemma4_finqa.sbatch`; each runs single-step and multistep
+  direct/reasoning conditions and records the 4096-token effective limit.
 - The router defaults to `Qwen/Qwen2.5-3B-Instruct`. You can override that with the `LAYERMCP_MODEL_NAME` environment variable.
 - If the model is not already cached locally, the first run will download it from the Hugging Face Hub.
 

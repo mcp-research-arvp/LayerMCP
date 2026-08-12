@@ -186,6 +186,8 @@ metadata = {
     "expected_model_name": "$EXPECTED_MODEL_NAME",
     "checkpoint": "$CHECKPOINT",
     "prompt_condition": "$PROMPT_MODE",
+    "reasoning_mode": "direct",
+    "reasoning_method": "none",
     "run_kind": "$RUN_KIND",
     "prompt_template_id": "$PROMPT_TEMPLATE_ID",
     "benchmark_mode": "grounded_tool_execution",
@@ -203,6 +205,8 @@ metadata = {
     "generation": {
         "temperature": 0.0,
         "max_tokens": 128,
+        "effective_generation_limit": 128,
+        "effective_generation_limit_unit": "tokens",
         "seed": "not_applicable_deterministic_greedy",
     },
     "model_attempts_per_sample": 1,

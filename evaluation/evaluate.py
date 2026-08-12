@@ -106,6 +106,7 @@ class BenchmarkSample:
     expected_answer: Any
     perturbation_type: str
     notes: str
+    benchmark_family: str = "unspecified"
     expected_final_answer: Any = None
     prompt_context: str = ""
     expected_steps: tuple[BenchmarkStep, ...] = ()
@@ -347,6 +348,9 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         expected_answer=sample.get("expected_answer"),
         perturbation_type=str(sample.get("perturbation_type", "none")),
         notes=str(sample.get("notes", "")),
+        benchmark_family=str(
+            sample.get("source_dataset") or sample.get("source") or "unspecified"
+        ).strip().casefold(),
         benchmark_mode=_normalize_benchmark_mode(
             sample.get("benchmark_mode"),
             f"Sample {index}",
@@ -650,6 +654,7 @@ def _score_workflow_final_answer(
     expected_final_answer: Any,
     final_tool_result_value: Any,
     call_predicted_tools: bool,
+    benchmark_family: str,
 ) -> FinalOutcomeScore:
     if expected_final_answer is None or expected_final_answer == "":
         return FinalOutcomeScore(
@@ -681,7 +686,10 @@ def _score_workflow_final_answer(
         expected_number = _parse_display_number(expected_final_answer)
         if expected_number is not None and isinstance(actual, (int, float)):
             actual_number = float(actual)
-            if expected_final_answer.strip().endswith("%"):
+            if expected_final_answer.strip().endswith("%") and benchmark_family in {
+                "finqa",
+                "convfinqa",
+            }:
                 actual_number *= 100.0
             decimal_places = _display_decimal_places(expected_final_answer)
             matched = math.isclose(
@@ -987,6 +995,19 @@ def _reasoning_metadata(router: Any, reasoning_mode: str) -> dict[str, str]:
     return {
         "reasoning_mode": reasoning_mode,
         "reasoning_method": method,
+    }
+
+
+def _generation_metadata(router: Any) -> dict[str, Any]:
+    limit = getattr(router, "MAX_GENERATED_TOKENS", None)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError(
+            f"Router {getattr(router, 'ROUTER_ID', 'unknown')!r} must expose a "
+            "positive MAX_GENERATED_TOKENS value."
+        )
+    return {
+        "effective_generation_limit": limit,
+        "effective_generation_limit_unit": "tokens",
     }
 
 
@@ -1425,6 +1446,7 @@ async def _evaluate_multistep_with_server(
 
         router = load_router(router_name)
         reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
+        generation_metadata = _generation_metadata(router)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
@@ -1566,6 +1588,7 @@ async def _evaluate_multistep_with_server(
                         "parse_diagnostic": parse_diagnostic,
                         "latency_seconds": latency,
                         **reasoning_metadata,
+                        **generation_metadata,
                         "called_tool": called_tool,
                         "tool_result": tool_result,
                         "tool_result_value": tool_result_value,
@@ -1585,12 +1608,14 @@ async def _evaluate_multistep_with_server(
                     expected_final_answer=sample.expected_final_answer,
                     final_tool_result_value=final_step_result_value,
                     call_predicted_tools=call_predicted_tools,
+                    benchmark_family=sample.benchmark_family,
                 )
                 workflow_record = {
                     "sample_id": sample.id,
                     "benchmark_path": str(benchmark_path),
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
+                    "benchmark_family": sample.benchmark_family,
                     "workflow_execution_mode": PREDICTED_ROLLOUT_EXECUTION_MODE,
                     "declared_workflow_execution_mode": (
                         sample.workflow_execution_mode
@@ -1643,6 +1668,7 @@ async def _evaluate_multistep_with_server(
                     ),
                     "prompt_template": prompt_template,
                     **reasoning_metadata,
+                    **generation_metadata,
                 }
                 workflow_records.append(workflow_record)
                 sample_handle.write(
@@ -1665,6 +1691,7 @@ async def _evaluate_multistep_with_server(
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
         **reasoning_metadata,
+        **generation_metadata,
         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             MULTISTEP_EVALUATION_PROTOCOL
@@ -1787,6 +1814,7 @@ async def _evaluate_with_server(
 
         router = load_router(router_name)
         reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
+        generation_metadata = _generation_metadata(router)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
@@ -1940,6 +1968,7 @@ async def _evaluate_with_server(
                     "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
                     "prompt_template": prompt_template,
                     **reasoning_metadata,
+                    **generation_metadata,
                     "called_tool": called_tool,
                     "tool_result": tool_result,
                     "tool_result_value": tool_result_value,
@@ -1961,6 +1990,7 @@ async def _evaluate_with_server(
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
         **reasoning_metadata,
+        **generation_metadata,
         "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             SINGLE_STEP_EVALUATION_PROTOCOL

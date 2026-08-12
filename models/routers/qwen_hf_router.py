@@ -16,6 +16,7 @@ ROUTER_BACKEND = "huggingface_transformers"
 ARCHITECTURE_SOURCE = "huggingface_transformers"
 WEIGHT_SOURCE = "huggingface_hub_or_local_cache"
 HALLUCINATED_TOOL = "hallucinated_tool"
+MAX_GENERATED_TOKENS = 128
 PROMPT_TEMPLATE = "tool_call_json_v1"
 
 
@@ -161,7 +162,7 @@ def choose_tool_call(
     with torch.inference_mode():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=128,
+            max_new_tokens=MAX_GENERATED_TOKENS,
             do_sample=False,
         )
 

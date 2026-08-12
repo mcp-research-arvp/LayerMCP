@@ -37,6 +37,7 @@ from evaluation.evaluate import (
     _evaluate_multistep_with_server,
     _evaluate_with_server,
     _final_outcome_record_fields,
+    _generation_metadata,
     _predicted_history_item,
     _is_no_tool_call,
     _is_gold_resolved_step_context,
@@ -101,6 +102,20 @@ class EvaluateMetricTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "does not implement reasoning mode"):
             _reasoning_metadata(router, "reasoning")
+
+    def test_effective_generation_limit_metadata_comes_from_router(self) -> None:
+        router = SimpleNamespace(
+            ROUTER_ID="gemma4_local_router",
+            MAX_GENERATED_TOKENS=4096,
+        )
+
+        self.assertEqual(
+            _generation_metadata(router),
+            {
+                "effective_generation_limit": 4096,
+                "effective_generation_limit_unit": "tokens",
+            },
+        )
 
     def test_caller_provided_output_directory_uses_stable_names(self) -> None:
         with TemporaryDirectory() as temporary_directory:
@@ -471,9 +486,8 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertIn('"step_id": "step-4"', routed)
 
     def test_rollout_history_contains_predictions_and_no_gold(self) -> None:
-        self.assertEqual(
-            _predicted_history_item(
-                {
+        history_item = _predicted_history_item(
+            {
                     "step_id": "step-1",
                     "query": "Look up the source row.",
                     "selected_tool": "calculator",
@@ -481,8 +495,12 @@ class EvaluateMetricTests(unittest.TestCase):
                     "execution_success": True,
                     "tool_result_value": {"result": 2},
                     "tool_error": None,
-                }
-            ),
+                    "expected_answer": {"result": "GOLD_MUST_NOT_APPEAR"},
+                    "expected_args": {"expression": "gold"},
+            }
+        )
+        self.assertEqual(
+            history_item,
             {
                 "step_id": "step-1",
                 "query": "Look up the source row.",
@@ -493,6 +511,8 @@ class EvaluateMetricTests(unittest.TestCase):
                 "tool_error": None,
             },
         )
+        self.assertNotIn("GOLD_MUST_NOT_APPEAR", json.dumps(history_item))
+        self.assertNotIn('"gold"', json.dumps(history_item))
 
     def test_dependent_step_does_not_receive_gold_resolved_context(self) -> None:
         sample = replace(self._sample(), task_type="multi_step_tool_routing")
@@ -809,6 +829,7 @@ class EvaluateMetricTests(unittest.TestCase):
             expected_final_answer="9.9%",
             final_tool_result_value={"result": 0.09864188706218716},
             call_predicted_tools=True,
+            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
@@ -819,6 +840,7 @@ class EvaluateMetricTests(unittest.TestCase):
             expected_final_answer="719.7",
             final_tool_result_value={"result": 719.6833393306945},
             call_predicted_tools=True,
+            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
@@ -828,6 +850,7 @@ class EvaluateMetricTests(unittest.TestCase):
             expected_final_answer="yes",
             final_tool_result_value={"rows": [["YES"]]},
             call_predicted_tools=True,
+            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
@@ -837,10 +860,21 @@ class EvaluateMetricTests(unittest.TestCase):
             expected_final_answer="",
             final_tool_result_value={"result": 1.0},
             call_predicted_tools=True,
+            benchmark_family="finqa",
         )
 
         self.assertIsNone(score.correct)
         self.assertEqual(score.status, "missing_expected_final_answer")
+
+    def test_percentage_scaling_is_not_applied_outside_finance_families(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="9.9%",
+            final_tool_result_value={"result": 0.099},
+            call_predicted_tools=True,
+            benchmark_family="other",
+        )
+
+        self.assertFalse(score.correct)
 
     def test_result_extraction_error_counts_incorrect(self) -> None:
         score = _score_final_outcome(

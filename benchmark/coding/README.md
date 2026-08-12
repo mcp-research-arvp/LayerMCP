@@ -182,14 +182,11 @@ are executed, it also reports execution success and semantic matching against
 the partial `expected_answer` oracle.
 
 For `multi_step_tool_routing`, the evaluation protocol is
-`teacher_forced_step_routing_v1`. The evaluator processes `expected_steps` in
-order. Each prompt contains the overall task, the gold current-step instruction
-and grounding context, every declared gold dependency, and up to two other
-recent gold calls and answers. A predicted call does not determine the next
-step's instruction or history. The reported per-step and complete ordered-
-sequence accuracies therefore measure teacher-forced step routing, not
-autonomous planning, autonomous issue resolution, or the ability to discover
-the full tool sequence from only the issue statement.
+`guided_predicted_rollout_v1`. The evaluator processes `expected_steps` in
+order, passing predicted calls and executed results into later prompts. Gold
+prior answers and reference-prefix replay are not used. The reported metrics
+therefore measure an error-propagating guided rollout, not autonomous planning,
+issue resolution, or discovery of the full sequence from only the issue.
 
 ## Run
 

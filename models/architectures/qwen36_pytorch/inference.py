@@ -133,6 +133,7 @@ class TokenGenerator:
         prompt: str,
         tools: Optional[List[dict[str, Any]]] = None,
         fallback_prompt: Optional[str] = None,
+        enable_thinking: bool = False,
     ) -> List[int]:
         """Wrap a user prompt with the Qwen chat template when available."""
         tok = self.tokenizer
@@ -142,7 +143,7 @@ class TokenGenerator:
                 template_kwargs = {
                     "add_generation_prompt": True,
                     "tokenize": True,
-                    "enable_thinking": False,
+                    "enable_thinking": enable_thinking,
                 }
                 if tools:
                     template_kwargs["tools"] = tools

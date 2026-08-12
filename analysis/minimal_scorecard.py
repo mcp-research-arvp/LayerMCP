@@ -31,6 +31,8 @@ DOMAIN_LABELS = {
 @dataclass(frozen=True)
 class RunRecord:
     model: str
+    reasoning_mode: str
+    reasoning_method: str
     benchmark_mode: str
     mode_source: str
     benchmark: str
@@ -255,6 +257,18 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
             _validate_single_step(summary, samples, summary_path=summary_path)
 
             model = str(summary.get("model_name") or run_directory.name)
+            reasoning_mode = summary.get("reasoning_mode")
+            reasoning_method = summary.get("reasoning_method")
+            if reasoning_mode not in {"direct", "reasoning"}:
+                raise ValueError(
+                    f"{summary_path} has missing or invalid reasoning_mode: "
+                    f"{reasoning_mode!r}"
+                )
+            if not isinstance(reasoning_method, str) or not reasoning_method.strip():
+                raise ValueError(
+                    f"{summary_path} has missing or invalid reasoning_method: "
+                    f"{reasoning_method!r}"
+                )
             benchmark_path = str(summary.get("benchmark_path") or summary_path.parent.name)
             family = _benchmark_family(benchmark_path, samples)
 
@@ -273,6 +287,16 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                         f"Model mismatch between {summary_path} and {samples_path}: "
                         f"{model!r} != {sample_model!r}"
                     )
+                for field, expected_value in (
+                    ("reasoning_mode", reasoning_mode),
+                    ("reasoning_method", reasoning_method),
+                ):
+                    if sample.get(field) != expected_value:
+                        raise ValueError(
+                            f"{field} mismatch between {summary_path} and "
+                            f"{samples_path}: {expected_value!r} != "
+                            f"{sample.get(field)!r}"
+                        )
                 domain = str(sample.get("domain") or "unknown")
                 if "benchmark_mode" not in sample:
                     benchmark_mode = DEFAULT_BENCHMARK_MODE
@@ -286,6 +310,8 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                 records.append(
                     RunRecord(
                         model=model,
+                        reasoning_mode=reasoning_mode,
+                        reasoning_method=reasoning_method,
                         benchmark_mode=benchmark_mode,
                         mode_source=mode_source,
                         benchmark=Path(benchmark_path).stem,
@@ -414,16 +440,26 @@ def _table(headers: Sequence[str], rows: Iterable[Sequence[Any]]) -> str:
 
 def render_markdown(loaded: LoadedRuns) -> str:
     records = loaded.records
-    models = _group_records(records, ("model", "benchmark_mode", "mode_source"))
+    reasoning_dimensions = ("model", "reasoning_mode", "reasoning_method")
+    models = _group_records(
+        records,
+        (*reasoning_dimensions, "benchmark_mode", "mode_source"),
+    )
     domains = _group_records(
         records,
-        ("model", "benchmark_mode", "mode_source", "domain"),
+        (*reasoning_dimensions, "benchmark_mode", "mode_source", "domain"),
     )
     families = _group_records(
         records,
-        ("model", "benchmark_mode", "mode_source", "domain", "benchmark_family"),
+        (
+            *reasoning_dimensions,
+            "benchmark_mode",
+            "mode_source",
+            "domain",
+            "benchmark_family",
+        ),
     )
-    records_by_model = _group_records(records, ("model",))
+    records_by_model = _group_records(records, reasoning_dimensions)
 
     registry_parts = []
     if loaded.tool_pools:
@@ -436,11 +472,19 @@ def render_markdown(loaded: LoadedRuns) -> str:
     overall_rows = []
     diagnostics_rows = []
     matcher_rows = []
-    for (model, benchmark_mode, mode_source), group in models:
+    for (
+        model,
+        reasoning_mode,
+        reasoning_method,
+        benchmark_mode,
+        mode_source,
+    ), group in models:
         metrics = _metrics(group)
         overall_rows.append(
             (
                 model,
+                reasoning_mode,
+                reasoning_method,
                 benchmark_mode,
                 mode_source,
                 metrics["n"],
@@ -453,6 +497,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
         diagnostics_rows.append(
             (
                 model,
+                reasoning_mode,
+                reasoning_method,
                 benchmark_mode,
                 mode_source,
                 metrics["exact_args"],
@@ -466,11 +512,20 @@ def render_markdown(loaded: LoadedRuns) -> str:
         )
 
     domain_rows = []
-    for (model, benchmark_mode, mode_source, domain), group in domains:
+    for (
+        model,
+        reasoning_mode,
+        reasoning_method,
+        benchmark_mode,
+        mode_source,
+        domain,
+    ), group in domains:
         metrics = _metrics(group)
         domain_rows.append(
             (
                 model,
+                reasoning_mode,
+                reasoning_method,
                 benchmark_mode,
                 mode_source,
                 _domain_label(domain),
@@ -483,11 +538,21 @@ def render_markdown(loaded: LoadedRuns) -> str:
         )
 
     family_rows = []
-    for (model, benchmark_mode, mode_source, domain, family), group in families:
+    for (
+        model,
+        reasoning_mode,
+        reasoning_method,
+        benchmark_mode,
+        mode_source,
+        domain,
+        family,
+    ), group in families:
         metrics = _metrics(group)
         family_rows.append(
             (
                 model,
+                reasoning_mode,
+                reasoning_method,
                 benchmark_mode,
                 mode_source,
                 _domain_label(domain),
@@ -500,7 +565,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
             )
         )
 
-    for (model,), group in records_by_model:
+    for (model, reasoning_mode, reasoning_method), group in records_by_model:
         matchers = sorted(
             {
                 str(record.sample["final_outcome_matcher"])
@@ -514,6 +579,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
         matcher_rows.append(
             (
                 model,
+                reasoning_mode,
+                reasoning_method,
                 ", ".join(f"`{mode}`" for mode in modes),
                 ", ".join(f"`{matcher}`" for matcher in matchers)
                 if matchers
@@ -543,6 +610,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Reasoning mode",
+                    "Reasoning method",
                     "Observed benchmark modes",
                     "Observed final-outcome matchers",
                 ),
@@ -554,6 +623,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Reasoning mode",
+                    "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
                     "N",
@@ -570,6 +641,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Reasoning mode",
+                    "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
                     "Domain",
@@ -587,6 +660,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Reasoning mode",
+                    "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
                     "Domain",
@@ -605,6 +680,8 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
+                    "Reasoning mode",
+                    "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
                     "Exact Reference Argument Match",

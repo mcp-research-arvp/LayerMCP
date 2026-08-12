@@ -122,13 +122,13 @@ Results are directly comparable only when their registry fingerprints match.
 
 ## Evaluation and Reporting Protocols
 
-Multi-step evaluation uses `teacher_forced_step_routing_v1`. For every expected
-step, the evaluator constructs a prompt from the overall task, the gold
-current-step instruction and grounding context, and bounded gold prior-step
-context. A prediction does not determine the instruction or context supplied
-to the next step. Sequence accuracy therefore measures controlled ordered
-routing under teacher forcing; it must not be reported as autonomous planning,
-autonomous decomposition, or end-to-end task completion.
+Multi-step evaluation uses `guided_predicted_rollout_v1`. The benchmark provides
+the ordered step instructions, but later prompts contain predicted calls and
+executed results rather than gold prior-step answers. Stateful execution also
+replays the predicted prefix, never the reference prefix. Dependent-step
+contexts that can contain gold-resolved values are withheld. This is an
+error-propagating guided rollout and must not be reported as autonomous planning
+or decomposition because the reference step sequence remains supplied.
 
 Every benchmark result must retain and be grouped by one of these modes:
 

@@ -127,14 +127,13 @@ class EnterprisePublicWorkflowTests(unittest.TestCase):
 
 
 class EnterpriseWorkflowMcpIntegrationTests(unittest.IsolatedAsyncioTestCase):
-    async def test_mcp_shapes_primitives_and_replays_reference_state(self):
+    async def test_mcp_shapes_primitives_and_replays_predicted_state(self):
         primitive_result = await _call_tool_with_workflow_isolation(
             None,
             SERVER_PATH,
             "find_user_id_by_email",
             {"email": "mia.garcia2723@example.com"},
-            (),
-            DEFAULT_WORKFLOW_EXECUTION_MODE,
+            [],
         )
         self.assertEqual(
             _extract_structured_tool_result(primitive_result).value,
@@ -150,22 +149,18 @@ class EnterpriseWorkflowMcpIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "country": "USA",
             "zip": "78712",
         }
-        prior_step = BenchmarkStep(
-            id="step_00",
-            query="Modify the pending order address.",
-            expected_tool="modify_pending_order_address",
-            expected_args=address_args,
-            expected_answer=None,
-            depends_on=(),
-            source_program=None,
-        )
+        prior_step = {
+            "step_id": "step_00",
+            "called_tool": "modify_pending_order_address",
+            "selected_args": address_args,
+            "execution_success": True,
+        }
         result = await _call_tool_with_workflow_isolation(
             None,
             SERVER_PATH,
             "get_order_details",
             {"order_id": "#W8665881"},
-            (prior_step,),
-            REFERENCE_PREFIX_REPLAY_MODE,
+            [prior_step],
         )
         value = _extract_structured_tool_result(result).value
         self.assertEqual(value["address"], {
@@ -181,22 +176,18 @@ class EnterpriseWorkflowMcpIntegrationTests(unittest.IsolatedAsyncioTestCase):
         })
 
     async def test_non_retail_workflow_does_not_replay_prefix_on_wrong_route(self):
-        coding_prior_step = BenchmarkStep(
-            id="step_00",
-            query="Calculate an intermediate value.",
-            expected_tool="calculator",
-            expected_args={"expression": "2 + 2"},
-            expected_answer={"result": 4},
-            depends_on=(),
-            source_program=None,
-        )
+        coding_prior_step = {
+            "step_id": "step_00",
+            "called_tool": "calculator",
+            "selected_args": {"expression": "2 + 2"},
+            "execution_success": True,
+        }
         result = await _call_tool_with_workflow_isolation(
             None,
             SERVER_PATH,
             "find_user_id_by_email",
             {"email": "mia.garcia2723@example.com"},
-            (coding_prior_step,),
-            DEFAULT_WORKFLOW_EXECUTION_MODE,
+            [coding_prior_step],
         )
         self.assertEqual(
             _extract_structured_tool_result(result).value,

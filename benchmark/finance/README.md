@@ -169,20 +169,16 @@ recorded Daloopa or web call coordinate does not demonstrate live retrieval or
 independent finance reasoning.
 
 A `multi_step_tool_routing` row instead provides an ordered `expected_steps`
-list and uses evaluation protocol `teacher_forced_step_routing_v1`. Each step
+list and uses evaluation protocol `guided_predicted_rollout_v1`. Each step
 contains a current-step instruction or exact gold operation, prompt context,
 expected tool, arguments, partial expected answer, dependency IDs, and source
-program/call metadata. The evaluator constructs every prompt from the overall
-task, the gold current-step instruction and grounding context, and bounded gold
-prior-step context: every declared dependency plus up to two other recent
-steps. A prediction does not determine the next step's instruction or history.
-The per-step and complete ordered-sequence metrics therefore measure
-teacher-forced step routing, not autonomous planning or unconstrained
-decomposition from only the top-level query. A workflow's published
-`expected_final_answer` is retained in evaluation records, but the routing
-evaluator does not synthesize or score an overall natural-language answer; its
-executable semantic metric applies to individual tool outputs and the complete
-output sequence.
+program/call metadata. Later prompts receive the model's predicted calls and
+executed results, so errors propagate. Gold prior answers and reference-prefix
+state replay are not used, and dependent-step contexts with gold-resolved
+expressions are withheld. These metrics therefore measure guided rollout over
+the supplied plan, not autonomous decomposition from only the top-level query.
+The final executed scalar is scored against a non-empty
+`expected_final_answer`; no separate natural-language response is synthesized.
 
 Finance prompt contexts use four versioned JSON kinds:
 

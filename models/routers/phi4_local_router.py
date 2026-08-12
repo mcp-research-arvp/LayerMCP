@@ -22,6 +22,7 @@ ROUTER_BACKEND = "local_phi4_pytorch"
 ARCHITECTURE_SOURCE = "models.architectures.phi4_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
+MAX_GENERATED_TOKENS = 128
 PROMPT_TEMPLATE = "tool_name_only_v1"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
@@ -199,7 +200,7 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.stop_tokens,
         temperature=0.0,
-        max_tokens=128,
+        max_tokens=MAX_GENERATED_TOKENS,
     )
     return parse_tool_call(
         result.text,

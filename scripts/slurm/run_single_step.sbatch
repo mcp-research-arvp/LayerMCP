@@ -1,9 +1,9 @@
 #!/bin/bash
 # Submit with a job name that identifies all run dimensions, for example:
-# sbatch --job-name=phi-4-local-standard_prompt-smoke \
-#   --export=ALL,MODEL=phi-4-local,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
-# sbatch --job-name=llama-3.1-8b-local-standard_prompt-primary \
-#   --export=ALL,MODEL=llama-3.1-8b-local,RUN_KIND=primary scripts/slurm/run_single_step.sbatch
+# sbatch --job-name=phi-4-local-direct-smoke \
+#   --export=ALL,MODEL=phi-4-local,REASONING_MODE=direct,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
+# sbatch --job-name=qwen-3.6-local-reasoning-primary \
+#   --export=ALL,MODEL=qwen-3.6-local,REASONING_MODE=reasoning,RUN_KIND=primary scripts/slurm/run_single_step.sbatch
 #SBATCH --job-name=lmcp-std-pr30
 #SBATCH --account=def-yousefne_gpu
 #SBATCH --gres=gpu:h100:1
@@ -32,10 +32,21 @@ if grep -Eq "MAX_TOOL_CORRECTIONS|repair_tool_call" evaluation/evaluate.py; then
   exit 1
 fi
 
-: "${MODEL:?Set MODEL to phi-4-local or llama-3.1-8b-local}"
+: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+: "${REASONING_MODE:?Set REASONING_MODE to direct or reasoning}"
 : "${RUN_KIND:?Set RUN_KIND to smoke or primary}"
 : "${SLURM_JOB_ID:?This launcher must run under Slurm}"
 : "${SLURM_JOB_NAME:?Slurm must provide a job name}"
+[[ "$REASONING_MODE" == direct || "$REASONING_MODE" == reasoning ]] || {
+  echo "Unsupported REASONING_MODE: $REASONING_MODE (expected direct or reasoning)" >&2
+  exit 2
+}
+case "$MODEL:$REASONING_MODE" in
+  phi-4-local:reasoning|llama-3.1-8b-local:reasoning)
+    echo "$MODEL does not implement reasoning mode; use REASONING_MODE=direct" >&2
+    exit 2
+    ;;
+esac
 
 REGISTRY_METADATA_TMP="$(mktemp)"
 trap 'rm -f "$REGISTRY_METADATA_TMP"' EXIT
@@ -89,6 +100,8 @@ case "$MODEL" in
     CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"
     EXPECTED_MODEL_NAME="microsoft/phi-4"
+    REASONING_METHOD="none"
+    GENERATION_LIMIT=128
     ;;
   llama-3.1-8b-local)
     export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
@@ -96,6 +109,25 @@ case "$MODEL" in
     CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"
     PROMPT_TEMPLATE_ID="structured_tool_call_v1"
     EXPECTED_MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
+    REASONING_METHOD="none"
+    GENERATION_LIMIT=128
+    ;;
+  qwen-3.6-local)
+    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/qwen-3.6"
+    CHECKPOINT="$LAYERMCP_QWEN36_CHECKPOINT"
+    PROMPT_TEMPLATE_ID="tool_name_only_v1"
+    EXPECTED_MODEL_NAME="Qwen/Qwen3.6"
+    GENERATION_LIMIT=4096
+    [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
+    ;;
+  gemma-4-local)
+    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/gemma-4"
+    export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    CHECKPOINT="$LAYERMCP_GEMMA4_CHECKPOINT"
+    PROMPT_TEMPLATE_ID="tool_name_only_v1"
+    EXPECTED_MODEL_NAME="google/gemma-4-26b-a4b-it"
+    GENERATION_LIMIT=4096
+    [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   *)
     echo "Unsupported MODEL: $MODEL" >&2
@@ -135,15 +167,15 @@ case "$RUN_KIND" in
     ;;
 esac
 
-PROMPT_MODE="standard_prompt"
+PROMPT_MODE="$REASONING_MODE"
 MODEL_COMPONENT="$(safe_component model "$MODEL")"
-PROMPT_COMPONENT="$(safe_component prompt_condition "$PROMPT_MODE")"
+REASONING_COMPONENT="$(safe_component reasoning_mode "$REASONING_MODE")"
 RUN_KIND_COMPONENT="$(safe_component run_kind "$RUN_KIND")"
 JOB_ID_COMPONENT="$(safe_component slurm_job_id "$SLURM_JOB_ID")"
 JOB_NAME_COMPONENT="$(safe_component slurm_job_name "$SLURM_JOB_NAME")"
-for required_name_part in "$MODEL_COMPONENT" "$PROMPT_COMPONENT" "$RUN_KIND_COMPONENT"; do
+for required_name_part in "$MODEL_COMPONENT" "$REASONING_COMPONENT" "$RUN_KIND_COMPONENT"; do
   if [[ "$JOB_NAME_COMPONENT" != *"$required_name_part"* ]]; then
-    echo "Slurm job name must identify model, prompt condition, and run kind: " \
+    echo "Slurm job name must identify model, reasoning mode, and run kind: " \
       "$SLURM_JOB_NAME is missing $required_name_part" >&2
     exit 2
   fi
@@ -151,7 +183,7 @@ done
 
 RUNS_ROOT="results/runs/single_step"
 RUN_DATE="$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${PROMPT_COMPONENT}_${RUN_KIND_COMPONENT}"
+RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}"
 mkdir -p "$RUNS_ROOT"
 mkdir "$RUN_DIR"
 
@@ -186,8 +218,10 @@ metadata = {
     "expected_model_name": "$EXPECTED_MODEL_NAME",
     "checkpoint": "$CHECKPOINT",
     "prompt_condition": "$PROMPT_MODE",
-    "reasoning_mode": "direct",
-    "reasoning_method": "none",
+    "reasoning_mode": "$REASONING_MODE",
+    "reasoning_method": "$REASONING_METHOD",
+    "effective_generation_limit": $GENERATION_LIMIT,
+    "effective_generation_limit_unit": "tokens",
     "run_kind": "$RUN_KIND",
     "prompt_template_id": "$PROMPT_TEMPLATE_ID",
     "benchmark_mode": "grounded_tool_execution",
@@ -204,8 +238,8 @@ metadata = {
     ],
     "generation": {
         "temperature": 0.0,
-        "max_tokens": 128,
-        "effective_generation_limit": 128,
+        "max_tokens": $GENERATION_LIMIT,
+        "effective_generation_limit": $GENERATION_LIMIT,
         "effective_generation_limit_unit": "tokens",
         "seed": "not_applicable_deterministic_greedy",
     },
@@ -237,6 +271,7 @@ for benchmark in "${BENCHMARKS[@]}"; do
   python -m evaluation.evaluate \
     --dataset "$benchmark" \
     --router "$MODEL" \
+    --reasoning-mode "$REASONING_MODE" \
     --call-predicted-tools \
     --output-dir "$dataset_dir" \
     2>&1 | tee "$log_path"
@@ -256,9 +291,10 @@ done
 python -m analysis.run_artifacts \
   --validate-run \
   --index "$RUN_DIR/artifact_index.jsonl" \
-  --resolved-datasets "$RUN_DIR/resolved_datasets.txt"
+  --resolved-datasets "$RUN_DIR/resolved_datasets.txt" \
+  --run-metadata "$RUN_DIR/run_metadata.json"
 
 test ! -e "$RUN_DIR/RUN_COMPLETE"
 ( set -o noclobber; printf 'git_commit=%s\n' "$ACTUAL_COMMIT" > "$RUN_DIR/RUN_COMPLETE" )
-echo "Completed $MODEL $RUN_KIND evaluation."
+echo "Completed $MODEL $REASONING_MODE $RUN_KIND evaluation."
 echo "Results saved under: $RUN_DIR"

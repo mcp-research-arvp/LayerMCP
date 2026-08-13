@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -27,6 +29,87 @@ PROMPT = "tool_name_only_v1"
 
 
 class MultiStepRunTests(unittest.TestCase):
+    EXPECTED_LAUNCHER_GROUPS = {
+        "coding_sweagent": (
+            "benchmark/coding/coding_sweagent_multistep.json",
+            "coding",
+            "grounded_tool_execution",
+            "5",
+            "11",
+        ),
+        "coding_nebius_replay": (
+            "benchmark/coding/coding_nebius_sweagent_replay_multistep.json",
+            "coding",
+            "offline_trace_replay",
+            "33",
+            "139",
+        ),
+        "enterprise_tau2": (
+            "benchmark/enterprise/enterprise_public_workflows.json",
+            "enterprise",
+            "grounded_tool_execution",
+            "69",
+            "350",
+        ),
+        "finance_convfinqa": (
+            "benchmark/finance/finance_convfinqa_multistep.json",
+            "finance",
+            "grounded_tool_execution",
+            "10",
+            "35",
+        ),
+        "finance_finqa": (
+            "benchmark/finance/finance_finqa_test_multistep.json",
+            "finance",
+            "grounded_tool_execution",
+            "490",
+            "1111",
+        ),
+        "finance_finretrieval_replay": (
+            "benchmark/finance/finance_finretrieval_replay_multistep.json",
+            "finance",
+            "offline_trace_replay",
+            "485",
+            "1490",
+        ),
+        "math_controlled": (
+            "benchmark/math/math_multistep_controlled.json",
+            "math",
+            "grounded_tool_execution",
+            "50",
+            "105",
+        ),
+    }
+
+    def _validate_launcher_group(
+        self,
+        group: str | None,
+        *,
+        run_kind: str = "full",
+        launcher: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "LAYERMCP_REPO_ROOT": str(ROOT),
+                "REASONING_MODE": "direct",
+                "RUN_KIND": run_kind,
+                "LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY": "1",
+            }
+        )
+        if group is None:
+            environment.pop("DATASET_GROUP", None)
+        else:
+            environment["DATASET_GROUP"] = group
+        return subprocess.run(
+            ["bash", str(launcher or ROOT / "scripts/slurm/run_multi_step.sbatch")],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
     def test_dataset_mapping_and_counts(self) -> None:
         expected = {
             "coding_sweagent": (5, 11),
@@ -161,6 +244,72 @@ class MultiStepRunTests(unittest.TestCase):
             self.assertIn(model, launcher)
         self.assertNotIn("coding_nebius_swerebench_openhands",launcher)
         self.assertIn("PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",launcher)
+
+    def test_launcher_does_not_reuse_bash_groups(self) -> None:
+        launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
+        self.assertNotRegex(launcher, r"(?m)^\s*GROUPS=")
+        self.assertNotIn("${GROUPS", launcher)
+        self.assertIn("SELECTED_DATASET_GROUPS", launcher)
+
+    def test_each_launcher_group_resolves_without_registry_or_model_work(self) -> None:
+        for group, expected in self.EXPECTED_LAUNCHER_GROUPS.items():
+            with self.subTest(group=group):
+                result = self._validate_launcher_group(group)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    result.stdout.strip().split("\t"),
+                    [group, *expected],
+                )
+                self.assertNotIn("registry", result.stdout.lower())
+                self.assertNotIn("model weights", result.stdout.lower())
+
+    def test_launcher_all_resolves_seven_groups_in_order(self) -> None:
+        result = self._validate_launcher_group("all", run_kind="short_test")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = [line.split("\t") for line in result.stdout.splitlines()]
+        self.assertEqual(
+            [row[0] for row in rows],
+            list(self.EXPECTED_LAUNCHER_GROUPS),
+        )
+        self.assertEqual(len(rows), 7)
+        for row in rows:
+            self.assertEqual(row[1:], list(self.EXPECTED_LAUNCHER_GROUPS[row[0]]))
+            self.assertFalse(row[0].isdigit(), "Unix group ID leaked into selection")
+
+    def test_launcher_rejects_unknown_and_empty_groups_clearly(self) -> None:
+        for group in ("not_a_group", None):
+            with self.subTest(group=group):
+                result = self._validate_launcher_group(group)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("Accepted values:", result.stderr)
+                for accepted in (*self.EXPECTED_LAUNCHER_GROUPS, "all"):
+                    self.assertIn(accepted, result.stderr)
+
+    def test_launcher_missing_group_metadata_fails_before_expensive_work(self) -> None:
+        source = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
+        modified = source.replace(
+            "[math_controlled]=105",
+            '[math_controlled]=""',
+            1,
+        )
+        self.assertNotEqual(source, modified)
+        with TemporaryDirectory() as temporary:
+            launcher = Path(temporary) / "launcher.sbatch"
+            launcher.write_text(modified, encoding="utf-8")
+            result = self._validate_launcher_group(
+                "math_controlled",
+                launcher=launcher,
+            )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Missing launcher metadata", result.stderr)
+        self.assertNotIn("registry", result.stdout.lower())
+        self.assertNotIn("model weights", result.stdout.lower())
+
+    def test_group_validation_precedes_registry_and_environment_activation(self) -> None:
+        launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
+        validation_exit = launcher.index("LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY")
+        self.assertLess(validation_exit, launcher.index("module load python/3.11"))
+        self.assertLess(validation_exit, launcher.index("--capture-live-registry"))
 
 
 if __name__ == "__main__":

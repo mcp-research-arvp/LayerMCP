@@ -16,20 +16,74 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
-cd "$SCRATCH/layermcp/LayerMCP"
-module load python/3.11
-source "$HOME/venvs/layermcp/bin/activate"
-export HF_HOME="$SCRATCH/hf_cache"
-export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-unset TRANSFORMERS_CACHE || true
+REPO_ROOT="${LAYERMCP_REPO_ROOT:-$SCRATCH/layermcp/LayerMCP}"
+cd "$REPO_ROOT"
 
-: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+DATASET_GROUP_ORDER=(
+  coding_sweagent
+  coding_nebius_replay
+  enterprise_tau2
+  finance_convfinqa
+  finance_finqa
+  finance_finretrieval_replay
+  math_controlled
+)
+ACCEPTED_DATASET_GROUPS="${DATASET_GROUP_ORDER[*]} all"
+declare -A DATASETS=(
+  [coding_sweagent]="benchmark/coding/coding_sweagent_multistep.json"
+  [coding_nebius_replay]="benchmark/coding/coding_nebius_sweagent_replay_multistep.json"
+  [enterprise_tau2]="benchmark/enterprise/enterprise_public_workflows.json"
+  [finance_convfinqa]="benchmark/finance/finance_convfinqa_multistep.json"
+  [finance_finqa]="benchmark/finance/finance_finqa_test_multistep.json"
+  [finance_finretrieval_replay]="benchmark/finance/finance_finretrieval_replay_multistep.json"
+  [math_controlled]="benchmark/math/math_multistep_controlled.json"
+)
+declare -A DATASET_DOMAINS=(
+  [coding_sweagent]="coding"
+  [coding_nebius_replay]="coding"
+  [enterprise_tau2]="enterprise"
+  [finance_convfinqa]="finance"
+  [finance_finqa]="finance"
+  [finance_finretrieval_replay]="finance"
+  [math_controlled]="math"
+)
+declare -A DATASET_BENCHMARK_MODES=(
+  [coding_sweagent]="grounded_tool_execution"
+  [coding_nebius_replay]="offline_trace_replay"
+  [enterprise_tau2]="grounded_tool_execution"
+  [finance_convfinqa]="grounded_tool_execution"
+  [finance_finqa]="grounded_tool_execution"
+  [finance_finretrieval_replay]="offline_trace_replay"
+  [math_controlled]="grounded_tool_execution"
+)
+declare -A EXPECTED_WORKFLOW_COUNTS=(
+  [coding_sweagent]=5
+  [coding_nebius_replay]=33
+  [enterprise_tau2]=69
+  [finance_convfinqa]=10
+  [finance_finqa]=490
+  [finance_finretrieval_replay]=485
+  [math_controlled]=50
+)
+declare -A EXPECTED_STEP_COUNTS=(
+  [coding_sweagent]=11
+  [coding_nebius_replay]=139
+  [enterprise_tau2]=350
+  [finance_convfinqa]=35
+  [finance_finqa]=1111
+  [finance_finretrieval_replay]=1490
+  [math_controlled]=105
+)
+
+if [[ -z "${DATASET_GROUP:-}" ]]; then
+  echo "DATASET_GROUP is required. Accepted values: $ACCEPTED_DATASET_GROUPS" >&2
+  exit 2
+fi
+if [[ -z "${RUN_KIND:-}" ]]; then
+  echo "RUN_KIND is required (expected short_test or full)" >&2
+  exit 2
+fi
 : "${REASONING_MODE:?Set REASONING_MODE to direct or reasoning}"
-: "${DATASET_GROUP:?Set DATASET_GROUP to a supported group or all}"
-: "${RUN_KIND:?Set RUN_KIND to short_test or full}"
-: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
-: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
 [[ "$REASONING_MODE" == direct || "$REASONING_MODE" == reasoning ]] || {
   echo "Unsupported REASONING_MODE: $REASONING_MODE (expected direct or reasoning)" >&2
   exit 2
@@ -38,6 +92,89 @@ unset TRANSFORMERS_CACHE || true
   echo "Unsupported RUN_KIND: $RUN_KIND (expected short_test or full)" >&2
   exit 2
 }
+
+if [[ "$DATASET_GROUP" == all ]]; then
+  [[ "$RUN_KIND" == short_test ]] || {
+    echo "DATASET_GROUP=all is short_test-only" >&2
+    exit 2
+  }
+  SELECTED_DATASET_GROUPS=("${DATASET_GROUP_ORDER[@]}")
+elif [[ -n "${DATASETS[$DATASET_GROUP]:-}" ]]; then
+  SELECTED_DATASET_GROUPS=("$DATASET_GROUP")
+else
+  echo "Unsupported DATASET_GROUP: $DATASET_GROUP. Accepted values: $ACCEPTED_DATASET_GROUPS" >&2
+  exit 2
+fi
+
+for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
+  for metadata_value in \
+    "${DATASETS[$dataset_group_name]:-}" \
+    "${DATASET_DOMAINS[$dataset_group_name]:-}" \
+    "${DATASET_BENCHMARK_MODES[$dataset_group_name]:-}" \
+    "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]:-}" \
+    "${EXPECTED_STEP_COUNTS[$dataset_group_name]:-}"; do
+    if [[ -z "$metadata_value" ]]; then
+      echo "Missing launcher metadata for dataset group: $dataset_group_name" >&2
+      exit 2
+    fi
+  done
+  if [[ ! -f "${DATASETS[$dataset_group_name]}" ]]; then
+    echo "Dataset for group $dataset_group_name does not exist: ${DATASETS[$dataset_group_name]}" >&2
+    exit 2
+  fi
+  python - \
+    "${DATASETS[$dataset_group_name]}" \
+    "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
+    "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]}" \
+    "${EXPECTED_STEP_COUNTS[$dataset_group_name]}" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+dataset_path = Path(sys.argv[1])
+expected_mode = sys.argv[2]
+expected_workflows = int(sys.argv[3])
+expected_steps = int(sys.argv[4])
+rows = json.loads(dataset_path.read_text(encoding="utf-8"))
+workflows = len(rows)
+steps = sum(len(row.get("expected_steps", ())) for row in rows)
+modes = {row.get("benchmark_mode") or "grounded_tool_execution" for row in rows}
+if workflows != expected_workflows or steps != expected_steps:
+    raise SystemExit(
+        f"Dataset count mismatch for {dataset_path}: "
+        f"expected {expected_workflows}/{expected_steps}, got {workflows}/{steps}"
+    )
+if modes != {expected_mode}:
+    raise SystemExit(
+        f"Benchmark mode mismatch for {dataset_path}: "
+        f"expected {expected_mode!r}, got {sorted(modes)!r}"
+    )
+PY
+done
+
+if [[ "${LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY:-0}" == 1 ]]; then
+  for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$dataset_group_name" \
+      "${DATASETS[$dataset_group_name]}" \
+      "${DATASET_DOMAINS[$dataset_group_name]}" \
+      "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
+      "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]}" \
+      "${EXPECTED_STEP_COUNTS[$dataset_group_name]}"
+  done
+  exit 0
+fi
+
+: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
+: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
+
+module load python/3.11
+source "$HOME/venvs/layermcp/bin/activate"
+export HF_HOME="$SCRATCH/hf_cache"
+export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+unset TRANSFORMERS_CACHE || true
 
 ACTUAL_COMMIT="$(git rev-parse HEAD)"
 EVALUATION_PROTOCOL="guided_predicted_rollout_v1"
@@ -86,24 +223,6 @@ case "$MODEL" in
 esac
 test -f "$CHECKPOINT/config.json" || { echo "Missing checkpoint config: $CHECKPOINT/config.json" >&2; exit 2; }
 
-declare -A DATASETS=(
-  [coding_sweagent]="benchmark/coding/coding_sweagent_multistep.json"
-  [coding_nebius_replay]="benchmark/coding/coding_nebius_sweagent_replay_multistep.json"
-  [enterprise_tau2]="benchmark/enterprise/enterprise_public_workflows.json"
-  [finance_convfinqa]="benchmark/finance/finance_convfinqa_multistep.json"
-  [finance_finqa]="benchmark/finance/finance_finqa_test_multistep.json"
-  [finance_finretrieval_replay]="benchmark/finance/finance_finretrieval_replay_multistep.json"
-  [math_controlled]="benchmark/math/math_multistep_controlled.json"
-)
-ORDER=(coding_sweagent coding_nebius_replay enterprise_tau2 finance_convfinqa finance_finqa finance_finretrieval_replay math_controlled)
-if [[ "$DATASET_GROUP" == all ]]; then
-  [[ "$RUN_KIND" == short_test ]] || { echo "DATASET_GROUP=all is short_test-only" >&2; exit 2; }
-  GROUPS=("${ORDER[@]}")
-else
-  [[ -n "${DATASETS[$DATASET_GROUP]:-}" ]] || { echo "Unsupported DATASET_GROUP: $DATASET_GROUP" >&2; exit 2; }
-  GROUPS=("$DATASET_GROUP")
-fi
-
 safe_component() { python -m analysis.run_artifacts --safe-component "$1" "$2"; }
 MODEL_COMPONENT="$(safe_component model "$MODEL")"
 REASONING_COMPONENT="$(safe_component reasoning_mode "$REASONING_MODE")"
@@ -145,9 +264,9 @@ TOOL_POOL="${REGISTRY_VALUES[0]}"; TOOL_COUNT="${REGISTRY_VALUES[1]}"
 EXPECTED_REGISTRY_FINGERPRINT="${REGISTRY_VALUES[2]}"; REGISTRY_FINGERPRINT_VERSION="${REGISTRY_VALUES[3]}"
 
 SOURCE_LIST="$RUN_DIR/resolved_datasets.txt"
-for group in "${GROUPS[@]}"; do realpath "${DATASETS[$group]}"; done > "$SOURCE_LIST"
+for group in "${SELECTED_DATASET_GROUPS[@]}"; do realpath "${DATASETS[$group]}"; done > "$SOURCE_LIST"
 declare -A EVALUATED PROVENANCE
-for group in "${GROUPS[@]}"; do
+for group in "${SELECTED_DATASET_GROUPS[@]}"; do
   source_benchmark="${DATASETS[$group]}"; EVALUATED[$group]="$source_benchmark"; PROVENANCE[$group]=""
   if [[ "$RUN_KIND" == short_test ]]; then
     subset_dir="$RUN_DIR/short_test_subsets/$group"; mkdir -p "$subset_dir"
@@ -177,10 +296,10 @@ data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXP
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")
 PY
 
-for group in "${GROUPS[@]}"; do
+for group in "${SELECTED_DATASET_GROUPS[@]}"; do
   source_benchmark="${DATASETS[$group]}"; evaluated_benchmark="${EVALUATED[$group]}"
   provenance_args=(); [[ -z "${PROVENANCE[$group]}" ]] || provenance_args=(--short-test-provenance "${PROVENANCE[$group]}")
-  domain="$(safe_component domain "$(cut -d/ -f2 <<<"$source_benchmark")")"
+  domain="$(safe_component domain "${DATASET_DOMAINS[$group]}")"
   dataset="$(safe_component dataset "$(basename "$source_benchmark" .json)")"
   dataset_dir="$RUN_DIR/domains/$domain/$dataset"; mkdir -p "$(dirname "$dataset_dir")"; mkdir "$dataset_dir"
   python -m evaluation.evaluate --dataset "$evaluated_benchmark" --router "$MODEL" \
@@ -197,7 +316,7 @@ done
 
 python -m analysis.multi_step_run --validate-index --index "$RUN_DIR/artifact_index.jsonl" \
   --source-benchmark "$SOURCE_LIST" --run-metadata "$RUN_DIR/run_metadata.json"
-test "$(wc -l < "$RUN_DIR/artifact_index.jsonl")" -eq "${#GROUPS[@]}"
+test "$(wc -l < "$RUN_DIR/artifact_index.jsonl")" -eq "${#SELECTED_DATASET_GROUPS[@]}"
 test ! -e "$RUN_DIR/RUN_COMPLETE"
 ( set -o noclobber; printf 'git_commit=%s\n' "$ACTUAL_COMMIT" > "$RUN_DIR/RUN_COMPLETE" )
 echo "Completed $MODEL $REASONING_MODE $RUN_KIND $DATASET_GROUP under $RUN_DIR"

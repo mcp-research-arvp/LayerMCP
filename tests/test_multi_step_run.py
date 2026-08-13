@@ -251,6 +251,32 @@ class MultiStepRunTests(unittest.TestCase):
         self.assertNotIn("${GROUPS", launcher)
         self.assertIn("SELECTED_DATASET_GROUPS", launcher)
 
+    def test_multi_step_launcher_derives_repository_and_checkpoint_defaults(self) -> None:
+        launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
+        self.assertIn('LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"', launcher)
+        self.assertIn(
+            'DEFAULT_REPO_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/../.." && pwd)"',
+            launcher,
+        )
+        self.assertIn(
+            'REPO_ROOT="${LAYERMCP_REPO_ROOT:-$DEFAULT_REPO_ROOT}"',
+            launcher,
+        )
+        self.assertIn('cd "$REPO_ROOT"', launcher)
+        self.assertNotIn("$SCRATCH/layermcp/LayerMCP", launcher)
+        for variable, relative_path in (
+            ("LAYERMCP_PHI4_CHECKPOINT", "phi-4"),
+            ("LAYERMCP_LLAMA31_8B_CHECKPOINT", "llama-3.1-8b-instruct"),
+            ("LAYERMCP_QWEN36_CHECKPOINT", "qwen-3.6"),
+            ("LAYERMCP_GEMMA4_CHECKPOINT", "gemma-4"),
+        ):
+            self.assertIn(
+                f'${{{variable}:=$REPO_ROOT/checkpoints/{relative_path}}}',
+                launcher,
+            )
+        self.assertEqual(launcher.count('LAUNCHER_PATH="$(realpath'), 1)
+        self.assertIn('cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"', launcher)
+
     def test_each_launcher_group_resolves_without_registry_or_model_work(self) -> None:
         for group, expected in self.EXPECTED_LAUNCHER_GROUPS.items():
             with self.subTest(group=group):

@@ -309,6 +309,35 @@ class RunArtifactTests(unittest.TestCase):
             launcher.index("--capture-live-registry"),
         )
 
+    def test_single_step_launcher_derives_repository_and_checkpoint_defaults(self) -> None:
+        launcher = (
+            Path(__file__).resolve().parents[1]
+            / "scripts/slurm/run_single_step.sbatch"
+        ).read_text()
+        self.assertIn('LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"', launcher)
+        self.assertIn(
+            'DEFAULT_REPO_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/../.." && pwd)"',
+            launcher,
+        )
+        self.assertIn(
+            'REPO_ROOT="${LAYERMCP_REPO_ROOT:-$DEFAULT_REPO_ROOT}"',
+            launcher,
+        )
+        self.assertIn('cd "$REPO_ROOT"', launcher)
+        self.assertNotIn("$SCRATCH/layermcp/LayerMCP", launcher)
+        for variable, relative_path in (
+            ("LAYERMCP_PHI4_CHECKPOINT", "phi-4"),
+            ("LAYERMCP_LLAMA31_8B_CHECKPOINT", "llama-3.1-8b-instruct"),
+            ("LAYERMCP_QWEN36_CHECKPOINT", "qwen-3.6"),
+            ("LAYERMCP_GEMMA4_CHECKPOINT", "gemma-4"),
+        ):
+            self.assertIn(
+                f'${{{variable}:=$REPO_ROOT/checkpoints/{relative_path}}}',
+                launcher,
+            )
+        self.assertEqual(launcher.count('LAUNCHER_PATH="$(realpath'), 1)
+        self.assertIn('cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"', launcher)
+
     def test_live_registry_metadata_uses_evaluator_canonical_implementation(self) -> None:
         tools = [
             SimpleNamespace(

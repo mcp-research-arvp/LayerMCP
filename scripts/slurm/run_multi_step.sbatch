@@ -16,7 +16,9 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
-REPO_ROOT="${LAYERMCP_REPO_ROOT:-$SCRATCH/layermcp/LayerMCP}"
+LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
+DEFAULT_REPO_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/../.." && pwd)"
+REPO_ROOT="${LAYERMCP_REPO_ROOT:-$DEFAULT_REPO_ROOT}"
 cd "$REPO_ROOT"
 
 DATASET_GROUP_ORDER=(
@@ -194,7 +196,8 @@ case "$MODEL" in
       echo "phi-4-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
       exit 2
     }
-    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/phi-4"
+    : "${LAYERMCP_PHI4_CHECKPOINT:=$REPO_ROOT/checkpoints/phi-4}"
+    export LAYERMCP_PHI4_CHECKPOINT
     CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"; EXPECTED_MODEL_NAME="microsoft/phi-4"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; REASONING_METHOD="none"; GENERATION_LIMIT=128
     ;;
@@ -203,18 +206,21 @@ case "$MODEL" in
       echo "llama-3.1-8b-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
       exit 2
     }
-    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
+    : "${LAYERMCP_LLAMA31_8B_CHECKPOINT:=$REPO_ROOT/checkpoints/llama-3.1-8b-instruct}"
+    export LAYERMCP_LLAMA31_8B_CHECKPOINT
     CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"; EXPECTED_MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
     PROMPT_TEMPLATE_ID="structured_tool_call_v1"; REASONING_METHOD="none"; GENERATION_LIMIT=128
     ;;
   qwen-3.6-local)
-    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/qwen-3.6"
+    : "${LAYERMCP_QWEN36_CHECKPOINT:=$REPO_ROOT/checkpoints/qwen-3.6}"
+    export LAYERMCP_QWEN36_CHECKPOINT
     CHECKPOINT="$LAYERMCP_QWEN36_CHECKPOINT"; EXPECTED_MODEL_NAME="Qwen/Qwen3.6"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   gemma-4-local)
-    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/gemma-4"
+    : "${LAYERMCP_GEMMA4_CHECKPOINT:=$REPO_ROOT/checkpoints/gemma-4}"
+    export LAYERMCP_GEMMA4_CHECKPOINT
     CHECKPOINT="$LAYERMCP_GEMMA4_CHECKPOINT"; EXPECTED_MODEL_NAME="google/gemma-4-26b-a4b-it"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
@@ -241,7 +247,6 @@ RUN_DATE="$(date -u +%Y%m%dT%H%M%SZ)"
 RUNS_ROOT="results/runs/multi_step"
 RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}_${GROUP_COMPONENT}"
 mkdir -p "$RUNS_ROOT"; mkdir "$RUN_DIR"
-LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
 cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"
 sha256sum "$LAUNCHER_PATH" > "$RUN_DIR/launcher.sha256"
 

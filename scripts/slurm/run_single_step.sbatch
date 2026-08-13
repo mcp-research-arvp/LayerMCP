@@ -17,9 +17,36 @@ set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
 LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
-DEFAULT_REPO_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/../.." && pwd)"
-REPO_ROOT="${LAYERMCP_REPO_ROOT:-$DEFAULT_REPO_ROOT}"
+if [[ -n "${LAYERMCP_REPO_ROOT:-}" ]]; then
+  REPO_ROOT_CANDIDATE="$LAYERMCP_REPO_ROOT"
+elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+  REPO_ROOT_CANDIDATE="$SLURM_SUBMIT_DIR"
+else
+  REPO_ROOT_CANDIDATE="$PWD"
+fi
+if ! REPO_ROOT="$(cd "$REPO_ROOT_CANDIDATE" 2>/dev/null && pwd -P)"; then
+  echo "LayerMCP repository root does not exist: $REPO_ROOT_CANDIDATE" >&2
+  echo "Submit sbatch from the LayerMCP repository root or set LAYERMCP_REPO_ROOT explicitly." >&2
+  exit 2
+fi
+for required_repo_file in \
+  pyproject.toml \
+  evaluation/evaluate.py \
+  scripts/slurm/run_single_step.sbatch \
+  scripts/slurm/run_multi_step.sbatch; do
+  if [[ ! -f "$REPO_ROOT/$required_repo_file" ]]; then
+    echo "Selected directory is not the LayerMCP repository root: $REPO_ROOT" >&2
+    echo "Missing required project file: $required_repo_file" >&2
+    echo "Submit sbatch from the LayerMCP repository root or set LAYERMCP_REPO_ROOT explicitly." >&2
+    exit 2
+  fi
+done
 cd "$REPO_ROOT"
+
+if [[ "${LAYERMCP_VALIDATE_REPO_ROOT_ONLY:-0}" == 1 ]]; then
+  printf '%s\n' "$REPO_ROOT"
+  exit 0
+fi
 
 module load python/3.11
 source "$HOME/venvs/layermcp/bin/activate"

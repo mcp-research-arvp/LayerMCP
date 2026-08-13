@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
@@ -309,21 +311,102 @@ class RunArtifactTests(unittest.TestCase):
             launcher.index("--capture-live-registry"),
         )
 
-    def test_single_step_launcher_derives_repository_and_checkpoint_defaults(self) -> None:
+    def _validate_launcher_root(
+        self,
+        launcher_name: str,
+        *,
+        cwd: Path,
+        repo_override: str | None = None,
+        submit_dir: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        root = Path(__file__).resolve().parents[1]
+        environment = os.environ.copy()
+        environment["LAYERMCP_VALIDATE_REPO_ROOT_ONLY"] = "1"
+        environment.pop("LAYERMCP_REPO_ROOT", None)
+        environment.pop("SLURM_SUBMIT_DIR", None)
+        if repo_override is not None:
+            environment["LAYERMCP_REPO_ROOT"] = repo_override
+        if submit_dir is not None:
+            environment["SLURM_SUBMIT_DIR"] = submit_dir
+        return subprocess.run(
+            ["bash", str(root / "scripts/slurm" / launcher_name)],
+            cwd=cwd,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_launchers_use_repository_root_precedence(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        with TemporaryDirectory() as temporary:
+            unrelated = Path(temporary)
+            for launcher_name in (
+                "run_single_step.sbatch",
+                "run_multi_step.sbatch",
+            ):
+                with self.subTest(launcher=launcher_name, source="override"):
+                    result = self._validate_launcher_root(
+                        launcher_name,
+                        cwd=unrelated,
+                        repo_override=str(root),
+                        submit_dir=str(unrelated),
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip(), str(root.resolve()))
+                with self.subTest(launcher=launcher_name, source="slurm"):
+                    result = self._validate_launcher_root(
+                        launcher_name,
+                        cwd=unrelated,
+                        submit_dir=str(root),
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip(), str(root.resolve()))
+                with self.subTest(launcher=launcher_name, source="pwd"):
+                    result = self._validate_launcher_root(launcher_name, cwd=root)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout.strip(), str(root.resolve()))
+
+    def test_launchers_reject_bad_repository_before_expensive_work(self) -> None:
+        with TemporaryDirectory() as temporary:
+            bad_root = Path(temporary)
+            for launcher_name in (
+                "run_single_step.sbatch",
+                "run_multi_step.sbatch",
+            ):
+                with self.subTest(launcher=launcher_name):
+                    result = self._validate_launcher_root(
+                        launcher_name,
+                        cwd=bad_root,
+                        repo_override=str(bad_root),
+                    )
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn("not the LayerMCP repository root", result.stderr)
+                    self.assertIn("set LAYERMCP_REPO_ROOT explicitly", result.stderr)
+                    self.assertNotIn("registry", result.stdout.lower())
+                    self.assertNotIn("model weights", result.stdout.lower())
+
+    def test_single_step_launcher_root_and_checkpoint_contract(self) -> None:
         launcher = (
             Path(__file__).resolve().parents[1]
             / "scripts/slurm/run_single_step.sbatch"
         ).read_text()
         self.assertIn('LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"', launcher)
-        self.assertIn(
-            'DEFAULT_REPO_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/../.." && pwd)"',
-            launcher,
+        self.assertNotIn('dirname "$LAUNCHER_PATH"', launcher)
+        self.assertLess(
+            launcher.index('if [[ -n "${LAYERMCP_REPO_ROOT:-}" ]]'),
+            launcher.index('elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]'),
         )
-        self.assertIn(
-            'REPO_ROOT="${LAYERMCP_REPO_ROOT:-$DEFAULT_REPO_ROOT}"',
-            launcher,
-        )
+        self.assertIn('REPO_ROOT_CANDIDATE="$PWD"', launcher)
+        self.assertIn('pwd -P', launcher)
         self.assertIn('cd "$REPO_ROOT"', launcher)
+        for required in (
+            "pyproject.toml",
+            "evaluation/evaluate.py",
+            "scripts/slurm/run_single_step.sbatch",
+            "scripts/slurm/run_multi_step.sbatch",
+        ):
+            self.assertIn(required, launcher)
         self.assertNotIn("$SCRATCH/layermcp/LayerMCP", launcher)
         for variable, relative_path in (
             ("LAYERMCP_PHI4_CHECKPOINT", "phi-4"),

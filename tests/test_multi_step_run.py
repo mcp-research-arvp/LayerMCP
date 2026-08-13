@@ -251,18 +251,24 @@ class MultiStepRunTests(unittest.TestCase):
         self.assertNotIn("${GROUPS", launcher)
         self.assertIn("SELECTED_DATASET_GROUPS", launcher)
 
-    def test_multi_step_launcher_derives_repository_and_checkpoint_defaults(self) -> None:
+    def test_multi_step_launcher_root_and_checkpoint_contract(self) -> None:
         launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
         self.assertIn('LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"', launcher)
-        self.assertIn(
-            'DEFAULT_REPO_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/../.." && pwd)"',
-            launcher,
+        self.assertNotIn('dirname "$LAUNCHER_PATH"', launcher)
+        self.assertLess(
+            launcher.index('if [[ -n "${LAYERMCP_REPO_ROOT:-}" ]]'),
+            launcher.index('elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]'),
         )
-        self.assertIn(
-            'REPO_ROOT="${LAYERMCP_REPO_ROOT:-$DEFAULT_REPO_ROOT}"',
-            launcher,
-        )
+        self.assertIn('REPO_ROOT_CANDIDATE="$PWD"', launcher)
+        self.assertIn("pwd -P", launcher)
         self.assertIn('cd "$REPO_ROOT"', launcher)
+        for required in (
+            "pyproject.toml",
+            "evaluation/evaluate.py",
+            "scripts/slurm/run_single_step.sbatch",
+            "scripts/slurm/run_multi_step.sbatch",
+        ):
+            self.assertIn(required, launcher)
         self.assertNotIn("$SCRATCH/layermcp/LayerMCP", launcher)
         for variable, relative_path in (
             ("LAYERMCP_PHI4_CHECKPOINT", "phi-4"),

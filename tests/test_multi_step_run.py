@@ -340,8 +340,39 @@ class MultiStepRunTests(unittest.TestCase):
     def test_group_validation_precedes_registry_and_environment_activation(self) -> None:
         launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
         validation_exit = launcher.index("LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY")
-        self.assertLess(validation_exit, launcher.index("module load python/3.11"))
-        self.assertLess(validation_exit, launcher.index("--capture-live-registry"))
+        module_load = launcher.index("module load python/3.11")
+        activate = launcher.index('source "$HOME/venvs/layermcp/bin/activate"')
+        dataset_content_validation = launcher.index(
+            'for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do',
+            module_load,
+        )
+        registry_capture = launcher.index("--capture-live-registry")
+        checkpoint_access = launcher.index("$REPO_ROOT/checkpoints/phi-4")
+        self.assertLess(validation_exit, module_load)
+        self.assertNotIn("python", launcher[validation_exit:module_load])
+        self.assertLess(module_load, activate)
+        self.assertLess(activate, dataset_content_validation)
+        self.assertLess(dataset_content_validation, registry_capture)
+        self.assertLess(dataset_content_validation, checkpoint_access)
+
+    def test_static_group_validation_does_not_require_python_or_environment(self) -> None:
+        launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
+        static_start = launcher.index("DATASET_GROUP_ORDER=(")
+        validation_only = launcher.index(
+            'if [[ "${LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY:-0}" == 1 ]]'
+        )
+        validation_exit = launcher.index("exit 0", validation_only)
+        static_section = launcher[static_start:validation_exit]
+        self.assertNotIn("python", static_section)
+        self.assertNotIn("module load", static_section)
+        self.assertNotIn("venvs/layermcp", static_section)
+        self.assertNotIn("--capture-live-registry", static_section)
+
+    def test_missing_and_invalid_groups_are_rejected_before_module_load(self) -> None:
+        launcher = (ROOT / "scripts/slurm/run_multi_step.sbatch").read_text()
+        module_load = launcher.index("module load python/3.11")
+        self.assertLess(launcher.index('if [[ -z "${DATASET_GROUP:-}" ]]'), module_load)
+        self.assertLess(launcher.index("Unsupported DATASET_GROUP:"), module_load)
 
 
 if __name__ == "__main__":

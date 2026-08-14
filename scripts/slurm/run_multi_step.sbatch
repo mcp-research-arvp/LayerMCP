@@ -151,6 +151,33 @@ for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
     echo "Dataset for group $dataset_group_name does not exist: ${DATASETS[$dataset_group_name]}" >&2
     exit 2
   fi
+done
+
+if [[ "${LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY:-0}" == 1 ]]; then
+  for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$dataset_group_name" \
+      "${DATASETS[$dataset_group_name]}" \
+      "${DATASET_DOMAINS[$dataset_group_name]}" \
+      "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
+      "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]}" \
+      "${EXPECTED_STEP_COUNTS[$dataset_group_name]}"
+  done
+  exit 0
+fi
+
+: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
+: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
+
+module load python/3.11
+source "$HOME/venvs/layermcp/bin/activate"
+export HF_HOME="$SCRATCH/hf_cache"
+export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+unset TRANSFORMERS_CACHE || true
+
+for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
   python - \
     "${DATASETS[$dataset_group_name]}" \
     "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
@@ -180,30 +207,6 @@ if modes != {expected_mode}:
     )
 PY
 done
-
-if [[ "${LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY:-0}" == 1 ]]; then
-  for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
-      "$dataset_group_name" \
-      "${DATASETS[$dataset_group_name]}" \
-      "${DATASET_DOMAINS[$dataset_group_name]}" \
-      "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
-      "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]}" \
-      "${EXPECTED_STEP_COUNTS[$dataset_group_name]}"
-  done
-  exit 0
-fi
-
-: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
-: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
-: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
-
-module load python/3.11
-source "$HOME/venvs/layermcp/bin/activate"
-export HF_HOME="$SCRATCH/hf_cache"
-export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-unset TRANSFORMERS_CACHE || true
 
 ACTUAL_COMMIT="$(git rev-parse HEAD)"
 EVALUATION_PROTOCOL="guided_predicted_rollout_v1"

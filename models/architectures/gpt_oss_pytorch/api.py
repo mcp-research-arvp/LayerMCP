@@ -14,8 +14,9 @@ import uuid
 from functools import lru_cache
 from typing import Any, Iterator
 
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from models.architectures.gpt_oss_pytorch.inference import parse_tool_call
 from models.architectures.gpt_oss_pytorch.schemas import ChatCompletionRequest
@@ -23,6 +24,28 @@ from models.architectures.gpt_oss_pytorch.schemas import ChatCompletionRequest
 
 MODEL_ID = "gpt-oss-20b"
 app = FastAPI(title="Local GPT-OSS API")
+
+
+def _error_response(message: str, status_code: int, code: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "message": message,
+                "type": "invalid_request_error" if status_code < 500 else "server_error",
+                "code": code,
+            }
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(_request, exc: RequestValidationError) -> JSONResponse:
+    return _error_response(
+        "Invalid chat completion request: " + str(exc.errors()),
+        422,
+        "invalid_request",
+    )
 
 
 @lru_cache(maxsize=1)
@@ -146,12 +169,9 @@ def _base(request_id: str, created: int, model: str) -> dict[str, Any]:
 
 
 def stream_response(request: ChatCompletionRequest) -> Iterator[str]:
-    generator = get_generator()
     request_id = f"chatcmpl-{uuid.uuid4()}"
     created = int(time.time())
     model = request.model or MODEL_ID
-    prompt = build_prompt(request.messages, request.tools)
-    tokens = generator.tokenizer.encode(prompt, allowed_special="all")
     base = _base(request_id, created, model)
     yield "data: " + json.dumps(
         base | {"choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}]}
@@ -160,6 +180,9 @@ def stream_response(request: ChatCompletionRequest) -> Iterator[str]:
     generated: list[int] = []
     previous_clean = ""
     try:
+        generator = get_generator()
+        prompt = build_prompt(request.messages, request.tools)
+        tokens = generator.tokenizer.encode(prompt, allowed_special="all")
         for token in generator.generate(
             prompt_tokens=tokens,
             stop_tokens=[generator.eot_token, generator.call_token],
@@ -176,6 +199,7 @@ def stream_response(request: ChatCompletionRequest) -> Iterator[str]:
                         "choices": [{
                             "index": 0,
                             "delta": {"tool_calls": [{
+                                "index": 0,
                                 "id": f"call_{uuid.uuid4().hex[:8]}",
                                 "type": "function",
                                 "function": tool_call.function.model_dump(),
@@ -202,13 +226,14 @@ def stream_response(request: ChatCompletionRequest) -> Iterator[str]:
         yield f"data: {json.dumps(payload)}\n\n"
         yield "data: [DONE]\n\n"
     except Exception as exc:
-        payload = base | {
-            "choices": [{
-                "index": 0,
-                "delta": {"content": f"\n[SERVER ERROR] {exc}"},
-                "finish_reason": "stop",
-            }]
+        payload = {
+            "error": {
+                "message": f"Model generation failed: {exc}",
+                "type": "server_error",
+                "code": "generation_failed",
+            }
         }
+        yield "event: error\n"
         yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -227,23 +252,29 @@ def models() -> dict[str, Any]:
 
 
 @app.post("/v1/chat/completions")
-async def chat(request: Request):
-    completion_request = ChatCompletionRequest(**await request.json())
+async def chat(completion_request: ChatCompletionRequest):
     if completion_request.stream:
         return StreamingResponse(
             stream_response(completion_request), media_type="text/event-stream"
         )
 
-    generator = get_generator()
-    prompt = build_prompt(completion_request.messages, completion_request.tools)
-    prompt_tokens = generator.tokenizer.encode(prompt, allowed_special="all")
-    output_tokens = list(generator.generate(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=[generator.call_token, generator.return_token, generator.eot_token],
-        temperature=completion_request.temperature,
-        max_tokens=completion_request.max_tokens,
-        return_logprobs=False,
-    ))
+    try:
+        generator = get_generator()
+        prompt = build_prompt(completion_request.messages, completion_request.tools)
+        prompt_tokens = generator.tokenizer.encode(prompt, allowed_special="all")
+        output_tokens = list(generator.generate(
+            prompt_tokens=prompt_tokens,
+            stop_tokens=[generator.call_token, generator.return_token, generator.eot_token],
+            temperature=completion_request.temperature,
+            max_tokens=completion_request.max_tokens,
+            return_logprobs=False,
+        ))
+    except Exception as exc:
+        return _error_response(
+            f"Model generation failed: {exc}",
+            500,
+            "generation_failed",
+        )
     text = safe_decode(generator.tokenizer, output_tokens)
     tool_call = parse_tool_call(text, _tool_names(completion_request))
     message: dict[str, Any]

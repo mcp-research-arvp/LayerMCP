@@ -166,7 +166,7 @@ if [[ "${LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY:-0}" == 1 ]]; then
   exit 0
 fi
 
-: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, gemma-4-local, or gpt-oss-local}"
 : "${SLURM_JOB_ID:?This launcher must run under Slurm}"
 : "${SLURM_JOB_NAME:?Slurm must provide a job name}"
 
@@ -220,6 +220,7 @@ grep -q "MULTISTEP_EVALUATION_PROTOCOL = \"$EVALUATION_PROTOCOL\"" evaluation/ev
   exit 2
 }
 
+REQUIRED_CHECKPOINT_FILES=(config.json)
 case "$MODEL" in
   phi-4-local)
     [[ "$REASONING_MODE" == direct ]] || {
@@ -255,9 +256,25 @@ case "$MODEL" in
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
+  gpt-oss-local)
+    [[ "$REASONING_MODE" == direct ]] || {
+      echo "gpt-oss-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
+      exit 2
+    }
+    : "${LAYERMCP_GPT_OSS_CHECKPOINT:=$REPO_ROOT/checkpoints/gpt-oss-20b/original}"
+    export LAYERMCP_GPT_OSS_CHECKPOINT
+    CHECKPOINT="$LAYERMCP_GPT_OSS_CHECKPOINT"; EXPECTED_MODEL_NAME="openai/gpt-oss-20b"
+    PROMPT_TEMPLATE_ID="harmony_structured_context_sql_v2"; REASONING_METHOD="none"; GENERATION_LIMIT=128
+    REQUIRED_CHECKPOINT_FILES=(config.json model.safetensors)
+    ;;
   *) echo "Unsupported MODEL: $MODEL" >&2; exit 2 ;;
 esac
-test -f "$CHECKPOINT/config.json" || { echo "Missing checkpoint config: $CHECKPOINT/config.json" >&2; exit 2; }
+for required_checkpoint_file in "${REQUIRED_CHECKPOINT_FILES[@]}"; do
+  [[ -s "$CHECKPOINT/$required_checkpoint_file" ]] || {
+    echo "Missing required checkpoint file: $CHECKPOINT/$required_checkpoint_file" >&2
+    exit 2
+  }
+done
 
 safe_component() { python -m analysis.run_artifacts --safe-component "$1" "$2"; }
 MODEL_COMPONENT="$(safe_component model "$MODEL")"

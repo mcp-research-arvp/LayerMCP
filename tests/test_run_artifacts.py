@@ -304,6 +304,7 @@ class RunArtifactTests(unittest.TestCase):
             "llama-3.1-8b-local",
             "qwen-3.6-local",
             "gemma-4-local",
+            "gpt-oss-local",
         ):
             self.assertIn(model, launcher)
         self.assertLess(
@@ -413,6 +414,7 @@ class RunArtifactTests(unittest.TestCase):
             ("LAYERMCP_LLAMA31_8B_CHECKPOINT", "llama-3.1-8b-instruct"),
             ("LAYERMCP_QWEN36_CHECKPOINT", "qwen-3.6"),
             ("LAYERMCP_GEMMA4_CHECKPOINT", "gemma-4"),
+            ("LAYERMCP_GPT_OSS_CHECKPOINT", "gpt-oss-20b/original"),
         ):
             self.assertIn(
                 f'${{{variable}:=$REPO_ROOT/checkpoints/{relative_path}}}',
@@ -420,6 +422,62 @@ class RunArtifactTests(unittest.TestCase):
             )
         self.assertEqual(launcher.count('LAUNCHER_PATH="$(realpath'), 1)
         self.assertIn('cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"', launcher)
+
+    def test_gpt_oss_contract_is_present_in_both_launchers(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        for launcher_name in (
+            "run_single_step.sbatch",
+            "run_multi_step.sbatch",
+        ):
+            with self.subTest(launcher=launcher_name):
+                launcher = (root / "scripts" / "slurm" / launcher_name).read_text()
+                self.assertIn("gpt-oss-local", launcher)
+                self.assertIn(
+                    '${LAYERMCP_GPT_OSS_CHECKPOINT:=$REPO_ROOT/checkpoints/'
+                    'gpt-oss-20b/original}',
+                    launcher,
+                )
+                self.assertIn("export LAYERMCP_GPT_OSS_CHECKPOINT", launcher)
+                self.assertIn('EXPECTED_MODEL_NAME="openai/gpt-oss-20b"', launcher)
+                self.assertIn(
+                    'PROMPT_TEMPLATE_ID="harmony_structured_context_sql_v2"',
+                    launcher,
+                )
+                self.assertIn("REQUIRED_CHECKPOINT_FILES=(config.json model.safetensors)", launcher)
+                if launcher_name == "run_single_step.sbatch":
+                    self.assertIn("gpt-oss-local:reasoning", launcher)
+                    self.assertIn(
+                        "$MODEL does not implement reasoning mode; use "
+                        "REASONING_MODE=direct",
+                        launcher,
+                    )
+                else:
+                    self.assertIn(
+                        "gpt-oss-local does not implement reasoning mode; use "
+                        "REASONING_MODE=direct",
+                        launcher,
+                    )
+                self.assertIn('--router "$MODEL"', launcher)
+                self.assertLess(
+                    launcher.index('Missing required checkpoint file:'),
+                    launcher.index("python -m evaluation.evaluate"),
+                )
+                self.assertNotIn("dtypes.json", launcher)
+
+    def test_tracked_slurm_launchers_pass_bash_syntax(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        for launcher_name in (
+            "run_single_step.sbatch",
+            "run_multi_step.sbatch",
+        ):
+            with self.subTest(launcher=launcher_name):
+                result = subprocess.run(
+                    ["bash", "-n", str(root / "scripts" / "slurm" / launcher_name)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_live_registry_metadata_uses_evaluator_canonical_implementation(self) -> None:
         tools = [

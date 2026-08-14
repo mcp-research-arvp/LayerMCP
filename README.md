@@ -655,8 +655,8 @@ reasoning conditions must use separate run directories. The former flat,
 timestamp-named files directly under `results/` are retained only for historical
 compatibility and should not be used for new concurrent jobs.
 
-Both launchers require `REASONING_MODE=direct|reasoning`. Phi and Llama support
-direct only; Qwen 3.6 and Gemma 4 support direct and native reasoning. The
+Both launchers require `REASONING_MODE=direct|reasoning`. Phi, Llama, and
+GPT-OSS support direct only; Qwen 3.6 and Gemma 4 support direct and native reasoning. The
 launchers record the mode, model-specific reasoning method, and effective token
 generation limit in run metadata, samples, summaries, and the artifact index.
 
@@ -665,6 +665,12 @@ Single-step examples from a fresh clone:
 ```bash
 MODEL="qwen-3.6-local"
 REASONING_MODE="reasoning"
+sbatch --job-name="${MODEL}-${REASONING_MODE}-smoke" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",RUN_KIND=smoke \
+  scripts/slurm/run_single_step.sbatch
+
+MODEL="gpt-oss-local"
+REASONING_MODE="direct"
 sbatch --job-name="${MODEL}-${REASONING_MODE}-smoke" \
   --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",RUN_KIND=smoke \
   scripts/slurm/run_single_step.sbatch
@@ -683,6 +689,12 @@ MODEL="llama-3.1-8b-local"
 REASONING_MODE="direct"
 sbatch --job-name="${MODEL}-${REASONING_MODE}-full-finance_finqa" \
   --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=finance_finqa,RUN_KIND=full \
+  scripts/slurm/run_multi_step.sbatch
+
+MODEL="gpt-oss-local"
+REASONING_MODE="direct"
+sbatch --job-name="${MODEL}-${REASONING_MODE}-short_test-math_controlled" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=math_controlled,RUN_KIND=short_test \
   scripts/slurm/run_multi_step.sbatch
 ```
 

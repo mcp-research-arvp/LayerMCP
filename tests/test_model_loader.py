@@ -752,23 +752,71 @@ class RouterRegistryTests(unittest.TestCase):
         )
         for response in responses:
             with self.subTest(response=response):
-                prediction = parse_tool_call(response, ["calculator", "search"])
+                prediction = parse_tool_call(
+                    response,
+                    ["calculator", "search"],
+                    allow_harmony=True,
+                )
                 self.assertEqual(prediction.selected_tool, "calculator")
                 self.assertEqual(
                     prediction.selected_args,
                     {"expression": "2 + 2"},
                 )
 
-    def test_shared_parser_keeps_misspelled_harmony_tool_names_strict(self) -> None:
+    def test_harmony_parsing_is_opt_in_for_non_gpt_oss_routers(self) -> None:
         from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
 
         prediction = parse_tool_call(
-            "to=functions.calculatr<|message|>{}<|call|>",
-            ["calculator", "search"],
+            "to=functions.calculator<|message|>{}<|call|>",
+            ["calculator"],
         )
 
         self.assertEqual(prediction.selected_tool, PARSE_ERROR)
         self.assertEqual(prediction.parse_status, "parse_error")
+
+    def test_shared_parser_keeps_misspelled_harmony_tool_names_strict(self) -> None:
+        from models.routers.structured_tool_call import UNKNOWN_TOOL, parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=functions.calculatr<|message|>{}<|call|>",
+            ["calculator", "search"],
+            allow_harmony=True,
+        )
+
+        self.assertEqual(prediction.selected_tool, UNKNOWN_TOOL)
+        self.assertEqual(prediction.parse_status, "unknown_tool")
+        self.assertEqual(prediction.attempted_tool, "calculatr")
+
+    def test_harmony_unknown_tool_is_not_recovered_from_reasoning_text(self) -> None:
+        from models.routers.structured_tool_call import UNKNOWN_TOOL, parse_tool_call
+
+        prediction = parse_tool_call(
+            "We should use calculator, but output misspelled. "
+            "to=functions.calculatr<|message|>{}<|call|>",
+            ["calculator"],
+            allow_harmony=True,
+        )
+
+        self.assertEqual(prediction.selected_tool, UNKNOWN_TOOL)
+        self.assertEqual(prediction.parse_status, "unknown_tool")
+        self.assertEqual(prediction.attempted_tool, "calculatr")
+
+    def test_harmony_malformed_arguments_are_an_explicit_parse_failure(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=functions.ping<|message|>{bad<|call|>",
+            ["ping"],
+            tool_schemas={
+                "ping": {"type": "object", "properties": {}},
+            },
+            allow_harmony=True,
+        )
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
+        self.assertEqual(prediction.attempted_tool, "ping")
+        self.assertEqual(prediction.diagnostic, "arguments are not valid JSON")
 
     def test_gpt_oss_router_uses_native_harmony_once_and_validates_schema(self) -> None:
         from models.routers import gpt_oss_local_router
@@ -823,6 +871,33 @@ class RouterRegistryTests(unittest.TestCase):
             temperature=0.0,
             max_tokens=gpt_oss_local_router.MAX_GENERATED_TOKENS,
         )
+
+    def test_gpt_oss_benchmark_parser_ignores_api_tool_call(self) -> None:
+        from models.routers import gpt_oss_local_router
+        from models.routers.structured_tool_call import PARSE_ERROR
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.return_value = SimpleNamespace(
+            text="not a structured tool call",
+            tool_call=SimpleNamespace(
+                function=SimpleNamespace(name="calculator", arguments="{}"),
+            ),
+        )
+
+        with patch.object(
+            gpt_oss_local_router,
+            "_load_generator",
+            return_value=generator,
+        ):
+            prediction = gpt_oss_local_router.choose_tool_call(
+                "Calculate something.",
+                ["calculator"],
+            )
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
 
 
 if __name__ == "__main__":

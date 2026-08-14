@@ -154,8 +154,12 @@ def _generate_prediction(
     return parse_tool_call(
         result.text,
         tool_catalog,
-        result.tool_call,
+        # Benchmark scoring parses the raw Harmony completion independently.
+        # TokenGenerator.tool_call belongs to the source-faithful HTTP API path
+        # and must not weaken or otherwise affect evaluator parsing.
+        None,
         tool_schemas,
+        allow_harmony=True,
     )
 
 

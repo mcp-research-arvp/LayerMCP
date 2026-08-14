@@ -111,19 +111,28 @@ def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
 def _parse_harmony_native_call(
     response: str,
     catalog: set[str],
-) -> tuple[str, dict[str, Any]] | None:
+) -> tuple[str, dict[str, Any], str | None, str | None] | None:
     """Parse official and legacy GPT-OSS Harmony function calls."""
     normalized_name = None
-    for name in reversed(re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", response)):
-        candidate = name.removeprefix("functions.")
-        if candidate.lower() == "functions":
-            continue
-        normalized = candidate.strip().lower()
-        if normalized in catalog:
-            normalized_name = normalized
-            break
+    attempted_name = None
+    recipients = re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", response)
+    qualified_recipients = [
+        name.removeprefix("functions.").strip().lower()
+        for name in recipients
+        if name.removeprefix("functions.").lower() != "functions"
+    ]
+    if qualified_recipients:
+        attempted_name = qualified_recipients[-1]
+        if attempted_name in catalog:
+            normalized_name = attempted_name
 
-    if normalized_name is None and "to=functions" in response:
+    # An explicit qualified recipient is authoritative. Never reinterpret an
+    # unknown recipient by searching the surrounding reasoning for a known
+    # tool name.
+    if normalized_name is None and attempted_name is not None:
+        return UNKNOWN_TOOL, {}, "tool name is not in the live MCP catalog", attempted_name
+
+    if normalized_name is None and any(name.lower() == "functions" for name in recipients):
         mentioned = [
             tool for tool in catalog
             if re.search(
@@ -136,17 +145,18 @@ def _parse_harmony_native_call(
     if normalized_name is None:
         return None
 
-    arguments: dict[str, Any] = {}
     marker_index = response.rfind("<|message|>")
-    if marker_index >= 0:
-        raw = response[marker_index + len("<|message|>"):].lstrip()
-        try:
-            payload, _ = json.JSONDecoder().raw_decode(raw)
-            if isinstance(payload, dict):
-                arguments = payload
-        except (json.JSONDecodeError, TypeError):
-            pass
-    return normalized_name, arguments
+    if marker_index < 0:
+        return normalized_name, {}, "Harmony tool call has no argument payload", normalized_name
+
+    raw = response[marker_index + len("<|message|>"):].lstrip()
+    try:
+        payload, _ = json.JSONDecoder().raw_decode(raw)
+    except (json.JSONDecodeError, TypeError):
+        return normalized_name, {}, "arguments are not valid JSON", normalized_name
+    if not isinstance(payload, dict):
+        return normalized_name, {}, "decoded arguments must be a JSON object", normalized_name
+    return normalized_name, payload, None, normalized_name
 
 
 def _decode_arguments(arguments: Any) -> tuple[dict[str, Any], str | None]:
@@ -219,6 +229,8 @@ def parse_tool_call(
     available_tools: Sequence[str],
     native_tool_call: Any = None,
     tool_schemas: Mapping[str, Any] | None = None,
+    *,
+    allow_harmony: bool = False,
 ) -> ToolCallPrediction:
     catalog = {tool.lower() for tool in available_tools}
 
@@ -256,17 +268,32 @@ def parse_tool_call(
                 diagnostic="tool name is not in the live MCP catalog",
             )
 
-    harmony_call = _parse_harmony_native_call(response, catalog)
+    harmony_call = _parse_harmony_native_call(response, catalog) if allow_harmony else None
     if harmony_call is not None:
-        name, arguments = harmony_call
+        name, arguments, parse_error, attempted_name = harmony_call
+        if name == UNKNOWN_TOOL:
+            return ToolCallPrediction(
+                UNKNOWN_TOOL,
+                {},
+                response,
+                parse_status="unknown_tool",
+                attempted_tool=attempted_name,
+                diagnostic=parse_error,
+            )
         schema_error = _argument_schema_error(name, arguments, tool_schemas)
         return ToolCallPrediction(
-            name,
+            PARSE_ERROR if parse_error else name,
             arguments,
             response,
-            parse_status="invalid_arguments" if schema_error else "ok",
-            attempted_tool=name,
-            diagnostic=schema_error,
+            parse_status=(
+                "parse_error"
+                if parse_error
+                else "invalid_arguments"
+                if schema_error
+                else "ok"
+            ),
+            attempted_tool=attempted_name,
+            diagnostic=parse_error or schema_error,
         )
 
     qwen_call = _parse_qwen_native_call(response)

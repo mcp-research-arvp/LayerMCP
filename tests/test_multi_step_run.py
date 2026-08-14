@@ -45,9 +45,8 @@ class MultiStepRunTests(unittest.TestCase):
         self.assertNotIn(EMPTY_PLACEHOLDER, DATASET_GROUPS.values())
         self.assertEqual(json.loads((ROOT / EMPTY_PLACEHOLDER).read_text()), [])
 
-    def test_full_rejects_all_and_short_test_accepts_it(self) -> None:
-        with self.assertRaisesRegex(ValueError, "short_test"):
-            resolve_dataset_groups("all", "full")
+    def test_all_dataset_groups_are_available_for_full_and_short_test_runs(self) -> None:
+        self.assertEqual(len(resolve_dataset_groups("all", "full")), 7)
         self.assertEqual(len(resolve_dataset_groups("all", "short_test")), 7)
 
     def _benchmark(self, root: Path) -> Path:
@@ -161,6 +160,10 @@ class MultiStepRunTests(unittest.TestCase):
             self.assertIn(model, launcher)
         self.assertNotIn("coding_nebius_swerebench_openhands",launcher)
         self.assertIn("PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",launcher)
+        # GROUPS is a Bash-reserved array of Unix group IDs. Using it for
+        # benchmark names breaks all-group jobs under `set -u` on Nibi.
+        self.assertNotIn("\nGROUPS=", launcher)
+        self.assertIn("DATASET_GROUP_LIST=(\"${ORDER[@]}\")", launcher)
 
 
 if __name__ == "__main__":

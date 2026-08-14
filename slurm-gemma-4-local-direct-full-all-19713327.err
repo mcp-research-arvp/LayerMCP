@@ -1,0 +1,3 @@
+[08/12/26 20:42:24] INFO     Processing request of type            server.py:733
+                             ListToolsRequest                                   
+/var/spool/slurmd/job19713327/slurm_script: line 144: DATASETS[$group]: unbound variable

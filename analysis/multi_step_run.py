@@ -50,8 +50,6 @@ def resolve_dataset_groups(group: str, run_kind: str) -> list[tuple[str, Path]]:
     if run_kind not in {"short_test", "full"}:
         raise ValueError(f"Unsupported RUN_KIND: {run_kind}")
     if group == "all":
-        if run_kind != "short_test":
-            raise ValueError("DATASET_GROUP=all is allowed only for RUN_KIND=short_test")
         return list(DATASET_GROUPS.items())
     if group not in DATASET_GROUPS:
         raise ValueError(f"Unsupported DATASET_GROUP: {group}")

@@ -16,9 +16,10 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
-cd "$SCRATCH/layermcp/LayerMCP"
+LAYERMCP_REPO_ROOT="${LAYERMCP_REPO_ROOT:-$HOME/pg5_projects/LayerMCP}"
+cd "$LAYERMCP_REPO_ROOT"
 module load python/3.11
-source "$HOME/venvs/layermcp/bin/activate"
+source "$LAYERMCP_REPO_ROOT/.venv/bin/activate"
 export HF_HOME="$SCRATCH/hf_cache"
 export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -57,7 +58,7 @@ case "$MODEL" in
       echo "phi-4-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
       exit 2
     }
-    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/phi-4"
+    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/phi-4"
     CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"; EXPECTED_MODEL_NAME="microsoft/phi-4"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; REASONING_METHOD="none"; GENERATION_LIMIT=128
     ;;
@@ -66,18 +67,18 @@ case "$MODEL" in
       echo "llama-3.1-8b-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
       exit 2
     }
-    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
+    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/llama-3.1-8b-instruct"
     CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"; EXPECTED_MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
     PROMPT_TEMPLATE_ID="structured_tool_call_v1"; REASONING_METHOD="none"; GENERATION_LIMIT=128
     ;;
   qwen-3.6-local)
-    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/qwen-3.6"
+    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/qwen-3.6"
     CHECKPOINT="$LAYERMCP_QWEN36_CHECKPOINT"; EXPECTED_MODEL_NAME="Qwen/Qwen3.6"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   gemma-4-local)
-    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/gemma-4"
+    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/gemma-4"
     CHECKPOINT="$LAYERMCP_GEMMA4_CHECKPOINT"; EXPECTED_MODEL_NAME="google/gemma-4-26b-a4b-it"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
@@ -97,11 +98,10 @@ declare -A DATASETS=(
 )
 ORDER=(coding_sweagent coding_nebius_replay enterprise_tau2 finance_convfinqa finance_finqa finance_finretrieval_replay math_controlled)
 if [[ "$DATASET_GROUP" == all ]]; then
-  [[ "$RUN_KIND" == short_test ]] || { echo "DATASET_GROUP=all is short_test-only" >&2; exit 2; }
-  GROUPS=("${ORDER[@]}")
+  DATASET_GROUP_LIST=("${ORDER[@]}")
 else
   [[ -n "${DATASETS[$DATASET_GROUP]:-}" ]] || { echo "Unsupported DATASET_GROUP: $DATASET_GROUP" >&2; exit 2; }
-  GROUPS=("$DATASET_GROUP")
+  DATASET_GROUP_LIST=("$DATASET_GROUP")
 fi
 
 safe_component() { python -m analysis.run_artifacts --safe-component "$1" "$2"; }
@@ -129,7 +129,9 @@ sha256sum "$LAUNCHER_PATH" > "$RUN_DIR/launcher.sha256"
 REGISTRY_SNAPSHOT="$RUN_DIR/live_registry_snapshot.json"
 python -m analysis.run_artifacts --capture-live-registry --include-catalog \
   --server mcp_server/server.py --registry-metadata-out "$REGISTRY_SNAPSHOT"
-mapfile -t REGISTRY_VALUES < <(python - "$REGISTRY_SNAPSHOT" <<'PY'
+REGISTRY_VALUES_FILE="$(mktemp)"
+trap 'rm -f "$REGISTRY_VALUES_FILE"' EXIT
+python - "$REGISTRY_SNAPSHOT" > "$REGISTRY_VALUES_FILE" <<'PY'
 import json,re,sys
 from pathlib import Path
 x=json.loads(Path(sys.argv[1]).read_text())
@@ -140,14 +142,20 @@ for f in ("tool_names","tool_schemas","tool_descriptions"):
     if not x.get(f): raise SystemExit(f"Missing live registry catalog: {f}")
 print(x["tool_pool"]);print(x["tool_count"]);print(x["tool_registry_fingerprint"]);print(x["tool_registry_fingerprint_version"])
 PY
-)
+mapfile -t REGISTRY_VALUES < "$REGISTRY_VALUES_FILE"
+if [[ "${#REGISTRY_VALUES[@]}" -ne 4 ]]; then
+  echo "Live registry metadata capture returned an unexpected shape." >&2
+  exit 2
+fi
 TOOL_POOL="${REGISTRY_VALUES[0]}"; TOOL_COUNT="${REGISTRY_VALUES[1]}"
 EXPECTED_REGISTRY_FINGERPRINT="${REGISTRY_VALUES[2]}"; REGISTRY_FINGERPRINT_VERSION="${REGISTRY_VALUES[3]}"
+rm -f "$REGISTRY_VALUES_FILE"
+trap - EXIT
 
 SOURCE_LIST="$RUN_DIR/resolved_datasets.txt"
-for group in "${GROUPS[@]}"; do realpath "${DATASETS[$group]}"; done > "$SOURCE_LIST"
+for group in "${DATASET_GROUP_LIST[@]}"; do realpath "${DATASETS[$group]}"; done > "$SOURCE_LIST"
 declare -A EVALUATED PROVENANCE
-for group in "${GROUPS[@]}"; do
+for group in "${DATASET_GROUP_LIST[@]}"; do
   source_benchmark="${DATASETS[$group]}"; EVALUATED[$group]="$source_benchmark"; PROVENANCE[$group]=""
   if [[ "$RUN_KIND" == short_test ]]; then
     subset_dir="$RUN_DIR/short_test_subsets/$group"; mkdir -p "$subset_dir"
@@ -177,7 +185,7 @@ data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXP
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")
 PY
 
-for group in "${GROUPS[@]}"; do
+for group in "${DATASET_GROUP_LIST[@]}"; do
   source_benchmark="${DATASETS[$group]}"; evaluated_benchmark="${EVALUATED[$group]}"
   provenance_args=(); [[ -z "${PROVENANCE[$group]}" ]] || provenance_args=(--short-test-provenance "${PROVENANCE[$group]}")
   domain="$(safe_component domain "$(cut -d/ -f2 <<<"$source_benchmark")")"
@@ -197,7 +205,7 @@ done
 
 python -m analysis.multi_step_run --validate-index --index "$RUN_DIR/artifact_index.jsonl" \
   --source-benchmark "$SOURCE_LIST" --run-metadata "$RUN_DIR/run_metadata.json"
-test "$(wc -l < "$RUN_DIR/artifact_index.jsonl")" -eq "${#GROUPS[@]}"
+test "$(wc -l < "$RUN_DIR/artifact_index.jsonl")" -eq "${#DATASET_GROUP_LIST[@]}"
 test ! -e "$RUN_DIR/RUN_COMPLETE"
 ( set -o noclobber; printf 'git_commit=%s\n' "$ACTUAL_COMMIT" > "$RUN_DIR/RUN_COMPLETE" )
 echo "Completed $MODEL $REASONING_MODE $RUN_KIND $DATASET_GROUP under $RUN_DIR"

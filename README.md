@@ -619,8 +619,9 @@ The groups are `coding_sweagent`, `coding_nebius_replay`, `enterprise_tau2`,
 OpenHands provenance placeholder is intentionally excluded.
 Grounded, controlled, and offline-replay results must be reported separately.
 Use `RUN_KIND=short_test` for deterministic longest-workflow subsets and
-`RUN_KIND=full` with exactly one dataset group; short-test results are explicitly
-non-headline and removable after the corresponding full run completes. Gemma
+`RUN_KIND=full` may run one dataset group or all groups sequentially in one job;
+short-test results are explicitly non-headline and removable after the
+corresponding full run completes. Gemma
 short tests select up to three longest workflows; other models select one.
 Finance remains in
 scope because the readiness audit found no structurally invalid workflows.
@@ -668,6 +669,13 @@ MODEL="llama-3.1-8b-local"
 REASONING_MODE="direct"
 sbatch --job-name="${MODEL}-${REASONING_MODE}-full-finance_finqa" \
   --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=finance_finqa,RUN_KIND=full \
+  scripts/slurm/run_multi_step.sbatch
+
+# One sequential full run over all seven multi-step dataset groups.
+MODEL="gemma-4-local"
+REASONING_MODE="direct"
+sbatch --job-name="${MODEL}-${REASONING_MODE}-full-all" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=all,RUN_KIND=full \
   scripts/slurm/run_multi_step.sbatch
 ```
 

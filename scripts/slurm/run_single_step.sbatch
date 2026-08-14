@@ -16,10 +16,11 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
-cd "$SCRATCH/layermcp/LayerMCP"
+LAYERMCP_REPO_ROOT="${LAYERMCP_REPO_ROOT:-$HOME/pg5_projects/LayerMCP}"
+cd "$LAYERMCP_REPO_ROOT"
 
 module load python/3.11
-source "$HOME/venvs/layermcp/bin/activate"
+source "$LAYERMCP_REPO_ROOT/.venv/bin/activate"
 
 export HF_HOME="$SCRATCH/hf_cache"
 export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
@@ -96,7 +97,7 @@ safe_component() {
 
 case "$MODEL" in
   phi-4-local)
-    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/phi-4"
+    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/phi-4"
     CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"
     EXPECTED_MODEL_NAME="microsoft/phi-4"
@@ -104,7 +105,7 @@ case "$MODEL" in
     GENERATION_LIMIT=128
     ;;
   llama-3.1-8b-local)
-    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
+    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/llama-3.1-8b-instruct"
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"
     PROMPT_TEMPLATE_ID="structured_tool_call_v1"
@@ -113,7 +114,7 @@ case "$MODEL" in
     GENERATION_LIMIT=128
     ;;
   qwen-3.6-local)
-    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/qwen-3.6"
+    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/qwen-3.6"
     CHECKPOINT="$LAYERMCP_QWEN36_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"
     EXPECTED_MODEL_NAME="Qwen/Qwen3.6"
@@ -121,7 +122,7 @@ case "$MODEL" in
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   gemma-4-local)
-    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/gemma-4"
+    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/LayerMCP/checkpoints/gemma-4"
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     CHECKPOINT="$LAYERMCP_GEMMA4_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"

@@ -16,7 +16,37 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
-cd "$SCRATCH/layermcp/LayerMCP"
+LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
+if [[ -n "${LAYERMCP_REPO_ROOT:-}" ]]; then
+  REPO_ROOT_CANDIDATE="$LAYERMCP_REPO_ROOT"
+elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+  REPO_ROOT_CANDIDATE="$SLURM_SUBMIT_DIR"
+else
+  REPO_ROOT_CANDIDATE="$PWD"
+fi
+if ! REPO_ROOT="$(cd "$REPO_ROOT_CANDIDATE" 2>/dev/null && pwd -P)"; then
+  echo "LayerMCP repository root does not exist: $REPO_ROOT_CANDIDATE" >&2
+  echo "Submit sbatch from the LayerMCP repository root or set LAYERMCP_REPO_ROOT explicitly." >&2
+  exit 2
+fi
+for required_repo_file in \
+  pyproject.toml \
+  evaluation/evaluate.py \
+  scripts/slurm/run_single_step.sbatch \
+  scripts/slurm/run_multi_step.sbatch; do
+  if [[ ! -f "$REPO_ROOT/$required_repo_file" ]]; then
+    echo "Selected directory is not the LayerMCP repository root: $REPO_ROOT" >&2
+    echo "Missing required project file: $required_repo_file" >&2
+    echo "Submit sbatch from the LayerMCP repository root or set LAYERMCP_REPO_ROOT explicitly." >&2
+    exit 2
+  fi
+done
+cd "$REPO_ROOT"
+
+if [[ "${LAYERMCP_VALIDATE_REPO_ROOT_ONLY:-0}" == 1 ]]; then
+  printf '%s\n' "$REPO_ROOT"
+  exit 0
+fi
 
 module load python/3.11
 source "$HOME/venvs/layermcp/bin/activate"
@@ -96,7 +126,8 @@ safe_component() {
 
 case "$MODEL" in
   phi-4-local)
-    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/phi-4"
+    : "${LAYERMCP_PHI4_CHECKPOINT:=$REPO_ROOT/checkpoints/phi-4}"
+    export LAYERMCP_PHI4_CHECKPOINT
     CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"
     EXPECTED_MODEL_NAME="microsoft/phi-4"
@@ -104,7 +135,8 @@ case "$MODEL" in
     GENERATION_LIMIT=128
     ;;
   llama-3.1-8b-local)
-    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
+    : "${LAYERMCP_LLAMA31_8B_CHECKPOINT:=$REPO_ROOT/checkpoints/llama-3.1-8b-instruct}"
+    export LAYERMCP_LLAMA31_8B_CHECKPOINT
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"
     PROMPT_TEMPLATE_ID="structured_tool_call_v1"
@@ -113,7 +145,8 @@ case "$MODEL" in
     GENERATION_LIMIT=128
     ;;
   qwen-3.6-local)
-    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/qwen-3.6"
+    : "${LAYERMCP_QWEN36_CHECKPOINT:=$REPO_ROOT/checkpoints/qwen-3.6}"
+    export LAYERMCP_QWEN36_CHECKPOINT
     CHECKPOINT="$LAYERMCP_QWEN36_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"
     EXPECTED_MODEL_NAME="Qwen/Qwen3.6"
@@ -121,7 +154,8 @@ case "$MODEL" in
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   gemma-4-local)
-    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/gemma-4"
+    : "${LAYERMCP_GEMMA4_CHECKPOINT:=$REPO_ROOT/checkpoints/gemma-4}"
+    export LAYERMCP_GEMMA4_CHECKPOINT
     export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     CHECKPOINT="$LAYERMCP_GEMMA4_CHECKPOINT"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"
@@ -191,7 +225,6 @@ SLURM_STDOUT_PATH="$SUBMIT_DIR/slurm-${JOB_NAME_COMPONENT}-${JOB_ID_COMPONENT}.o
 SLURM_STDERR_PATH="$SUBMIT_DIR/slurm-${JOB_NAME_COMPONENT}-${JOB_ID_COMPONENT}.err"
 
 : "${RUN_DIR:?RUN_DIR must be set before preserving the launcher}"
-LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
 cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"
 sha256sum "$LAUNCHER_PATH" > "$RUN_DIR/launcher.sha256"
 

@@ -16,20 +16,103 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
-cd "$SCRATCH/layermcp/LayerMCP"
-module load python/3.11
-source "$HOME/venvs/layermcp/bin/activate"
-export HF_HOME="$SCRATCH/hf_cache"
-export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-unset TRANSFORMERS_CACHE || true
+LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
+if [[ -n "${LAYERMCP_REPO_ROOT:-}" ]]; then
+  REPO_ROOT_CANDIDATE="$LAYERMCP_REPO_ROOT"
+elif [[ -n "${SLURM_SUBMIT_DIR:-}" ]]; then
+  REPO_ROOT_CANDIDATE="$SLURM_SUBMIT_DIR"
+else
+  REPO_ROOT_CANDIDATE="$PWD"
+fi
+if ! REPO_ROOT="$(cd "$REPO_ROOT_CANDIDATE" 2>/dev/null && pwd -P)"; then
+  echo "LayerMCP repository root does not exist: $REPO_ROOT_CANDIDATE" >&2
+  echo "Submit sbatch from the LayerMCP repository root or set LAYERMCP_REPO_ROOT explicitly." >&2
+  exit 2
+fi
+for required_repo_file in \
+  pyproject.toml \
+  evaluation/evaluate.py \
+  scripts/slurm/run_single_step.sbatch \
+  scripts/slurm/run_multi_step.sbatch; do
+  if [[ ! -f "$REPO_ROOT/$required_repo_file" ]]; then
+    echo "Selected directory is not the LayerMCP repository root: $REPO_ROOT" >&2
+    echo "Missing required project file: $required_repo_file" >&2
+    echo "Submit sbatch from the LayerMCP repository root or set LAYERMCP_REPO_ROOT explicitly." >&2
+    exit 2
+  fi
+done
+cd "$REPO_ROOT"
 
-: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+if [[ "${LAYERMCP_VALIDATE_REPO_ROOT_ONLY:-0}" == 1 ]]; then
+  printf '%s\n' "$REPO_ROOT"
+  exit 0
+fi
+
+DATASET_GROUP_ORDER=(
+  coding_sweagent
+  coding_nebius_replay
+  enterprise_tau2
+  finance_convfinqa
+  finance_finqa
+  finance_finretrieval_replay
+  math_controlled
+)
+ACCEPTED_DATASET_GROUPS="${DATASET_GROUP_ORDER[*]} all"
+declare -A DATASETS=(
+  [coding_sweagent]="benchmark/coding/coding_sweagent_multistep.json"
+  [coding_nebius_replay]="benchmark/coding/coding_nebius_sweagent_replay_multistep.json"
+  [enterprise_tau2]="benchmark/enterprise/enterprise_public_workflows.json"
+  [finance_convfinqa]="benchmark/finance/finance_convfinqa_multistep.json"
+  [finance_finqa]="benchmark/finance/finance_finqa_test_multistep.json"
+  [finance_finretrieval_replay]="benchmark/finance/finance_finretrieval_replay_multistep.json"
+  [math_controlled]="benchmark/math/math_multistep_controlled.json"
+)
+declare -A DATASET_DOMAINS=(
+  [coding_sweagent]="coding"
+  [coding_nebius_replay]="coding"
+  [enterprise_tau2]="enterprise"
+  [finance_convfinqa]="finance"
+  [finance_finqa]="finance"
+  [finance_finretrieval_replay]="finance"
+  [math_controlled]="math"
+)
+declare -A DATASET_BENCHMARK_MODES=(
+  [coding_sweagent]="grounded_tool_execution"
+  [coding_nebius_replay]="offline_trace_replay"
+  [enterprise_tau2]="grounded_tool_execution"
+  [finance_convfinqa]="grounded_tool_execution"
+  [finance_finqa]="grounded_tool_execution"
+  [finance_finretrieval_replay]="offline_trace_replay"
+  [math_controlled]="grounded_tool_execution"
+)
+declare -A EXPECTED_WORKFLOW_COUNTS=(
+  [coding_sweagent]=5
+  [coding_nebius_replay]=33
+  [enterprise_tau2]=69
+  [finance_convfinqa]=10
+  [finance_finqa]=490
+  [finance_finretrieval_replay]=485
+  [math_controlled]=50
+)
+declare -A EXPECTED_STEP_COUNTS=(
+  [coding_sweagent]=11
+  [coding_nebius_replay]=139
+  [enterprise_tau2]=350
+  [finance_convfinqa]=35
+  [finance_finqa]=1111
+  [finance_finretrieval_replay]=1490
+  [math_controlled]=105
+)
+
+if [[ -z "${DATASET_GROUP:-}" ]]; then
+  echo "DATASET_GROUP is required. Accepted values: $ACCEPTED_DATASET_GROUPS" >&2
+  exit 2
+fi
+if [[ -z "${RUN_KIND:-}" ]]; then
+  echo "RUN_KIND is required (expected short_test or full)" >&2
+  exit 2
+fi
 : "${REASONING_MODE:?Set REASONING_MODE to direct or reasoning}"
-: "${DATASET_GROUP:?Set DATASET_GROUP to a supported group or all}"
-: "${RUN_KIND:?Set RUN_KIND to short_test or full}"
-: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
-: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
 [[ "$REASONING_MODE" == direct || "$REASONING_MODE" == reasoning ]] || {
   echo "Unsupported REASONING_MODE: $REASONING_MODE (expected direct or reasoning)" >&2
   exit 2
@@ -38,6 +121,92 @@ unset TRANSFORMERS_CACHE || true
   echo "Unsupported RUN_KIND: $RUN_KIND (expected short_test or full)" >&2
   exit 2
 }
+
+if [[ "$DATASET_GROUP" == all ]]; then
+  [[ "$RUN_KIND" == short_test ]] || {
+    echo "DATASET_GROUP=all is short_test-only" >&2
+    exit 2
+  }
+  SELECTED_DATASET_GROUPS=("${DATASET_GROUP_ORDER[@]}")
+elif [[ -n "${DATASETS[$DATASET_GROUP]:-}" ]]; then
+  SELECTED_DATASET_GROUPS=("$DATASET_GROUP")
+else
+  echo "Unsupported DATASET_GROUP: $DATASET_GROUP. Accepted values: $ACCEPTED_DATASET_GROUPS" >&2
+  exit 2
+fi
+
+for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
+  for metadata_value in \
+    "${DATASETS[$dataset_group_name]:-}" \
+    "${DATASET_DOMAINS[$dataset_group_name]:-}" \
+    "${DATASET_BENCHMARK_MODES[$dataset_group_name]:-}" \
+    "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]:-}" \
+    "${EXPECTED_STEP_COUNTS[$dataset_group_name]:-}"; do
+    if [[ -z "$metadata_value" ]]; then
+      echo "Missing launcher metadata for dataset group: $dataset_group_name" >&2
+      exit 2
+    fi
+  done
+  if [[ ! -f "${DATASETS[$dataset_group_name]}" ]]; then
+    echo "Dataset for group $dataset_group_name does not exist: ${DATASETS[$dataset_group_name]}" >&2
+    exit 2
+  fi
+done
+
+if [[ "${LAYERMCP_VALIDATE_DATASET_GROUPS_ONLY:-0}" == 1 ]]; then
+  for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$dataset_group_name" \
+      "${DATASETS[$dataset_group_name]}" \
+      "${DATASET_DOMAINS[$dataset_group_name]}" \
+      "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
+      "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]}" \
+      "${EXPECTED_STEP_COUNTS[$dataset_group_name]}"
+  done
+  exit 0
+fi
+
+: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+: "${SLURM_JOB_ID:?This launcher must run under Slurm}"
+: "${SLURM_JOB_NAME:?Slurm must provide a job name}"
+
+module load python/3.11
+source "$HOME/venvs/layermcp/bin/activate"
+export HF_HOME="$SCRATCH/hf_cache"
+export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+unset TRANSFORMERS_CACHE || true
+
+for dataset_group_name in "${SELECTED_DATASET_GROUPS[@]}"; do
+  python - \
+    "${DATASETS[$dataset_group_name]}" \
+    "${DATASET_BENCHMARK_MODES[$dataset_group_name]}" \
+    "${EXPECTED_WORKFLOW_COUNTS[$dataset_group_name]}" \
+    "${EXPECTED_STEP_COUNTS[$dataset_group_name]}" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+dataset_path = Path(sys.argv[1])
+expected_mode = sys.argv[2]
+expected_workflows = int(sys.argv[3])
+expected_steps = int(sys.argv[4])
+rows = json.loads(dataset_path.read_text(encoding="utf-8"))
+workflows = len(rows)
+steps = sum(len(row.get("expected_steps", ())) for row in rows)
+modes = {row.get("benchmark_mode") or "grounded_tool_execution" for row in rows}
+if workflows != expected_workflows or steps != expected_steps:
+    raise SystemExit(
+        f"Dataset count mismatch for {dataset_path}: "
+        f"expected {expected_workflows}/{expected_steps}, got {workflows}/{steps}"
+    )
+if modes != {expected_mode}:
+    raise SystemExit(
+        f"Benchmark mode mismatch for {dataset_path}: "
+        f"expected {expected_mode!r}, got {sorted(modes)!r}"
+    )
+PY
+done
 
 ACTUAL_COMMIT="$(git rev-parse HEAD)"
 EVALUATION_PROTOCOL="guided_predicted_rollout_v1"
@@ -57,7 +226,8 @@ case "$MODEL" in
       echo "phi-4-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
       exit 2
     }
-    export LAYERMCP_PHI4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/phi-4"
+    : "${LAYERMCP_PHI4_CHECKPOINT:=$REPO_ROOT/checkpoints/phi-4}"
+    export LAYERMCP_PHI4_CHECKPOINT
     CHECKPOINT="$LAYERMCP_PHI4_CHECKPOINT"; EXPECTED_MODEL_NAME="microsoft/phi-4"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; REASONING_METHOD="none"; GENERATION_LIMIT=128
     ;;
@@ -66,18 +236,21 @@ case "$MODEL" in
       echo "llama-3.1-8b-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
       exit 2
     }
-    export LAYERMCP_LLAMA31_8B_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/llama-3.1-8b-instruct"
+    : "${LAYERMCP_LLAMA31_8B_CHECKPOINT:=$REPO_ROOT/checkpoints/llama-3.1-8b-instruct}"
+    export LAYERMCP_LLAMA31_8B_CHECKPOINT
     CHECKPOINT="$LAYERMCP_LLAMA31_8B_CHECKPOINT"; EXPECTED_MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
     PROMPT_TEMPLATE_ID="structured_tool_call_v1"; REASONING_METHOD="none"; GENERATION_LIMIT=128
     ;;
   qwen-3.6-local)
-    export LAYERMCP_QWEN36_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/qwen-3.6"
+    : "${LAYERMCP_QWEN36_CHECKPOINT:=$REPO_ROOT/checkpoints/qwen-3.6}"
+    export LAYERMCP_QWEN36_CHECKPOINT
     CHECKPOINT="$LAYERMCP_QWEN36_CHECKPOINT"; EXPECTED_MODEL_NAME="Qwen/Qwen3.6"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   gemma-4-local)
-    export LAYERMCP_GEMMA4_CHECKPOINT="$SCRATCH/layermcp/LayerMCP/checkpoints/gemma-4"
+    : "${LAYERMCP_GEMMA4_CHECKPOINT:=$REPO_ROOT/checkpoints/gemma-4}"
+    export LAYERMCP_GEMMA4_CHECKPOINT
     CHECKPOINT="$LAYERMCP_GEMMA4_CHECKPOINT"; EXPECTED_MODEL_NAME="google/gemma-4-26b-a4b-it"
     PROMPT_TEMPLATE_ID="tool_name_only_v1"; GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
@@ -85,24 +258,6 @@ case "$MODEL" in
   *) echo "Unsupported MODEL: $MODEL" >&2; exit 2 ;;
 esac
 test -f "$CHECKPOINT/config.json" || { echo "Missing checkpoint config: $CHECKPOINT/config.json" >&2; exit 2; }
-
-declare -A DATASETS=(
-  [coding_sweagent]="benchmark/coding/coding_sweagent_multistep.json"
-  [coding_nebius_replay]="benchmark/coding/coding_nebius_sweagent_replay_multistep.json"
-  [enterprise_tau2]="benchmark/enterprise/enterprise_public_workflows.json"
-  [finance_convfinqa]="benchmark/finance/finance_convfinqa_multistep.json"
-  [finance_finqa]="benchmark/finance/finance_finqa_test_multistep.json"
-  [finance_finretrieval_replay]="benchmark/finance/finance_finretrieval_replay_multistep.json"
-  [math_controlled]="benchmark/math/math_multistep_controlled.json"
-)
-ORDER=(coding_sweagent coding_nebius_replay enterprise_tau2 finance_convfinqa finance_finqa finance_finretrieval_replay math_controlled)
-if [[ "$DATASET_GROUP" == all ]]; then
-  [[ "$RUN_KIND" == short_test ]] || { echo "DATASET_GROUP=all is short_test-only" >&2; exit 2; }
-  GROUPS=("${ORDER[@]}")
-else
-  [[ -n "${DATASETS[$DATASET_GROUP]:-}" ]] || { echo "Unsupported DATASET_GROUP: $DATASET_GROUP" >&2; exit 2; }
-  GROUPS=("$DATASET_GROUP")
-fi
 
 safe_component() { python -m analysis.run_artifacts --safe-component "$1" "$2"; }
 MODEL_COMPONENT="$(safe_component model "$MODEL")"
@@ -122,7 +277,6 @@ RUN_DATE="$(date -u +%Y%m%dT%H%M%SZ)"
 RUNS_ROOT="results/runs/multi_step"
 RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}_${GROUP_COMPONENT}"
 mkdir -p "$RUNS_ROOT"; mkdir "$RUN_DIR"
-LAUNCHER_PATH="$(realpath "${BASH_SOURCE[0]}")"
 cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"
 sha256sum "$LAUNCHER_PATH" > "$RUN_DIR/launcher.sha256"
 
@@ -145,9 +299,9 @@ TOOL_POOL="${REGISTRY_VALUES[0]}"; TOOL_COUNT="${REGISTRY_VALUES[1]}"
 EXPECTED_REGISTRY_FINGERPRINT="${REGISTRY_VALUES[2]}"; REGISTRY_FINGERPRINT_VERSION="${REGISTRY_VALUES[3]}"
 
 SOURCE_LIST="$RUN_DIR/resolved_datasets.txt"
-for group in "${GROUPS[@]}"; do realpath "${DATASETS[$group]}"; done > "$SOURCE_LIST"
+for group in "${SELECTED_DATASET_GROUPS[@]}"; do realpath "${DATASETS[$group]}"; done > "$SOURCE_LIST"
 declare -A EVALUATED PROVENANCE
-for group in "${GROUPS[@]}"; do
+for group in "${SELECTED_DATASET_GROUPS[@]}"; do
   source_benchmark="${DATASETS[$group]}"; EVALUATED[$group]="$source_benchmark"; PROVENANCE[$group]=""
   if [[ "$RUN_KIND" == short_test ]]; then
     subset_dir="$RUN_DIR/short_test_subsets/$group"; mkdir -p "$subset_dir"
@@ -177,10 +331,10 @@ data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXP
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")
 PY
 
-for group in "${GROUPS[@]}"; do
+for group in "${SELECTED_DATASET_GROUPS[@]}"; do
   source_benchmark="${DATASETS[$group]}"; evaluated_benchmark="${EVALUATED[$group]}"
   provenance_args=(); [[ -z "${PROVENANCE[$group]}" ]] || provenance_args=(--short-test-provenance "${PROVENANCE[$group]}")
-  domain="$(safe_component domain "$(cut -d/ -f2 <<<"$source_benchmark")")"
+  domain="$(safe_component domain "${DATASET_DOMAINS[$group]}")"
   dataset="$(safe_component dataset "$(basename "$source_benchmark" .json)")"
   dataset_dir="$RUN_DIR/domains/$domain/$dataset"; mkdir -p "$(dirname "$dataset_dir")"; mkdir "$dataset_dir"
   python -m evaluation.evaluate --dataset "$evaluated_benchmark" --router "$MODEL" \
@@ -197,7 +351,7 @@ done
 
 python -m analysis.multi_step_run --validate-index --index "$RUN_DIR/artifact_index.jsonl" \
   --source-benchmark "$SOURCE_LIST" --run-metadata "$RUN_DIR/run_metadata.json"
-test "$(wc -l < "$RUN_DIR/artifact_index.jsonl")" -eq "${#GROUPS[@]}"
+test "$(wc -l < "$RUN_DIR/artifact_index.jsonl")" -eq "${#SELECTED_DATASET_GROUPS[@]}"
 test ! -e "$RUN_DIR/RUN_COMPLETE"
 ( set -o noclobber; printf 'git_commit=%s\n' "$ACTUAL_COMMIT" > "$RUN_DIR/RUN_COMPLETE" )
 echo "Completed $MODEL $REASONING_MODE $RUN_KIND $DATASET_GROUP under $RUN_DIR"

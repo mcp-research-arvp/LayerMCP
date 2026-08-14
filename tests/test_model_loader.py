@@ -458,6 +458,50 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
+    def test_qwen36_router_toggles_native_reasoning_with_shared_safety_cap(self) -> None:
+        from models.routers import qwen36_local_router
+
+        generator = Mock()
+        generator.apply_chat_template.return_value = [1, 2, 3]
+        generator.stop_tokens = [99]
+        generator.generate_text.return_value = SimpleNamespace(
+            text='{"name":"calculator","arguments":{"expression":"2+2"}}',
+            tool_call=None,
+        )
+
+        with patch.object(qwen36_local_router, "_load_generator", return_value=generator):
+            direct = qwen36_local_router.choose_tool_call(
+                "Calculate 2+2.",
+                ["calculator"],
+                reasoning_mode="direct",
+            )
+            reasoning = qwen36_local_router.choose_tool_call(
+                "Calculate 2+2.",
+                ["calculator"],
+                reasoning_mode="reasoning",
+            )
+
+        self.assertEqual(direct.selected_tool, "calculator")
+        self.assertEqual(reasoning.selected_tool, "calculator")
+        template_calls = generator.apply_chat_template.call_args_list
+        self.assertFalse(template_calls[0].kwargs["enable_thinking"])
+        self.assertTrue(template_calls[1].kwargs["enable_thinking"])
+        generation_calls = generator.generate_text.call_args_list
+        self.assertEqual(
+            generation_calls[0].kwargs["max_tokens"],
+            qwen36_local_router.MAX_GENERATED_TOKENS,
+        )
+        self.assertEqual(
+            generation_calls[1].kwargs["max_tokens"],
+            qwen36_local_router.MAX_GENERATED_TOKENS,
+        )
+
+    def test_qwen36_rejects_unknown_reasoning_mode(self) -> None:
+        from models.routers.qwen36_local_router import reasoning_method
+
+        with self.assertRaisesRegex(ValueError, "Unsupported reasoning mode"):
+            reasoning_method("verbose")
+
     def test_structured_parser_accepts_qwen_native_tool_call(self) -> None:
         from models.routers.structured_tool_call import parse_tool_call
 
@@ -565,7 +609,8 @@ class RouterRegistryTests(unittest.TestCase):
         cases.append((gemma4_local_router, gemma_generator))
 
         gpt_generator = Mock()
-        gpt_generator.tokenizer.encode.return_value = [1]
+        gpt_generator.render_tool_prompt.return_value = [1]
+        gpt_generator.assistant_action_stop_tokens = [2]
         cases.append((gpt_oss_local_router, gpt_generator))
 
         phi_generator = Mock()
@@ -617,6 +662,76 @@ class RouterRegistryTests(unittest.TestCase):
             "calculator",
         )
 
+    def test_gemma4_router_toggles_native_reasoning_with_shared_safety_cap(self) -> None:
+        from models.routers import gemma4_local_router
+
+        generator = Mock()
+        generator.tokenizer.apply_chat_template.return_value = [1, 2, 3]
+        generator.stop_tokens = [99]
+        generator.generate_text.return_value = SimpleNamespace(
+            text='{"name":"calculator","arguments":{"expression":"2+2"}}',
+            tool_call=None,
+        )
+
+        with patch.object(gemma4_local_router, "_load_generator", return_value=generator):
+            direct = gemma4_local_router.choose_tool_call(
+                "Calculate 2+2.",
+                ["calculator"],
+                reasoning_mode="direct",
+            )
+            reasoning = gemma4_local_router.choose_tool_call(
+                "Calculate 2+2.",
+                ["calculator"],
+                reasoning_mode="reasoning",
+            )
+
+        self.assertEqual(direct.selected_tool, "calculator")
+        self.assertEqual(reasoning.selected_tool, "calculator")
+        template_calls = generator.tokenizer.apply_chat_template.call_args_list
+        self.assertFalse(template_calls[0].kwargs["enable_thinking"])
+        self.assertTrue(template_calls[1].kwargs["enable_thinking"])
+        for generation_call in generator.generate_text.call_args_list:
+            self.assertEqual(
+                generation_call.kwargs["max_tokens"],
+                gemma4_local_router.MAX_GENERATED_TOKENS,
+            )
+
+    def test_gemma4_rejects_unknown_reasoning_mode(self) -> None:
+        from models.routers.gemma4_local_router import reasoning_method
+
+        with self.assertRaisesRegex(ValueError, "Unsupported reasoning mode"):
+            reasoning_method("verbose")
+
+    def test_gemma4_long_workflow_steps_keep_bounded_generation(self) -> None:
+        from models.routers import gemma4_local_router
+
+        generator = Mock()
+        generator.tokenizer.apply_chat_template.return_value = list(range(2048))
+        generator.stop_tokens = [99]
+        generator.generate_text.return_value = SimpleNamespace(
+            text='{"name":"calculator","arguments":{"expression":"2+2"}}',
+            tool_call=None,
+        )
+        long_steps = [
+            f"Overall task: finance workflow {index}\n" + ("evidence " * 1800)
+            for index in range(6)
+        ]
+
+        with patch.object(gemma4_local_router, "_load_generator", return_value=generator):
+            for index, query in enumerate(long_steps):
+                gemma4_local_router.choose_tool_call(
+                    query,
+                    ["calculator"],
+                    reasoning_mode="reasoning" if index % 2 else "direct",
+                )
+
+        self.assertEqual(generator.generate_text.call_count, len(long_steps))
+        for call in generator.generate_text.call_args_list:
+            self.assertEqual(
+                call.kwargs["max_tokens"],
+                gemma4_local_router.MAX_GENERATED_TOKENS,
+            )
+
     def test_gemma4_checkpoint_path_uses_environment_override(self) -> None:
         from models.routers.gemma4_local_router import resolve_checkpoint_path
 
@@ -636,44 +751,77 @@ class RouterRegistryTests(unittest.TestCase):
             '{"expression":"2 + 2"}<|call|>',
         )
         for response in responses:
-            prediction = parse_tool_call(response, ["calculator", "search"])
-            self.assertEqual(prediction.selected_tool, "calculator")
-            self.assertEqual(prediction.selected_args, {"expression": "2 + 2"})
+            with self.subTest(response=response):
+                prediction = parse_tool_call(response, ["calculator", "search"])
+                self.assertEqual(prediction.selected_tool, "calculator")
+                self.assertEqual(
+                    prediction.selected_args,
+                    {"expression": "2 + 2"},
+                )
 
-    def test_shared_parser_keeps_misspelled_tool_names_strict(self) -> None:
-        from models.routers.structured_tool_call import parse_tool_call
+    def test_shared_parser_keeps_misspelled_harmony_tool_names_strict(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
 
         prediction = parse_tool_call(
-            "to=calculatr<|message|>{}<|call|>",
+            "to=functions.calculatr<|message|>{}<|call|>",
             ["calculator", "search"],
         )
-        self.assertEqual(prediction.selected_tool, "parse_error")
 
-    def test_gpt_oss_router_uses_exactly_one_generation(self) -> None:
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
+
+    def test_gpt_oss_router_uses_native_harmony_once_and_validates_schema(self) -> None:
         from models.routers import gpt_oss_local_router
 
+        schema = {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
         generator = Mock()
         generator.render_tool_prompt.return_value = [1]
         generator.assistant_action_stop_tokens = [2]
         generator.generate_text.return_value = SimpleNamespace(
-            text="unparseable first attempt",
+            text=(
+                "to=functions.calculator<|message|>"
+                '{"expression":4}<|call|>'
+            ),
             tool_call=None,
         )
+
         with patch.object(
-            gpt_oss_local_router, "_load_generator", return_value=generator
+            gpt_oss_local_router,
+            "_load_generator",
+            return_value=generator,
         ):
             prediction = gpt_oss_local_router.choose_tool_call(
                 "Calculate something.",
                 ["calculator"],
-                {"calculator": {"type": "object"}},
+                {"calculator": schema},
+                {"calculator": "Evaluate arithmetic."},
             )
 
-        self.assertEqual(prediction.selected_tool, "parse_error")
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.parse_status, "invalid_arguments")
+        self.assertEqual(
+            prediction.diagnostic,
+            "argument 'expression' must have type string",
+        )
+        generator.render_tool_prompt.assert_called_once_with(
+            "Calculate something.",
+            [
+                {
+                    "name": "calculator",
+                    "description": "Evaluate arithmetic.",
+                    "parameters": schema,
+                }
+            ],
+        )
         generator.generate_text.assert_called_once_with(
             prompt_tokens=[1],
             stop_tokens=[2],
             temperature=0.0,
-            max_tokens=128,
+            max_tokens=gpt_oss_local_router.MAX_GENERATED_TOKENS,
         )
 
 

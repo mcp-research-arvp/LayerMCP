@@ -324,8 +324,9 @@ python -m uvicorn models.architectures.gpt_oss_pytorch.api:app --host 0.0.0.0 --
 
 The server exposes `GET /health`, `GET /v1/models`, and
 `POST /v1/chat/completions`, including streaming responses and function tool
-calls. The model checkpoint is loaded lazily on the first completion request.
-Set `LAYERMCP_GPT_OSS_CHECKPOINT` to override the default checkpoint directory.
+calls. Importing the API initializes `TokenGenerator`, matching the upstream
+server behavior, so starting Uvicorn loads the checkpoint. Set
+`LAYERMCP_GPT_OSS_CHECKPOINT` to override the default checkpoint directory.
 
 If your checkpoint lives somewhere else, set:
 

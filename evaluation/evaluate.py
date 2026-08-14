@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import sys
 import time
@@ -48,15 +49,16 @@ MULTISTEP_HISTORY_ITEM_CHAR_LIMIT = 3_500
 PROMPT_CONTEXT_CHAR_LIMIT = MULTISTEP_CURRENT_STEP_CHAR_LIMIT
 
 SINGLE_STEP_EVALUATION_PROTOCOL = "single_step_tool_routing_v1"
-MULTISTEP_EVALUATION_PROTOCOL = "teacher_forced_step_routing_v1"
+MULTISTEP_EVALUATION_PROTOCOL = "guided_predicted_rollout_v1"
 EVALUATION_PROTOCOL_DESCRIPTIONS = {
     SINGLE_STEP_EVALUATION_PROTOCOL: (
         "Each sample is evaluated as one independently routed tool call."
     ),
     MULTISTEP_EVALUATION_PROTOCOL: (
-        "Each gold step is routed independently using the overall task, current "
-        "step, current-step grounding context, and gold prior-step context; this "
-        "does not evaluate autonomous end-to-end planning."
+        "The benchmark supplies each step instruction, while every subsequent "
+        "step receives only the model's predicted calls and executed results from "
+        "earlier steps. Gold prior-step answers and gold state replay are not used. "
+        "This evaluates error-propagating guided rollout, not autonomous planning."
     ),
 }
 
@@ -71,6 +73,8 @@ ALLOWED_BENCHMARK_MODES = frozenset(
     }
 )
 DEFAULT_WORKFLOW_EXECUTION_MODE = "isolated_step"
+PREDICTED_ROLLOUT_EXECUTION_MODE = "predicted_sequence"
+REASONING_MODES = ("direct", "reasoning")
 REFERENCE_PREFIX_REPLAY_MODE = "isolated_reference_prefix_replay"
 ALLOWED_WORKFLOW_EXECUTION_MODES = frozenset(
     {DEFAULT_WORKFLOW_EXECUTION_MODE, REFERENCE_PREFIX_REPLAY_MODE}
@@ -102,11 +106,72 @@ class BenchmarkSample:
     expected_answer: Any
     perturbation_type: str
     notes: str
+    benchmark_family: str = "unspecified"
     expected_final_answer: Any = None
     prompt_context: str = ""
     expected_steps: tuple[BenchmarkStep, ...] = ()
     benchmark_mode: str = DEFAULT_BENCHMARK_MODE
     workflow_execution_mode: str = DEFAULT_WORKFLOW_EXECUTION_MODE
+
+
+@dataclass(frozen=True)
+class EvaluationArtifactPaths:
+    directory: Path
+    samples: Path
+    summary: Path
+
+
+def _evaluation_artifact_paths(
+    output_dir: Path | None,
+    timestamp: str,
+) -> EvaluationArtifactPaths:
+    if output_dir is None:
+        directory = RESULTS_DIR
+        samples_name = f"{timestamp}_samples.jsonl"
+        summary_name = f"{timestamp}_summary.json"
+    else:
+        directory = Path(output_dir)
+        samples_name = "samples.jsonl"
+        summary_name = "summary.json"
+
+    directory.mkdir(parents=True, exist_ok=True)
+    paths = EvaluationArtifactPaths(
+        directory=directory,
+        samples=directory / samples_name,
+        summary=directory / summary_name,
+    )
+    for path in (paths.samples, paths.summary):
+        if path.exists():
+            raise FileExistsError(
+                f"Refusing to overwrite existing evaluation artifact: {path}"
+            )
+    return paths
+
+
+def _open_samples_exclusive(path: Path):
+    try:
+        return path.open("x", encoding="utf-8")
+    except FileExistsError as exc:
+        raise FileExistsError(
+            f"Refusing to overwrite existing evaluation artifact: {path}"
+        ) from exc
+
+
+def _write_summary_exclusive(path: Path, summary: dict[str, Any]) -> None:
+    temporary_path = path.with_name(f".{path.name}.incomplete-{os.getpid()}")
+    try:
+        with temporary_path.open("x", encoding="utf-8") as summary_handle:
+            json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+            summary_handle.write("\n")
+            summary_handle.flush()
+            os.fsync(summary_handle.fileno())
+        os.link(temporary_path, path)
+    except FileExistsError as exc:
+        raise FileExistsError(
+            f"Refusing to overwrite existing evaluation artifact: {path}"
+        ) from exc
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _normalize_prompt_context(value: Any, location: str) -> str:
@@ -218,6 +283,8 @@ class FinalOutcomeScore:
 
 
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
+WORKFLOW_FINAL_ANSWER_MATCHER = "formatted_final_scalar_v1"
+FINANCE_QUERY_TABLE_RESULT_MATCHER = "finance_query_table_rows_v1"
 NUMERIC_REL_TOL = 1e-9
 NUMERIC_ABS_TOL = 1e-6
 _SYMBOLIC_MATH_FIELDS = {
@@ -281,6 +348,9 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
         expected_answer=sample.get("expected_answer"),
         perturbation_type=str(sample.get("perturbation_type", "none")),
         notes=str(sample.get("notes", "")),
+        benchmark_family=str(
+            sample.get("source_dataset") or sample.get("source") or "unspecified"
+        ).strip().casefold(),
         benchmark_mode=_normalize_benchmark_mode(
             sample.get("benchmark_mode"),
             f"Sample {index}",
@@ -433,6 +503,41 @@ def _match_expected_answer(
     return OutcomeMatch(False, f"{path}: expected {expected!r}, got {actual!r}")
 
 
+def _match_finance_query_table_result(actual: Any, expected: Any) -> OutcomeMatch:
+    """Match a table-query result by its bounded data payload, not SQL aliases."""
+    if not isinstance(expected, dict):
+        return _match_expected_answer(actual, expected, domain="finance")
+
+    required_keys = ("dataset_id", "columns", "rows", "row_count", "truncated")
+    if not all(key in expected for key in required_keys):
+        return _match_expected_answer(actual, expected, domain="finance")
+
+    if not isinstance(actual, dict):
+        return OutcomeMatch(False, f"$: expected object, got {type(actual).__name__}")
+
+    expected_columns = expected["columns"]
+    actual_columns = actual.get("columns")
+    if not isinstance(expected_columns, list):
+        return _match_expected_answer(actual, expected, domain="finance")
+    if not isinstance(actual_columns, list):
+        return OutcomeMatch(
+            False,
+            "$.columns: expected a list with "
+            f"{len(expected_columns)} columns, got {actual_columns!r}",
+        )
+    if len(actual_columns) != len(expected_columns):
+        return OutcomeMatch(
+            False,
+            "$.columns: expected "
+            f"{len(expected_columns)} columns, got {len(actual_columns)}",
+        )
+
+    expected_payload = {
+        key: expected[key] for key in required_keys if key != "columns"
+    }
+    return _match_expected_answer(actual, expected_payload, domain="finance")
+
+
 def _score_final_outcome(
     *,
     expected_answer: Any,
@@ -442,6 +547,8 @@ def _score_final_outcome(
     call_predicted_tools: bool,
     no_tool_call: bool,
     execution_success: bool,
+    expected_tool: str | None = None,
+    called_tool: str | None = None,
 ) -> FinalOutcomeScore:
     if expected_answer is None:
         return FinalOutcomeScore(
@@ -479,15 +586,23 @@ def _score_final_outcome(
             result_extraction_diagnostic,
         )
 
-    match = _match_expected_answer(
-        tool_result_value,
-        expected_answer,
-        domain=domain,
-    )
+    if expected_tool == called_tool == "finance_query_table":
+        match = _match_finance_query_table_result(
+            tool_result_value,
+            expected_answer,
+        )
+        matcher = FINANCE_QUERY_TABLE_RESULT_MATCHER
+    else:
+        match = _match_expected_answer(
+            tool_result_value,
+            expected_answer,
+            domain=domain,
+        )
+        matcher = FINAL_OUTCOME_MATCHER
     return FinalOutcomeScore(
         match.matched,
         "correct" if match.matched else "mismatch",
-        FINAL_OUTCOME_MATCHER,
+        matcher,
         match.diagnostic,
     )
 
@@ -499,6 +614,117 @@ def _final_outcome_record_fields(score: FinalOutcomeScore) -> dict[str, Any]:
         "final_outcome_matcher": score.matcher,
         "final_outcome_diagnostic": score.diagnostic,
     }
+
+
+def _extract_workflow_final_scalar(tool_result_value: Any) -> tuple[Any, str | None]:
+    if isinstance(tool_result_value, dict):
+        if "result" in tool_result_value:
+            return tool_result_value["result"], None
+        rows = tool_result_value.get("rows")
+        if (
+            isinstance(rows, list)
+            and len(rows) == 1
+            and isinstance(rows[0], list)
+            and len(rows[0]) == 1
+        ):
+            return rows[0][0], None
+        return None, "Final tool result does not expose one scalar result."
+    if isinstance(tool_result_value, (str, int, float, bool)):
+        return tool_result_value, None
+    return None, "Final tool result is not a supported scalar value."
+
+
+def _display_decimal_places(value: str) -> int:
+    normalized = value.strip().rstrip("%").replace(",", "")
+    if "." not in normalized:
+        return 0
+    return len(normalized.rsplit(".", 1)[1])
+
+
+def _parse_display_number(value: str) -> float | None:
+    normalized = value.strip().rstrip("%").replace(",", "").replace("$", "")
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def _score_workflow_final_answer(
+    *,
+    expected_final_answer: Any,
+    final_tool_result_value: Any,
+    call_predicted_tools: bool,
+    benchmark_family: str,
+) -> FinalOutcomeScore:
+    if expected_final_answer is None or expected_final_answer == "":
+        return FinalOutcomeScore(
+            None,
+            "missing_expected_final_answer",
+            None,
+            "Benchmark workflow does not provide a non-empty expected_final_answer.",
+        )
+    if not call_predicted_tools:
+        return FinalOutcomeScore(
+            None,
+            "execution_disabled",
+            None,
+            "Predicted-tool execution is disabled.",
+        )
+
+    actual, extraction_error = _extract_workflow_final_scalar(
+        final_tool_result_value
+    )
+    if extraction_error is not None:
+        return FinalOutcomeScore(
+            False,
+            "result_extraction_error",
+            WORKFLOW_FINAL_ANSWER_MATCHER,
+            extraction_error,
+        )
+
+    if isinstance(expected_final_answer, str):
+        expected_number = _parse_display_number(expected_final_answer)
+        if expected_number is not None and isinstance(actual, (int, float)):
+            actual_number = float(actual)
+            if expected_final_answer.strip().endswith("%") and benchmark_family in {
+                "finqa",
+                "convfinqa",
+            }:
+                actual_number *= 100.0
+            decimal_places = _display_decimal_places(expected_final_answer)
+            matched = math.isclose(
+                round(actual_number, decimal_places),
+                expected_number,
+                rel_tol=0.0,
+                abs_tol=10 ** (-(decimal_places + 6)),
+            )
+            return FinalOutcomeScore(
+                matched,
+                "correct" if matched else "mismatch",
+                WORKFLOW_FINAL_ANSWER_MATCHER,
+                None
+                if matched
+                else (
+                    f"Expected displayed final answer {expected_final_answer!r}, "
+                    f"got scalar {actual!r}."
+                ),
+            )
+        matched = str(actual).strip().casefold() == expected_final_answer.strip().casefold()
+    else:
+        matched = _match_expected_answer(
+            actual,
+            expected_final_answer,
+            domain="finance",
+        ).matched
+
+    return FinalOutcomeScore(
+        matched,
+        "correct" if matched else "mismatch",
+        WORKFLOW_FINAL_ANSWER_MATCHER,
+        None
+        if matched
+        else f"Expected final answer {expected_final_answer!r}, got {actual!r}.",
+    )
 
 
 def _score_sample(
@@ -707,11 +933,15 @@ async def _call_tool_with_workflow_isolation(
     server_path: Path,
     tool_name: str,
     tool_args: dict[str, Any],
-    prior_steps: tuple[BenchmarkStep, ...],
-    workflow_execution_mode: str,
+    prior_predictions: list[dict[str, Any]],
 ) -> Any:
-    """Execute a prediction using the sample-declared state setup policy."""
-    if workflow_execution_mode != REFERENCE_PREFIX_REPLAY_MODE:
+    """Execute against predicted, never gold, workflow state.
+
+    Retail tools mutate server state. Recreate that state in an isolated server
+    by replaying earlier successful predicted calls before the current call.
+    Other tool families are non-mutating and can use the evaluation session.
+    """
+    if tool_name not in RETAIL_TOOL_NAMES:
         return await _call_tool_with_sample_isolation(
             session,
             server_path,
@@ -720,20 +950,22 @@ async def _call_tool_with_workflow_isolation(
         )
 
     async with _run_server_session(server_path) as isolated_session:
-        for prior_step in prior_steps:
-            if prior_step.expected_tool not in RETAIL_TOOL_NAMES:
-                raise ValueError(
-                    "Retail workflow state setup contains a non-retail tool: "
-                    f"{prior_step.expected_tool}"
-                )
+        for prior_step in prior_predictions:
+            prior_tool = prior_step.get("called_tool")
+            if (
+                prior_tool not in RETAIL_TOOL_NAMES
+                or not prior_step.get("execution_success", False)
+            ):
+                continue
             setup_result = await isolated_session.call_tool(
-                prior_step.expected_tool,
-                prior_step.expected_args,
+                prior_tool,
+                prior_step.get("selected_args", {}),
             )
             if bool(getattr(setup_result, "isError", False)):
                 raise RuntimeError(
-                    "Reference workflow state setup failed at "
-                    f"{prior_step.id}: {_summarize_tool_result(setup_result)}"
+                    "Predicted workflow state replay failed at "
+                    f"{prior_step.get('step_id')}: "
+                    f"{_summarize_tool_result(setup_result)}"
                 )
         return await isolated_session.call_tool(tool_name, tool_args)
 
@@ -743,6 +975,40 @@ def _tool_schema(tool: Any) -> dict[str, Any]:
     if schema is None:
         schema = getattr(tool, "parameters", None)
     return schema if isinstance(schema, dict) else {}
+
+
+def _reasoning_metadata(router: Any, reasoning_mode: str) -> dict[str, str]:
+    if reasoning_mode not in REASONING_MODES:
+        raise ValueError(
+            f"Unsupported reasoning mode {reasoning_mode!r}; "
+            f"expected one of: {', '.join(REASONING_MODES)}."
+        )
+    supports_reasoning = bool(getattr(router, "SUPPORTS_REASONING_MODE", False))
+    if reasoning_mode == "reasoning" and not supports_reasoning:
+        raise ValueError(
+            f"Router {getattr(router, 'ROUTER_ID', 'unknown')!r} does not "
+            "implement reasoning mode yet."
+        )
+    method = "none"
+    if supports_reasoning and hasattr(router, "reasoning_method"):
+        method = str(router.reasoning_method(reasoning_mode))
+    return {
+        "reasoning_mode": reasoning_mode,
+        "reasoning_method": method,
+    }
+
+
+def _generation_metadata(router: Any) -> dict[str, Any]:
+    limit = getattr(router, "MAX_GENERATED_TOKENS", None)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError(
+            f"Router {getattr(router, 'ROUTER_ID', 'unknown')!r} must expose a "
+            "positive MAX_GENERATED_TOKENS value."
+        )
+    return {
+        "effective_generation_limit": limit,
+        "effective_generation_limit_unit": "tokens",
+    }
 
 
 def _validate_expected_tools(
@@ -769,15 +1035,25 @@ def _route_query(
     live_tools: list[str],
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
+    reasoning_mode: str = "direct",
 ) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
     if hasattr(router, "choose_tool_call"):
         if getattr(router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False):
-            prediction = router.choose_tool_call(
-                query,
-                live_tools,
-                tool_schemas,
-                tool_descriptions,
-            )
+            if getattr(router, "SUPPORTS_REASONING_MODE", False):
+                prediction = router.choose_tool_call(
+                    query,
+                    live_tools,
+                    tool_schemas,
+                    tool_descriptions,
+                    reasoning_mode=reasoning_mode,
+                )
+            else:
+                prediction = router.choose_tool_call(
+                    query,
+                    live_tools,
+                    tool_schemas,
+                    tool_descriptions,
+                )
         else:
             prediction = router.choose_tool_call(
                 query,
@@ -816,6 +1092,7 @@ def _route_sample(
     live_tools: list[str],
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
+    reasoning_mode: str = "direct",
 ) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
     return _route_query(
         router,
@@ -823,6 +1100,7 @@ def _route_sample(
         live_tools,
         tool_schemas,
         tool_descriptions,
+        reasoning_mode,
     )
 
 
@@ -877,26 +1155,31 @@ def _multistep_step_metrics(
         for step in step_records
         if step["final_outcome_correct"] is not None
     ]
+    tool_accuracy = (
+        sum(step["tool_selection_correct"] for step in step_records) / total_steps
+        if total_steps
+        else 0.0
+    )
+    argument_accuracy = (
+        sum(step["argument_match_correct"] for step in step_records) / total_steps
+        if total_steps
+        else 0.0
+    )
+    result_accuracy = (
+        sum(score is True for score in semantic_output_scores)
+        / len(semantic_output_scores)
+        if semantic_output_scores
+        else None
+    )
     return {
         "total_steps": total_steps,
-        "step_tool_selection_accuracy": (
-            sum(step["tool_selection_correct"] for step in step_records)
-            / total_steps
-            if total_steps
-            else 0.0
-        ),
-        "step_exact_argument_match_accuracy": (
-            sum(step["argument_match_correct"] for step in step_records)
-            / total_steps
-            if total_steps
-            else 0.0
-        ),
-        "step_semantic_output_accuracy": (
-            sum(score is True for score in semantic_output_scores)
-            / len(semantic_output_scores)
-            if semantic_output_scores
-            else None
-        ),
+        "step_correct_tool_accuracy": tool_accuracy,
+        "step_correct_arguments_accuracy": argument_accuracy,
+        "step_correct_result_accuracy": result_accuracy,
+        # Backwards-compatible metric names retained for historical consumers.
+        "step_tool_selection_accuracy": tool_accuracy,
+        "step_exact_argument_match_accuracy": argument_accuracy,
+        "step_semantic_output_accuracy": result_accuracy,
         "step_semantic_output_scored": len(semantic_output_scores),
     }
 
@@ -910,37 +1193,61 @@ def _multistep_workflow_metrics(
         for workflow in workflow_records
         if workflow["sequence_semantic_output_correct"] is not None
     ]
+    final_answer_scores = [
+        workflow["workflow_final_answer_correct"]
+        for workflow in workflow_records
+        if workflow.get("workflow_final_answer_correct") is not None
+    ]
+    all_tools_accuracy = (
+        sum(
+            workflow["sequence_tool_selection_correct"]
+            for workflow in workflow_records
+        )
+        / total_workflows
+        if total_workflows
+        else 0.0
+    )
+    all_arguments_accuracy = (
+        sum(
+            workflow["sequence_argument_match_correct"]
+            for workflow in workflow_records
+        )
+        / total_workflows
+        if total_workflows
+        else 0.0
+    )
+    all_step_results_accuracy = (
+        sum(score is True for score in semantic_output_scores)
+        / len(semantic_output_scores)
+        if semantic_output_scores
+        else None
+    )
+    final_answer_accuracy = (
+        sum(score is True for score in final_answer_scores)
+        / len(final_answer_scores)
+        if final_answer_scores
+        else None
+    )
     return {
         "total_workflows": total_workflows,
-        "workflow_tool_sequence_accuracy": (
-            sum(
-                workflow["sequence_tool_selection_correct"]
-                for workflow in workflow_records
-            )
-            / total_workflows
-            if total_workflows
-            else 0.0
+        "workflow_all_tools_correct_accuracy": all_tools_accuracy,
+        "workflow_all_arguments_correct_accuracy": all_arguments_accuracy,
+        "workflow_all_step_results_correct_accuracy": all_step_results_accuracy,
+        "workflow_final_answer_accuracy": final_answer_accuracy,
+        "workflow_final_answer_scored": len(final_answer_scores),
+        "workflow_final_answer_gold": sum(
+            workflow.get("expected_final_answer") not in {None, ""}
+            for workflow in workflow_records
         ),
-        "workflow_exact_sequence_accuracy": (
-            sum(
-                workflow["sequence_argument_match_correct"]
-                for workflow in workflow_records
-            )
-            / total_workflows
-            if total_workflows
-            else 0.0
-        ),
-        "workflow_semantic_output_sequence_accuracy": (
-            sum(score is True for score in semantic_output_scores)
-            / len(semantic_output_scores)
-            if semantic_output_scores
-            else None
-        ),
+        # Backwards-compatible metric names retained for historical consumers.
+        "workflow_tool_sequence_accuracy": all_tools_accuracy,
+        "workflow_exact_sequence_accuracy": all_arguments_accuracy,
+        "workflow_semantic_output_sequence_accuracy": all_step_results_accuracy,
         "workflow_semantic_output_sequence_scored": len(
             semantic_output_scores
         ),
         "workflow_expected_final_answer_gold": sum(
-            workflow["expected_final_answer"] is not None
+            workflow.get("expected_final_answer") not in {None, ""}
             for workflow in workflow_records
         ),
     }
@@ -978,14 +1285,16 @@ def _build_multistep_metrics(
     }
 
 
-def _gold_history_item(step: BenchmarkStep) -> dict[str, Any]:
-    """Build the deterministic teacher-forced context for a completed step."""
+def _predicted_history_item(step_record: dict[str, Any]) -> dict[str, Any]:
+    """Build rollout context containing predictions and execution only."""
     return {
-        "step_id": step.id,
-        "query": step.query,
-        "expected_tool": step.expected_tool,
-        "expected_args": step.expected_args,
-        "expected_answer": step.expected_answer,
+        "step_id": step_record["step_id"],
+        "query": step_record["query"],
+        "selected_tool": step_record["selected_tool"],
+        "selected_args": step_record["selected_args"],
+        "execution_success": step_record["execution_success"],
+        "tool_result_value": step_record["tool_result_value"],
+        "tool_error": step_record["tool_error"],
     }
 
 
@@ -1014,7 +1323,10 @@ def _multistep_query(
                 MULTISTEP_CURRENT_STEP_CHAR_LIMIT,
             )
         )
-    if step.prompt_context.strip():
+    # Some dependent-step contexts contain expressions resolved with gold prior
+    # answers. Supplying those would silently restore teacher forcing. Other
+    # contexts (for example repository coordinates) remain necessary grounding.
+    if step.prompt_context.strip() and not _is_gold_resolved_step_context(step):
         parts.append(
             "Current-step grounding context: "
             + _bounded_prompt_text(
@@ -1038,7 +1350,7 @@ def _multistep_query(
             if item.get("step_id") in visible_step_ids
         ]
         omitted_count = len(history) - len(visible_history)
-        history_heading = "Gold prior-step context"
+        history_heading = "Prior predicted calls and executed results"
         if omitted_count:
             history_heading += (
                 f" (showing every declared dependency and up to the latest "
@@ -1058,6 +1370,21 @@ def _multistep_query(
         )
     parts.append("Choose and call the one tool needed for the current step.")
     return "\n\n".join(parts)
+
+
+def _is_gold_resolved_step_context(step: BenchmarkStep) -> bool:
+    if not step.depends_on or not step.prompt_context.strip():
+        return False
+    try:
+        context = json.loads(step.prompt_context)
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(context, dict):
+        return False
+    return context.get("kind") in {
+        "finance_calculator_call_grounding_v1",
+        "math_controlled_current_step_v1",
+    }
 
 
 def _bounded_prompt_text(value: str, maximum_chars: int) -> str:
@@ -1083,6 +1410,8 @@ async def _evaluate_multistep_with_server(
     server_path: Path,
     call_predicted_tools: bool,
     router_name: str,
+    reasoning_mode: str = "direct",
+    output_dir: Path | None = None,
 ) -> None:
     from models.routers.registry import load_router
 
@@ -1092,9 +1421,9 @@ async def _evaluate_multistep_with_server(
         )
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    RESULTS_DIR.mkdir(exist_ok=True)
-    samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
-    summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
+    artifacts = _evaluation_artifact_paths(output_dir, timestamp)
+    samples_path = artifacts.samples
+    summary_path = artifacts.summary
 
     workflow_records: list[dict[str, Any]] = []
     step_records: list[dict[str, Any]] = []
@@ -1116,6 +1445,8 @@ async def _evaluate_multistep_with_server(
         _validate_expected_tools(dataset, live_tool_set)
 
         router = load_router(router_name)
+        reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
+        generation_metadata = _generation_metadata(router)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
@@ -1131,7 +1462,7 @@ async def _evaluate_multistep_with_server(
             f"{EVALUATION_PROTOCOL_DESCRIPTIONS[MULTISTEP_EVALUATION_PROTOCOL]}"
         )
 
-        with samples_path.open("w", encoding="utf-8") as sample_handle:
+        with _open_samples_exclusive(samples_path) as sample_handle:
             for sample in tqdm(dataset):
                 history: list[dict[str, Any]] = []
                 workflow_steps: list[dict[str, Any]] = []
@@ -1152,6 +1483,7 @@ async def _evaluate_multistep_with_server(
                         live_tools,
                         tool_schemas,
                         tool_descriptions,
+                        reasoning_mode,
                     )
                     latency = time.perf_counter() - start
                     latencies.append(latency)
@@ -1178,8 +1510,7 @@ async def _evaluate_multistep_with_server(
                                 server_path,
                                 selected_tool,
                                 selected_args,
-                                sample.expected_steps[:step_index],
-                                sample.workflow_execution_mode,
+                                workflow_steps,
                             )
                             executed_tool_calls += 1
                             tool_result = _summarize_tool_result(call_result)
@@ -1216,14 +1547,20 @@ async def _evaluate_multistep_with_server(
                         call_predicted_tools=call_predicted_tools,
                         no_tool_call=no_tool_call,
                         execution_success=execution_success,
+                        expected_tool=step.expected_tool,
+                        called_tool=called_tool,
                     )
                     step_record = {
                         "sample_id": sample.id,
+                        "benchmark_path": str(benchmark_path),
                         "step_id": step.id,
                         "step_index": step_index,
                         "domain": sample.domain,
                         "benchmark_mode": sample.benchmark_mode,
-                        "workflow_execution_mode": sample.workflow_execution_mode,
+                        "workflow_execution_mode": PREDICTED_ROLLOUT_EXECUTION_MODE,
+                        "declared_workflow_execution_mode": (
+                            sample.workflow_execution_mode
+                        ),
                         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
                         "evaluation_protocol_description": (
                             EVALUATION_PROTOCOL_DESCRIPTIONS[
@@ -1250,6 +1587,8 @@ async def _evaluate_multistep_with_server(
                         "attempted_tool": attempted_tool,
                         "parse_diagnostic": parse_diagnostic,
                         "latency_seconds": latency,
+                        **reasoning_metadata,
+                        **generation_metadata,
                         "called_tool": called_tool,
                         "tool_result": tool_result,
                         "tool_result_value": tool_result_value,
@@ -1258,13 +1597,29 @@ async def _evaluate_multistep_with_server(
                     }
                     step_records.append(step_record)
                     workflow_steps.append(step_record)
-                    history.append(_gold_history_item(step))
+                    history.append(_predicted_history_item(step_record))
 
+                final_step_result_value = (
+                    workflow_steps[-1]["tool_result_value"]
+                    if workflow_steps
+                    else None
+                )
+                workflow_final_answer = _score_workflow_final_answer(
+                    expected_final_answer=sample.expected_final_answer,
+                    final_tool_result_value=final_step_result_value,
+                    call_predicted_tools=call_predicted_tools,
+                    benchmark_family=sample.benchmark_family,
+                )
                 workflow_record = {
                     "sample_id": sample.id,
+                    "benchmark_path": str(benchmark_path),
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
-                    "workflow_execution_mode": sample.workflow_execution_mode,
+                    "benchmark_family": sample.benchmark_family,
+                    "workflow_execution_mode": PREDICTED_ROLLOUT_EXECUTION_MODE,
+                    "declared_workflow_execution_mode": (
+                        sample.workflow_execution_mode
+                    ),
                     "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
                     "evaluation_protocol_description": (
                         EVALUATION_PROTOCOL_DESCRIPTIONS[
@@ -1274,6 +1629,11 @@ async def _evaluate_multistep_with_server(
                     "query": sample.query,
                     "prompt_context": sample.prompt_context,
                     "expected_final_answer": sample.expected_final_answer,
+                    "final_step_result_value": final_step_result_value,
+                    "workflow_final_answer_correct": workflow_final_answer.correct,
+                    "workflow_final_answer_status": workflow_final_answer.status,
+                    "workflow_final_answer_matcher": workflow_final_answer.matcher,
+                    "workflow_final_answer_diagnostic": workflow_final_answer.diagnostic,
                     "task_type": sample.task_type,
                     "difficulty": sample.difficulty,
                     "source": sample.source,
@@ -1307,6 +1667,8 @@ async def _evaluate_multistep_with_server(
                         router, "ROUTER_BACKEND", "unknown"
                     ),
                     "prompt_template": prompt_template,
+                    **reasoning_metadata,
+                    **generation_metadata,
                 }
                 workflow_records.append(workflow_record)
                 sample_handle.write(
@@ -1328,11 +1690,14 @@ async def _evaluate_multistep_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        **reasoning_metadata,
+        **generation_metadata,
         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             MULTISTEP_EVALUATION_PROTOCOL
         ],
-        "workflow_execution_modes": sorted(
+        "workflow_execution_modes": [PREDICTED_ROLLOUT_EXECUTION_MODE],
+        "declared_workflow_execution_modes": sorted(
             {sample.workflow_execution_mode for sample in dataset}
         ),
         **tool_pool_metadata,
@@ -1343,25 +1708,24 @@ async def _evaluate_multistep_with_server(
         "executed_tool_calls": executed_tool_calls,
         "errors_count": errors_count,
     }
-    with summary_path.open("w", encoding="utf-8") as summary_handle:
-        json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+    _write_summary_exclusive(summary_path, summary)
 
     print("\n===================")
     print(f"Evaluation protocol: {MULTISTEP_EVALUATION_PROTOCOL}")
-    print("Metric scope: teacher-forced current-step routing (not autonomous planning)")
+    print("Metric scope: guided rollout with predicted-result error propagation")
     print(f"Workflows: {total_workflows}")
     print(f"Steps: {total_steps}")
     print(
-        "Teacher-forced step tool-selection accuracy: "
-        f"{summary['step_tool_selection_accuracy']:.2%}"
+        "Correct tool per provided step: "
+        f"{summary['step_correct_tool_accuracy']:.2%}"
     )
     print(
-        "Teacher-forced exact workflow-sequence accuracy: "
-        f"{summary['workflow_exact_sequence_accuracy']:.2%}"
+        "Correct arguments per provided step: "
+        f"{summary['step_correct_arguments_accuracy']:.2%}"
     )
-    step_semantic_output_accuracy = summary["step_semantic_output_accuracy"]
+    step_semantic_output_accuracy = summary["step_correct_result_accuracy"]
     print(
-        "Teacher-forced step semantic-output accuracy: "
+        "Correct result per provided step: "
         + (
             f"{step_semantic_output_accuracy:.2%}"
             if step_semantic_output_accuracy is not None
@@ -1369,13 +1733,22 @@ async def _evaluate_multistep_with_server(
         )
     )
     workflow_semantic_output_accuracy = summary[
-        "workflow_semantic_output_sequence_accuracy"
+        "workflow_all_step_results_correct_accuracy"
     ]
     print(
-        "Teacher-forced workflow semantic-output sequence accuracy: "
+        "All provided step results correct: "
         + (
             f"{workflow_semantic_output_accuracy:.2%}"
             if workflow_semantic_output_accuracy is not None
+            else "not scored"
+        )
+    )
+    workflow_final_answer_accuracy = summary["workflow_final_answer_accuracy"]
+    print(
+        "Final answer accuracy: "
+        + (
+            f"{workflow_final_answer_accuracy:.2%}"
+            if workflow_final_answer_accuracy is not None
             else "not scored"
         )
     )
@@ -1386,10 +1759,10 @@ async def _evaluate_multistep_with_server(
         print(
             f"Benchmark mode {mode}: "
             f"workflows={workflow_metrics['total_workflows']}, "
-            "exact teacher-forced sequence accuracy="
+            "all-step argument accuracy="
             f"{workflow_metrics['workflow_exact_sequence_accuracy']:.2%}, "
             f"steps={step_metrics.get('total_steps', 0)}, "
-            "teacher-forced step tool-selection accuracy="
+            "provided-step tool-selection accuracy="
             f"{step_metrics.get('step_tool_selection_accuracy', 0.0):.2%}"
         )
     print(f"Results: {samples_path}")
@@ -1402,6 +1775,8 @@ async def _evaluate_with_server(
     server_path: Path,
     call_predicted_tools: bool,
     router_name: str,
+    reasoning_mode: str = "direct",
+    output_dir: Path | None = None,
 ) -> None:
     if any(sample.expected_steps for sample in dataset):
         await _evaluate_multistep_with_server(
@@ -1410,6 +1785,8 @@ async def _evaluate_with_server(
             server_path,
             call_predicted_tools,
             router_name,
+            reasoning_mode=reasoning_mode,
+            output_dir=output_dir,
         )
         return
 
@@ -1420,9 +1797,9 @@ async def _evaluate_with_server(
     errors_count = 0
     records: list[dict[str, Any]] = []
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    RESULTS_DIR.mkdir(exist_ok=True)
-    samples_path = RESULTS_DIR / f"{timestamp}_samples.jsonl"
-    summary_path = RESULTS_DIR / f"{timestamp}_summary.json"
+    artifacts = _evaluation_artifact_paths(output_dir, timestamp)
+    samples_path = artifacts.samples
+    summary_path = artifacts.summary
 
     async with _run_server_session(server_path) as session:
         listed_tools = await session.list_tools()
@@ -1436,6 +1813,8 @@ async def _evaluate_with_server(
         _validate_expected_tools(dataset, live_tool_set)
 
         router = load_router(router_name)
+        reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
+        generation_metadata = _generation_metadata(router)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
         prompt_template = router.PROMPT_TEMPLATE
@@ -1448,7 +1827,7 @@ async def _evaluate_with_server(
         print(f"Discovered MCP tools: {', '.join(live_tools)}")
         print(f"Evaluation protocol: {SINGLE_STEP_EVALUATION_PROTOCOL}")
 
-        with samples_path.open("w", encoding="utf-8") as sample_handle:
+        with _open_samples_exclusive(samples_path) as sample_handle:
             for sample in tqdm(dataset):
                 query = sample.query
                 routed_query = _query_with_context(query, sample.prompt_context)
@@ -1468,6 +1847,7 @@ async def _evaluate_with_server(
                     live_tools,
                     tool_schemas,
                     tool_descriptions,
+                    reasoning_mode,
                 )
                 latency = time.perf_counter() - start
 
@@ -1542,9 +1922,12 @@ async def _evaluate_with_server(
                     call_predicted_tools=call_predicted_tools,
                     no_tool_call=no_tool_call,
                     execution_success=execution_success,
+                    expected_tool=sample.expected_tool,
+                    called_tool=called_tool,
                 )
                 record = {
                     "sample_id": sample.id,
+                    "benchmark_path": str(benchmark_path),
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
                     "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
@@ -1584,6 +1967,8 @@ async def _evaluate_with_server(
                     ),
                     "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
                     "prompt_template": prompt_template,
+                    **reasoning_metadata,
+                    **generation_metadata,
                     "called_tool": called_tool,
                     "tool_result": tool_result,
                     "tool_result_value": tool_result_value,
@@ -1604,6 +1989,8 @@ async def _evaluate_with_server(
         "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
         "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
         "prompt_template": prompt_template,
+        **reasoning_metadata,
+        **generation_metadata,
         "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
         "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
             SINGLE_STEP_EVALUATION_PROTOCOL
@@ -1614,8 +2001,7 @@ async def _evaluate_with_server(
         "errors_count": errors_count,
         **metrics,
     }
-    with summary_path.open("w", encoding="utf-8") as summary_handle:
-        json.dump(summary, summary_handle, ensure_ascii=True, indent=2)
+    _write_summary_exclusive(summary_path, summary)
 
     print("\n===================")
     print(f"Total: {metrics['total_samples']}")
@@ -1669,6 +2055,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to the MCP server entrypoint.",
     )
     parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "Write samples.jsonl and summary.json inside this directory. "
+            "Existing artifacts are never overwritten."
+        ),
+    )
+    parser.add_argument(
         "--call-predicted-tools",
         action="store_true",
         help="Call the predicted MCP tool using sample.tool_args when present.",
@@ -1679,6 +2073,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Router backend to evaluate. Use qwen-hf for the Hugging Face "
             "Qwen baseline or gpt-oss-local for the local GPT-OSS PyTorch router."
+        ),
+    )
+    parser.add_argument(
+        "--reasoning-mode",
+        choices=REASONING_MODES,
+        default="direct",
+        help=(
+            "Inference condition. 'direct' requests an immediate tool call; "
+            "'reasoning' enables the router's supported reasoning mechanism."
         ),
     )
     return parser
@@ -1693,6 +2096,8 @@ async def _async_main(args: argparse.Namespace) -> None:
         server_path=args.server,
         call_predicted_tools=args.call_predicted_tools,
         router_name=args.router,
+        reasoning_mode=args.reasoning_mode,
+        output_dir=args.output_dir,
     )
 
 

@@ -24,9 +24,11 @@ ROUTER_BACKEND = "local_gpt_oss_pytorch"
 ARCHITECTURE_SOURCE = "models.architectures.gpt_oss_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
+MAX_GENERATED_TOKENS = 128
 PROMPT_TEMPLATE = "harmony_structured_context_sql_v2"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
+
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
     if checkpoint_path is not None:
@@ -140,15 +142,21 @@ def _generate_prediction(
     prompt_query: str,
     tool_catalog: Sequence[str],
     native_tools: list[dict[str, Any]],
+    tool_schemas: Mapping[str, Any],
 ) -> ToolCallPrediction:
     prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.assistant_action_stop_tokens,
         temperature=0.0,
-        max_tokens=128,
+        max_tokens=MAX_GENERATED_TOKENS,
     )
-    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+    return parse_tool_call(
+        result.text,
+        tool_catalog,
+        result.tool_call,
+        tool_schemas,
+    )
 
 
 def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: Mapping[str, Any] | None = None, tool_descriptions: Mapping[str, str] | None = None) -> ToolCallPrediction:
@@ -171,6 +179,7 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
             prompt_query,
             tool_catalog,
             native_tools,
+            schemas,
         )
 
     return generate_prediction(normalized_query)

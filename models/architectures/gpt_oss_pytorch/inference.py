@@ -68,6 +68,8 @@ def parse_tool_call(
             name = mentioned[0]
     if name is None:
         return None
+    if known_tools is not None and name not in known_tools:
+        return None
 
     args: dict = {}
     marker_index = text.rfind("<|message|>")

@@ -112,51 +112,47 @@ def _parse_harmony_native_call(
     response: str,
     catalog: set[str],
 ) -> tuple[str, dict[str, Any], str | None, str | None] | None:
-    """Parse official and legacy GPT-OSS Harmony function calls."""
-    normalized_name = None
-    attempted_name = None
+    """Strictly parse one official GPT-OSS Harmony function call."""
     recipients = re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", response)
-    qualified_recipients = [
-        name.removeprefix("functions.").strip().lower()
-        for name in recipients
-        if name.removeprefix("functions.").lower() != "functions"
-    ]
-    if qualified_recipients:
-        attempted_name = qualified_recipients[-1]
-        if attempted_name in catalog:
-            normalized_name = attempted_name
+    if not recipients:
+        return PARSE_ERROR, {}, "Harmony output has no function recipient", None
+    if len(recipients) != 1 or not recipients[0].lower().startswith("functions."):
+        return PARSE_ERROR, {}, "Harmony output must contain exactly one qualified function recipient", None
 
-    # An explicit qualified recipient is authoritative. Never reinterpret an
-    # unknown recipient by searching the surrounding reasoning for a known
-    # tool name.
-    if normalized_name is None and attempted_name is not None:
-        return UNKNOWN_TOOL, {}, "tool name is not in the live MCP catalog", attempted_name
+    attempted_name = recipients[0][len("functions."):].strip().lower()
+    if not attempted_name:
+        return PARSE_ERROR, {}, "Harmony function recipient has no tool name", None
 
-    if normalized_name is None and any(name.lower() == "functions" for name in recipients):
-        mentioned = [
-            tool for tool in catalog
-            if re.search(
-                rf"(?<![A-Za-z0-9_]){re.escape(tool)}(?![A-Za-z0-9_])",
-                response,
-            )
-        ]
-        if len(mentioned) == 1:
-            normalized_name = mentioned[0]
-    if normalized_name is None:
-        return None
+    recipient_match = re.search(
+        rf"\bto=functions\.{re.escape(recipients[0][len('functions.'):])}\b",
+        response,
+        re.IGNORECASE,
+    )
+    assert recipient_match is not None
+    call_region = response[recipient_match.end():]
+    message_index = call_region.find("<|message|>")
+    call_index = call_region.find("<|call|>")
+    if message_index < 0 or call_index < 0 or call_index < message_index:
+        return PARSE_ERROR, {}, "Harmony tool call requires <|message|> followed by <|call|>", attempted_name
+    if call_region.find("<|message|>", message_index + len("<|message|>")) >= 0:
+        return PARSE_ERROR, {}, "Harmony tool call contains multiple message delimiters", attempted_name
+    if call_region.find("<|call|>", call_index + len("<|call|>")) >= 0:
+        return PARSE_ERROR, {}, "Harmony output contains multiple tool calls", attempted_name
+    if call_region[call_index + len("<|call|>"):].strip():
+        return PARSE_ERROR, {}, "Harmony tool call has trailing content", attempted_name
 
-    marker_index = response.rfind("<|message|>")
-    if marker_index < 0:
-        return normalized_name, {}, "Harmony tool call has no argument payload", normalized_name
-
-    raw = response[marker_index + len("<|message|>"):].lstrip()
+    raw = call_region[message_index + len("<|message|>"):call_index].lstrip()
     try:
-        payload, _ = json.JSONDecoder().raw_decode(raw)
+        payload, end = json.JSONDecoder().raw_decode(raw)
     except (json.JSONDecodeError, TypeError):
-        return normalized_name, {}, "arguments are not valid JSON", normalized_name
+        return PARSE_ERROR, {}, "arguments are not valid JSON", attempted_name
+    if raw[end:].strip():
+        return PARSE_ERROR, {}, "Harmony argument payload has trailing content", attempted_name
     if not isinstance(payload, dict):
-        return normalized_name, {}, "decoded arguments must be a JSON object", normalized_name
-    return normalized_name, payload, None, normalized_name
+        return PARSE_ERROR, {}, "decoded arguments must be a JSON object", attempted_name
+    if attempted_name not in catalog:
+        return UNKNOWN_TOOL, {}, "tool name is not in the live MCP catalog", attempted_name
+    return attempted_name, payload, None, attempted_name
 
 
 def _decode_arguments(arguments: Any) -> tuple[dict[str, Any], str | None]:
@@ -271,6 +267,15 @@ def parse_tool_call(
     harmony_call = _parse_harmony_native_call(response, catalog) if allow_harmony else None
     if harmony_call is not None:
         name, arguments, parse_error, attempted_name = harmony_call
+        if name == PARSE_ERROR:
+            return ToolCallPrediction(
+                PARSE_ERROR,
+                {},
+                response,
+                parse_status="parse_error",
+                attempted_tool=attempted_name,
+                diagnostic=parse_error,
+            )
         if name == UNKNOWN_TOOL:
             return ToolCallPrediction(
                 UNKNOWN_TOOL,

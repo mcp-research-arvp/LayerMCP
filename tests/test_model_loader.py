@@ -625,11 +625,17 @@ class RouterRegistryTests(unittest.TestCase):
         ]
         for router, generator in cases:
             with self.subTest(router=router.ROUTER_ID):
-                generator.generate_text.return_value = SimpleNamespace(
-                    text=(
+                response = (
+                    "to=functions.factor_expression<|message|>"
+                    '{"expression":"t^2-49"}<|call|>'
+                    if router is gpt_oss_local_router
+                    else (
                         '{"name":"factor_expression",'
                         '"arguments":{"expression":"t^2-49"}}'
-                    ),
+                    )
+                )
+                generator.generate_text.return_value = SimpleNamespace(
+                    text=response,
                     tool_call=None,
                 )
                 with patch.object(router, "_load_generator", return_value=generator):
@@ -741,13 +747,15 @@ class RouterRegistryTests(unittest.TestCase):
         ):
             self.assertEqual(resolve_checkpoint_path(), Path("custom/gemma4"))
 
-    def test_structured_parser_accepts_gpt_oss_harmony_variants(self) -> None:
+    def test_structured_parser_accepts_official_gpt_oss_harmony_calls(self) -> None:
         from models.routers.structured_tool_call import parse_tool_call
 
         responses = (
             "to=functions.calculator<|message|>"
             '{"expression":"2 + 2"}<|call|>',
-            "We must call calculator.\nto=functions<|message|>"
+            "<|channel|>analysis<|message|>Use arithmetic.<|end|>"
+            "<|start|>assistant<|channel|>analysis "
+            "to=functions.calculator<|constrain|>json<|message|>"
             '{"expression":"2 + 2"}<|call|>',
         )
         for response in responses:
@@ -762,6 +770,47 @@ class RouterRegistryTests(unittest.TestCase):
                     prediction.selected_args,
                     {"expression": "2 + 2"},
                 )
+                self.assertEqual(prediction.parse_status, "ok")
+
+    def test_strict_harmony_parser_rejects_adversarial_matrix(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
+
+        cases = {
+            "bare recipient": (
+                "calculator to=functions<|message|>{}<|call|>"
+            ),
+            "missing call delimiter": (
+                "to=functions.calculator<|message|>{}"
+            ),
+            "two complete calls": (
+                "to=functions.calculator<|message|>{}<|call|> "
+                "to=functions.calculator<|message|>{}<|call|>"
+            ),
+            "trailing content after payload": (
+                "to=functions.calculator<|message|>{} trailing<|call|>"
+            ),
+            "trailing content after call": (
+                "to=functions.calculator<|message|>{}<|call|> trailing"
+            ),
+            "conflicting recipients": (
+                "to=functions.search to=functions.calculator<|message|>{}<|call|>"
+            ),
+            "array payload": (
+                "to=functions.calculator<|message|>[]<|call|>"
+            ),
+            "scalar payload": (
+                "to=functions.calculator<|message|>42<|call|>"
+            ),
+        }
+        for label, response in cases.items():
+            with self.subTest(label=label):
+                prediction = parse_tool_call(
+                    response,
+                    ["calculator", "search"],
+                    allow_harmony=True,
+                )
+                self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+                self.assertEqual(prediction.parse_status, "parse_error")
 
     def test_harmony_parsing_is_opt_in_for_non_gpt_oss_routers(self) -> None:
         from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call

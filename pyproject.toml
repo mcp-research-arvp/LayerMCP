@@ -9,6 +9,7 @@ description = "Research-oriented MCP server and tool routing experiments."
 requires-python = ">=3.10"
 dependencies = [
     "accelerate>=1.7,<2",
+    "fastapi>=0.115,<1",
     "matplotlib>=3.8,<4",
     "mcp[cli]>=1.27,<2",
     "openai-harmony",
@@ -18,6 +19,7 @@ dependencies = [
     "torch>=2.6,<3",
     "transformers>=4.52,<5",
     "tqdm>=4.67,<5",
+    "uvicorn>=0.34,<1",
 ]
 
 [project.scripts]

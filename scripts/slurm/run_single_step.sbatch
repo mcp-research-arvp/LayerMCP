@@ -4,6 +4,8 @@
 #   --export=ALL,MODEL=phi-4-local,REASONING_MODE=direct,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
 # sbatch --job-name=qwen-3.6-local-reasoning-primary \
 #   --export=ALL,MODEL=qwen-3.6-local,REASONING_MODE=reasoning,RUN_KIND=primary scripts/slurm/run_single_step.sbatch
+# sbatch --job-name=gpt-oss-local-direct-smoke \
+#   --export=ALL,MODEL=gpt-oss-local,REASONING_MODE=direct,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
 #SBATCH --job-name=lmcp-std-pr30
 #SBATCH --account=def-yousefne_gpu
 #SBATCH --gres=gpu:h100:1
@@ -62,7 +64,7 @@ if grep -Eq "MAX_TOOL_CORRECTIONS|repair_tool_call" evaluation/evaluate.py; then
   exit 1
 fi
 
-: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, or gemma-4-local}"
+: "${MODEL:?Set MODEL to phi-4-local, llama-3.1-8b-local, qwen-3.6-local, gemma-4-local, or gpt-oss-local}"
 : "${REASONING_MODE:?Set REASONING_MODE to direct or reasoning}"
 : "${RUN_KIND:?Set RUN_KIND to smoke or primary}"
 : "${SLURM_JOB_ID:?This launcher must run under Slurm}"
@@ -72,7 +74,7 @@ fi
   exit 2
 }
 case "$MODEL:$REASONING_MODE" in
-  phi-4-local:reasoning|llama-3.1-8b-local:reasoning)
+  phi-4-local:reasoning|llama-3.1-8b-local:reasoning|gpt-oss-local:reasoning)
     echo "$MODEL does not implement reasoning mode; use REASONING_MODE=direct" >&2
     exit 2
     ;;
@@ -124,6 +126,7 @@ safe_component() {
   python -m analysis.run_artifacts --safe-component "$label" "$value"
 }
 
+REQUIRED_CHECKPOINT_FILES=(config.json)
 case "$MODEL" in
   phi-4-local)
     : "${LAYERMCP_PHI4_CHECKPOINT:=$REPO_ROOT/checkpoints/phi-4}"
@@ -163,13 +166,28 @@ case "$MODEL" in
     GENERATION_LIMIT=4096
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
+  gpt-oss-local)
+    : "${LAYERMCP_GPT_OSS_CHECKPOINT:=$REPO_ROOT/checkpoints/gpt-oss-20b/original}"
+    export LAYERMCP_GPT_OSS_CHECKPOINT
+    CHECKPOINT="$LAYERMCP_GPT_OSS_CHECKPOINT"
+    PROMPT_TEMPLATE_ID="harmony_structured_context_sql_v2"
+    EXPECTED_MODEL_NAME="openai/gpt-oss-20b"
+    REASONING_METHOD="none"
+    GENERATION_LIMIT=128
+    REQUIRED_CHECKPOINT_FILES=(config.json model.safetensors)
+    ;;
   *)
     echo "Unsupported MODEL: $MODEL" >&2
     exit 2
     ;;
 esac
 
-test -f "$CHECKPOINT/config.json"
+for required_checkpoint_file in "${REQUIRED_CHECKPOINT_FILES[@]}"; do
+  [[ -s "$CHECKPOINT/$required_checkpoint_file" ]] || {
+    echo "Missing required checkpoint file: $CHECKPOINT/$required_checkpoint_file" >&2
+    exit 2
+  }
+done
 
 SMOKE_BENCHMARKS=(
   "benchmark/coding/coding_smoke.json"

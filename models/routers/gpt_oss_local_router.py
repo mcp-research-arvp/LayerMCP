@@ -12,7 +12,10 @@ from models.architectures.gpt_oss_pytorch.config import (
     DEFAULT_CHECKPOINT_PATH,
 )
 from models.routers.tool_catalog import format_tool_catalog
-from models.routers.structured_tool_call import ToolCallPrediction, build_tool_call_prompt, parse_tool_call
+from models.routers.structured_tool_call import (
+    ToolCallPrediction,
+    parse_tool_call,
+)
 
 MODEL_ID = "openai/gpt-oss-20b"
 MODEL_NAME = MODEL_ID
@@ -22,7 +25,7 @@ ARCHITECTURE_SOURCE = "models.architectures.gpt_oss_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
 MAX_GENERATED_TOKENS = 128
-PROMPT_TEMPLATE = "tool_name_only_v1"
+PROMPT_TEMPLATE = "harmony_structured_context_sql_v2"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
 
@@ -116,6 +119,50 @@ def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: M
     return choose_tool_call(query, available_tools, None, tool_descriptions).selected_tool
 
 
+def _build_native_tools(
+    tool_catalog: Sequence[str],
+    schemas: Mapping[str, Any],
+    descriptions: Mapping[str, str],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": name,
+            "description": " ".join(descriptions.get(name, "").split()),
+            "parameters": schemas.get(name) or {
+                "type": "object",
+                "properties": {},
+            },
+        }
+        for name in tool_catalog
+    ]
+
+
+def _generate_prediction(
+    generator: Any,
+    prompt_query: str,
+    tool_catalog: Sequence[str],
+    native_tools: list[dict[str, Any]],
+    tool_schemas: Mapping[str, Any],
+) -> ToolCallPrediction:
+    prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
+    result = generator.generate_text(
+        prompt_tokens=prompt_tokens,
+        stop_tokens=generator.assistant_action_stop_tokens,
+        temperature=0.0,
+        max_tokens=MAX_GENERATED_TOKENS,
+    )
+    return parse_tool_call(
+        result.text,
+        tool_catalog,
+        # Benchmark scoring parses the raw Harmony completion independently.
+        # TokenGenerator.tool_call belongs to the source-faithful HTTP API path
+        # and must not weaken or otherwise affect evaluator parsing.
+        None,
+        tool_schemas,
+        allow_harmony=True,
+    )
+
+
 def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: Mapping[str, Any] | None = None, tool_descriptions: Mapping[str, str] | None = None) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
@@ -126,12 +173,17 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
         raise ValueError("available_tools must not be empty.")
 
     generator = _load_generator()
-    prompt = build_tool_call_prompt(normalized_query, tool_catalog, tool_schemas, tool_descriptions)
-    prompt_tokens = generator.tokenizer.encode(prompt, allowed_special="all")
-    result = generator.generate_text(
-        prompt_tokens=prompt_tokens,
-        stop_tokens=[generator.call_token, generator.end_token, generator.return_token, generator.eot_token],
-        temperature=0.0,
-        max_tokens=MAX_GENERATED_TOKENS,
-    )
-    return parse_tool_call(result.text, tool_catalog, result.tool_call)
+    schemas = tool_schemas or {}
+    descriptions = tool_descriptions or {}
+    native_tools = _build_native_tools(tool_catalog, schemas, descriptions)
+
+    def generate_prediction(prompt_query: str) -> ToolCallPrediction:
+        return _generate_prediction(
+            generator,
+            prompt_query,
+            tool_catalog,
+            native_tools,
+            schemas,
+        )
+
+    return generate_prediction(normalized_query)

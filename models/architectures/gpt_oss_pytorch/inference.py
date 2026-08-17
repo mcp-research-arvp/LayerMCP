@@ -10,7 +10,17 @@ from models.architectures.gpt_oss_pytorch.schemas import (
     ToolFunction,
 )
 from typing import Optional, List, Any, Generator, Union, Tuple
-from openai_harmony import load_harmony_encoding, HarmonyEncodingName
+from openai_harmony import (
+    Conversation,
+    DeveloperContent,
+    HarmonyEncodingName,
+    Message,
+    ReasoningEffort,
+    Role,
+    SystemContent,
+    ToolDescription,
+    load_harmony_encoding,
+)
 
 def debug_print(*args: Any, **kwargs: Any) -> None:
     """Prints a message only if Config.debug_mode is True."""
@@ -29,26 +39,48 @@ def get_tokenizer():
 # can reference it without relying on forward-declaration timing.      #
 # ------------------------------------------------------------------ #
 
-def parse_tool_call(text: str) -> Optional[ToolCall]:
+def parse_tool_call(
+    text: str,
+    known_tools: Optional[List[str]] = None,
+) -> Optional[ToolCall]:
     """
     Parse a Harmony-format tool call from generated text.
 
-    Expected format emitted by the model:
-        to=tool_name<|message|>{"arg": "value"}<|call|>
+    Supports official ``to=functions.tool_name`` output and the legacy local
+    API's ``to=tool_name to=functions`` output.
     """
-    m = re.search(r"to=([a-zA-Z0-9_\-]+)", text)
-    if m is None:
+    matches = re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", text)
+    name = None
+    for candidate in reversed(matches):
+        candidate = candidate.removeprefix("functions.")
+        if candidate.lower() != "functions":
+            name = candidate
+            break
+    if name is None and known_tools and "to=functions" in text:
+        mentioned = [
+            tool for tool in known_tools
+            if re.search(
+                rf"(?<![A-Za-z0-9_]){re.escape(tool)}(?![A-Za-z0-9_])",
+                text,
+            )
+        ]
+        if len(mentioned) == 1:
+            name = mentioned[0]
+    if name is None:
         return None
-    name = m.group(1)
+    if known_tools is not None and name not in known_tools:
+        return None
 
-    m2 = re.search(r"<\|message\|>\s*(.*?)\s*<\|call\|>", text, re.DOTALL)
     args: dict = {}
-    if m2:
-        raw = m2.group(1).strip()
+    marker_index = text.rfind("<|message|>")
+    if marker_index >= 0:
+        raw = text[marker_index + len("<|message|>"):].lstrip()
         try:
-            args = json.loads(raw)
-        except json.JSONDecodeError:
-            args = {}
+            payload, _ = json.JSONDecoder().raw_decode(raw)
+            if isinstance(payload, dict):
+                args = payload
+        except (json.JSONDecodeError, TypeError):
+            pass
 
     return ToolCall(
         id=None,
@@ -99,6 +131,52 @@ class TokenGenerator:
         self.call_token = TokenGenerator._call_token
         self.end_token = TokenGenerator._end_token
         self.return_token = TokenGenerator._return_token
+        self._active_tool_names: list[str] = []
+
+    def render_tool_prompt(
+        self,
+        query: str,
+        tools: list[dict[str, Any]],
+    ) -> list[int]:
+        """Render a GPT-OSS request using the model's native Harmony format."""
+        self._active_tool_names = [tool["name"] for tool in tools]
+        descriptions = [
+            ToolDescription.new(
+                tool["name"],
+                tool.get("description", ""),
+                parameters=tool.get("parameters") or {
+                    "type": "object",
+                    "properties": {},
+                },
+            )
+            for tool in tools
+        ]
+        system = SystemContent.new().with_reasoning_effort(ReasoningEffort.LOW)
+        developer = (
+            DeveloperContent.new()
+            .with_instructions(
+                "Route the user's request by calling exactly one available "
+                "function. Never invent a function name."
+            )
+            .with_function_tools(descriptions)
+        )
+        conversation = Conversation.from_messages(
+            [
+                Message.from_role_and_content(Role.SYSTEM, system),
+                Message.from_role_and_content(Role.DEVELOPER, developer),
+                Message.from_role_and_content(Role.USER, query),
+            ]
+        )
+        return list(
+            self.tokenizer.render_conversation_for_completion(
+                conversation,
+                Role.ASSISTANT,
+            )
+        )
+
+    @property
+    def assistant_action_stop_tokens(self) -> list[int]:
+        return list(self.tokenizer.stop_tokens_for_assistant_actions())
 
     @torch.inference_mode()
     def generate(
@@ -216,6 +294,50 @@ class TokenGenerator:
             return_logprobs=False,
         ):
             out.append(token)
-        text = self.tokenizer.decode(out)
-        tool = parse_tool_call(text)
+        text = self.tokenizer.decode_utf8(out)
+        tool = None
+        try:
+            parse_completion = (
+                self.tokenizer.parse_messages_from_completion_tokens
+            )
+            try:
+                messages = parse_completion(
+                    out,
+                    Role.ASSISTANT,
+                    strict=False,
+                )
+            except TypeError as exc:
+                # Newer openai-harmony releases removed the ``strict``
+                # keyword. Retry only for that API-compatibility failure so
+                # TypeErrors raised while parsing are not silently hidden.
+                if "unexpected keyword argument 'strict'" not in str(exc):
+                    raise
+                messages = parse_completion(out, Role.ASSISTANT)
+            for message in reversed(messages):
+                recipient = getattr(message, "recipient", None)
+                if not recipient:
+                    continue
+                name = str(recipient)
+                if name.startswith("functions."):
+                    name = name.removeprefix("functions.")
+                content = getattr(message, "content", None) or []
+                raw_arguments = getattr(content[0], "text", "{}") if content else "{}"
+                try:
+                    arguments = json.loads(raw_arguments)
+                except (json.JSONDecodeError, TypeError):
+                    arguments = {}
+                tool = ToolCall(
+                    id=None,
+                    type="function",
+                    function=ToolFunction(
+                        name=name,
+                        arguments=json.dumps(arguments),
+                    ),
+                )
+                break
+        except (RuntimeError, ValueError, IndexError, AttributeError, TypeError):
+            # Retain a compatibility fallback for incomplete/debug generations.
+            tool = parse_tool_call(text, self._active_tool_names)
+        if tool is None:
+            tool = parse_tool_call(text, self._active_tool_names)
         return GenerationResult(text=text, tool_call=tool)

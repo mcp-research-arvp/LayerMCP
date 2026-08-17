@@ -609,7 +609,8 @@ class RouterRegistryTests(unittest.TestCase):
         cases.append((gemma4_local_router, gemma_generator))
 
         gpt_generator = Mock()
-        gpt_generator.tokenizer.encode.return_value = [1]
+        gpt_generator.render_tool_prompt.return_value = [1]
+        gpt_generator.assistant_action_stop_tokens = [2]
         cases.append((gpt_oss_local_router, gpt_generator))
 
         phi_generator = Mock()
@@ -624,11 +625,17 @@ class RouterRegistryTests(unittest.TestCase):
         ]
         for router, generator in cases:
             with self.subTest(router=router.ROUTER_ID):
-                generator.generate_text.return_value = SimpleNamespace(
-                    text=(
+                response = (
+                    "to=functions.factor_expression<|message|>"
+                    '{"expression":"t^2-49"}<|call|>'
+                    if router is gpt_oss_local_router
+                    else (
                         '{"name":"factor_expression",'
                         '"arguments":{"expression":"t^2-49"}}'
-                    ),
+                    )
+                )
+                generator.generate_text.return_value = SimpleNamespace(
+                    text=response,
                     tool_call=None,
                 )
                 with patch.object(router, "_load_generator", return_value=generator):
@@ -739,6 +746,207 @@ class RouterRegistryTests(unittest.TestCase):
             {"LAYERMCP_GEMMA4_CHECKPOINT": "custom/gemma4"},
         ):
             self.assertEqual(resolve_checkpoint_path(), Path("custom/gemma4"))
+
+    def test_structured_parser_accepts_official_gpt_oss_harmony_calls(self) -> None:
+        from models.routers.structured_tool_call import parse_tool_call
+
+        responses = (
+            "to=functions.calculator<|message|>"
+            '{"expression":"2 + 2"}<|call|>',
+            "<|channel|>analysis<|message|>Use arithmetic.<|end|>"
+            "<|start|>assistant<|channel|>analysis "
+            "to=functions.calculator<|constrain|>json<|message|>"
+            '{"expression":"2 + 2"}<|call|>',
+        )
+        for response in responses:
+            with self.subTest(response=response):
+                prediction = parse_tool_call(
+                    response,
+                    ["calculator", "search"],
+                    allow_harmony=True,
+                )
+                self.assertEqual(prediction.selected_tool, "calculator")
+                self.assertEqual(
+                    prediction.selected_args,
+                    {"expression": "2 + 2"},
+                )
+                self.assertEqual(prediction.parse_status, "ok")
+
+    def test_strict_harmony_parser_rejects_adversarial_matrix(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
+
+        cases = {
+            "bare recipient": (
+                "calculator to=functions<|message|>{}<|call|>"
+            ),
+            "missing call delimiter": (
+                "to=functions.calculator<|message|>{}"
+            ),
+            "two complete calls": (
+                "to=functions.calculator<|message|>{}<|call|> "
+                "to=functions.calculator<|message|>{}<|call|>"
+            ),
+            "trailing content after payload": (
+                "to=functions.calculator<|message|>{} trailing<|call|>"
+            ),
+            "trailing content after call": (
+                "to=functions.calculator<|message|>{}<|call|> trailing"
+            ),
+            "conflicting recipients": (
+                "to=functions.search to=functions.calculator<|message|>{}<|call|>"
+            ),
+            "array payload": (
+                "to=functions.calculator<|message|>[]<|call|>"
+            ),
+            "scalar payload": (
+                "to=functions.calculator<|message|>42<|call|>"
+            ),
+        }
+        for label, response in cases.items():
+            with self.subTest(label=label):
+                prediction = parse_tool_call(
+                    response,
+                    ["calculator", "search"],
+                    allow_harmony=True,
+                )
+                self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+                self.assertEqual(prediction.parse_status, "parse_error")
+
+    def test_harmony_parsing_is_opt_in_for_non_gpt_oss_routers(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=functions.calculator<|message|>{}<|call|>",
+            ["calculator"],
+        )
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
+
+    def test_shared_parser_keeps_misspelled_harmony_tool_names_strict(self) -> None:
+        from models.routers.structured_tool_call import UNKNOWN_TOOL, parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=functions.calculatr<|message|>{}<|call|>",
+            ["calculator", "search"],
+            allow_harmony=True,
+        )
+
+        self.assertEqual(prediction.selected_tool, UNKNOWN_TOOL)
+        self.assertEqual(prediction.parse_status, "unknown_tool")
+        self.assertEqual(prediction.attempted_tool, "calculatr")
+
+    def test_harmony_unknown_tool_is_not_recovered_from_reasoning_text(self) -> None:
+        from models.routers.structured_tool_call import UNKNOWN_TOOL, parse_tool_call
+
+        prediction = parse_tool_call(
+            "We should use calculator, but output misspelled. "
+            "to=functions.calculatr<|message|>{}<|call|>",
+            ["calculator"],
+            allow_harmony=True,
+        )
+
+        self.assertEqual(prediction.selected_tool, UNKNOWN_TOOL)
+        self.assertEqual(prediction.parse_status, "unknown_tool")
+        self.assertEqual(prediction.attempted_tool, "calculatr")
+
+    def test_harmony_malformed_arguments_are_an_explicit_parse_failure(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
+
+        prediction = parse_tool_call(
+            "to=functions.ping<|message|>{bad<|call|>",
+            ["ping"],
+            tool_schemas={
+                "ping": {"type": "object", "properties": {}},
+            },
+            allow_harmony=True,
+        )
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
+        self.assertEqual(prediction.attempted_tool, "ping")
+        self.assertEqual(prediction.diagnostic, "arguments are not valid JSON")
+
+    def test_gpt_oss_router_uses_native_harmony_once_and_validates_schema(self) -> None:
+        from models.routers import gpt_oss_local_router
+
+        schema = {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.return_value = SimpleNamespace(
+            text=(
+                "to=functions.calculator<|message|>"
+                '{"expression":4}<|call|>'
+            ),
+            tool_call=None,
+        )
+
+        with patch.object(
+            gpt_oss_local_router,
+            "_load_generator",
+            return_value=generator,
+        ):
+            prediction = gpt_oss_local_router.choose_tool_call(
+                "Calculate something.",
+                ["calculator"],
+                {"calculator": schema},
+                {"calculator": "Evaluate arithmetic."},
+            )
+
+        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.parse_status, "invalid_arguments")
+        self.assertEqual(
+            prediction.diagnostic,
+            "argument 'expression' must have type string",
+        )
+        generator.render_tool_prompt.assert_called_once_with(
+            "Calculate something.",
+            [
+                {
+                    "name": "calculator",
+                    "description": "Evaluate arithmetic.",
+                    "parameters": schema,
+                }
+            ],
+        )
+        generator.generate_text.assert_called_once_with(
+            prompt_tokens=[1],
+            stop_tokens=[2],
+            temperature=0.0,
+            max_tokens=gpt_oss_local_router.MAX_GENERATED_TOKENS,
+        )
+
+    def test_gpt_oss_benchmark_parser_ignores_api_tool_call(self) -> None:
+        from models.routers import gpt_oss_local_router
+        from models.routers.structured_tool_call import PARSE_ERROR
+
+        generator = Mock()
+        generator.render_tool_prompt.return_value = [1]
+        generator.assistant_action_stop_tokens = [2]
+        generator.generate_text.return_value = SimpleNamespace(
+            text="not a structured tool call",
+            tool_call=SimpleNamespace(
+                function=SimpleNamespace(name="calculator", arguments="{}"),
+            ),
+        )
+
+        with patch.object(
+            gpt_oss_local_router,
+            "_load_generator",
+            return_value=generator,
+        ):
+            prediction = gpt_oss_local_router.choose_tool_call(
+                "Calculate something.",
+                ["calculator"],
+            )
+
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
 
 
 if __name__ == "__main__":

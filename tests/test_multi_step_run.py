@@ -240,7 +240,13 @@ class MultiStepRunTests(unittest.TestCase):
         self.assertNotIn("teacher_forced_step_routing_v1",launcher)
         self.assertIn('--reasoning-mode "$REASONING_MODE"', launcher)
         self.assertIn("short_test", launcher)
-        for model in ("phi-4-local", "llama-3.1-8b-local", "qwen-3.6-local", "gemma-4-local"):
+        for model in (
+            "phi-4-local",
+            "llama-3.1-8b-local",
+            "qwen-3.6-local",
+            "gemma-4-local",
+            "gpt-oss-local",
+        ):
             self.assertIn(model, launcher)
         self.assertNotIn("coding_nebius_swerebench_openhands",launcher)
         self.assertIn("PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True",launcher)
@@ -275,6 +281,7 @@ class MultiStepRunTests(unittest.TestCase):
             ("LAYERMCP_LLAMA31_8B_CHECKPOINT", "llama-3.1-8b-instruct"),
             ("LAYERMCP_QWEN36_CHECKPOINT", "qwen-3.6"),
             ("LAYERMCP_GEMMA4_CHECKPOINT", "gemma-4"),
+            ("LAYERMCP_GPT_OSS_CHECKPOINT", "gpt-oss-20b/original"),
         ):
             self.assertIn(
                 f'${{{variable}:=$REPO_ROOT/checkpoints/{relative_path}}}',

@@ -177,13 +177,21 @@ def recover_multistep_run(
     expected_workflows, expected_steps = dataset_counts(benchmark)
     if len(records) != expected_workflows:
         raise ValueError("Saved workflow count does not match the benchmark")
+    recorded_benchmark_path = _uniform(records, "benchmark_path")
+    if not isinstance(recorded_benchmark_path, str) or not recorded_benchmark_path:
+        raise ValueError("Saved workflows are missing their original benchmark path")
+    original_benchmark = Path(recorded_benchmark_path).expanduser().resolve(strict=True)
+    original_benchmark_identity = str(original_benchmark)
+    if not _benchmark_reference_matches(recorded_benchmark_path, benchmark):
+        raise ValueError(
+            "Saved workflow benchmark does not match supplied validation benchmark"
+        )
     observed_ids: dict[str, list[str]] = {}
     for record in records:
         workflow_id = str(record.get("sample_id"))
-        if not _benchmark_reference_matches(record.get("benchmark_path"), benchmark):
+        if record.get("benchmark_path") != recorded_benchmark_path:
             raise ValueError(
-                f"Saved workflow benchmark does not match supplied benchmark: "
-                f"{workflow_id}"
+                f"Saved workflows identify different original benchmarks: {workflow_id}"
             )
         if workflow_id in observed_ids:
             raise ValueError(f"Duplicate saved workflow: {workflow_id}")
@@ -249,13 +257,14 @@ def recover_multistep_run(
         if path.is_file()
     }
     benchmark_hash = _sha256(benchmark)
+    original_benchmark_hash = _sha256(original_benchmark)
     recovery_commit = _git_head(repository)
 
     metrics = _build_multistep_metrics(records, step_records)
     first = records[0]
     summary = {
         "timestamp": source_run.name.split("_", 1)[0],
-        "benchmark_path": str(benchmark),
+        "benchmark_path": original_benchmark_identity,
         "model_name": values["model_name"],
         "router_id": first.get("router_id"),
         "router_backend": first.get("router_backend"),
@@ -295,12 +304,17 @@ def recover_multistep_run(
     recovered_metadata = {
         **metadata,
         "source_run_metadata": metadata,
-        "benchmark_paths": [str(benchmark)],
+        "benchmark_paths": [original_benchmark_identity],
         "source_counts": {
-            str(benchmark): {"workflows": expected_workflows, "routed_steps": expected_steps}
+            original_benchmark_identity: {
+                "workflows": expected_workflows,
+                "routed_steps": expected_steps,
+            }
         },
         "benchmark_mode_distributions": {
-            str(benchmark): {str(values["benchmark_mode"]): expected_workflows}
+            original_benchmark_identity: {
+                str(values["benchmark_mode"]): expected_workflows
+            }
         },
         "recovered_from_complete_saved_inference": True,
         "recovery_method": RECOVERY_METHOD,
@@ -340,8 +354,13 @@ def recover_multistep_run(
             "source_run_metadata": metadata,
             "source_artifact_sha256": source_hashes,
             "recovered_samples_sha256": _sha256(output_dataset / "samples.jsonl"),
-            "benchmark_path": str(benchmark),
-            "benchmark_sha256": benchmark_hash,
+            "benchmark_path": original_benchmark_identity,
+            "benchmark_sha256": original_benchmark_hash,
+            "original_benchmark_path": original_benchmark_identity,
+            "original_recorded_benchmark_path": recorded_benchmark_path,
+            "original_benchmark_sha256": original_benchmark_hash,
+            "validation_benchmark_path": str(benchmark),
+            "validation_benchmark_sha256": benchmark_hash,
         }
         (temporary_run / "recovery_manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -354,8 +373,8 @@ def recover_multistep_run(
         validate_and_index_multistep(
             dataset_directory=output_dataset,
             index_path=temporary_run / "artifact_index.jsonl",
-            source_benchmark=benchmark,
-            evaluated_benchmark=benchmark,
+            source_benchmark=original_benchmark,
+            evaluated_benchmark=original_benchmark,
             expected_model=values["model_name"],
             expected_prompt_template=values["prompt_template"],
             expected_registry_fingerprint=values["tool_registry_fingerprint"],
@@ -368,7 +387,7 @@ def recover_multistep_run(
         )
         validate_complete_multistep_run(
             temporary_run / "artifact_index.jsonl",
-            [benchmark],
+            [original_benchmark],
             temporary_run / "run_metadata.json",
         )
         (temporary_run / "RUN_COMPLETE").write_text(

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -270,15 +272,42 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             other_benchmark.parent.mkdir(parents=True)
             other_benchmark.write_bytes(source_benchmark.read_bytes())
             samples = next(source.glob("domains/*/*/samples.jsonl"))
-            record = json.loads(samples.read_text())
-            record["benchmark_path"] = str(other_benchmark.resolve())
-            samples.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            source_samples_hash = hashlib.sha256(samples.read_bytes()).hexdigest()
             output = root / "recovered"
             recover_multistep_run(
                 source_run=source, output_run=output,
                 benchmark=other_benchmark, repository=root,
             )
             self.assertTrue((output / "RUN_COMPLETE").is_file())
+            recovered_samples = next(output.glob("domains/*/*/samples.jsonl"))
+            self.assertEqual(
+                hashlib.sha256(recovered_samples.read_bytes()).hexdigest(),
+                source_samples_hash,
+            )
+            original_identity = str(source_benchmark.resolve())
+            summary = json.loads(
+                next(output.glob("domains/*/*/summary.json")).read_text()
+            )
+            metadata = json.loads((output / "run_metadata.json").read_text())
+            index = json.loads((output / "artifact_index.jsonl").read_text())
+            manifest = json.loads((output / "recovery_manifest.json").read_text())
+            self.assertEqual(summary["benchmark_path"], original_identity)
+            self.assertEqual(metadata["benchmark_paths"], [original_identity])
+            self.assertEqual(list(metadata["source_counts"]), [original_identity])
+            self.assertEqual(index["benchmark_path"], original_identity)
+            self.assertEqual(manifest["original_benchmark_path"], original_identity)
+            self.assertEqual(
+                manifest["original_benchmark_sha256"],
+                hashlib.sha256(source_benchmark.read_bytes()).hexdigest(),
+            )
+            self.assertEqual(
+                manifest["validation_benchmark_path"], str(other_benchmark.resolve())
+            )
+            self.assertEqual(
+                manifest["validation_benchmark_sha256"],
+                hashlib.sha256(other_benchmark.read_bytes()).hexdigest(),
+            )
+            self.assertEqual(samples.read_bytes(), recovered_samples.read_bytes())
 
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -290,6 +319,7 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             changed = json.loads(source_benchmark.read_text())
             changed[0]["notes"] = "different benchmark content"
             other_benchmark.write_text(json.dumps(changed), encoding="utf-8")
+            source_before = self._tree_snapshot(source)
             output = root / "recovered"
             with self.assertRaisesRegex(ValueError, "benchmark"):
                 recover_multistep_run(
@@ -297,6 +327,46 @@ class RecoverMultiStepRunTests(unittest.TestCase):
                     benchmark=other_benchmark, repository=root,
                 )
             self.assertFalse(output.exists())
+            self.assertEqual(list(root.glob(".recovered.recovery-*")), [])
+            self.assertEqual(self._tree_snapshot(source), source_before)
+
+    @patch("analysis.recover_multistep_run._git_head", return_value="commit")
+    def test_cross_worktree_benchmark_rejects_different_relative_path(
+        self, _head
+    ) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, source_benchmark = self._source(root / "source-worktree")
+            other_benchmark = (
+                root / "other-worktree/benchmark/math/different_name.json"
+            )
+            other_benchmark.parent.mkdir(parents=True)
+            other_benchmark.write_bytes(source_benchmark.read_bytes())
+            source_before = self._tree_snapshot(source)
+            output = root / "recovered"
+            with self.assertRaisesRegex(ValueError, "benchmark"):
+                recover_multistep_run(
+                    source_run=source, output_run=output,
+                    benchmark=other_benchmark, repository=root,
+                )
+            self.assertFalse(output.exists())
+            self.assertEqual(list(root.glob(".recovered.recovery-*")), [])
+            self.assertEqual(self._tree_snapshot(source), source_before)
+
+    def test_module_help_succeeds_from_repository_root(self) -> None:
+        repository = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [sys.executable, "-m", "analysis.recover_multistep_run", "--help"],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--source-run", result.stdout)
+        self.assertIn("--output-run", result.stdout)
+        self.assertIn("--benchmark", result.stdout)
+        self.assertIn("--repository", result.stdout)
 
     @patch("analysis.recover_multistep_run._git_head", side_effect=RuntimeError("git failed"))
     def test_git_failure_leaves_no_destination_and_retry_succeeds(self, _head) -> None:

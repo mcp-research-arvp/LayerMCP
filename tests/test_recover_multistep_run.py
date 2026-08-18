@@ -11,9 +11,25 @@ from analysis.recover_multistep_run import RECOVERY_METHOD, recover_multistep_ru
 from analysis.multi_step_run import validate_complete_multistep_run
 
 
+_MISSING = object()
+
+
 class RecoverMultiStepRunTests(unittest.TestCase):
+    @staticmethod
+    def _tree_snapshot(path: Path) -> dict[str, tuple[int, str]]:
+        return {
+            str(item.relative_to(path)): (
+                item.stat().st_size,
+                hashlib.sha256(item.read_bytes()).hexdigest(),
+            )
+            for item in sorted(path.rglob("*"))
+            if item.is_file()
+        }
+
     def _source(self, root: Path) -> tuple[Path, Path]:
-        benchmark = root / "benchmark.json"
+        root.mkdir(parents=True, exist_ok=True)
+        benchmark = root / "benchmark/math/math_multistep_controlled.json"
+        benchmark.parent.mkdir(parents=True, exist_ok=True)
         benchmark.write_text(json.dumps([{
             "id": "workflow-1",
             "domain": "mathematics",
@@ -66,6 +82,13 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             "tool_registry_fingerprint_version": "tool_registry_name_schema_description_v1",
             "run_kind": "full", "headline_eligible": True, "slurm_job_id": "123",
             "git_commit": "source-commit", "short_test_selection": {},
+            "benchmark_paths": [str(benchmark.resolve())],
+            "source_counts": {
+                str(benchmark.resolve()): {"workflows": 1, "routed_steps": 2}
+            },
+            "benchmark_mode_distributions": {
+                str(benchmark.resolve()): {"grounded_tool_execution": 1}
+            },
         }
         (source / "run_metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
         return source, benchmark
@@ -77,6 +100,7 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             source, benchmark = self._source(root)
             source_samples = next(source.glob("domains/*/*/samples.jsonl"))
             original_hash = hashlib.sha256(source_samples.read_bytes()).hexdigest()
+            original_tree = self._tree_snapshot(source)
             output = root / "recovered"
 
             recover_multistep_run(
@@ -94,7 +118,13 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             self.assertEqual(manifest["recovery_method"], RECOVERY_METHOD)
             self.assertEqual(manifest["recovery_commit"], "recovery-commit")
             self.assertEqual(manifest["source_job_id"], "123")
+            self.assertEqual(
+                manifest["source_run_metadata"]["benchmark_paths"],
+                [str(benchmark.resolve())],
+            )
             self.assertTrue((output / "RUN_COMPLETE").is_file())
+            self.assertEqual(list(root.glob(".recovered.recovery-*")), [])
+            self.assertEqual(self._tree_snapshot(source), original_tree)
             validate_complete_multistep_run(
                 output / "artifact_index.jsonl", [benchmark], output / "run_metadata.json"
             )
@@ -117,6 +147,219 @@ class RecoverMultiStepRunTests(unittest.TestCase):
                     (second_output / relative_path).read_bytes(),
                     relative_path,
                 )
+
+    def test_recovery_rejects_equal_and_nested_destinations_without_source_changes(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for suffix in (Path(), Path("recovered"), Path("nested/deep/recovered")):
+                source, benchmark = self._source(root / f"case-{len(suffix.parts)}")
+                before = self._tree_snapshot(source)
+                destination = source / suffix
+                with self.assertRaisesRegex(ValueError, "must not overlap"):
+                    recover_multistep_run(
+                        source_run=source,
+                        output_run=destination,
+                        benchmark=benchmark,
+                        repository=root,
+                    )
+                self.assertEqual(self._tree_snapshot(source), before)
+
+    def test_recovery_rejects_reverse_and_symlink_overlap(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            parent = root / "parent"
+            source, benchmark = self._source(parent)
+            before = self._tree_snapshot(source)
+            with self.assertRaisesRegex(ValueError, "must not overlap"):
+                recover_multistep_run(
+                    source_run=source,
+                    output_run=parent,
+                    benchmark=benchmark,
+                    repository=root,
+                )
+            self.assertEqual(self._tree_snapshot(source), before)
+
+            link = root / "source-link"
+            link.symlink_to(source, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "must not overlap"):
+                recover_multistep_run(
+                    source_run=source,
+                    output_run=link / "nested",
+                    benchmark=benchmark,
+                    repository=root,
+                )
+            self.assertEqual(self._tree_snapshot(source), before)
+
+    def _assert_metadata_failure(
+        self, field: str, replacement: object, message: str
+    ) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, benchmark = self._source(root)
+            metadata_path = source / "run_metadata.json"
+            metadata = json.loads(metadata_path.read_text())
+            if replacement is _MISSING:
+                del metadata[field]
+            else:
+                metadata[field] = (
+                    replacement(benchmark)
+                    if callable(replacement)
+                    else replacement
+                )
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            before = self._tree_snapshot(source)
+            output = root / "recovered"
+            with self.assertRaisesRegex(ValueError, message):
+                recover_multistep_run(
+                    source_run=source,
+                    output_run=output,
+                    benchmark=benchmark,
+                    repository=root,
+                )
+            self.assertFalse(output.exists())
+            self.assertEqual(self._tree_snapshot(source), before)
+
+    def test_recovery_rejects_mismatched_source_benchmark_metadata(self) -> None:
+        self._assert_metadata_failure(
+            "benchmark_paths", ["/different/benchmark.json"], "benchmark_paths"
+        )
+        self._assert_metadata_failure(
+            "source_counts",
+            {"/different/benchmark.json": {"workflows": 1, "routed_steps": 2}},
+            "source_counts",
+        )
+        self._assert_metadata_failure(
+            "source_counts",
+            lambda benchmark: {
+                str(benchmark.resolve()): {"workflows": 99, "routed_steps": 2}
+            },
+            "source_counts",
+        )
+        self._assert_metadata_failure(
+            "source_counts",
+            lambda benchmark: {
+                str(benchmark.resolve()): {"workflows": 1, "routed_steps": 99}
+            },
+            "source_counts",
+        )
+        self._assert_metadata_failure(
+            "benchmark_mode_distributions",
+            lambda benchmark: {
+                str(benchmark.resolve()): {"offline_trace_replay": 1}
+            },
+            "benchmark_mode_distributions",
+        )
+
+    def test_recovery_rejects_missing_source_benchmark_metadata(self) -> None:
+        for field in (
+            "benchmark_paths", "source_counts", "benchmark_mode_distributions"
+        ):
+            with self.subTest(field=field):
+                self._assert_metadata_failure(field, _MISSING, field)
+
+    @patch("analysis.recover_multistep_run._git_head", return_value="commit")
+    def test_cross_worktree_benchmark_requires_same_relative_path_and_hash(
+        self, _head
+    ) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, source_benchmark = self._source(root / "source-worktree")
+            other_benchmark = (
+                root / "other-worktree/benchmark/math/math_multistep_controlled.json"
+            )
+            other_benchmark.parent.mkdir(parents=True)
+            other_benchmark.write_bytes(source_benchmark.read_bytes())
+            samples = next(source.glob("domains/*/*/samples.jsonl"))
+            record = json.loads(samples.read_text())
+            record["benchmark_path"] = str(other_benchmark.resolve())
+            samples.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            output = root / "recovered"
+            recover_multistep_run(
+                source_run=source, output_run=output,
+                benchmark=other_benchmark, repository=root,
+            )
+            self.assertTrue((output / "RUN_COMPLETE").is_file())
+
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, source_benchmark = self._source(root / "source-worktree")
+            other_benchmark = (
+                root / "other-worktree/benchmark/math/math_multistep_controlled.json"
+            )
+            other_benchmark.parent.mkdir(parents=True)
+            changed = json.loads(source_benchmark.read_text())
+            changed[0]["notes"] = "different benchmark content"
+            other_benchmark.write_text(json.dumps(changed), encoding="utf-8")
+            output = root / "recovered"
+            with self.assertRaisesRegex(ValueError, "benchmark"):
+                recover_multistep_run(
+                    source_run=source, output_run=output,
+                    benchmark=other_benchmark, repository=root,
+                )
+            self.assertFalse(output.exists())
+
+    @patch("analysis.recover_multistep_run._git_head", side_effect=RuntimeError("git failed"))
+    def test_git_failure_leaves_no_destination_and_retry_succeeds(self, _head) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, benchmark = self._source(root)
+            before = self._tree_snapshot(source)
+            output = root / "recovered"
+            with self.assertRaisesRegex(RuntimeError, "git failed"):
+                recover_multistep_run(
+                    source_run=source, output_run=output,
+                    benchmark=benchmark, repository=root,
+                )
+            self.assertFalse(output.exists())
+            self.assertEqual(self._tree_snapshot(source), before)
+            with patch("analysis.recover_multistep_run._git_head", return_value="commit"):
+                recover_multistep_run(
+                    source_run=source, output_run=output,
+                    benchmark=benchmark, repository=root,
+                )
+            self.assertTrue((output / "RUN_COMPLETE").is_file())
+
+    @patch("analysis.recover_multistep_run._git_head", return_value="commit")
+    def test_final_validator_failure_is_clean_and_retryable(self, _head) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, benchmark = self._source(root)
+            before = self._tree_snapshot(source)
+            output = root / "recovered"
+            with patch(
+                "analysis.recover_multistep_run.validate_complete_multistep_run",
+                side_effect=ValueError("final validation failed"),
+            ):
+                with self.assertRaisesRegex(ValueError, "final validation failed"):
+                    recover_multistep_run(
+                        source_run=source, output_run=output,
+                        benchmark=benchmark, repository=root,
+                    )
+            self.assertFalse(output.exists())
+            self.assertEqual(self._tree_snapshot(source), before)
+            self.assertEqual(list(root.glob(".recovered.recovery-*")), [])
+            recover_multistep_run(
+                source_run=source, output_run=output,
+                benchmark=benchmark, repository=root,
+            )
+            self.assertTrue((output / "RUN_COMPLETE").is_file())
+
+    @patch("analysis.recover_multistep_run._git_head", return_value="commit")
+    def test_existing_destination_is_untouched(self, _head) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, benchmark = self._source(root)
+            output = root / "recovered"
+            output.mkdir()
+            marker = output / "keep.txt"
+            marker.write_text("untouched", encoding="utf-8")
+            before = self._tree_snapshot(output)
+            with self.assertRaisesRegex(FileExistsError, "already exists"):
+                recover_multistep_run(
+                    source_run=source, output_run=output,
+                    benchmark=benchmark, repository=root,
+                )
+            self.assertEqual(self._tree_snapshot(output), before)
 
     @patch("analysis.recover_multistep_run._git_head", return_value="recovery-commit")
     def test_recovery_refuses_overwrite_and_incomplete_membership(self, _head) -> None:

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 from typing import Any
 
 from analysis.multi_step_run import (
@@ -61,13 +64,100 @@ def _git_head(repository: Path) -> str:
     ).stdout.strip()
 
 
+def _paths_overlap(first: Path, second: Path) -> bool:
+    """Return whether either resolved path contains the other."""
+    return first == second or first in second.parents or second in first.parents
+
+
+def _benchmark_relative_path(path: Path) -> Path | None:
+    """Return the stable benchmark-relative suffix of a benchmark path."""
+    parts = path.parts
+    try:
+        index = parts.index("benchmark")
+    except ValueError:
+        return None
+    return Path(*parts[index:])
+
+
+def _benchmark_reference_matches(recorded: Any, benchmark: Path) -> bool:
+    """Compare a recorded benchmark path across repository worktrees safely."""
+    if not isinstance(recorded, str) or not recorded:
+        return False
+    recorded_path = Path(recorded).expanduser().resolve()
+    if recorded_path == benchmark:
+        return True
+    if (
+        _benchmark_relative_path(recorded_path)
+        != _benchmark_relative_path(benchmark)
+        or not recorded_path.is_file()
+    ):
+        return False
+    return _sha256(recorded_path) == _sha256(benchmark)
+
+
+def _metadata_entry_for_benchmark(
+    value: Any, *, field: str, benchmark: Path
+) -> Any:
+    """Return the one metadata value belonging to the supplied benchmark."""
+    if not isinstance(value, dict) or len(value) != 1:
+        raise ValueError(f"Source run metadata {field} must contain exactly one benchmark")
+    recorded_path, recorded_value = next(iter(value.items()))
+    if not _benchmark_reference_matches(recorded_path, benchmark):
+        raise ValueError(
+            f"Source run metadata {field} does not match supplied benchmark"
+        )
+    return recorded_value
+
+
+def _validate_source_benchmark_metadata(
+    metadata: dict[str, Any], *, benchmark: Path, workflow_count: int,
+    step_count: int, benchmark_modes: dict[str, int],
+) -> None:
+    """Validate launcher-recorded benchmark provenance before recovery."""
+    benchmark_paths = metadata.get("benchmark_paths")
+    if not isinstance(benchmark_paths, list) or len(benchmark_paths) != 1:
+        raise ValueError(
+            "Source run metadata benchmark_paths must contain exactly one benchmark"
+        )
+    if not _benchmark_reference_matches(benchmark_paths[0], benchmark):
+        raise ValueError(
+            "Source run metadata benchmark_paths does not match supplied benchmark"
+        )
+
+    source_counts = _metadata_entry_for_benchmark(
+        metadata.get("source_counts"), field="source_counts", benchmark=benchmark
+    )
+    expected_counts = {"workflows": workflow_count, "routed_steps": step_count}
+    if source_counts != expected_counts:
+        raise ValueError(
+            f"Source run metadata source_counts mismatch: "
+            f"{source_counts!r} != {expected_counts!r}"
+        )
+
+    recorded_modes = _metadata_entry_for_benchmark(
+        metadata.get("benchmark_mode_distributions"),
+        field="benchmark_mode_distributions",
+        benchmark=benchmark,
+    )
+    if recorded_modes != benchmark_modes:
+        raise ValueError(
+            "Source run metadata benchmark_mode_distributions mismatch: "
+            f"{recorded_modes!r} != {benchmark_modes!r}"
+        )
+
+
 def recover_multistep_run(
     *, source_run: Path, output_run: Path, benchmark: Path, repository: Path
 ) -> Path:
-    source_run = source_run.resolve()
+    source_run = source_run.resolve(strict=True)
     output_run = output_run.resolve()
-    benchmark = benchmark.resolve()
-    repository = repository.resolve()
+    benchmark = benchmark.resolve(strict=True)
+    repository = repository.resolve(strict=True)
+    if _paths_overlap(source_run, output_run):
+        raise ValueError(
+            "Recovery source and destination trees must not overlap: "
+            f"{source_run} and {output_run}"
+        )
     if output_run.exists():
         raise FileExistsError(f"Recovery destination already exists: {output_run}")
     if (source_run / "RUN_COMPLETE").exists():
@@ -90,6 +180,11 @@ def recover_multistep_run(
     observed_ids: dict[str, list[str]] = {}
     for record in records:
         workflow_id = str(record.get("sample_id"))
+        if not _benchmark_reference_matches(record.get("benchmark_path"), benchmark):
+            raise ValueError(
+                f"Saved workflow benchmark does not match supplied benchmark: "
+                f"{workflow_id}"
+            )
         if workflow_id in observed_ids:
             raise ValueError(f"Duplicate saved workflow: {workflow_id}")
         steps = record.get("steps")
@@ -135,17 +230,27 @@ def recover_multistep_run(
         if values[field] != metadata.get(metadata_field):
             raise ValueError(f"Saved {field} does not match source run metadata")
 
-    output_dataset = output_run / "domains" / source_dataset.parent.name / source_dataset.name
-    output_dataset.mkdir(parents=True, exist_ok=False)
-    shutil.copyfile(source_samples, output_dataset / "samples.jsonl")
-    shutil.copyfile(source_log, output_dataset / "source_evaluation.log")
-    (output_dataset / "evaluation.log").write_text(
-        "Reporting-only recovery from complete saved workflow records.\n"
-        f"Source run: {source_run}\nRecovery method: {RECOVERY_METHOD}\n",
-        encoding="utf-8",
+    step_records = [step for record in records for step in record["steps"]]
+    benchmark_modes = dict(sorted(Counter(
+        str(record["benchmark_mode"]) for record in records
+    ).items()))
+    _validate_source_benchmark_metadata(
+        metadata,
+        benchmark=benchmark,
+        workflow_count=expected_workflows,
+        step_count=expected_steps,
+        benchmark_modes=benchmark_modes,
     )
 
-    step_records = [step for record in records for step in record["steps"]]
+    # Complete every source-only operation before exposing recovery artifacts.
+    source_hashes = {
+        str(path.relative_to(source_run)): _sha256(path)
+        for path in sorted(source_run.rglob("*"))
+        if path.is_file()
+    }
+    benchmark_hash = _sha256(benchmark)
+    recovery_commit = _git_head(repository)
+
     metrics = _build_multistep_metrics(records, step_records)
     first = records[0]
     summary = {
@@ -187,34 +292,9 @@ def recover_multistep_run(
         "source_run_path": str(source_run),
         "source_job_id": str(metadata.get("slurm_job_id")),
     }
-    (output_dataset / "summary.json").write_text(
-        json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-
-    recovery_commit = _git_head(repository)
-    source_hashes = {
-        str(path.relative_to(source_run)): _sha256(path)
-        for path in sorted(source_run.rglob("*"))
-        if path.is_file()
-    }
-    manifest = {
-        "recovered_from_complete_saved_inference": True,
-        "recovery_method": RECOVERY_METHOD,
-        "recovery_commit": recovery_commit,
-        "source_run_path": str(source_run),
-        "source_job_id": str(metadata.get("slurm_job_id")),
-        "source_git_commit": metadata.get("git_commit"),
-        "source_artifact_sha256": source_hashes,
-        "recovered_samples_sha256": _sha256(output_dataset / "samples.jsonl"),
-        "benchmark_path": str(benchmark),
-        "benchmark_sha256": _sha256(benchmark),
-    }
-    (output_run / "recovery_manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-
     recovered_metadata = {
         **metadata,
+        "source_run_metadata": metadata,
         "benchmark_paths": [str(benchmark)],
         "source_counts": {
             str(benchmark): {"workflows": expected_workflows, "routed_steps": expected_steps}
@@ -229,34 +309,80 @@ def recover_multistep_run(
         "source_job_id": str(metadata.get("slurm_job_id")),
         "source_artifact_sha256": source_hashes,
     }
-    (output_run / "run_metadata.json").write_text(
-        json.dumps(recovered_metadata, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
 
-    validate_and_index_multistep(
-        dataset_directory=output_dataset,
-        index_path=output_run / "artifact_index.jsonl",
-        source_benchmark=benchmark,
-        evaluated_benchmark=benchmark,
-        expected_model=values["model_name"],
-        expected_prompt_template=values["prompt_template"],
-        expected_registry_fingerprint=values["tool_registry_fingerprint"],
-        expected_registry_fingerprint_version=values["tool_registry_fingerprint_version"],
-        expected_tool_count=values["tool_count"],
-        expected_tool_pool=values["tool_pool"],
-        expected_reasoning_mode=values["reasoning_mode"],
-        expected_reasoning_method=values["reasoning_method"],
-        expected_generation_limit=values["effective_generation_limit"],
-    )
-    validate_complete_multistep_run(
-        output_run / "artifact_index.jsonl",
-        [benchmark],
-        output_run / "run_metadata.json",
-    )
-    (output_run / "RUN_COMPLETE").write_text(
-        "recovered from complete saved inference\n", encoding="utf-8"
-    )
+    output_run.parent.mkdir(parents=True, exist_ok=True)
+    temporary_run = Path(tempfile.mkdtemp(
+        prefix=f".{output_run.name}.recovery-", dir=output_run.parent
+    ))
+    try:
+        output_dataset = (
+            temporary_run / "domains" / source_dataset.parent.name / source_dataset.name
+        )
+        output_dataset.mkdir(parents=True, exist_ok=False)
+        shutil.copyfile(source_samples, output_dataset / "samples.jsonl")
+        shutil.copyfile(source_log, output_dataset / "source_evaluation.log")
+        (output_dataset / "evaluation.log").write_text(
+            "Reporting-only recovery from complete saved workflow records.\n"
+            f"Source run: {source_run}\nRecovery method: {RECOVERY_METHOD}\n",
+            encoding="utf-8",
+        )
+        (output_dataset / "summary.json").write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+        manifest = {
+            "recovered_from_complete_saved_inference": True,
+            "recovery_method": RECOVERY_METHOD,
+            "recovery_commit": recovery_commit,
+            "source_run_path": str(source_run),
+            "source_job_id": str(metadata.get("slurm_job_id")),
+            "source_git_commit": metadata.get("git_commit"),
+            "source_run_metadata": metadata,
+            "source_artifact_sha256": source_hashes,
+            "recovered_samples_sha256": _sha256(output_dataset / "samples.jsonl"),
+            "benchmark_path": str(benchmark),
+            "benchmark_sha256": benchmark_hash,
+        }
+        (temporary_run / "recovery_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        (temporary_run / "run_metadata.json").write_text(
+            json.dumps(recovered_metadata, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        validate_and_index_multistep(
+            dataset_directory=output_dataset,
+            index_path=temporary_run / "artifact_index.jsonl",
+            source_benchmark=benchmark,
+            evaluated_benchmark=benchmark,
+            expected_model=values["model_name"],
+            expected_prompt_template=values["prompt_template"],
+            expected_registry_fingerprint=values["tool_registry_fingerprint"],
+            expected_registry_fingerprint_version=values["tool_registry_fingerprint_version"],
+            expected_tool_count=values["tool_count"],
+            expected_tool_pool=values["tool_pool"],
+            expected_reasoning_mode=values["reasoning_mode"],
+            expected_reasoning_method=values["reasoning_method"],
+            expected_generation_limit=values["effective_generation_limit"],
+        )
+        validate_complete_multistep_run(
+            temporary_run / "artifact_index.jsonl",
+            [benchmark],
+            temporary_run / "run_metadata.json",
+        )
+        (temporary_run / "RUN_COMPLETE").write_text(
+            "recovered from complete saved inference\n", encoding="utf-8"
+        )
+        if output_run.exists():
+            raise FileExistsError(
+                f"Recovery destination already exists: {output_run}"
+            )
+        os.rename(temporary_run, output_run)
+    except BaseException:
+        if temporary_run.exists():
+            shutil.rmtree(temporary_run)
+        raise
     return output_run
 
 

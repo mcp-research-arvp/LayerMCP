@@ -1184,6 +1184,11 @@ def _multistep_step_metrics(
     }
 
 
+def _has_expected_final_answer(value: Any) -> bool:
+    """Return whether a workflow supplies a gold final answer."""
+    return value is not None and value != ""
+
+
 def _multistep_workflow_metrics(
     workflow_records: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -1236,7 +1241,7 @@ def _multistep_workflow_metrics(
         "workflow_final_answer_accuracy": final_answer_accuracy,
         "workflow_final_answer_scored": len(final_answer_scores),
         "workflow_final_answer_gold": sum(
-            workflow.get("expected_final_answer") not in {None, ""}
+            _has_expected_final_answer(workflow.get("expected_final_answer"))
             for workflow in workflow_records
         ),
         # Backwards-compatible metric names retained for historical consumers.
@@ -1247,7 +1252,7 @@ def _multistep_workflow_metrics(
             semantic_output_scores
         ),
         "workflow_expected_final_answer_gold": sum(
-            workflow.get("expected_final_answer") not in {None, ""}
+            _has_expected_final_answer(workflow.get("expected_final_answer"))
             for workflow in workflow_records
         ),
     }

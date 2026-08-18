@@ -613,6 +613,22 @@ false-to-true correction IDs and count, a Finance alias/retail-order-ID correcti
 breakdown, and the resulting aggregate metrics, so the reported score can be tied
 to one exact saved run.
 
+For a multi-step run whose model inference completed but summary publication
+failed, activate the project environment, change to the repository root, and
+use the supported module invocation:
+
+```bash
+python -m analysis.recover_multistep_run \
+  --source-run PATH \
+  --output-run PATH \
+  --benchmark PATH \
+  --repository PATH
+```
+
+Recovery validates the supplied benchmark against the original recorded
+benchmark, preserves the saved workflow records byte-for-byte, and writes a
+new validated bundle without modifying the failed source run.
+
 #### Organized evaluation runs
 
 The organized result namespace reserves separate roots for each evaluation

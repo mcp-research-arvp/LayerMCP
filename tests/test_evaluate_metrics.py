@@ -38,6 +38,7 @@ from evaluation.evaluate import (
     _evaluate_with_server,
     _final_outcome_record_fields,
     _generation_metadata,
+    _has_expected_final_answer,
     _predicted_history_item,
     _is_no_tool_call,
     _is_gold_resolved_step_context,
@@ -1134,6 +1135,76 @@ class EvaluateMetricTests(unittest.TestCase):
             "step_metrics_by_benchmark_mode",
             steps_by_mode["grounded_tool_execution"],
         )
+
+    def test_multistep_gold_final_answer_supports_json_value_types(self) -> None:
+        values = [
+            {"result": 4},
+            [1, 2],
+            7,
+            2.5,
+            True,
+            False,
+            "answer",
+            None,
+            "",
+        ]
+        workflow_records = [
+            {
+                "sequence_tool_selection_correct": True,
+                "sequence_argument_match_correct": True,
+                "sequence_semantic_output_correct": True,
+                "workflow_final_answer_correct": (
+                    True if _has_expected_final_answer(value) else None
+                ),
+                "expected_final_answer": value,
+            }
+            for value in values
+        ]
+
+        metrics = _build_multistep_metrics(workflow_records, [])
+
+        self.assertEqual(metrics["workflow_final_answer_gold"], 7)
+        self.assertEqual(metrics["workflow_expected_final_answer_gold"], 7)
+        self.assertEqual(metrics["workflow_final_answer_scored"], 7)
+        self.assertEqual(metrics["workflow_final_answer_accuracy"], 1.0)
+
+    def test_multistep_scalar_final_answer_metrics_remain_unchanged(self) -> None:
+        workflow_records = [
+            {
+                "sequence_tool_selection_correct": True,
+                "sequence_argument_match_correct": True,
+                "sequence_semantic_output_correct": True,
+                "workflow_final_answer_correct": True,
+                "expected_final_answer": "done",
+            },
+            {
+                "sequence_tool_selection_correct": False,
+                "sequence_argument_match_correct": False,
+                "sequence_semantic_output_correct": False,
+                "workflow_final_answer_correct": False,
+                "expected_final_answer": 42,
+            },
+            {
+                "sequence_tool_selection_correct": False,
+                "sequence_argument_match_correct": False,
+                "sequence_semantic_output_correct": None,
+                "workflow_final_answer_correct": None,
+                "expected_final_answer": "",
+            },
+            {
+                "sequence_tool_selection_correct": False,
+                "sequence_argument_match_correct": False,
+                "sequence_semantic_output_correct": None,
+                "workflow_final_answer_correct": None,
+                "expected_final_answer": None,
+            },
+        ]
+
+        metrics = _build_multistep_metrics(workflow_records, [])
+
+        self.assertEqual(metrics["workflow_final_answer_gold"], 2)
+        self.assertEqual(metrics["workflow_final_answer_scored"], 2)
+        self.assertEqual(metrics["workflow_final_answer_accuracy"], 0.5)
 
     def test_structured_mcp_result_extraction(self) -> None:
         extraction = _extract_structured_tool_result(

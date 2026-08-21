@@ -177,8 +177,15 @@ executed results, so errors propagate. Gold prior answers and reference-prefix
 state replay are not used, and dependent-step contexts with gold-resolved
 expressions are withheld. These metrics therefore measure guided rollout over
 the supplied plan, not autonomous decomposition from only the top-level query.
-The final executed scalar is scored against a non-empty
-`expected_final_answer`; no separate natural-language response is synthesized.
+Final-output matching is explicit per workflow and does not affect tool,
+argument, or per-step result metrics. FinQA workflows compare the final executed
+scalar (rounded to five decimal places) with the source `exe_ans`, matching the
+published execution-accuracy rule rather than the displayed `answer`. ConvFinQA
+workflows apply the same rule to the final adapted conversation turn; this is a
+final-turn LayerMCP metric, not the source paper's all-turn aggregate. FinRetrieval
+workflows require a generated natural-language response and its released judge,
+so their final-answer accuracy is unavailable in this tool-only replay. Other
+legacy workflows retain their declared display-scalar contract.
 
 Finance prompt contexts use four versioned JSON kinds:
 

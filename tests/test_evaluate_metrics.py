@@ -825,33 +825,38 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertFalse(score.correct)
         self.assertEqual(score.status, "execution_error")
 
-    def test_workflow_final_percentage_uses_published_rounding(self) -> None:
+    def test_finqa_workflow_final_uses_canonical_execution_result(self) -> None:
         score = _score_workflow_final_answer(
             expected_final_answer="9.9%",
+            workflow_final_answer_expected=0.09864,
+            workflow_final_answer_contract="finqa_execution_v1",
             final_tool_result_value={"result": 0.09864188706218716},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
         self.assertEqual(score.status, "correct")
+        self.assertEqual(score.matcher, "finqa_execution_v1")
 
-    def test_workflow_final_plain_number_uses_published_rounding(self) -> None:
+    def test_convfinqa_workflow_final_uses_canonical_execution_result(self) -> None:
         score = _score_workflow_final_answer(
-            expected_final_answer="719.7",
-            final_tool_result_value={"result": 719.6833393306945},
+            expected_final_answer="142.4%",
+            workflow_final_answer_expected=1.42403,
+            workflow_final_answer_contract="convfinqa_execution_v1",
+            final_tool_result_value={"result": 1.4240254574383452},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "convfinqa_execution_v1")
 
     def test_workflow_final_text_is_case_insensitive(self) -> None:
         score = _score_workflow_final_answer(
             expected_final_answer="yes",
+            workflow_final_answer_expected="yes",
+            workflow_final_answer_contract="display_scalar_v1",
             final_tool_result_value={"rows": [["YES"]]},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
@@ -859,23 +864,67 @@ class EvaluateMetricTests(unittest.TestCase):
     def test_empty_workflow_final_answer_is_unscored(self) -> None:
         score = _score_workflow_final_answer(
             expected_final_answer="",
+            workflow_final_answer_expected="",
+            workflow_final_answer_contract="display_scalar_v1",
             final_tool_result_value={"result": 1.0},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
 
         self.assertIsNone(score.correct)
         self.assertEqual(score.status, "missing_expected_final_answer")
 
-    def test_percentage_scaling_is_not_applied_outside_finance_families(self) -> None:
+    def test_finqa_execution_remains_scored_when_display_answer_is_empty(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="",
+            workflow_final_answer_expected=1.1197,
+            workflow_final_answer_contract="finqa_execution_v1",
+            final_tool_result_value={"result": 1.119704},
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "finqa_execution_v1")
+
+    def test_display_scalar_does_not_apply_implicit_percentage_scaling(self) -> None:
         score = _score_workflow_final_answer(
             expected_final_answer="9.9%",
+            workflow_final_answer_expected="9.9%",
+            workflow_final_answer_contract="display_scalar_v1",
             final_tool_result_value={"result": 0.099},
             call_predicted_tools=True,
-            benchmark_family="other",
         )
 
         self.assertFalse(score.correct)
+
+    def test_structured_workflow_final_matches_the_full_tool_result(self) -> None:
+        expected = {
+            "value": "180",
+            "integer_value": 180,
+            "prime_factors": {"2": 2, "3": 2, "5": 1},
+        }
+        score = _score_workflow_final_answer(
+            expected_final_answer=expected,
+            workflow_final_answer_expected=expected,
+            workflow_final_answer_contract="structured_tool_result_v1",
+            final_tool_result_value={**expected, "source": "sympy"},
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "structured_tool_result_v1")
+
+    def test_final_response_contract_is_unscored_without_a_response(self) -> None:
+        score = _score_workflow_final_answer(
+            expected_final_answer="42 stores",
+            workflow_final_answer_expected="42 stores",
+            workflow_final_answer_contract="final_response_required_v1",
+            final_tool_result_value={"result": 42},
+            call_predicted_tools=True,
+        )
+
+        self.assertIsNone(score.correct)
+        self.assertEqual(score.status, "final_response_required")
+        self.assertEqual(score.matcher, "final_response_required_v1")
 
     def test_result_extraction_error_counts_incorrect(self) -> None:
         score = _score_final_outcome(
@@ -1205,6 +1254,26 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertEqual(metrics["workflow_final_answer_gold"], 2)
         self.assertEqual(metrics["workflow_final_answer_scored"], 2)
         self.assertEqual(metrics["workflow_final_answer_accuracy"], 0.5)
+
+    def test_multistep_metrics_count_canonical_contract_gold(self) -> None:
+        metrics = _build_multistep_metrics(
+            [
+                {
+                    "sequence_tool_selection_correct": True,
+                    "sequence_argument_match_correct": True,
+                    "sequence_semantic_output_correct": True,
+                    "workflow_final_answer_correct": True,
+                    "expected_final_answer": "",
+                    "workflow_final_answer_expected": 1.1197,
+                    "workflow_final_answer_contract": "finqa_execution_v1",
+                }
+            ],
+            [],
+        )
+
+        self.assertEqual(metrics["workflow_final_answer_gold"], 1)
+        self.assertEqual(metrics["workflow_final_answer_scored"], 1)
+        self.assertEqual(metrics["workflow_final_answer_accuracy"], 1.0)
 
     def test_structured_mcp_result_extraction(self) -> None:
         extraction = _extract_structured_tool_result(

@@ -581,6 +581,7 @@ def build(
                 "query": question["question"],
                 "expected_steps": steps,
                 "expected_final_answer": question["answer"],
+                "workflow_final_answer_contract": "final_response_required_v1",
                 "source_dataset": "FinRetrieval",
                 "source_index": index,
                 "source_configuration": trace["configuration"],

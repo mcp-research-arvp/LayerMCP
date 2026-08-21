@@ -87,6 +87,8 @@ def _workflow(
         "query": query,
         "expected_steps": steps,
         "expected_final_answer": steps[-1]["expected_answer"],
+        "workflow_final_answer_contract": "structured_tool_result_v1",
+        "workflow_final_answer_expected": steps[-1]["expected_answer"],
         "perturbation_type": "dependent_math_tool_sequence",
         "notes": f"Deterministic controlled {category} workflow; each later call uses an earlier result.",
     }

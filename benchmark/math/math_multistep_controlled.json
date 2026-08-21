@@ -74,6 +74,26 @@
       "greatest_prime_factor": 5,
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "value": "180",
+      "integer_value": 180,
+      "prime_factors": {
+        "2": 2,
+        "3": 2,
+        "5": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "3",
+        "3",
+        "5"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 5,
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
   },
@@ -134,6 +154,26 @@
       }
     ],
     "expected_final_answer": {
+      "value": "252",
+      "integer_value": 252,
+      "prime_factors": {
+        "2": 2,
+        "3": 2,
+        "7": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "3",
+        "3",
+        "7"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 7,
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "value": "252",
       "integer_value": 252,
       "prime_factors": {
@@ -232,6 +272,27 @@
       "greatest_prime_factor": 7,
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "value": "336",
+      "integer_value": 336,
+      "prime_factors": {
+        "2": 4,
+        "3": 1,
+        "7": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "2",
+        "2",
+        "3",
+        "7"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 7,
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled arithmetic-to-factorization workflow; each later call uses an earlier result."
   },
@@ -292,6 +353,26 @@
       }
     ],
     "expected_final_answer": {
+      "value": "594",
+      "integer_value": 594,
+      "prime_factors": {
+        "2": 1,
+        "3": 3,
+        "11": 1
+      },
+      "factor_list": [
+        "2",
+        "3",
+        "3",
+        "3",
+        "11"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 11,
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "value": "594",
       "integer_value": 594,
       "prime_factors": {
@@ -372,6 +453,28 @@
       }
     ],
     "expected_final_answer": {
+      "value": "840",
+      "integer_value": 840,
+      "prime_factors": {
+        "2": 3,
+        "3": 1,
+        "5": 1,
+        "7": 1
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "2",
+        "3",
+        "5",
+        "7"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 7,
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "value": "840",
       "integer_value": 840,
       "prime_factors": {
@@ -479,6 +582,21 @@
       "gcd": 6,
       "lcm": 120
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "values": [
+        "24",
+        "30"
+      ],
+      "integer_values": [
+        24,
+        30
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 6,
+      "lcm": 120
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
   },
@@ -553,6 +671,21 @@
       }
     ],
     "expected_final_answer": {
+      "values": [
+        "34",
+        "48"
+      ],
+      "integer_values": [
+        34,
+        48
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 2,
+      "lcm": 816
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "values": [
         "34",
         "48"
@@ -653,6 +786,21 @@
       "gcd": 3,
       "lcm": 1122
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "values": [
+        "51",
+        "66"
+      ],
+      "integer_values": [
+        51,
+        66
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 3,
+      "lcm": 1122
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
   },
@@ -727,6 +875,21 @@
       }
     ],
     "expected_final_answer": {
+      "values": [
+        "62",
+        "90"
+      ],
+      "integer_values": [
+        62,
+        90
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 2,
+      "lcm": 2790
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "values": [
         "62",
         "90"
@@ -827,6 +990,21 @@
       "gcd": 6,
       "lcm": 1248
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "values": [
+        "78",
+        "96"
+      ],
+      "integer_values": [
+        78,
+        96
+      ],
+      "operation": "both",
+      "source": "python-math",
+      "gcd": 6,
+      "lcm": 1248
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled arithmetic-to-gcd-lcm workflow; each later call uses an earlier result."
   },
@@ -879,6 +1057,16 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "(x - 3)*(x - 2) = 0",
+      "variable": "x",
+      "solutions": [
+        "2",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "(x - 3)*(x - 2) = 0",
       "variable": "x",
       "solutions": [
@@ -947,6 +1135,16 @@
       ],
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "equation": "(x - 4)*(x - 3) = 0",
+      "variable": "x",
+      "solutions": [
+        "3",
+        "4"
+      ],
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
   },
@@ -999,6 +1197,16 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "(x - 3)*(x + 4) = 0",
+      "variable": "x",
+      "solutions": [
+        "-4",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "(x - 3)*(x + 4) = 0",
       "variable": "x",
       "solutions": [
@@ -1067,6 +1275,16 @@
       ],
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "equation": "2*(x - 3)*(x - 2) = 0",
+      "variable": "x",
+      "solutions": [
+        "2",
+        "3"
+      ],
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled factor-then-solve workflow; each later call uses an earlier result."
   },
@@ -1119,6 +1337,16 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "3*(x - 3)*(x - 2) = 0",
+      "variable": "x",
+      "solutions": [
+        "2",
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "3*(x - 3)*(x - 2) = 0",
       "variable": "x",
       "solutions": [
@@ -1180,6 +1408,12 @@
       "simplified": "3*x*(x + 2)",
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "3*x**2 + 6*x",
+      "simplified": "3*x*(x + 2)",
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
   },
@@ -1229,6 +1463,12 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "8*x**3 - 8",
+      "simplified": "8*x**3 - 8",
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "8*x**3 - 8",
       "simplified": "8*x**3 - 8",
       "source": "sympy"
@@ -1286,6 +1526,12 @@
       "simplified": "5*x*(x**3 + 2)",
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "5*x**4 + 10*x",
+      "simplified": "5*x*(x**3 + 2)",
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
   },
@@ -1335,6 +1581,12 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "9*x**2 - 12",
+      "simplified": "9*x**2 - 12",
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "9*x**2 - 12",
       "simplified": "9*x**2 - 12",
       "source": "sympy"
@@ -1392,6 +1644,12 @@
       "simplified": "16*x*(x**2 + 1)",
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "16*x**3 + 16*x",
+      "simplified": "16*x*(x**2 + 1)",
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled differentiate-then-simplify workflow; each later call uses an earlier result."
   },
@@ -1445,6 +1703,15 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "2*x - 6 = 0",
+      "variable": "x",
+      "solutions": [
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "2*x - 6 = 0",
       "variable": "x",
       "solutions": [
@@ -1514,6 +1781,16 @@
       ],
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "equation": "3*x**2 - 3 = 0",
+      "variable": "x",
+      "solutions": [
+        "-1",
+        "1"
+      ],
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
   },
@@ -1567,6 +1844,15 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "4*x + 8 = 0",
+      "variable": "x",
+      "solutions": [
+        "-2"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "4*x + 8 = 0",
       "variable": "x",
       "solutions": [
@@ -1636,6 +1922,16 @@
       ],
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "equation": "3*x**2 - 12 = 0",
+      "variable": "x",
+      "solutions": [
+        "-2",
+        "2"
+      ],
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled differentiate-then-solve workflow; each later call uses an earlier result."
   },
@@ -1689,6 +1985,15 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "6*x - 18 = 0",
+      "variable": "x",
+      "solutions": [
+        "3"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "6*x - 18 = 0",
       "variable": "x",
       "solutions": [
@@ -1750,6 +2055,13 @@
       "derivative": "2*x + 7",
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "x**2 + 7*x + 10",
+      "variable": "x",
+      "derivative": "2*x + 7",
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
   },
@@ -1799,6 +2111,13 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "x**2 + x - 12",
+      "variable": "x",
+      "derivative": "2*x + 1",
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "x**2 + x - 12",
       "variable": "x",
       "derivative": "2*x + 1",
@@ -1858,6 +2177,13 @@
       "derivative": "4*x - 11",
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "2*x**2 - 11*x - 6",
+      "variable": "x",
+      "derivative": "4*x - 11",
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
   },
@@ -1912,6 +2238,13 @@
       "derivative": "2*x + 14",
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "x**2 + 14*x + 49",
+      "variable": "x",
+      "derivative": "2*x + 14",
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled expand-then-differentiate workflow; each later call uses an earlier result."
   },
@@ -1961,6 +2294,13 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "3*x**2 + 7*x - 6",
+      "variable": "x",
+      "derivative": "6*x + 7",
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "3*x**2 + 7*x - 6",
       "variable": "x",
       "derivative": "6*x + 7",
@@ -2038,6 +2378,20 @@
       "greatest_prime_factor": 17,
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "value": "17",
+      "integer_value": 17,
+      "prime_factors": {
+        "17": 1
+      },
+      "factor_list": [
+        "17"
+      ],
+      "least_prime_factor": 17,
+      "greatest_prime_factor": 17,
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
   },
@@ -2103,6 +2457,25 @@
       }
     ],
     "expected_final_answer": {
+      "value": "64",
+      "integer_value": 64,
+      "prime_factors": {
+        "2": 6
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "2",
+        "2",
+        "2",
+        "2"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 2,
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "value": "64",
       "integer_value": 64,
       "prime_factors": {
@@ -2200,6 +2573,24 @@
       "greatest_prime_factor": 3,
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "value": "36",
+      "integer_value": 36,
+      "prime_factors": {
+        "2": 2,
+        "3": 2
+      },
+      "factor_list": [
+        "2",
+        "2",
+        "3",
+        "3"
+      ],
+      "least_prime_factor": 2,
+      "greatest_prime_factor": 3,
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
   },
@@ -2260,6 +2651,20 @@
       }
     ],
     "expected_final_answer": {
+      "value": "53",
+      "integer_value": 53,
+      "prime_factors": {
+        "53": 1
+      },
+      "factor_list": [
+        "53"
+      ],
+      "least_prime_factor": 53,
+      "greatest_prime_factor": 53,
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "value": "53",
       "integer_value": 53,
       "prime_factors": {
@@ -2350,6 +2755,23 @@
       "greatest_prime_factor": 5,
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "value": "75",
+      "integer_value": 75,
+      "prime_factors": {
+        "3": 1,
+        "5": 2
+      },
+      "factor_list": [
+        "3",
+        "5",
+        "5"
+      ],
+      "least_prime_factor": 3,
+      "greatest_prime_factor": 5,
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled base-arithmetic-to-factorization workflow; each later call uses an earlier result."
   },
@@ -2402,6 +2824,11 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "6 + 10",
+      "result": 16
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "6 + 10",
       "result": 16
     },
@@ -2460,6 +2887,11 @@
       "expression": "1 + 9",
       "result": 10
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "1 + 9",
+      "result": 10
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
   },
@@ -2512,6 +2944,11 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "4 + 5",
+      "result": 9
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "4 + 5",
       "result": 9
     },
@@ -2570,6 +3007,11 @@
       "expression": "11 + 8",
       "result": 19
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "11 + 8",
+      "result": 19
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled modular-then-arithmetic workflow; each later call uses an earlier result."
   },
@@ -2622,6 +3064,11 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "14 + 4",
+      "result": 18
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "14 + 4",
       "result": 18
     },
@@ -2678,6 +3125,11 @@
       "expression": "2500.0 * 3",
       "result": 7500.0
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "2500.0 * 3",
+      "result": 7500.0
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
   },
@@ -2728,6 +3180,11 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "7.5 * 4",
+      "result": 30.0
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "7.5 * 4",
       "result": 30.0
     },
@@ -2784,6 +3241,11 @@
       "expression": "180.0 * 2",
       "result": 360.0
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "180.0 * 2",
+      "result": 360.0
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
   },
@@ -2834,6 +3296,11 @@
       }
     ],
     "expected_final_answer": {
+      "expression": "5000.0 * 2",
+      "result": 10000.0
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "expression": "5000.0 * 2",
       "result": 10000.0
     },
@@ -2890,6 +3357,11 @@
       "expression": "9.7536 * 10",
       "result": 97.536
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "expression": "9.7536 * 10",
+      "result": 97.536
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled unit-conversion-then-arithmetic workflow; each later call uses an earlier result."
   },
@@ -2941,6 +3413,15 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "x + 2 = 7",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "x + 2 = 7",
       "variable": "x",
       "solutions": [
@@ -3006,6 +3487,15 @@
       ],
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "equation": "x + 6 = 11",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
   },
@@ -3057,6 +3547,15 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "x + 3 = 8",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "x + 3 = 8",
       "variable": "x",
       "solutions": [
@@ -3122,6 +3621,15 @@
       ],
       "source": "sympy"
     },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
+      "equation": "4*x = 20",
+      "variable": "x",
+      "solutions": [
+        "5"
+      ],
+      "source": "sympy"
+    },
     "perturbation_type": "dependent_math_tool_sequence",
     "notes": "Deterministic controlled simplify-then-solve workflow; each later call uses an earlier result."
   },
@@ -3173,6 +3681,15 @@
       }
     ],
     "expected_final_answer": {
+      "equation": "2*x + 2 = 10",
+      "variable": "x",
+      "solutions": [
+        "4"
+      ],
+      "source": "sympy"
+    },
+    "workflow_final_answer_contract": "structured_tool_result_v1",
+    "workflow_final_answer_expected": {
       "equation": "2*x + 2 = 10",
       "variable": "x",
       "solutions": [

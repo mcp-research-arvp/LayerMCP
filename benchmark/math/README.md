@@ -125,6 +125,11 @@ Difficulty comes from the public source levels:
 
 - Workflows: 50
 - Expected steps: 105
+
+Each workflow uses `structured_tool_result_v1` for its final-output contract.
+The evaluator compares the complete final tool result to the expected structured
+result; it does not reduce the object to a scalar. This final-output matching is
+separate from the workflow's tool, argument, and per-step result metrics.
 - Source: `controlled_synthetic`
 - Domain: `mathematics`
 - Task type: `multi_step_tool_routing`

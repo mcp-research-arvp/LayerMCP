@@ -108,6 +108,8 @@ class BenchmarkSample:
     notes: str
     benchmark_family: str = "unspecified"
     expected_final_answer: Any = None
+    workflow_final_answer_contract: str = "display_scalar_v1"
+    workflow_final_answer_expected: Any = None
     prompt_context: str = ""
     expected_steps: tuple[BenchmarkStep, ...] = ()
     benchmark_mode: str = DEFAULT_BENCHMARK_MODE
@@ -284,6 +286,10 @@ class FinalOutcomeScore:
 
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
 WORKFLOW_FINAL_ANSWER_MATCHER = "formatted_final_scalar_v1"
+FINQA_EXECUTION_MATCHER = "finqa_execution_v1"
+CONVFINQA_EXECUTION_MATCHER = "convfinqa_execution_v1"
+STRUCTURED_TOOL_RESULT_MATCHER = "structured_tool_result_v1"
+FINAL_RESPONSE_REQUIRED_MATCHER = "final_response_required_v1"
 FINANCE_QUERY_TABLE_RESULT_MATCHER = "finance_query_table_rows_v1"
 NUMERIC_REL_TOL = 1e-9
 NUMERIC_ABS_TOL = 1e-6
@@ -293,6 +299,13 @@ _SYMBOLIC_MATH_FIELDS = {
     "expanded",
     "derivative",
     "solutions",
+}
+_WORKFLOW_FINAL_ANSWER_CONTRACTS = {
+    "display_scalar_v1",
+    "finqa_execution_v1",
+    "convfinqa_execution_v1",
+    "structured_tool_result_v1",
+    "final_response_required_v1",
 }
 
 
@@ -336,6 +349,16 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
     if expected_tool is None:
         raise ValueError(f"Sample {index} expected_tool is required.")
 
+    workflow_final_answer_contract = str(
+        sample.get("workflow_final_answer_contract", "display_scalar_v1")
+    )
+    if workflow_final_answer_contract not in _WORKFLOW_FINAL_ANSWER_CONTRACTS:
+        allowed = ", ".join(sorted(_WORKFLOW_FINAL_ANSWER_CONTRACTS))
+        raise ValueError(
+            f"Sample {index} workflow_final_answer_contract must be one of: "
+            f"{allowed}."
+        )
+
     return BenchmarkSample(
         id=str(sample_id),
         domain=str(sample.get("domain", "unknown")),
@@ -360,6 +383,11 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
             f"Sample {index}",
         ),
         expected_final_answer=sample.get("expected_final_answer"),
+        workflow_final_answer_contract=workflow_final_answer_contract,
+        workflow_final_answer_expected=sample.get(
+            "workflow_final_answer_expected",
+            sample.get("expected_final_answer"),
+        ),
         prompt_context=_normalize_prompt_context(
             sample.get("prompt_context"),
             f"Sample {index}",
@@ -649,19 +677,65 @@ def _parse_display_number(value: str) -> float | None:
         return None
 
 
+def _score_published_execution_result(
+    *,
+    expected: Any,
+    final_tool_result_value: Any,
+    matcher: str,
+    source_name: str,
+) -> FinalOutcomeScore:
+    """Match a FinQA-family program result using its published execution rule."""
+    actual, extraction_error = _extract_workflow_final_scalar(final_tool_result_value)
+    if extraction_error is not None:
+        return FinalOutcomeScore(
+            False,
+            "result_extraction_error",
+            matcher,
+            extraction_error,
+        )
+
+    numeric_expected = isinstance(expected, (int, float)) and not isinstance(
+        expected, bool
+    )
+    numeric_actual = isinstance(actual, (int, float)) and not isinstance(actual, bool)
+    if numeric_expected and numeric_actual:
+        # FinQA executes a predicted program, rounds a numeric result to five
+        # decimal places, then compares it directly with the gold exe_ans.
+        matched = round(float(actual), 5) == float(expected)
+    else:
+        matched = actual == expected
+
+    return FinalOutcomeScore(
+        matched,
+        "correct" if matched else "mismatch",
+        matcher,
+        None
+        if matched
+        else (
+            f"Expected {source_name} execution result {expected!r}, "
+            f"got {actual!r}."
+        ),
+    )
+
+
 def _score_workflow_final_answer(
     *,
     expected_final_answer: Any,
+    workflow_final_answer_expected: Any,
+    workflow_final_answer_contract: str,
     final_tool_result_value: Any,
     call_predicted_tools: bool,
-    benchmark_family: str,
 ) -> FinalOutcomeScore:
-    if expected_final_answer is None or expected_final_answer == "":
+    if (
+        workflow_final_answer_expected is None
+        or workflow_final_answer_expected == ""
+    ):
         return FinalOutcomeScore(
             None,
             "missing_expected_final_answer",
             None,
-            "Benchmark workflow does not provide a non-empty expected_final_answer.",
+            "Benchmark workflow does not provide a non-empty expected value for "
+            "its final-answer contract.",
         )
     if not call_predicted_tools:
         return FinalOutcomeScore(
@@ -669,6 +743,44 @@ def _score_workflow_final_answer(
             "execution_disabled",
             None,
             "Predicted-tool execution is disabled.",
+        )
+
+    if workflow_final_answer_contract == "final_response_required_v1":
+        return FinalOutcomeScore(
+            None,
+            "final_response_required",
+            FINAL_RESPONSE_REQUIRED_MATCHER,
+            "This benchmark's source protocol scores a generated final response; "
+            "LayerMCP records only tool execution for this workflow.",
+        )
+
+    if workflow_final_answer_contract == "structured_tool_result_v1":
+        match = _match_expected_answer(
+            final_tool_result_value,
+            workflow_final_answer_expected,
+            domain="mathematics",
+        )
+        return FinalOutcomeScore(
+            match.matched,
+            "correct" if match.matched else "mismatch",
+            STRUCTURED_TOOL_RESULT_MATCHER,
+            match.diagnostic,
+        )
+
+    if workflow_final_answer_contract == "finqa_execution_v1":
+        return _score_published_execution_result(
+            expected=workflow_final_answer_expected,
+            final_tool_result_value=final_tool_result_value,
+            matcher=FINQA_EXECUTION_MATCHER,
+            source_name="FinQA",
+        )
+
+    if workflow_final_answer_contract == "convfinqa_execution_v1":
+        return _score_published_execution_result(
+            expected=workflow_final_answer_expected,
+            final_tool_result_value=final_tool_result_value,
+            matcher=CONVFINQA_EXECUTION_MATCHER,
+            source_name="ConvFinQA",
         )
 
     actual, extraction_error = _extract_workflow_final_scalar(
@@ -686,11 +798,6 @@ def _score_workflow_final_answer(
         expected_number = _parse_display_number(expected_final_answer)
         if expected_number is not None and isinstance(actual, (int, float)):
             actual_number = float(actual)
-            if expected_final_answer.strip().endswith("%") and benchmark_family in {
-                "finqa",
-                "convfinqa",
-            }:
-                actual_number *= 100.0
             decimal_places = _display_decimal_places(expected_final_answer)
             matched = math.isclose(
                 round(actual_number, decimal_places),
@@ -1189,6 +1296,16 @@ def _has_expected_final_answer(value: Any) -> bool:
     return value is not None and value != ""
 
 
+def _has_workflow_final_answer_gold(workflow: dict[str, Any]) -> bool:
+    """Return whether a workflow supplies gold for its declared output contract."""
+    return _has_expected_final_answer(
+        workflow.get(
+            "workflow_final_answer_expected",
+            workflow.get("expected_final_answer"),
+        )
+    )
+
+
 def _multistep_workflow_metrics(
     workflow_records: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -1241,7 +1358,7 @@ def _multistep_workflow_metrics(
         "workflow_final_answer_accuracy": final_answer_accuracy,
         "workflow_final_answer_scored": len(final_answer_scores),
         "workflow_final_answer_gold": sum(
-            _has_expected_final_answer(workflow.get("expected_final_answer"))
+            _has_workflow_final_answer_gold(workflow)
             for workflow in workflow_records
         ),
         # Backwards-compatible metric names retained for historical consumers.
@@ -1252,7 +1369,7 @@ def _multistep_workflow_metrics(
             semantic_output_scores
         ),
         "workflow_expected_final_answer_gold": sum(
-            _has_expected_final_answer(workflow.get("expected_final_answer"))
+            _has_workflow_final_answer_gold(workflow)
             for workflow in workflow_records
         ),
     }
@@ -1611,9 +1728,14 @@ async def _evaluate_multistep_with_server(
                 )
                 workflow_final_answer = _score_workflow_final_answer(
                     expected_final_answer=sample.expected_final_answer,
+                    workflow_final_answer_expected=(
+                        sample.workflow_final_answer_expected
+                    ),
+                    workflow_final_answer_contract=(
+                        sample.workflow_final_answer_contract
+                    ),
                     final_tool_result_value=final_step_result_value,
                     call_predicted_tools=call_predicted_tools,
-                    benchmark_family=sample.benchmark_family,
                 )
                 workflow_record = {
                     "sample_id": sample.id,
@@ -1634,6 +1756,12 @@ async def _evaluate_multistep_with_server(
                     "query": sample.query,
                     "prompt_context": sample.prompt_context,
                     "expected_final_answer": sample.expected_final_answer,
+                    "workflow_final_answer_contract": (
+                        sample.workflow_final_answer_contract
+                    ),
+                    "workflow_final_answer_expected": (
+                        sample.workflow_final_answer_expected
+                    ),
                     "final_step_result_value": final_step_result_value,
                     "workflow_final_answer_correct": workflow_final_answer.correct,
                     "workflow_final_answer_status": workflow_final_answer.status,

@@ -23,6 +23,8 @@ def discover_benchmark_files(project_root: Path = PROJECT_ROOT) -> list[Path]:
         if not domain_root.exists():
             continue
         for path in domain_root.rglob("*.json"):
+            if path.name == "mathqa_operation_mapping.json":
+                continue
             relative_parts = path.relative_to(benchmark_root).parts
             if any(
                 part in {"archive", "fixtures", "__pycache__"}
@@ -61,11 +63,16 @@ def infer_benchmark_class(path: Path, rows: list[dict[str, Any]]) -> str:
         return "controlled"
     if "diagnostic" in evidence or "adapted" in path.name.lower() or "public_adapted" in evidence:
         return "diagnostic/adapted"
-    if any(
+    is_workflow = any(
         row.get("task_type") == "multi_step_tool_routing"
         or bool(row.get("expected_steps"))
         for row in rows
+    )
+    if is_workflow and any(
+        token in evidence for token in ("public", "source-derived", "derived")
     ):
+        return "public/source-derived workflow"
+    if is_workflow:
         return "workflow"
     if any(token in evidence for token in ("public", "source-derived", "derived")):
         return "public/source-derived"

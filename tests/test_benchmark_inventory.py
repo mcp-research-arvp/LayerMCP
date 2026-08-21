@@ -23,6 +23,7 @@ class BenchmarkInventoryTests(unittest.TestCase):
             ("math_controlled.json", [{"source": "controlled_synthetic"}], "controlled"),
             ("enterprise_tau2.json", [{"source": "public_adapted"}], "diagnostic/adapted"),
             ("finance_workflow.json", [{"task_type": "multi_step_tool_routing"}], "workflow"),
+            ("math_public_mathqa_multistep.json", [{"source": "public_mathqa_program_derived", "task_type": "multi_step_tool_routing"}], "public/source-derived workflow"),
             ("math_public.json", [{"source": "public_math_derived"}], "public/source-derived"),
             ("math_misc.json", [{}], "unknown"),
         ]
@@ -114,6 +115,7 @@ class BenchmarkInventoryTests(unittest.TestCase):
                 root / "benchmark" / "archive" / "math" / "old.json",
                 root / "benchmark" / "math" / "fixtures" / "fixture.json",
                 root / "benchmark" / "math" / "__pycache__" / "cache.json",
+                root / "benchmark" / "math" / "mathqa_operation_mapping.json",
             ]
             for path in [included, *excluded]:
                 path.parent.mkdir(parents=True, exist_ok=True)

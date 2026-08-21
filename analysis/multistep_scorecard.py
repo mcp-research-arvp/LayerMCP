@@ -11,6 +11,10 @@ from evaluation.evaluate import OUTCOME_METRIC_NAMES
 
 
 _LEGACY_METRIC = "workflow_final_answer_accuracy"
+_DATASET_LABELS = {
+    "math_public_mathqa_multistep": "MathQA public-derived",
+    "math_multistep_controlled": "Math controlled diagnostic",
+}
 
 
 def _load_object(path: Path) -> dict[str, Any]:
@@ -134,13 +138,17 @@ def load_rows(run_directories: Sequence[Path]) -> list[dict[str, Any]]:
         metadata = _load_object(metadata_path)
         _reject_historical_scalar(metadata, metadata_path)
         _validate_metric_names(metadata, metadata_path)
+        if metadata.get("headline_eligible") is False:
+            continue
         for summary_path in sorted(run.glob("domains/*/*/summary.json")):
             summary = _load_object(summary_path)
             _validate_summary(summary, summary_path)
             rows.append(
                 {
                     "run": run.name,
-                    "dataset": summary_path.parent.name,
+                    "dataset": _DATASET_LABELS.get(
+                        summary_path.parent.name, summary_path.parent.name
+                    ),
                     "model": summary.get("model_name"),
                     "condition": _condition_label(summary),
                     "reasoning_mode": summary.get("reasoning_mode"),

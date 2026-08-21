@@ -1,6 +1,6 @@
 # Math Tool-Routing Datasets
 
-This folder contains math-only single-step and teacher-forced multi-step routing
+This folder contains math-only single-step and guided multi-step routing
 benchmarks. Each expected call identifies the math tool, arguments, and
 deterministic tool result.
 
@@ -147,6 +147,130 @@ the artifact with:
 python benchmark/math/build_multistep_controlled.py
 ```
 
+This controlled synthetic set is an optional diagnostic. It is not the primary
+public-derived Mathematics baseline and is excluded from automatic headline
+runs.
+
+## Public-derived MathQA multi-step benchmark
+
+> A deterministic, source-ID-preserving multi-step LayerMCP benchmark derived from the executable operation programs in the public MathQA test split.
+
+- Workflows: 200 selected from a strict eligible population of 1,498
+- Expected steps: 892 selected from 6,638 eligible source-program operations
+- Source split and identity: original MathQA `test.json`, `test:<zero-based-row-index>`
+- Classification: public-derived deterministic program adaptation
+- Official site: <https://math-qa.github.io/math-QA/>
+- Paper: <https://aclanthology.org/N19-1245/>
+- Archive: <https://math-qa.github.io/math-QA/data/MathQA.zip>
+- Pinned AllenAI mirror revision: `c4f1cc784c04c4957b50c97858f23893b633eea6`
+
+| Input | SHA-256 |
+| --- | --- |
+| `MathQA.zip` | `7344f30456a7aef3176d4866cc953b35b41bec44eda6b00cdbcfde2876b2f07a` |
+| `test.json` | `dfe7bc4691caf26842ccd4cf14e8f978327bab4f2989e0b076a4e6b38a9371d1` |
+| `train.json` | `00e8919347d65dbba9289bf04ed998a6c48dbf451ca909eeb66a35f2419c2bf6` |
+| `dev.json` | `aeca12424fc8f32d0e35c09b7738986a446c12f110c8071f3cc8913712f04bf3` |
+| `operation_list.txt` | `3ea53c71034e52605f8203f1525d7f03bd4a0ddc3e4384c93b3ee1e4ddc1e8ca` |
+| `constant_list.txt` | `611b5d1089f0d10e6486b5ffeaee92c95efc5df9e385b809d4d142181e2bb4a0` |
+
+The official ZIP contains no embedded license file. Apache-2.0 is the license
+declared by the pinned AllenAI dataset card; the manifest records that caveat.
+The complete source archive remains outside tracked repository content.
+
+The builder maps `linear_formula` mechanically. It preserves each source row,
+coordinate, canonical row hash, source formulas, operation order, backward
+references, selected option, and raw DSL calls. No rationale is parsed and no
+model creates, rewrites, repairs, or expands a step or dependency. Eligibility
+requires two or more exactly parsed operations; supported `nK`, `const_*`, and
+backward `#K` arguments; valid destination-tool inputs; finite execution; final
+numeric agreement at relative and absolute tolerance `1e-9`; and no exact
+question overlap with train/development. `power(base, exponent)` always uses the
+actual resolved source exponent. The existing LayerMCP calculator accepts
+exponents with magnitude at most 10; rows outside that bound are excluded as
+`destination_tool_exponent_limit`, never altered. The Google Trax executor is
+corroborating downstream evidence only. Its deviations do not override the
+MathQA `linear_formula`, `annotated_formula`, rationale, or standard operation
+meaning. The build fails unless the corrected strict population is exactly
+1,498 workflows and 6,638 operations.
+
+The exhaustive exclusion classes for the 1,487 rejected test rows are: numeric
+option parsing limitation 35; strict-tolerance mismatch 226; annotated-versus-
+linear formula disagreement 1; program result matching another option 81;
+destination-tool constraints 16; unsupported operations 63; unresolved source
+program/selected-answer disagreement 802; fewer than two operations 254; and
+nonnumeric selected option 9. Invalid/forward references, nonfinite/tool
+failures, and train/development overlap each have count zero. The unresolved
+rows are excluded without asserting that either their program or answer key is
+wrong and without repairing or interpreting them.
+
+The destination-tool constraints comprise exponent limit 9, division by zero
+3, and negative square-root input 4. Unsupported operations are `choose` 19,
+`factorial` 21, `log` 9, `max` 3, `min` 2, `negate_prob` 2, `permutation` 1,
+`square_edge_by_perimeter` 1, `surface_cylinder` 1,
+`triangle_area_three_edges` 2, `volume_cone` 1, and `volume_sphere` 1. Every
+excluded row retains its source coordinate, canonical row hash, exact reason,
+and broader exclusion class in the manifest.
+
+Selection is stratified by source category and program-length bucket (`2`, `3`,
+`4`, `5`, `6-7`, `8-10`, `11+`). It uses proportional quotas, floor allocation,
+then descending fractional remainder with lexicographic stratum-key ties. Rows
+within each stratum are ranked by SHA-256 of coordinate plus canonical row hash,
+and selected rows are finally restored to source order. There is no manual,
+tool-diversity, or performance-based selection.
+
+Selected category counts are gain 43, general 85, geometry 11, other 10,
+physics 50, probability 1. Program lengths are 2:34, 3:52, 4:38, 5:26, 6:21,
+7:10, 8:5, 9:6, 10:3, 11:1, 12:2, 13:1, 18:1. Operations are add 155, divide
+272, floor 2, inverse 7, lcm 2, multiply 262, negate 2, power 15,
+rectangle_area 1, reminder 2, speed 2, sqrt 3, subtract 166, and
+volume_rectangular_prism 1. Tools are calculator 888, gcd_lcm 2, and
+modular_arithmetic 2. The manifest contains full eligible distributions,
+rejection details, stratum sizes, quotas, allocations, and all selected hashes.
+
+The audited mapping sends `gcd`/`lcm` to `gcd_lcm` and upstream `reminder` to
+`modular_arithmetic(operation="mod")`. Fixed `calculator` templates implement
+`add`, `subtract`, `multiply`, `divide`, `power`, `negate`, `inverse`, `floor`,
+`sqrt`, `speed`, rectangle/square/cube, volume/surface, circle, and circumference
+operations listed in `mathqa_operation_mapping.json`. Pi is always
+`3.141592653589793`. Factorial, choose/combination, permutation, logarithms,
+min/max, trigonometry, `surface_cylinder`, and unlisted operations are excluded.
+No LayerMCP tool was added.
+
+```bash
+python benchmark/math/build_mathqa_public_multistep.py \
+  --source-archive /path/to/MathQA.zip
+python benchmark/math/build_mathqa_public_multistep.py \
+  --source-archive /path/to/MathQA.zip --check
+```
+
+| Artifact | SHA-256 |
+| --- | --- |
+| benchmark | `261e6e14fba3e362794833bbdd427a23adffeafab96cde2293861143fc85a8a2` |
+| selected fixture | `331f39f85940dc194bf160e4f8086f0aa6a1881167a4ce47c5c14e563dc79451` |
+| mapping | `b7f2825070c665768b37cddcbf684bbb17db574e3e9b8ea3f5d6b2ff9ffab059` |
+| manifest | `833fa81a69a69fc3bbe66b80cdc7ba89dad0aac0e3ac697d7bb69faf22b7cc34` |
+| selected-source subset | `4c23c53096819c128a11f1496e6eb24cb99797a7eec22cd62a1dcc0a35f9311e` |
+| generation | `a74a86db23c2bfe274052d3b10d0d4a018712dd3c7472e0d135332de13abb32a` |
+
+`expected_final_answer` preserves the published option as provenance only.
+Evaluation scores exact final-step and all-step tool outcomes, not a separate
+user-facing answer. This is not an unmodified official MathQA score: LayerMCP
+filters rows and translates the public DSL into its tool interfaces. Launch as
+`DATASET_GROUP=math_public_mathqa`; artifacts live at
+`domains/math/math_public_mathqa_multistep/` and report as `MathQA
+public-derived`. Controlled Math remains a separately reported diagnostic.
+
+MathQA is the primary public-derived multi-step Mathematics outcome and
+dependency benchmark, but it is not an official MathQA score. It measures
+guided execution of published operation programs rather than autonomous
+decomposition. Because 888 of 892 selected steps map to `calculator`, tool
+selection is highly imbalanced and must not be a headline claim. Report
+argument accuracy, step outcome, all-step correctness, and final-step outcome
+prominently. Keep `math_controlled` as a separately labeled short diagnostic
+for broader Mathematics tool-family routing, never combine its score with
+MathQA, and do not rebalance the public subset by tool because that would
+distort the source-derived distribution.
+
 ## Schema Notes
 
 All Math datasets use these common top-level fields:
@@ -167,8 +291,7 @@ each row:
 - `expected_args`
 - `expected_answer`
 
-The controlled multi-step dataset, `math_multistep_controlled.json`, contains
-50 workflows and 105 expected steps. Each workflow uses `expected_steps`; every
+The multi-step datasets use `expected_steps`; every
 step contains:
 
 - `expected_tool`: the tool selected for that step.
@@ -187,4 +310,5 @@ math_<source_or_purpose>.json
 ```
 
 Current examples are `math_public.json`, `math_public_math_dataset.json`,
-`math_controlled.json`, and `math_multistep_controlled.json`.
+`math_controlled.json`, `math_multistep_controlled.json`, and
+`math_public_mathqa_multistep.json`.

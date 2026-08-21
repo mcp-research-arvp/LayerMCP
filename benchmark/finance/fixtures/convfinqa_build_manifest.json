@@ -45,7 +45,7 @@
     "origin_main_model_facing_sha256": "0ebaa05699c5dda75119dc38ffea1e14132bf5a413b8238c667a22bf7456c7f4"
   },
   "generated_artifacts": {
-    "finance_convfinqa_multistep.json": "26fb0bf632f76f997030393ee12dd21c8e4a801629d064770a28d6e6208e7d8a",
+    "finance_convfinqa_multistep.json": "f2f830f657e5684b3496fc15b951aebf22ba795519a8598d494f1128b3766ecc",
     "fixtures/convfinqa_dev_cells.json": "e15dbcc953395495657c074f937426090c469a9d4912d299ba0276d6b2e505f1",
     "fixtures/convfinqa_dev_source_subset.json": "e256bb075346df471d62aa390fd66045c1f24fba6d10b5feaa899e7e88aa44e1"
   }

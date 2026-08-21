@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from analysis.recover_multistep_run import RECOVERY_METHOD, recover_multistep_run
 from analysis.multi_step_run import validate_complete_multistep_run
-from evaluation.evaluate import WORKFLOW_FINAL_SCORING_VERSION
+from evaluation.evaluate import OUTCOME_METRIC_NAMES
 
 
 _MISSING = object()
@@ -39,8 +39,8 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             "task_type": "multi_step_tool_routing",
             "query": "Do two steps",
             "expected_final_answer": {"result": 2},
-            "expected_final_tool_result": {"result": 2},
-            "workflow_final_tool_result_contract": "exact_normalized_json_v1",
+            "expected_final_step_outcome": {"result": 2},
+            "final_step_outcome_contract": "exact_normalized_json",
             "expected_steps": [
                 {"id": "step-1", "query": "one", "expected_tool": "calculator", "expected_args": {}, "expected_answer": {"result": 1}},
                 {"id": "step-2", "query": "two", "expected_tool": "calculator", "expected_args": {}, "expected_answer": {"result": 2}},
@@ -58,10 +58,12 @@ class RecoverMultiStepRunTests(unittest.TestCase):
                 "workflow_execution_mode": "predicted_sequence", "called_tool": "calculator",
                 "execution_success": True, "tool_selection_correct": True,
                 "argument_match_correct": True, "final_outcome_correct": True,
+                "final_outcome_status": "correct",
                 "final_outcome_matcher": "recursive_json_subset_v1", "latency_seconds": 1.0,
             })
         record = {
             "sample_id": "workflow-1", "benchmark_path": str(benchmark),
+            "benchmark_sha256": hashlib.sha256(benchmark.read_bytes()).hexdigest(),
             "benchmark_mode": "grounded_tool_execution", "workflow_execution_mode": "predicted_sequence",
             "declared_workflow_execution_mode": "isolated_step",
             "evaluation_protocol": "guided_predicted_rollout_v1", "evaluation_protocol_description": "test",
@@ -72,23 +74,14 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             "tool_registry_fingerprint": fingerprint,
             "tool_registry_fingerprint_version": "tool_registry_name_schema_description_v1",
             "expected_final_answer": {"result": 2},
-            "workflow_final_answer_contract": "model_generated_final_response_v1",
-            "workflow_final_answer_correct": None,
-            "workflow_final_answer_status": "final_response_not_generated",
-            "workflow_final_answer_matcher": None,
-            "expected_final_program_result": None,
-            "workflow_final_program_contract": None,
-            "workflow_final_program_execution_correct": None,
-            "workflow_final_program_execution_status": "unsupported",
-            "workflow_final_program_execution_matcher": None,
-            "expected_final_tool_result": {"result": 2},
-            "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-            "workflow_final_tool_result_correct": True,
-            "workflow_final_tool_result_status": "correct",
-            "workflow_final_tool_result_matcher": "exact_normalized_json_v1",
-            "workflow_final_scoring_version": WORKFLOW_FINAL_SCORING_VERSION,
-            "sequence_tool_selection_correct": True, "sequence_argument_match_correct": True,
-            "sequence_semantic_output_correct": True, "steps": steps,
+            "expected_final_step_outcome": {"result": 2},
+            "final_step_outcome_contract": "exact_normalized_json",
+            "final_step_outcome_correct": True,
+            "final_step_outcome_status": "correct",
+            "final_step_outcome_matcher": "exact_normalized_json",
+            "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
+            "all_tools_correct": True, "all_arguments_correct": True,
+            "all_steps_correct": True, "steps": steps,
         }
         (dataset / "samples.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
         (dataset / "evaluation.log").write_text("summary crash\n", encoding="utf-8")
@@ -102,7 +95,12 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             "tool_registry_fingerprint_version": "tool_registry_name_schema_description_v1",
             "run_kind": "full", "headline_eligible": True, "slurm_job_id": "123",
             "git_commit": "source-commit", "short_test_selection": {},
-            "workflow_final_scoring_version": WORKFLOW_FINAL_SCORING_VERSION,
+            "benchmark_sha256": {
+                str(benchmark.resolve()): hashlib.sha256(
+                    benchmark.read_bytes()
+                ).hexdigest()
+            },
+            "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
             "benchmark_paths": [str(benchmark.resolve())],
             "source_counts": {
                 str(benchmark.resolve()): {"workflows": 1, "routed_steps": 2}
@@ -132,9 +130,9 @@ class RecoverMultiStepRunTests(unittest.TestCase):
             recovered_samples = next(output.glob("domains/*/*/samples.jsonl"))
             self.assertEqual(hashlib.sha256(recovered_samples.read_bytes()).hexdigest(), original_hash)
             summary = json.loads(next(output.glob("domains/*/*/summary.json")).read_text())
-            self.assertEqual(summary["workflow_final_answer_gold"], 1)
-            self.assertIsNone(summary["workflow_final_answer_accuracy"])
-            self.assertEqual(summary["workflow_final_tool_result_accuracy"], 1.0)
+            self.assertNotIn("workflow_final_answer_accuracy", summary)
+            self.assertEqual(summary["final_step_outcome_accuracy"], 1.0)
+            self.assertNotIn("final_program_execution_accuracy", summary)
             self.assertTrue(summary["recovered_from_complete_saved_inference"])
             manifest = json.loads((output / "recovery_manifest.json").read_text())
             self.assertEqual(manifest["recovery_method"], RECOVERY_METHOD)

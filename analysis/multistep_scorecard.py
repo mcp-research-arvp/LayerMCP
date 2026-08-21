@@ -1,4 +1,4 @@
-"""Render version-strict workflow-level metrics from completed multi-step runs."""
+"""Render separated outcome metrics from completed multi-step runs."""
 
 from __future__ import annotations
 
@@ -7,14 +7,10 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-from evaluation.evaluate import WORKFLOW_FINAL_SCORING_VERSION
+from evaluation.evaluate import OUTCOME_METRIC_NAMES
 
 
-_PREFIXES = (
-    "workflow_final_answer",
-    "workflow_final_program_execution",
-    "workflow_final_tool_result",
-)
+_LEGACY_METRIC = "workflow_final_answer_accuracy"
 
 
 def _load_object(path: Path) -> dict[str, Any]:
@@ -24,87 +20,152 @@ def _load_object(path: Path) -> dict[str, Any]:
     return value
 
 
+def _contains_key(value: Any, key: str) -> bool:
+    if isinstance(value, dict):
+        return key in value or any(_contains_key(item, key) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_key(item, key) for item in value)
+    return False
+
+
+_REQUIRED_SUMMARY_FIELDS = (
+    "tool_selection_accuracy",
+    "argument_accuracy",
+    "step_outcome_accuracy",
+    "step_outcome_scored",
+    "step_outcome_status_counts",
+    "step_outcome_matchers",
+    "all_tools_correct_accuracy",
+    "all_arguments_correct_accuracy",
+    "all_steps_correct_accuracy",
+    "all_steps_correct_scored",
+    "final_step_outcome_accuracy",
+    "final_step_outcome_gold",
+    "final_step_outcome_scored",
+    "final_step_outcome_correct",
+    "final_step_outcome_mismatch",
+    "final_step_outcome_extraction_error",
+    "final_step_outcome_unavailable",
+    "final_step_outcome_status_counts",
+    "final_step_outcome_contracts",
+    "final_step_outcome_matchers",
+)
+_FINAL_PROGRAM_FIELDS = tuple(
+    f"final_program_execution_{suffix}"
+    for suffix in (
+        "accuracy",
+        "gold",
+        "scored",
+        "correct",
+        "mismatch",
+        "extraction_error",
+        "unavailable",
+        "status_counts",
+        "contracts",
+        "matchers",
+    )
+)
+
+
+def _reject_historical_scalar(value: dict[str, Any], path: Path) -> None:
+    if _contains_key(value, _LEGACY_METRIC):
+        raise ValueError(f"Historical scalar workflow-final metric in {path}")
+
+
+def _validate_metric_names(value: dict[str, Any], path: Path) -> None:
+    if value.get("outcome_metric_names") != list(OUTCOME_METRIC_NAMES):
+        raise ValueError(f"Unexpected outcome metric names in {path}")
+
+
+def _validate_summary(value: dict[str, Any], path: Path) -> None:
+    _reject_historical_scalar(value, path)
+    _validate_metric_names(value, path)
+    missing = [field for field in _REQUIRED_SUMMARY_FIELDS if field not in value]
+    if missing:
+        raise ValueError(
+            f"Corrected multi-step summary fields are missing in {path}: "
+            + ", ".join(missing)
+        )
+    present_program_fields = [field for field in _FINAL_PROGRAM_FIELDS if field in value]
+    if present_program_fields and len(present_program_fields) != len(
+        _FINAL_PROGRAM_FIELDS
+    ):
+        raise ValueError(f"Incomplete final program metrics in {path}")
+
+
 def load_rows(run_directories: Sequence[Path]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for run_value in run_directories:
         run = run_value.resolve(strict=True)
         if not (run / "RUN_COMPLETE").is_file():
             raise ValueError(f"Multi-step run is incomplete: {run}")
-        metadata = _load_object(run / "run_metadata.json")
-        version = metadata.get("workflow_final_scoring_version")
-        if version != WORKFLOW_FINAL_SCORING_VERSION:
-            raise ValueError(
-                f"Incompatible workflow-final scoring in {run}: {version!r}"
-            )
+        metadata_path = run / "run_metadata.json"
+        metadata = _load_object(metadata_path)
+        _reject_historical_scalar(metadata, metadata_path)
+        _validate_metric_names(metadata, metadata_path)
         for summary_path in sorted(run.glob("domains/*/*/summary.json")):
             summary = _load_object(summary_path)
-            if summary.get("workflow_final_scoring_version") != version:
-                raise ValueError(f"Summary scoring version mismatch: {summary_path}")
-            for prefix in _PREFIXES:
-                if summary.get(f"{prefix}_scoring_version") != version:
-                    raise ValueError(f"Metric scoring version mismatch: {summary_path}")
+            _validate_summary(summary, summary_path)
             rows.append(
                 {
                     "run": run.name,
                     "dataset": summary_path.parent.name,
                     "model": summary.get("model_name"),
                     "condition": summary.get("reasoning_mode"),
-                    "source_run_identity": summary.get(
-                        "source_run_identity", run.name
+                    "tool_selection_accuracy": summary.get(
+                        "tool_selection_accuracy"
                     ),
-                    "workflow_final_scoring_version": version,
-                    **{
-                        key: summary.get(key)
-                        for prefix in _PREFIXES
-                        for key in (
-                            f"{prefix}_accuracy",
-                            f"{prefix}_gold",
-                            f"{prefix}_scored",
-                            f"{prefix}_correct",
-                            f"{prefix}_mismatch",
-                            f"{prefix}_extraction_error",
-                            f"{prefix}_unavailable",
-                            f"{prefix}_status_counts",
-                            f"{prefix}_contracts",
-                            f"{prefix}_matchers",
-                        )
-                    },
+                    "argument_accuracy": summary.get("argument_accuracy"),
+                    "step_outcome_accuracy": summary.get("step_outcome_accuracy"),
+                    "all_steps_correct_accuracy": summary.get(
+                        "all_steps_correct_accuracy"
+                    ),
+                    "final_step_outcome_accuracy": summary.get(
+                        "final_step_outcome_accuracy"
+                    ),
+                    "final_program_execution_accuracy": summary.get(
+                        "final_program_execution_accuracy"
+                    ),
                 }
             )
     return rows
 
 
+def _accuracy(value: Any) -> str:
+    return "—" if value is None else f"{float(value):.2%}"
+
+
 def build_scorecard(run_directories: Sequence[Path]) -> str:
     rows = load_rows(run_directories)
+    include_program = any(
+        row["final_program_execution_accuracy"] is not None for row in rows
+    )
+    metric_columns = [
+        ("Tool Selection", "tool_selection_accuracy"),
+        ("Argument Accuracy", "argument_accuracy"),
+        ("Step Outcome Accuracy", "step_outcome_accuracy"),
+        ("All Steps Correct", "all_steps_correct_accuracy"),
+        ("Final Step Outcome", "final_step_outcome_accuracy"),
+    ]
+    if include_program:
+        metric_columns.append(
+            ("Final Program Execution", "final_program_execution_accuracy")
+        )
+    headers = ["Run", "Dataset", "Model", "Condition"] + [
+        heading for heading, _ in metric_columns
+    ]
     lines = [
-        f"Workflow-final scoring version: `{WORKFLOW_FINAL_SCORING_VERSION}`",
-        "",
-        "| run | dataset | model | condition | metric | accuracy | gold | scored | correct | mismatch | extraction error | unavailable | contract | matcher | statuses | source run |",
-        "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|",
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join("---" for _ in headers) + "|",
     ]
     for row in rows:
-        for prefix in _PREFIXES:
-            accuracy = row[f"{prefix}_accuracy"]
-            rendered_accuracy = "unavailable" if accuracy is None else f"{accuracy:.6f}"
-            lines.append(
-                "| "
-                + " | ".join(
-                    str(value).replace("|", "\\|")
-                    for value in (
-                        row["run"], row["dataset"], row["model"], row["condition"],
-                        prefix, rendered_accuracy, row[f"{prefix}_gold"],
-                        row[f"{prefix}_scored"], row[f"{prefix}_correct"],
-                        row[f"{prefix}_mismatch"],
-                        row[f"{prefix}_extraction_error"],
-                        row[f"{prefix}_unavailable"],
-                        json.dumps(row[f"{prefix}_contracts"], sort_keys=True),
-                        json.dumps(row[f"{prefix}_matchers"], sort_keys=True),
-                        json.dumps(row[f"{prefix}_status_counts"], sort_keys=True),
-                        row["source_run_identity"],
-                    )
-                )
-                + " |"
-            )
+        values = [row["run"], row["dataset"], row["model"], row["condition"]]
+        values.extend(_accuracy(row[field]) for _, field in metric_columns)
+        lines.append(
+            "| "
+            + " | ".join(str(value).replace("|", "\\|") for value in values)
+            + " |"
+        )
     return "\n".join(lines) + "\n"
 
 

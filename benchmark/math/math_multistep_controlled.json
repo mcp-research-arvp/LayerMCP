@@ -74,8 +74,8 @@
       "greatest_prime_factor": 5,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "180",
       "integer_value": 180,
       "prime_factors": {
@@ -172,8 +172,8 @@
       "greatest_prime_factor": 7,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "252",
       "integer_value": 252,
       "prime_factors": {
@@ -272,8 +272,8 @@
       "greatest_prime_factor": 7,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "336",
       "integer_value": 336,
       "prime_factors": {
@@ -371,8 +371,8 @@
       "greatest_prime_factor": 11,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "594",
       "integer_value": 594,
       "prime_factors": {
@@ -473,8 +473,8 @@
       "greatest_prime_factor": 7,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "840",
       "integer_value": 840,
       "prime_factors": {
@@ -582,8 +582,8 @@
       "gcd": 6,
       "lcm": 120
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "values": [
         "24",
         "30"
@@ -684,8 +684,8 @@
       "gcd": 2,
       "lcm": 816
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "values": [
         "34",
         "48"
@@ -786,8 +786,8 @@
       "gcd": 3,
       "lcm": 1122
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "values": [
         "51",
         "66"
@@ -888,8 +888,8 @@
       "gcd": 2,
       "lcm": 2790
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "values": [
         "62",
         "90"
@@ -990,8 +990,8 @@
       "gcd": 6,
       "lcm": 1248
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "values": [
         "78",
         "96"
@@ -1065,8 +1065,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "(x - 3)*(x - 2) = 0",
       "variable": "x",
       "solutions": [
@@ -1135,8 +1135,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "(x - 4)*(x - 3) = 0",
       "variable": "x",
       "solutions": [
@@ -1205,8 +1205,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "(x - 3)*(x + 4) = 0",
       "variable": "x",
       "solutions": [
@@ -1275,8 +1275,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "2*(x - 3)*(x - 2) = 0",
       "variable": "x",
       "solutions": [
@@ -1345,8 +1345,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "3*(x - 3)*(x - 2) = 0",
       "variable": "x",
       "solutions": [
@@ -1408,8 +1408,8 @@
       "simplified": "3*x*(x + 2)",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "3*x**2 + 6*x",
       "simplified": "3*x*(x + 2)",
       "source": "sympy"
@@ -1467,8 +1467,8 @@
       "simplified": "8*x**3 - 8",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "8*x**3 - 8",
       "simplified": "8*x**3 - 8",
       "source": "sympy"
@@ -1526,8 +1526,8 @@
       "simplified": "5*x*(x**3 + 2)",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "5*x**4 + 10*x",
       "simplified": "5*x*(x**3 + 2)",
       "source": "sympy"
@@ -1585,8 +1585,8 @@
       "simplified": "9*x**2 - 12",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "9*x**2 - 12",
       "simplified": "9*x**2 - 12",
       "source": "sympy"
@@ -1644,8 +1644,8 @@
       "simplified": "16*x*(x**2 + 1)",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "16*x**3 + 16*x",
       "simplified": "16*x*(x**2 + 1)",
       "source": "sympy"
@@ -1710,8 +1710,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "2*x - 6 = 0",
       "variable": "x",
       "solutions": [
@@ -1781,8 +1781,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "3*x**2 - 3 = 0",
       "variable": "x",
       "solutions": [
@@ -1851,8 +1851,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "4*x + 8 = 0",
       "variable": "x",
       "solutions": [
@@ -1922,8 +1922,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "3*x**2 - 12 = 0",
       "variable": "x",
       "solutions": [
@@ -1992,8 +1992,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "6*x - 18 = 0",
       "variable": "x",
       "solutions": [
@@ -2055,8 +2055,8 @@
       "derivative": "2*x + 7",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "x**2 + 7*x + 10",
       "variable": "x",
       "derivative": "2*x + 7",
@@ -2116,8 +2116,8 @@
       "derivative": "2*x + 1",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "x**2 + x - 12",
       "variable": "x",
       "derivative": "2*x + 1",
@@ -2177,8 +2177,8 @@
       "derivative": "4*x - 11",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "2*x**2 - 11*x - 6",
       "variable": "x",
       "derivative": "4*x - 11",
@@ -2238,8 +2238,8 @@
       "derivative": "2*x + 14",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "x**2 + 14*x + 49",
       "variable": "x",
       "derivative": "2*x + 14",
@@ -2299,8 +2299,8 @@
       "derivative": "6*x + 7",
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "3*x**2 + 7*x - 6",
       "variable": "x",
       "derivative": "6*x + 7",
@@ -2378,8 +2378,8 @@
       "greatest_prime_factor": 17,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "17",
       "integer_value": 17,
       "prime_factors": {
@@ -2474,8 +2474,8 @@
       "greatest_prime_factor": 2,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "64",
       "integer_value": 64,
       "prime_factors": {
@@ -2573,8 +2573,8 @@
       "greatest_prime_factor": 3,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "36",
       "integer_value": 36,
       "prime_factors": {
@@ -2663,8 +2663,8 @@
       "greatest_prime_factor": 53,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "53",
       "integer_value": 53,
       "prime_factors": {
@@ -2755,8 +2755,8 @@
       "greatest_prime_factor": 5,
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "value": "75",
       "integer_value": 75,
       "prime_factors": {
@@ -2827,8 +2827,8 @@
       "expression": "6 + 10",
       "result": 16
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "6 + 10",
       "result": 16
     },
@@ -2887,8 +2887,8 @@
       "expression": "1 + 9",
       "result": 10
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "1 + 9",
       "result": 10
     },
@@ -2947,8 +2947,8 @@
       "expression": "4 + 5",
       "result": 9
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "4 + 5",
       "result": 9
     },
@@ -3007,8 +3007,8 @@
       "expression": "11 + 8",
       "result": 19
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "11 + 8",
       "result": 19
     },
@@ -3067,8 +3067,8 @@
       "expression": "14 + 4",
       "result": 18
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "14 + 4",
       "result": 18
     },
@@ -3125,8 +3125,8 @@
       "expression": "2500.0 * 3",
       "result": 7500.0
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "2500.0 * 3",
       "result": 7500.0
     },
@@ -3183,8 +3183,8 @@
       "expression": "7.5 * 4",
       "result": 30.0
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "7.5 * 4",
       "result": 30.0
     },
@@ -3241,8 +3241,8 @@
       "expression": "180.0 * 2",
       "result": 360.0
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "180.0 * 2",
       "result": 360.0
     },
@@ -3299,8 +3299,8 @@
       "expression": "5000.0 * 2",
       "result": 10000.0
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "5000.0 * 2",
       "result": 10000.0
     },
@@ -3357,8 +3357,8 @@
       "expression": "9.7536 * 10",
       "result": 97.536
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "expression": "9.7536 * 10",
       "result": 97.536
     },
@@ -3420,8 +3420,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "x + 2 = 7",
       "variable": "x",
       "solutions": [
@@ -3487,8 +3487,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "x + 6 = 11",
       "variable": "x",
       "solutions": [
@@ -3554,8 +3554,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "x + 3 = 8",
       "variable": "x",
       "solutions": [
@@ -3621,8 +3621,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "4*x = 20",
       "variable": "x",
       "solutions": [
@@ -3688,8 +3688,8 @@
       ],
       "source": "sympy"
     },
-    "workflow_final_tool_result_contract": "exact_normalized_json_v1",
-    "expected_final_tool_result": {
+    "final_step_outcome_contract": "exact_normalized_json",
+    "expected_final_step_outcome": {
       "equation": "2*x + 2 = 10",
       "variable": "x",
       "solutions": [

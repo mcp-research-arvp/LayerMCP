@@ -82,7 +82,7 @@ EXPECTED_TRANSLATION_SHA256 = (
     "4eacf7682b40c50bd6d411d71b123d17c082fe5bba762648c77a7d12779a75aa"
 )
 EXPECTED_BENCHMARK_SHA256 = (
-    "26fb0bf632f76f997030393ee12dd21c8e4a801629d064770a28d6e6208e7d8a"
+    "f2f830f657e5684b3496fc15b951aebf22ba795519a8598d494f1128b3766ecc"
 )
 EXPECTED_FIXTURE_SHA256 = (
     "e15dbcc953395495657c074f937426090c469a9d4912d299ba0276d6b2e505f1"
@@ -596,7 +596,7 @@ def _workflow(source: dict[str, Any], fixture: dict[str, Any]) -> dict[str, Any]
         "query": source["question"],
         "expected_steps": steps,
         "expected_final_answer": source["display_answer"],
-        "workflow_final_program_contract": "convfinqa_execution_v1",
+        "final_program_execution_contract": "convfinqa_program_execution",
         "expected_final_program_result": source["execution_answers"][-1],
         "source_dataset": SOURCE_DATASET,
         "source_split": SOURCE_SPLIT,

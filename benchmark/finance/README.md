@@ -182,14 +182,16 @@ executed results, so errors propagate. Gold prior answers and reference-prefix
 state replay are not used, and dependent-step contexts with gold-resolved
 expressions are withheld. These metrics therefore measure guided rollout over
 the supplied plan, not autonomous decomposition from only the top-level query.
-The guided workflow does not generate a post-tool model response, so
-user-facing `workflow_final_answer_accuracy` is unavailable for FinQA,
-ConvFinQA, and FinRetrieval. FinQA and ConvFinQA separately report
-`workflow_final_program_execution_accuracy`: the saved final tool scalar is
-rounded to five decimal places and compared with the source `exe_ans`. This is
-program-execution accuracy, not displayed-answer accuracy. FinRetrieval has no
-program-result target and remains unscored at the workflow-final level. These
-metrics do not affect tool, argument, execution, or per-step result metrics.
+The guided workflow does not generate a post-tool model response, so upstream
+display answers are retained only as provenance and are not scored. The
+The evaluator reports tool selection, argument accuracy, step-outcome
+accuracy, all-steps-correct accuracy, and final-step outcome accuracy
+independently. FinRetrieval's final structured evidence is
+therefore compared only with its final step's structured expected result, never
+with the upstream prose response. FinQA and ConvFinQA additionally report
+`final_program_execution_accuracy`: the saved final tool scalar is rounded to
+five decimal places and compared with the source `exe_ans`. This is
+program-execution accuracy, not displayed-answer accuracy.
 
 Finance prompt contexts use four versioned JSON kinds:
 

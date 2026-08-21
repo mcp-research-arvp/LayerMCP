@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -20,7 +21,8 @@ from analysis.multi_step_run import (
 )
 from evaluation.evaluate import (
     MULTISTEP_EVALUATION_PROTOCOL,
-    WORKFLOW_FINAL_SCORING_VERSION,
+    OUTCOME_METRIC_NAMES,
+    _build_multistep_metrics,
 )
 
 
@@ -91,10 +93,16 @@ class MultiStepRunTests(unittest.TestCase):
             entry["benchmark_path"]: {
                 key: value
                 for key, value in entry.items()
-                if key == "workflow_final_scoring_version"
-                or key.startswith("workflow_final_answer_")
-                or key.startswith("workflow_final_program_execution_")
-                or key.startswith("workflow_final_tool_result_")
+                if key in {
+                    "outcome_metric_names",
+                    "tool_selection_accuracy", "argument_accuracy",
+                    "step_outcome_accuracy", "step_outcome_scored",
+                    "step_outcome_status_counts", "step_outcome_matchers",
+                    "all_tools_correct_accuracy", "all_arguments_correct_accuracy",
+                    "all_steps_correct_accuracy", "all_steps_correct_scored",
+                }
+                or key.startswith("final_step_outcome_")
+                or key.startswith("final_program_execution_")
             }
             for entry in entries
         }
@@ -180,15 +188,15 @@ class MultiStepRunTests(unittest.TestCase):
 
     def _artifacts(self, root: Path, benchmark: Path, *, mode="grounded_tool_execution") -> Path:
         data=json.loads(benchmark.read_text()); dataset=root/"domains/math/test"; dataset.mkdir(parents=True)
-        records=[]
+        records=[]; benchmark_hash=hashlib.sha256(benchmark.read_bytes()).hexdigest()
         for row in data:
-            steps=[{"step_id":s["id"],"final_outcome_matcher":"recursive_json_subset_v1"} for s in row["expected_steps"]]
-            records.append({"sample_id":row["id"],"benchmark_path":str(benchmark),"model_name":MODEL,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","benchmark_mode":mode,"workflow_execution_mode":"predicted_sequence","steps":steps,"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"workflow_final_scoring_version":WORKFLOW_FINAL_SCORING_VERSION})
-        workflow_metrics = {"workflow_final_scoring_version": WORKFLOW_FINAL_SCORING_VERSION}
-        for prefix in ("workflow_final_answer", "workflow_final_program_execution", "workflow_final_tool_result"):
-            workflow_metrics.update({f"{prefix}_accuracy":None,f"{prefix}_gold":0,f"{prefix}_scored":0,f"{prefix}_correct":0,f"{prefix}_mismatch":0,f"{prefix}_extraction_error":0,f"{prefix}_unavailable":len(records),f"{prefix}_status_counts":{"unsupported":len(records)},f"{prefix}_contracts":[],f"{prefix}_matchers":[],f"{prefix}_scoring_version":WORKFLOW_FINAL_SCORING_VERSION})
+            steps=[{"step_id":s["id"],"benchmark_mode":mode,"tool_selection_correct":True,"argument_match_correct":True,"final_outcome_correct":True,"final_outcome_status":"correct","final_outcome_matcher":"recursive_json_subset_v1"} for s in row["expected_steps"]]
+            records.append({"sample_id":row["id"],"benchmark_path":str(benchmark),"benchmark_sha256":benchmark_hash,"model_name":MODEL,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","benchmark_mode":mode,"workflow_execution_mode":"predicted_sequence","steps":steps,"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"outcome_metric_names":list(OUTCOME_METRIC_NAMES),"all_tools_correct":True,"all_arguments_correct":True,"all_steps_correct":True,"expected_final_step_outcome":row["expected_steps"][-1]["expected_answer"],"final_step_outcome_contract":"final_step_expected_outcome","final_step_outcome_correct":True,"final_step_outcome_status":"correct","final_step_outcome_matcher":"recursive_json_subset_v1"})
+        workflow_metrics = _build_multistep_metrics(
+            records, [step for record in records for step in record["steps"]]
+        )
         (dataset/"samples.jsonl").write_text("".join(json.dumps(x)+"\n" for x in records))
-        (dataset/"summary.json").write_text(json.dumps({"benchmark_path":str(benchmark),"model_name":MODEL,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","total_workflows":len(records),"total_steps":sum(len(x["steps"]) for x in records),"benchmark_mode_counts":{mode:len(records)},"workflow_execution_modes":["predicted_sequence"],"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,**workflow_metrics}))
+        (dataset/"summary.json").write_text(json.dumps({"benchmark_path":str(benchmark),"benchmark_sha256":benchmark_hash,"model_name":MODEL,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","workflow_execution_modes":["predicted_sequence"],"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,**workflow_metrics}))
         (dataset/"evaluation.log").write_text("complete\n")
         return dataset
 
@@ -217,8 +225,8 @@ class MultiStepRunTests(unittest.TestCase):
             root=Path(temporary); benchmark=self._benchmark(root); run=root/"run"
             dataset=self._artifacts(run,benchmark); index=run/"artifact_index.jsonl"
             validate_and_index_multistep(dataset_directory=dataset,index_path=index,source_benchmark=benchmark,evaluated_benchmark=benchmark,expected_model=MODEL,expected_prompt_template=PROMPT,expected_registry_fingerprint=FINGERPRINT,expected_registry_fingerprint_version=VERSION,expected_tool_count=60,expected_tool_pool="full_mcp_registry",expected_reasoning_mode="direct",expected_reasoning_method="none",expected_generation_limit=128)
-            metadata={"workflow_final_scoring_version":WORKFLOW_FINAL_SCORING_VERSION,"expected_model_name":MODEL,"prompt_template_id":PROMPT,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"workflow_execution_mode":"predicted_sequence","tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"run_kind":"full","headline_eligible":True,"source_counts":{str(benchmark.resolve()):{"workflows":2,"routed_steps":5}},"short_test_selection":{}}
-            metadata["workflow_metric_summaries"] = self._metric_summaries(index)
+            metadata={"git_commit":"test-commit","benchmark_sha256":{str(benchmark.resolve()):hashlib.sha256(benchmark.read_bytes()).hexdigest()},"outcome_metric_names":list(OUTCOME_METRIC_NAMES),"expected_model_name":MODEL,"prompt_template_id":PROMPT,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"workflow_execution_mode":"predicted_sequence","tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"run_kind":"full","headline_eligible":True,"source_counts":{str(benchmark.resolve()):{"workflows":2,"routed_steps":5}},"short_test_selection":{}}
+            metadata["outcome_metric_summaries"] = self._metric_summaries(index)
             metadata_path=run/"run_metadata.json";metadata_path.write_text(json.dumps(metadata))
             validate_complete_multistep_run(index,[benchmark],metadata_path)
             metadata["reasoning_method"]="native_enabled";metadata_path.write_text(json.dumps(metadata))
@@ -232,8 +240,8 @@ class MultiStepRunTests(unittest.TestCase):
             provenance={"selected_workflow_ids":["short","long"],"selected_workflow_count":2,"headline_eligible":False}
             provenance_path=run/"short_test/provenance.json";provenance_path.parent.mkdir();provenance_path.write_text(json.dumps(provenance))
             validate_and_index_multistep(dataset_directory=dataset,index_path=index,source_benchmark=benchmark,evaluated_benchmark=benchmark,expected_model=MODEL,expected_prompt_template=PROMPT,expected_registry_fingerprint=FINGERPRINT,expected_registry_fingerprint_version=VERSION,expected_tool_count=60,expected_tool_pool="full_mcp_registry",expected_reasoning_mode="direct",expected_reasoning_method="none",expected_generation_limit=128,short_test_provenance=provenance_path)
-            metadata={"workflow_final_scoring_version":WORKFLOW_FINAL_SCORING_VERSION,"expected_model_name":MODEL,"prompt_template_id":PROMPT,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"workflow_execution_mode":"predicted_sequence","tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"run_kind":"short_test","headline_eligible":False,"source_counts":{str(benchmark.resolve()):{"workflows":2,"routed_steps":5}},"short_test_selection":{"test":provenance}}
-            metadata["workflow_metric_summaries"] = self._metric_summaries(index)
+            metadata={"git_commit":"test-commit","benchmark_sha256":{str(benchmark.resolve()):hashlib.sha256(benchmark.read_bytes()).hexdigest()},"outcome_metric_names":list(OUTCOME_METRIC_NAMES),"expected_model_name":MODEL,"prompt_template_id":PROMPT,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"workflow_execution_mode":"predicted_sequence","tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"run_kind":"short_test","headline_eligible":False,"source_counts":{str(benchmark.resolve()):{"workflows":2,"routed_steps":5}},"short_test_selection":{"test":provenance}}
+            metadata["outcome_metric_summaries"] = self._metric_summaries(index)
             metadata_path=run/"run_metadata.json";metadata_path.write_text(json.dumps(metadata))
             validate_complete_multistep_run(index,[benchmark],metadata_path)
             metadata["headline_eligible"]=True;metadata_path.write_text(json.dumps(metadata))

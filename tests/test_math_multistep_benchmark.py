@@ -41,11 +41,11 @@ class MathMultistepBenchmarkTests(unittest.TestCase):
                 self.assertEqual(row["source"], "controlled_synthetic")
                 self.assertEqual(row["benchmark_mode"], "grounded_tool_execution")
                 self.assertEqual(
-                    row["workflow_final_tool_result_contract"],
-                    "exact_normalized_json_v1",
+                    row["final_step_outcome_contract"],
+                    "exact_normalized_json",
                 )
                 self.assertEqual(
-                    row["expected_final_tool_result"],
+                    row["expected_final_step_outcome"],
                     row["expected_final_answer"],
                 )
                 self.assertGreaterEqual(len(row["expected_steps"]), 2)

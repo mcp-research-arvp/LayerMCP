@@ -138,7 +138,8 @@ class ConvFinQABuilderTests(unittest.TestCase):
     def test_display_answer_and_execution_target_are_separate(self) -> None:
         for row in self.benchmark:
             self.assertEqual(
-                row["workflow_final_program_contract"], "convfinqa_execution_v1"
+                row["final_program_execution_contract"],
+                "convfinqa_program_execution",
             )
             self.assertIn("expected_final_answer", row)
             self.assertIn("expected_final_program_result", row)

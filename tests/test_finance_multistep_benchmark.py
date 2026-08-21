@@ -256,8 +256,8 @@ class FinanceMultistepBenchmarkTests(unittest.TestCase):
             )
             self.assertEqual(row["source_execution_answers"], expected["answers"])
             self.assertEqual(
-                row["workflow_final_program_contract"],
-                "convfinqa_execution_v1",
+                row["final_program_execution_contract"],
+                "convfinqa_program_execution",
             )
             self.assertEqual(
                 row["expected_final_program_result"],

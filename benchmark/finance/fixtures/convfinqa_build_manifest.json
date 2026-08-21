@@ -1,0 +1,52 @@
+{
+  "builder": "benchmark.finance.build_convfinqa_multistep",
+  "builder_version": "convfinqa_source_to_artifact_v1",
+  "source": {
+    "repository": "czyssrs/ConvFinQA",
+    "repository_url": "https://github.com/czyssrs/ConvFinQA",
+    "revision": "cf3eed2d5984960bf06bb8145bcea5e80b0222a6",
+    "archive": "data.zip",
+    "archive_sha256": "d764271fae60d81b62e6d58dfc481807ebc8cfbcd633811241723c4a2101072a",
+    "member": "data/dev.json",
+    "member_sha256": "9665dd60f106e5cd41d37537edac97bbd26eb7629ad63ca2390b19d4619ba51b",
+    "split": "dev",
+    "license": "MIT"
+  },
+  "selection": {
+    "source_row_indices": [
+      0,
+      2,
+      3,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      13
+    ],
+    "conversation_ids": [
+      "Single_MRO/2007/page_134.pdf-1",
+      "Single_IPG/2009/page_85.pdf-3",
+      "Single_UNP/2008/page_77.pdf-2",
+      "Single_UNP/2014/page_35.pdf-3",
+      "Single_DVN/2007/page_58.pdf-3",
+      "Single_AON/2009/page_46.pdf-3",
+      "Single_CDNS/2018/page_31.pdf-1",
+      "Single_BLK/2014/page_119.pdf-1",
+      "Single_ETR/2008/page_355.pdf-4",
+      "Single_MO/2012/page_44.pdf-4"
+    ],
+    "workflow_count": 10,
+    "step_count": 35,
+    "evidence_row_count": 20,
+    "source_subset_canonical_sha256": "7cbacbe3958c747799ef697178489e309d51a444b9efa8ed30bcc27b29493c71",
+    "translation_canonical_sha256": "4eacf7682b40c50bd6d411d71b123d17c082fe5bba762648c77a7d12779a75aa",
+    "origin_main_model_facing_sha256": "0ebaa05699c5dda75119dc38ffea1e14132bf5a413b8238c667a22bf7456c7f4"
+  },
+  "generated_artifacts": {
+    "finance_convfinqa_multistep.json": "26fb0bf632f76f997030393ee12dd21c8e4a801629d064770a28d6e6208e7d8a",
+    "fixtures/convfinqa_dev_cells.json": "e15dbcc953395495657c074f937426090c469a9d4912d299ba0276d6b2e505f1",
+    "fixtures/convfinqa_dev_source_subset.json": "e256bb075346df471d62aa390fd66045c1f24fba6d10b5feaa899e7e88aa44e1"
+  }
+}

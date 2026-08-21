@@ -24,6 +24,7 @@ from evaluation.evaluate import (
     MULTISTEP_EVALUATION_PROTOCOL,
     PREDICTED_ROLLOUT_EXECUTION_MODE,
     _multistep_query,
+    WORKFLOW_FINAL_SCORING_VERSION,
     load_benchmark,
 )
 
@@ -282,6 +283,7 @@ def validate_and_index_multistep(
         "tool_count": expected_tool_count,
         "tool_registry_fingerprint": expected_registry_fingerprint,
         "tool_registry_fingerprint_version": expected_registry_fingerprint_version,
+        "workflow_final_scoring_version": WORKFLOW_FINAL_SCORING_VERSION,
     }
     for field, value in required_summary.items():
         if summary.get(field) != value:
@@ -348,6 +350,33 @@ def validate_and_index_multistep(
         "workflow_execution_modes": sorted(execution_modes),
         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
         "final_outcome_matchers": sorted(matchers),
+        "workflow_final_scoring_version": summary["workflow_final_scoring_version"],
+        "workflow_level_metrics": [
+            "workflow_final_answer_accuracy",
+            "workflow_final_program_execution_accuracy",
+            "workflow_final_tool_result_accuracy",
+        ],
+        **{
+            field: summary[field]
+            for prefix in (
+                "workflow_final_answer",
+                "workflow_final_program_execution",
+                "workflow_final_tool_result",
+            )
+            for field in (
+                f"{prefix}_accuracy",
+                f"{prefix}_gold",
+                f"{prefix}_scored",
+                f"{prefix}_correct",
+                f"{prefix}_mismatch",
+                f"{prefix}_extraction_error",
+                f"{prefix}_unavailable",
+                f"{prefix}_status_counts",
+                f"{prefix}_contracts",
+                f"{prefix}_matchers",
+                f"{prefix}_scoring_version",
+            )
+        },
         "model_name": expected_model,
         "prompt_template": expected_prompt_template,
         "reasoning_mode": summary["reasoning_mode"],
@@ -384,6 +413,8 @@ def validate_complete_multistep_run(
         raise ValueError(f"Run index is incomplete: expected {expected}, observed {observed}")
     artifact_paths: list[Path] = []
     for record in records:
+        if record.get("workflow_final_scoring_version") != WORKFLOW_FINAL_SCORING_VERSION:
+            raise ValueError("Run index uses incompatible workflow-final scoring")
         for field in ("samples_path", "summary_path", "evaluation_log_path"):
             if not record.get(field):
                 raise ValueError(f"Run index entry is missing {field}")
@@ -408,6 +439,22 @@ def validate_complete_multistep_run(
             raise ValueError("Run metadata uses an obsolete multi-step protocol")
         if metadata.get("workflow_execution_mode") != PREDICTED_ROLLOUT_EXECUTION_MODE:
             raise ValueError("Run metadata does not declare predicted_sequence")
+        if metadata.get("workflow_final_scoring_version") != WORKFLOW_FINAL_SCORING_VERSION:
+            raise ValueError("Run metadata uses incompatible workflow-final scoring")
+        metric_summaries = metadata.get("workflow_metric_summaries")
+        if not isinstance(metric_summaries, dict):
+            raise ValueError("Run metadata is missing workflow metric summaries")
+        for record in records:
+            expected_metric_summary = {
+                key: value
+                for key, value in record.items()
+                if key == "workflow_final_scoring_version"
+                or key.startswith("workflow_final_answer_")
+                or key.startswith("workflow_final_program_execution_")
+                or key.startswith("workflow_final_tool_result_")
+            }
+            if metric_summaries.get(record["benchmark_path"]) != expected_metric_summary:
+                raise ValueError("Run metadata workflow metrics do not match its index")
         run_kind = metadata.get("run_kind")
         if run_kind not in {"short_test", "full"}:
             raise ValueError(f"Unsupported run kind in metadata: {run_kind!r}")

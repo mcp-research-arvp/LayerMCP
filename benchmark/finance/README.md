@@ -91,6 +91,11 @@ projects or live clients for their services.
   4.0 license, and the changes made for this repository.
 - `fixtures/convfinqa_dev_cells.json` contains the 20 normalized evidence rows
   needed by the selected ConvFinQA conversations.
+- `fixtures/convfinqa_dev_source_subset.json` preserves the exact source-owned
+  fields extracted from the ten pinned development rows for offline validation.
+- `fixtures/convfinqa_build_manifest.json` records the source, subset,
+  translation, model-facing, benchmark, and fixture hashes produced by the
+  deterministic builder.
 - `fixtures/CONVFINQA_ATTRIBUTION.md` and `fixtures/CONVFINQA_LICENSE.txt`
   record the pinned ConvFinQA source, archive hash, paper, and MIT license.
 
@@ -177,15 +182,14 @@ executed results, so errors propagate. Gold prior answers and reference-prefix
 state replay are not used, and dependent-step contexts with gold-resolved
 expressions are withheld. These metrics therefore measure guided rollout over
 the supplied plan, not autonomous decomposition from only the top-level query.
-Final-output matching is explicit per workflow and does not affect tool,
-argument, or per-step result metrics. FinQA workflows compare the final executed
-scalar (rounded to five decimal places) with the source `exe_ans`, matching the
-published execution-accuracy rule rather than the displayed `answer`. ConvFinQA
-workflows apply the same rule to the final adapted conversation turn; this is a
-final-turn LayerMCP metric, not the source paper's all-turn aggregate. FinRetrieval
-workflows require a generated natural-language response and its released judge,
-so their final-answer accuracy is unavailable in this tool-only replay. Other
-legacy workflows retain their declared display-scalar contract.
+The guided workflow does not generate a post-tool model response, so
+user-facing `workflow_final_answer_accuracy` is unavailable for FinQA,
+ConvFinQA, and FinRetrieval. FinQA and ConvFinQA separately report
+`workflow_final_program_execution_accuracy`: the saved final tool scalar is
+rounded to five decimal places and compared with the source `exe_ans`. This is
+program-execution accuracy, not displayed-answer accuracy. FinRetrieval has no
+program-result target and remains unscored at the workflow-final level. These
+metrics do not affect tool, argument, execution, or per-step result metrics.
 
 Finance prompt contexts use four versioned JSON kinds:
 
@@ -264,6 +268,10 @@ benchmark rows: 757 single-step rows and 985 multi-step workflows.
 The importers are deterministic and offline:
 
 ```bash
+python benchmark/finance/build_convfinqa_multistep.py \
+  --source-archive /path/to/ConvFinQA/data.zip \
+  --output-root benchmark/finance
+
 python benchmark/finance/build_finqa_expansion.py \
   --source-test /path/to/FinQA/dataset/test.json
 

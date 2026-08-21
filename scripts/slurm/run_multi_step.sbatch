@@ -344,7 +344,7 @@ for path in paths:
     declared[path]=dict(sorted(collections.Counter(r.get("workflow_execution_mode") or "isolated_step" for r in rows).items()))
 for p in sorted(run.glob("short_test_subsets/*/provenance.json")):
     selections[p.parent.name]=json.loads(p.read_text())
-data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"source_counts":counts,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
+data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"source_counts":counts,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","workflow_final_scoring_version":"workflow_final_metrics_v2","workflow_level_metrics":["workflow_final_answer_accuracy","workflow_final_program_execution_accuracy","workflow_final_tool_result_accuracy"],"model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")
 PY
 
@@ -365,6 +365,29 @@ for group in "${SELECTED_DATASET_GROUPS[@]}"; do
     --registry-fingerprint-version "$REGISTRY_FINGERPRINT_VERSION" --tool-count "$TOOL_COUNT" \
     --tool-pool "$TOOL_POOL" "${provenance_args[@]}"
 done
+
+python - "$RUN_DIR/run_metadata.json" "$RUN_DIR/artifact_index.jsonl" <<'PY'
+import json, os, sys
+from pathlib import Path
+metadata_path, index_path = map(Path, sys.argv[1:])
+metadata = json.loads(metadata_path.read_text())
+entries = [json.loads(line) for line in index_path.read_text().splitlines() if line.strip()]
+metadata["workflow_metric_summaries"] = {
+    entry["benchmark_path"]: {
+        key: value for key, value in entry.items()
+        if key == "workflow_final_scoring_version"
+        or key.startswith("workflow_final_answer_")
+        or key.startswith("workflow_final_program_execution_")
+        or key.startswith("workflow_final_tool_result_")
+    }
+    for entry in entries
+}
+temporary = metadata_path.with_suffix(".json.tmp")
+with temporary.open("x") as handle:
+    json.dump(metadata, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+os.replace(temporary, metadata_path)
+PY
 
 python -m analysis.multi_step_run --validate-index --index "$RUN_DIR/artifact_index.jsonl" \
   --source-benchmark "$SOURCE_LIST" --run-metadata "$RUN_DIR/run_metadata.json"

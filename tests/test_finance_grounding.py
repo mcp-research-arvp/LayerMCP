@@ -18,6 +18,7 @@ from benchmark.finance.grounding import (
     TABLE_GROUNDING_KIND,
 )
 from evaluation.evaluate import (
+    _is_gold_resolved_step_context,
     _multistep_query,
     _query_with_context,
     load_benchmark,
@@ -146,7 +147,10 @@ class FinanceGroundingTests(unittest.TestCase):
                             step=raw_step["id"],
                         ):
                             routed = _multistep_query(sample, step, [])
-                            self.assertIn(raw_step["prompt_context"], routed)
+                            if _is_gold_resolved_step_context(step):
+                                self.assertNotIn(raw_step["prompt_context"], routed)
+                            else:
+                                self.assertIn(raw_step["prompt_context"], routed)
                 else:
                     with self.subTest(path=path.name, row=row["id"]):
                         routed = _query_with_context(

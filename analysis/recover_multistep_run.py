@@ -22,6 +22,7 @@ from analysis.run_artifacts import _load_json_object, _load_jsonl_objects
 from evaluation.evaluate import (
     MULTISTEP_EVALUATION_PROTOCOL,
     PREDICTED_ROLLOUT_EXECUTION_MODE,
+    WORKFLOW_FINAL_SCORING_VERSION,
     _build_multistep_metrics,
 )
 
@@ -216,12 +217,17 @@ def recover_multistep_run(
         "effective_generation_limit_unit", "tool_pool", "tool_count",
         "tool_registry_fingerprint", "tool_registry_fingerprint_version",
         "benchmark_mode", "workflow_execution_mode",
+        "workflow_final_scoring_version",
     )
     values = {field: _uniform(records, field) for field in required_record_fields}
     if values["evaluation_protocol"] != MULTISTEP_EVALUATION_PROTOCOL:
         raise ValueError("Saved workflows use an unsupported evaluation protocol")
     if values["workflow_execution_mode"] != PREDICTED_ROLLOUT_EXECUTION_MODE:
         raise ValueError("Saved workflows are not predicted-sequence rollout records")
+    if values["workflow_final_scoring_version"] != WORKFLOW_FINAL_SCORING_VERSION:
+        raise ValueError("Saved workflows use incompatible workflow-final scoring")
+    if metadata.get("workflow_final_scoring_version") != WORKFLOW_FINAL_SCORING_VERSION:
+        raise ValueError("Source metadata uses incompatible workflow-final scoring")
     if values["model_name"] != metadata.get("expected_model_name"):
         raise ValueError("Saved model does not match source run metadata")
     for field, metadata_field in (
@@ -322,6 +328,16 @@ def recover_multistep_run(
         "source_run_path": str(source_run),
         "source_job_id": str(metadata.get("slurm_job_id")),
         "source_artifact_sha256": source_hashes,
+        "workflow_metric_summaries": {
+            original_benchmark_identity: {
+                key: value
+                for key, value in summary.items()
+                if key == "workflow_final_scoring_version"
+                or key.startswith("workflow_final_answer_")
+                or key.startswith("workflow_final_program_execution_")
+                or key.startswith("workflow_final_tool_result_")
+            }
+        },
     }
 
     output_run.parent.mkdir(parents=True, exist_ok=True)

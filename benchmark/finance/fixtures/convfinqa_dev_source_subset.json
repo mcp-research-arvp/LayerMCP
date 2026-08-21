@@ -1,0 +1,301 @@
+[
+  {
+    "source_row_index": 0,
+    "source_conversation_id": "Single_MRO/2007/page_134.pdf-1",
+    "source_filename": "MRO/2007/page_134.pdf",
+    "question": "by how much did the weighted average exercise price per share increase from 2005 to 2007?",
+    "display_answer": "142.4%",
+    "gold_evidence": {
+      "table_1": "the weighted average exercise price per share of 2007 is $ 60.94 ; the weighted average exercise price per share of 2006 is $ 37.84 ; the weighted average exercise price per share of 2005 is $ 25.14 ;"
+    },
+    "source_program": "subtract(60.94, 25.14), divide(#0, 25.14)",
+    "source_execution_answer": 1.42403,
+    "original_program": "subtract(60.94, 25.14), divide(A0, 25.14)",
+    "dialogue_break": [
+      "what was the weighted average exercise price per share in 2007?",
+      "and what was it in 2005?",
+      "what was, then, the change over the years?",
+      "what was the weighted average exercise price per share in 2005?",
+      "and how much does that change represent in relation to this 2005 weighted average exercise price?"
+    ],
+    "turn_program": [
+      "60.94",
+      "25.14",
+      "subtract(60.94, 25.14)",
+      "25.14",
+      "subtract(60.94, 25.14), divide(#0, 25.14)"
+    ],
+    "execution_answers": [
+      60.94,
+      25.14,
+      35.8,
+      25.14,
+      1.42403
+    ]
+  },
+  {
+    "source_row_index": 2,
+    "source_conversation_id": "Single_IPG/2009/page_85.pdf-3",
+    "source_filename": "IPG/2009/page_85.pdf",
+    "question": "what percentage of amounts expensed in 2009 came from discretionary company contributions?",
+    "display_answer": "10.83%",
+    "gold_evidence": {
+      "text_14": "amounts expensed for the savings plans for 2009 , 2008 and 2007 were $ 35.1 , $ 29.6 and $ 31.4 , respectively .",
+      "text_15": "expense includes a discretionary company contribution of $ 3.8 , $ 4.0 and $ 4.9 offset by participant forfeitures of $ 2.7 , $ 7.8 , $ 6.0 in 2009 , 2008 and 2007 , respectively ."
+    },
+    "source_program": "divide(3.8, 35.1), multiply(#0, const_100)",
+    "source_execution_answer": 10.82621,
+    "original_program": "divide(3.8, 35.1), multiply(A0, const_100)",
+    "dialogue_break": [
+      "what is the ratio of discretionary company contributions to total expensed amounts for savings plans in 2009?",
+      "what is that times 100?"
+    ],
+    "turn_program": [
+      "divide(3.8, 35.1)",
+      "divide(3.8, 35.1), multiply(#0, const_100)"
+    ],
+    "execution_answers": [
+      0.10826,
+      10.82621
+    ]
+  },
+  {
+    "source_row_index": 3,
+    "source_conversation_id": "Single_UNP/2008/page_77.pdf-2",
+    "source_filename": "UNP/2008/page_77.pdf",
+    "question": "what was the percentage change in equipment rents payable from 2007 to 2008?",
+    "display_answer": "-10%",
+    "gold_evidence": {
+      "table_6": "millions of dollars the equipment rents payable of dec . 31 2008 is 93 ; the equipment rents payable of dec . 31 2007 is 103 ;"
+    },
+    "source_program": "subtract(93, 103), divide(#0, 103)",
+    "source_execution_answer": -0.09709,
+    "original_program": "subtract(93, 103), divide(A0, 103)",
+    "dialogue_break": [
+      "what was the equipment rents payable in 2008?",
+      "and in 2007?",
+      "so what was the difference between the two years?",
+      "and the value for 2007 again?",
+      "so what was the percentage change during this time?"
+    ],
+    "turn_program": [
+      "93",
+      "103",
+      "subtract(93, 103)",
+      "103",
+      "subtract(93, 103), divide(#0, 103)"
+    ],
+    "execution_answers": [
+      93.0,
+      103.0,
+      -10.0,
+      103.0,
+      -0.09709
+    ]
+  },
+  {
+    "source_row_index": 6,
+    "source_conversation_id": "Single_UNP/2014/page_35.pdf-3",
+    "source_filename": "UNP/2014/page_35.pdf",
+    "question": "what was the percentage change in cash provided by operating activities from 2012 to 2013?",
+    "display_answer": "11%",
+    "gold_evidence": {
+      "table_1": "cash flowsmillions the cash provided by operating activities of 2014 is $ 7385 ; the cash provided by operating activities of 2013 is $ 6823 ; the cash provided by operating activities of 2012 is $ 6161 ;"
+    },
+    "source_program": "subtract(6823, 6161), divide(#0, 6161)",
+    "source_execution_answer": 0.10745,
+    "original_program": "subtract(6823, 6161), divide(A0, 6161)",
+    "dialogue_break": [
+      "what was the cash provided by operating activities in 2013?",
+      "and in 2012?",
+      "so what was the difference in this value between the years?",
+      "and the value for 2012 again?",
+      "so what was the percentage change during this time?"
+    ],
+    "turn_program": [
+      "6823",
+      "6161",
+      "subtract(6823, 6161)",
+      "6161",
+      "subtract(6823, 6161), divide(#0, 6161)"
+    ],
+    "execution_answers": [
+      6823.0,
+      6161.0,
+      662.0,
+      6161.0,
+      0.10745
+    ]
+  },
+  {
+    "source_row_index": 7,
+    "source_conversation_id": "Single_DVN/2007/page_58.pdf-3",
+    "source_filename": "DVN/2007/page_58.pdf",
+    "question": "what percentage of the total oil and gas mmboe comes from canada?",
+    "display_answer": "24.69%",
+    "gold_evidence": {
+      "table_3": "the canada of oil ( mmbbls ) is 23 ; the canada of gas ( bcf ) is 198 ; the canada of ngls ( mmbbls ) is 4 ; the canada of total ( mmboe ) is 60 ;",
+      "table_5": "the total of oil ( mmbbls ) is 66 ; the total of gas ( bcf ) is 894 ; the total of ngls ( mmbbls ) is 28 ; the total of total ( mmboe ) is 243 ;",
+      "text_34": "oil gas ngls total ( mmbbls ) ( bcf ) ( mmbbls ) ( mmboe ) ."
+    },
+    "source_program": "divide(60, 243), multiply(#0, const_100)",
+    "source_execution_answer": 24.69136,
+    "original_program": "divide(60, 243), multiply(A0, const_100)",
+    "dialogue_break": [
+      "what is the amount of oil and gas mmboe from canada divided by the total?",
+      "what is that times 100?"
+    ],
+    "turn_program": [
+      "divide(60, 243)",
+      "divide(60, 243), multiply(#0, const_100)"
+    ],
+    "execution_answers": [
+      0.24691,
+      24.69136
+    ]
+  },
+  {
+    "source_row_index": 8,
+    "source_conversation_id": "Single_AON/2009/page_46.pdf-3",
+    "source_filename": "AON/2009/page_46.pdf",
+    "question": "what was the percent of the change in the risk and insurance brokerage services segment revenue from 2008 2009\\\\n",
+    "display_answer": "1.7%",
+    "gold_evidence": {
+      "table_1": "years ended december 31 , the segment revenue of 2009 is $ 6305 ; the segment revenue of 2008 is $ 6197 ; the segment revenue of 2007 is $ 5918 ;"
+    },
+    "source_program": "subtract(6305, 6197), divide(#0, 6197)",
+    "source_execution_answer": 0.01743,
+    "original_program": "subtract(6305, 6197), divide(A0, 6197)",
+    "dialogue_break": [
+      "what was the total of risk and insurance brokerage services segment revenue in 2009?",
+      "and what was that in 2008?",
+      "what was, then, the change over the year?",
+      "and how much does this change represent in relation to the 2008 total, in percentage?"
+    ],
+    "turn_program": [
+      "6305",
+      "6197",
+      "subtract(6305, 6197)",
+      "subtract(6305, 6197), divide(#0, 6197)"
+    ],
+    "execution_answers": [
+      6305.0,
+      6197.0,
+      108.0,
+      0.01743
+    ]
+  },
+  {
+    "source_row_index": 9,
+    "source_conversation_id": "Single_CDNS/2018/page_31.pdf-1",
+    "source_filename": "CDNS/2018/page_31.pdf",
+    "question": "what is the total return is $ 100000 are invested in s&p500 on january 1st , 2015 and sold at the end of 2016?",
+    "display_answer": "1877",
+    "gold_evidence": {
+      "table_3": "the s&p 500 of 12/28/2013 is 100.00 ; the s&p 500 of 1/3/2015 is 110.28 ; the s&p 500 of 1/2/2016 is 109.54 ; the s&p 500 of 12/31/2016 is 129.05 ; the s&p 500 of 12/30/2017 is 157.22 ; the s&p 500 of 12/29/2018 is 150.33 ;"
+    },
+    "source_program": "subtract(129.05, 110.28), divide(100000, const_100), multiply(#1, #0)",
+    "source_execution_answer": 18770.0,
+    "original_program": "subtract(129.05, 110.28), divide(100000, const_100), multiply(A1, A0)",
+    "dialogue_break": [
+      "what is the change in price of the s&p 500 from 2015 to 2016?",
+      "what is 100000 divided by 100?",
+      "what is the product of the change by the quotient?"
+    ],
+    "turn_program": [
+      "subtract(129.05, 110.28)",
+      "subtract(129.05, 110.28), divide(100000, const_100)",
+      "subtract(129.05, 110.28), divide(100000, const_100), multiply(#1, #0)"
+    ],
+    "execution_answers": [
+      18.77,
+      1000.0,
+      18770.0
+    ]
+  },
+  {
+    "source_row_index": 10,
+    "source_conversation_id": "Single_BLK/2014/page_119.pdf-1",
+    "source_filename": "BLK/2014/page_119.pdf",
+    "question": "what percent higher is fair value than carrying value?",
+    "display_answer": "7.51%",
+    "gold_evidence": {
+      "table_7": "( in millions ) the total long-term borrowings of maturity amount is $ 4950 ; the total long-term borrowings of unamortized discount is $ -12 ( 12 ) ; the total long-term borrowings of carrying value is $ 4938 ; the total long-term borrowings of fair value is $ 5309 ;",
+      "text_14": "long-term borrowings the carrying value and fair value of long-term borrowings estimated using market prices at december 31 , 2014 included the following : ( in millions ) maturity amount unamortized discount carrying value fair value ."
+    },
+    "source_program": "divide(5309, 4938), subtract(#0, const_1)",
+    "source_execution_answer": 0.07513,
+    "original_program": "divide(5309, 4938), subtract(A0, const_1)",
+    "dialogue_break": [
+      "what is the ratio of fair value to carrying value?",
+      "what is that less 1?"
+    ],
+    "turn_program": [
+      "divide(5309, 4938)",
+      "divide(5309, 4938), subtract(#0, const_1)"
+    ],
+    "execution_answers": [
+      1.07513,
+      0.07513
+    ]
+  },
+  {
+    "source_row_index": 11,
+    "source_conversation_id": "Single_ETR/2008/page_355.pdf-4",
+    "source_filename": "ETR/2008/page_355.pdf",
+    "question": "what is the percent change in gas customers between 2007 and 2008?",
+    "display_answer": "8%",
+    "gold_evidence": {
+      "text_5": "entergy new orleans estimates that approximately 141000 electric customers and 93000 gas customers have returned since hurricane katrina and are taking service as of december 31 , 2008 , compared to approximately 132000 electric customers and 86000 gas customers as of december 31 , 2007 ."
+    },
+    "source_program": "subtract(93000, 86000), divide(#0, 86000)",
+    "source_execution_answer": 0.0814,
+    "original_program": "subtract(93000, 86000), divide(A0, 86000)",
+    "dialogue_break": [
+      "what was the number of gas customers in 2008?",
+      "and what was it in 2007?",
+      "what was, then, the change in that number over the year?",
+      "and how much does this change represent in relation to the 2007 number of customers, in percentage?"
+    ],
+    "turn_program": [
+      "93000",
+      "86000",
+      "subtract(93000, 86000)",
+      "subtract(93000, 86000), divide(#0, 86000)"
+    ],
+    "execution_answers": [
+      93000.0,
+      86000.0,
+      7000.0,
+      0.0814
+    ]
+  },
+  {
+    "source_row_index": 13,
+    "source_conversation_id": "Single_MO/2012/page_44.pdf-4",
+    "source_filename": "MO/2012/page_44.pdf",
+    "question": "what is the growth rate in total shipment volume from 2010 to 2011?",
+    "display_answer": "1.4%",
+    "gold_evidence": {
+      "table_5": "( cans and packs in millions ) the total smokeless products of shipment volumefor the years ended december 31 , 2012 is 763.3 ; the total smokeless products of shipment volumefor the years ended december 31 , 2011 is 734.6 ; the total smokeless products of shipment volumefor the years ended december 31 , 2010 is 724.4 ;"
+    },
+    "source_program": "subtract(734.6, 724.4), divide(#0, 724.4)",
+    "source_execution_answer": 0.01408,
+    "original_program": "subtract(734.6, 724.4), divide(A0, 724.4)",
+    "dialogue_break": [
+      "what was the difference in total shipment volume between 2010 and 2011?",
+      "and the specific value for 2010?",
+      "so what was the growth rate over this time?"
+    ],
+    "turn_program": [
+      "subtract(734.6, 724.4)",
+      "724.4",
+      "subtract(734.6, 724.4), divide(#0, 724.4)"
+    ],
+    "execution_answers": [
+      10.2,
+      724.4,
+      0.01408
+    ]
+  }
+]

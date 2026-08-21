@@ -256,11 +256,11 @@ class FinanceMultistepBenchmarkTests(unittest.TestCase):
             )
             self.assertEqual(row["source_execution_answers"], expected["answers"])
             self.assertEqual(
-                row["workflow_final_answer_contract"],
+                row["workflow_final_program_contract"],
                 "convfinqa_execution_v1",
             )
             self.assertEqual(
-                row["workflow_final_answer_expected"],
+                row["expected_final_program_result"],
                 expected["answers"][-1],
             )
             self.assertEqual(row["source_revision"], SOURCE_REVISION)

@@ -41,8 +41,14 @@ DATASET_GROUPS = {
     "finance_finretrieval_replay": Path(
         "benchmark/finance/finance_finretrieval_replay_multistep.json"
     ),
+    "math_public_mathqa": Path(
+        "benchmark/math/math_public_mathqa_multistep.json"
+    ),
     "math_controlled": Path("benchmark/math/math_multistep_controlled.json"),
 }
+PRIMARY_DATASET_GROUPS = tuple(
+    group for group in DATASET_GROUPS if group != "math_controlled"
+)
 EMPTY_PLACEHOLDER = Path(
     "benchmark/coding/coding_nebius_swerebench_openhands_replay_multistep.json"
 )
@@ -115,7 +121,7 @@ def resolve_dataset_groups(group: str, run_kind: str) -> list[tuple[str, Path]]:
     if group == "all":
         if run_kind != "short_test":
             raise ValueError("DATASET_GROUP=all is allowed only for RUN_KIND=short_test")
-        return list(DATASET_GROUPS.items())
+        return [(group, DATASET_GROUPS[group]) for group in PRIMARY_DATASET_GROUPS]
     if group not in DATASET_GROUPS:
         raise ValueError(f"Unsupported DATASET_GROUP: {group}")
     return [(group, DATASET_GROUPS[group])]

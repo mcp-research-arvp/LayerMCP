@@ -15,6 +15,8 @@ class MultiStepScorecardTests(unittest.TestCase):
         root: Path,
         *,
         program_accuracy=None,
+        dataset: str = "finretrieval",
+        headline: bool = True,
         model: str = "model",
         reasoning_mode: str = "direct",
         reasoning_method: str = "none",
@@ -22,11 +24,12 @@ class MultiStepScorecardTests(unittest.TestCase):
         generation_limit: int = 128,
     ) -> Path:
         run = root / "run"
-        dataset = run / "domains/finance/finretrieval"
-        dataset.mkdir(parents=True)
+        dataset_path = run / "domains/finance" / dataset
+        dataset_path.mkdir(parents=True)
         (run / "RUN_COMPLETE").write_text("complete\n", encoding="utf-8")
         contract = {
             "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
+            "headline_eligible": headline,
         }
         (run / "run_metadata.json").write_text(
             json.dumps(contract), encoding="utf-8"
@@ -83,7 +86,7 @@ class MultiStepScorecardTests(unittest.TestCase):
                     ],
                 }
             )
-        (dataset / "summary.json").write_text(
+        (dataset_path / "summary.json").write_text(
             json.dumps(summary), encoding="utf-8"
         )
         return run
@@ -153,6 +156,20 @@ class MultiStepScorecardTests(unittest.TestCase):
             summary_path.write_text(json.dumps(summary), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "fields are missing"):
                 build_scorecard([run])
+
+    def test_public_mathqa_has_explicit_label(self) -> None:
+        with TemporaryDirectory() as temporary:
+            markdown = build_scorecard([
+                self._run(Path(temporary), dataset="math_public_mathqa_multistep")
+            ])
+            self.assertIn("MathQA public-derived", markdown)
+
+    def test_non_headline_diagnostic_is_excluded(self) -> None:
+        with TemporaryDirectory() as temporary:
+            markdown = build_scorecard([
+                self._run(Path(temporary), dataset="math_multistep_controlled", headline=False)
+            ])
+            self.assertNotIn("Math controlled diagnostic", markdown)
 
 
 if __name__ == "__main__":

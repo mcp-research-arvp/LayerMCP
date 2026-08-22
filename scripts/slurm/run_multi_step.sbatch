@@ -1,7 +1,7 @@
 #!/bin/bash
 # Example:
-# MODEL=phi-4-local REASONING_MODE=direct DATASET_GROUP=math_controlled RUN_KIND=short_test
-# sbatch --job-name="${MODEL}-${REASONING_MODE}-${RUN_KIND}-${DATASET_GROUP}" \
+# MODEL=phi-4-local REASONING_MODE=direct DATASET_GROUP=math_public_mathqa RUN_KIND=full
+# sbatch --job-name="${MODEL}-${REASONING_MODE}-multi-${RUN_KIND}-${DATASET_GROUP}" \
 #   --export=ALL,MODEL,REASONING_MODE,DATASET_GROUP,RUN_KIND \
 #   scripts/slurm/run_multi_step.sbatch
 # GPT-OSS full example:
@@ -54,15 +54,17 @@ if [[ "${LAYERMCP_VALIDATE_REPO_ROOT_ONLY:-0}" == 1 ]]; then
   exit 0
 fi
 
-DATASET_GROUP_ORDER=(
+PRIMARY_DATASET_GROUP_ORDER=(
   coding_sweagent
   coding_nebius_replay
   enterprise_tau2
   finance_convfinqa
   finance_finqa
   finance_finretrieval_replay
-  math_controlled
+  math_public_mathqa
 )
+OPTIONAL_DATASET_GROUPS=(math_controlled)
+DATASET_GROUP_ORDER=("${PRIMARY_DATASET_GROUP_ORDER[@]}" "${OPTIONAL_DATASET_GROUPS[@]}")
 ACCEPTED_DATASET_GROUPS="${DATASET_GROUP_ORDER[*]} all"
 declare -A DATASETS=(
   [coding_sweagent]="benchmark/coding/coding_sweagent_multistep.json"
@@ -71,6 +73,7 @@ declare -A DATASETS=(
   [finance_convfinqa]="benchmark/finance/finance_convfinqa_multistep.json"
   [finance_finqa]="benchmark/finance/finance_finqa_test_multistep.json"
   [finance_finretrieval_replay]="benchmark/finance/finance_finretrieval_replay_multistep.json"
+  [math_public_mathqa]="benchmark/math/math_public_mathqa_multistep.json"
   [math_controlled]="benchmark/math/math_multistep_controlled.json"
 )
 declare -A DATASET_DOMAINS=(
@@ -80,6 +83,7 @@ declare -A DATASET_DOMAINS=(
   [finance_convfinqa]="finance"
   [finance_finqa]="finance"
   [finance_finretrieval_replay]="finance"
+  [math_public_mathqa]="math"
   [math_controlled]="math"
 )
 declare -A DATASET_BENCHMARK_MODES=(
@@ -89,6 +93,7 @@ declare -A DATASET_BENCHMARK_MODES=(
   [finance_convfinqa]="grounded_tool_execution"
   [finance_finqa]="grounded_tool_execution"
   [finance_finretrieval_replay]="offline_trace_replay"
+  [math_public_mathqa]="grounded_tool_execution"
   [math_controlled]="grounded_tool_execution"
 )
 declare -A EXPECTED_WORKFLOW_COUNTS=(
@@ -98,6 +103,7 @@ declare -A EXPECTED_WORKFLOW_COUNTS=(
   [finance_convfinqa]=10
   [finance_finqa]=490
   [finance_finretrieval_replay]=485
+  [math_public_mathqa]=200
   [math_controlled]=50
 )
 declare -A EXPECTED_STEP_COUNTS=(
@@ -107,6 +113,7 @@ declare -A EXPECTED_STEP_COUNTS=(
   [finance_convfinqa]=35
   [finance_finqa]=1111
   [finance_finretrieval_replay]=1490
+  [math_public_mathqa]=892
   [math_controlled]=105
 )
 
@@ -133,7 +140,7 @@ if [[ "$DATASET_GROUP" == all ]]; then
     echo "DATASET_GROUP=all is short_test-only" >&2
     exit 2
   }
-  SELECTED_DATASET_GROUPS=("${DATASET_GROUP_ORDER[@]}")
+  SELECTED_DATASET_GROUPS=("${PRIMARY_DATASET_GROUP_ORDER[@]}")
 elif [[ -n "${DATASETS[$DATASET_GROUP]:-}" ]]; then
   SELECTED_DATASET_GROUPS=("$DATASET_GROUP")
 else
@@ -387,14 +394,16 @@ python - "$RUN_DIR/run_metadata.json" "$SOURCE_LIST" "$RUN_DIR" <<PY
 import collections,hashlib,json,sys
 from pathlib import Path
 paths=Path(sys.argv[2]).read_text().splitlines(); run=Path(sys.argv[3])
-counts={}; hashes={}; modes={}; declared={}; selections={}
+counts={}; hashes={}; modes={}; declared={}; selections={}; source_provenance={}
 for path in paths:
     source=Path(path); rows=json.loads(source.read_text()); hashes[path]=hashlib.sha256(source.read_bytes()).hexdigest(); counts[path]={"workflows":len(rows),"routed_steps":sum(len(r["expected_steps"]) for r in rows)}
     modes[path]=dict(sorted(collections.Counter(r.get("benchmark_mode") or "grounded_tool_execution" for r in rows).items()))
     declared[path]=dict(sorted(collections.Counter(r.get("workflow_execution_mode") or "isolated_step" for r in rows).items()))
+    if rows and rows[0].get("benchmark_provenance"):
+        source_provenance[path]=rows[0]["benchmark_provenance"]
 for p in sorted(run.glob("short_test_subsets/*/provenance.json")):
     selections[p.parent.name]=json.loads(p.read_text())
-data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"benchmark_sha256":hashes,"source_counts":counts,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","outcome_metric_names":["tool_selection_accuracy","argument_accuracy","step_outcome_accuracy","all_steps_correct_accuracy","final_step_outcome_accuracy","final_program_execution_accuracy"],"model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
+data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" or "$DATASET_GROUP"=="math_controlled" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"benchmark_sha256":hashes,"source_counts":counts,"source_provenance":source_provenance,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","outcome_metric_names":["tool_selection_accuracy","argument_accuracy","step_outcome_accuracy","all_steps_correct_accuracy","final_step_outcome_accuracy","final_program_execution_accuracy"],"model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
 reasoning_effort="$REASONING_EFFORT_VALUE"
 if reasoning_effort:data["reasoning_effort"]=reasoning_effort
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")

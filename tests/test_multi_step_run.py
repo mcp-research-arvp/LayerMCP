@@ -77,6 +77,13 @@ class MultiStepRunTests(unittest.TestCase):
             "485",
             "1490",
         ),
+        "math_public_mathqa": (
+            "benchmark/math/math_public_mathqa_multistep.json",
+            "math",
+            "grounded_tool_execution",
+            "200",
+            "892",
+        ),
         "math_controlled": (
             "benchmark/math/math_multistep_controlled.json",
             "math",
@@ -144,13 +151,14 @@ class MultiStepRunTests(unittest.TestCase):
             "finance_convfinqa": (10, 35),
             "finance_finqa": (490, 1111),
             "finance_finretrieval_replay": (485, 1490),
+            "math_public_mathqa": (200, 892),
             "math_controlled": (50, 105),
         }
         self.assertEqual(set(DATASET_GROUPS), set(expected))
         for group, counts in expected.items():
             self.assertEqual(dataset_counts(ROOT / DATASET_GROUPS[group]), counts)
-        self.assertEqual(sum(value[0] for value in expected.values()), 1142)
-        self.assertEqual(sum(value[1] for value in expected.values()), 3241)
+        self.assertEqual(sum(value[0] for value in expected.values()), 1342)
+        self.assertEqual(sum(value[1] for value in expected.values()), 4133)
         self.assertNotIn(EMPTY_PLACEHOLDER, DATASET_GROUPS.values())
         self.assertEqual(json.loads((ROOT / EMPTY_PLACEHOLDER).read_text()), [])
 
@@ -308,6 +316,9 @@ class MultiStepRunTests(unittest.TestCase):
         self.assertNotIn("teacher_forced_step_routing_v1",launcher)
         self.assertIn('--reasoning-mode "$REASONING_MODE"', launcher)
         self.assertIn("short_test", launcher)
+        self.assertIn('${MODEL}-${REASONING_MODE}-multi-${RUN_KIND}-${DATASET_GROUP}', launcher)
+        self.assertIn('domains/$domain/$dataset', launcher)
+        self.assertIn('"source_provenance":source_provenance', launcher)
         for model in (
             "phi-4-local",
             "llama-3.1-8b-local",
@@ -370,13 +381,13 @@ class MultiStepRunTests(unittest.TestCase):
                 self.assertNotIn("registry", result.stdout.lower())
                 self.assertNotIn("model weights", result.stdout.lower())
 
-    def test_launcher_all_resolves_seven_groups_in_order(self) -> None:
+    def test_launcher_all_resolves_seven_primary_groups_in_order(self) -> None:
         result = self._validate_launcher_group("all", run_kind="short_test")
         self.assertEqual(result.returncode, 0, result.stderr)
         rows = [line.split("\t") for line in result.stdout.splitlines()]
         self.assertEqual(
             [row[0] for row in rows],
-            list(self.EXPECTED_LAUNCHER_GROUPS),
+            [group for group in self.EXPECTED_LAUNCHER_GROUPS if group != "math_controlled"],
         )
         self.assertEqual(len(rows), 7)
         for row in rows:

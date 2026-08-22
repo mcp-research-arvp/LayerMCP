@@ -655,14 +655,23 @@ results/runs/multi_step/<UTC-date>_<job-id>_<model>_<reasoning-mode>_<run-kind>_
 
 The tracked `scripts/slurm/run_single_step.sbatch` and
 `scripts/slurm/run_multi_step.sbatch` launchers implement these layouts. The
-multi-step launcher covers seven dataset groups and evaluates
+multi-step launcher covers seven primary dataset groups plus one optional
+controlled Mathematics diagnostic and evaluates
 `guided_predicted_rollout_v1`: workflow counts and routed-step counts are
 distinct, and this is not autonomous planning or end-to-end task success.
 The groups are `coding_sweagent`, `coding_nebius_replay`, `enterprise_tau2`,
 `finance_convfinqa`, `finance_finqa`, `finance_finretrieval_replay`, and
-`math_controlled`; the empty
+`math_public_mathqa`. `math_controlled` remains explicitly selectable but is
+not included in `DATASET_GROUP=all` or primary headline reporting. The empty
 OpenHands provenance placeholder is intentionally excluded.
 Grounded, controlled, and offline-replay results must be reported separately.
+MathQA is the primary public-derived Mathematics outcome/dependency baseline,
+not an official MathQA score or an autonomous-decomposition evaluation. Its
+892 selected steps contain 888 `calculator` calls, so tool selection is not a
+headline metric. Lead with argument accuracy, step outcome, all-step
+correctness, and final-step outcome. Use `math_controlled` only as a separately
+labeled short tool-family-routing diagnostic; never pool it with MathQA or
+rebalance the MathQA subset by tool.
 Use `RUN_KIND=short_test` for deterministic longest-workflow subsets and
 `RUN_KIND=full` with exactly one dataset group; short-test results are explicitly
 non-headline and removable after the corresponding full run completes. Gemma
@@ -740,6 +749,17 @@ These commands write collision-safe runs under `results/runs/single_step/` and
 `none`, lacking LOW effort, using the permissive parser, or capped at 128 tokens
 are obsolete and must not be used in frozen baseline scorecards.
 
+MODEL="gpt-oss-local"
+REASONING_MODE="direct"
+sbatch --job-name="${MODEL}-${REASONING_MODE}-multi-full-math_public_mathqa" \
+  --export=ALL,MODEL="$MODEL",REASONING_MODE="$REASONING_MODE",DATASET_GROUP=math_public_mathqa,RUN_KIND=full \
+  scripts/slurm/run_multi_step.sbatch
+```
+
+For an optional controlled diagnostic, replace the dataset group with
+`math_controlled`; do not run both automatically when only the primary public
+Mathematics baseline is requested.
+
 An interrupted or partial run lacks `RUN_COMPLETE` and must not be reported.
 
 ### 7. Runtime Flow
@@ -759,13 +779,10 @@ Dependent-step grounding that contains a gold-resolved expression is withheld,
 so the model must resolve references from its own rollout history. The evaluator
 reports plain-language metrics for the correct tool,
 correct arguments, and correct result per provided step, plus whether every
-provided step result is correct. When a workflow supplies a non-empty
-`expected_final_answer`, it also extracts the scalar result of the final tool
-call and compares it with the published final answer, including percentage
-scaling and displayed rounding for FinQA-style answers. This final-answer score
-still uses the provided step sequence: the evaluator does not ask the model to
-plan the sequence, decide when to stop, or synthesize a separate natural-language
-answer. Results from this protocol must be described as an error-propagating
+provided step result is correct. Published display answers remain benchmark
+provenance and are not scored because this guided protocol does not ask the
+model for a separate user-facing response. Results from this protocol must be
+described as an error-propagating
 guided rollout, not autonomous planning or end-to-end issue resolution.
 
 ### Notes

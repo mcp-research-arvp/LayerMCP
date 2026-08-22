@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.architectures.attention import causal_scaled_dot_product_attention
 from .weights import Checkpoint
 
 # ---------------------------------------------------------------------------
@@ -544,18 +545,17 @@ class Qwen35Attention(nn.Module):
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
+        offset = cache.offset if cache is not None else 0
         if cache is not None:
             key_states, value_states = cache.update(key_states, value_states)
 
-        # Eager scaled dot-product attention with GQA.
-        key_states = repeat_kv(key_states, self.num_kv_groups)
-        value_states = repeat_kv(value_states, self.num_kv_groups)
-
-        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
-        if attention_mask is not None:
-            attn_weights = attn_weights + attention_mask[:, :, :, : key_states.shape[-2]]
-        attn_weights = F.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query_states.dtype)
-        attn_output = torch.matmul(attn_weights, value_states)
+        attn_output = causal_scaled_dot_product_attention(
+            query_states,
+            key_states,
+            value_states,
+            offset=offset,
+            scale=self.scaling,
+        )
         attn_output = attn_output.transpose(1, 2).contiguous()
 
         attn_output = attn_output.reshape(*input_shape, -1)
@@ -712,19 +712,11 @@ class Qwen35TextModel(nn.Module):
 
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
-        # Causal mask only needed when there is more than one query token.
-        attention_mask = None
-        if seq_len > 1:
-            min_val = torch.finfo(hidden_states.dtype).min
-            mask = torch.full((seq_len, seq_len), min_val, device=input_ids.device, dtype=hidden_states.dtype)
-            mask = torch.triu(mask, diagonal=1)
-            attention_mask = mask[None, None, :, :]
-
         for layer, cache in zip(self.layers, caches):
             hidden_states = layer(
                 hidden_states,
                 position_embeddings=position_embeddings,
-                attention_mask=attention_mask,
+                attention_mask=None,
                 cache=cache,
             )
         return self.norm(hidden_states)
@@ -858,5 +850,4 @@ def _parse_hf_config(raw: dict) -> ModelConfigs:
         mlp_only_layers=text.get("mlp_only_layers", None),
         shared_expert_intermediate_size=text.get("shared_expert_intermediate_size", 0) or 0,
     )
-
 

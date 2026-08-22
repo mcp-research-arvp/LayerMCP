@@ -1043,7 +1043,11 @@ def _tool_schema(tool: Any) -> dict[str, Any]:
     return schema if isinstance(schema, dict) else {}
 
 
-def _reasoning_metadata(router: Any, reasoning_mode: str) -> dict[str, str]:
+def _reasoning_metadata(
+    router: Any,
+    reasoning_mode: str,
+    reasoning_effort: str | None = None,
+) -> dict[str, str]:
     if reasoning_mode not in REASONING_MODES:
         raise ValueError(
             f"Unsupported reasoning mode {reasoning_mode!r}; "
@@ -1058,10 +1062,29 @@ def _reasoning_metadata(router: Any, reasoning_mode: str) -> dict[str, str]:
     method = "none"
     if supports_reasoning and hasattr(router, "reasoning_method"):
         method = str(router.reasoning_method(reasoning_mode))
-    return {
+    metadata = {
         "reasoning_mode": reasoning_mode,
         "reasoning_method": method,
     }
+    supports_effort = bool(
+        getattr(router, "SUPPORTS_REASONING_EFFORT", False)
+    )
+    if supports_effort:
+        normalizer = getattr(router, "normalize_reasoning_effort", None)
+        if not callable(normalizer):
+            raise ValueError(
+                f"Router {getattr(router, 'ROUTER_ID', 'unknown')!r} declares "
+                "reasoning-effort support without a normalizer."
+            )
+        metadata["reasoning_effort"] = str(
+            normalizer(reasoning_mode, reasoning_effort)
+        )
+    elif reasoning_effort is not None:
+        raise ValueError(
+            f"Router {getattr(router, 'ROUTER_ID', 'unknown')!r} does not "
+            "accept reasoning_effort; omit --reasoning-effort."
+        )
+    return metadata
 
 
 def _generation_metadata(router: Any) -> dict[str, Any]:
@@ -1102,10 +1125,20 @@ def _route_query(
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
     reasoning_mode: str = "direct",
+    reasoning_effort: str | None = None,
 ) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
     if hasattr(router, "choose_tool_call"):
         if getattr(router, "SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS", False):
-            if getattr(router, "SUPPORTS_REASONING_MODE", False):
+            if getattr(router, "SUPPORTS_REASONING_EFFORT", False):
+                prediction = router.choose_tool_call(
+                    query,
+                    live_tools,
+                    tool_schemas,
+                    tool_descriptions,
+                    reasoning_mode=reasoning_mode,
+                    reasoning_effort=reasoning_effort,
+                )
+            elif getattr(router, "SUPPORTS_REASONING_MODE", False):
                 prediction = router.choose_tool_call(
                     query,
                     live_tools,
@@ -1159,6 +1192,7 @@ def _route_sample(
     tool_schemas: dict[str, dict[str, Any]],
     tool_descriptions: dict[str, str],
     reasoning_mode: str = "direct",
+    reasoning_effort: str | None = None,
 ) -> tuple[str | None, dict[str, Any], str, str, str | None, str | None]:
     return _route_query(
         router,
@@ -1167,6 +1201,7 @@ def _route_sample(
         tool_schemas,
         tool_descriptions,
         reasoning_mode,
+        reasoning_effort,
     )
 
 
@@ -1532,6 +1567,7 @@ async def _evaluate_multistep_with_server(
     call_predicted_tools: bool,
     router_name: str,
     reasoning_mode: str = "direct",
+    reasoning_effort: str | None = None,
     output_dir: Path | None = None,
 ) -> None:
     from models.routers.registry import load_router
@@ -1567,7 +1603,11 @@ async def _evaluate_multistep_with_server(
         _validate_expected_tools(dataset, live_tool_set)
 
         router = load_router(router_name)
-        reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
+        reasoning_metadata = _reasoning_metadata(
+            router,
+            reasoning_mode,
+            reasoning_effort,
+        )
         generation_metadata = _generation_metadata(router)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
@@ -1606,6 +1646,7 @@ async def _evaluate_multistep_with_server(
                         tool_schemas,
                         tool_descriptions,
                         reasoning_mode,
+                        reasoning_effort,
                     )
                     latency = time.perf_counter() - start
                     latencies.append(latency)
@@ -1962,6 +2003,7 @@ async def _evaluate_with_server(
     call_predicted_tools: bool,
     router_name: str,
     reasoning_mode: str = "direct",
+    reasoning_effort: str | None = None,
     output_dir: Path | None = None,
 ) -> None:
     if any(sample.expected_steps for sample in dataset):
@@ -1972,6 +2014,7 @@ async def _evaluate_with_server(
             call_predicted_tools,
             router_name,
             reasoning_mode=reasoning_mode,
+            reasoning_effort=reasoning_effort,
             output_dir=output_dir,
         )
         return
@@ -1999,7 +2042,11 @@ async def _evaluate_with_server(
         _validate_expected_tools(dataset, live_tool_set)
 
         router = load_router(router_name)
-        reasoning_metadata = _reasoning_metadata(router, reasoning_mode)
+        reasoning_metadata = _reasoning_metadata(
+            router,
+            reasoning_mode,
+            reasoning_effort,
+        )
         generation_metadata = _generation_metadata(router)
         hallucinated_tool = router.HALLUCINATED_TOOL
         model_name = router.MODEL_NAME
@@ -2034,6 +2081,7 @@ async def _evaluate_with_server(
                     tool_schemas,
                     tool_descriptions,
                     reasoning_mode,
+                    reasoning_effort,
                 )
                 latency = time.perf_counter() - start
 
@@ -2270,6 +2318,13 @@ def _build_parser() -> argparse.ArgumentParser:
             "'reasoning' enables the router's supported reasoning mechanism."
         ),
     )
+    parser.add_argument(
+        "--reasoning-effort",
+        help=(
+            "Native reasoning effort. Required as 'low' for gpt-oss-local and "
+            "must be omitted for all other routers."
+        ),
+    )
     return parser
 
 
@@ -2283,6 +2338,7 @@ async def _async_main(args: argparse.Namespace) -> None:
         call_predicted_tools=args.call_predicted_tools,
         router_name=args.router,
         reasoning_mode=args.reasoning_mode,
+        reasoning_effort=args.reasoning_effort,
         output_dir=args.output_dir,
     )
 

@@ -13,6 +13,40 @@ from typing import Any
 
 SAFE_PATH_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 REGISTRY_FINGERPRINT = re.compile(r"^sha256:[0-9a-f]{64}$")
+GPT_OSS_MODEL_NAME = "openai/gpt-oss-20b"
+
+
+def _validate_reasoning_contract(
+    value: dict[str, Any],
+    *,
+    model_name: Any,
+    label: str,
+) -> None:
+    if value.get("reasoning_mode") not in {"direct", "reasoning"}:
+        raise ValueError(f"Invalid or missing reasoning_mode in {label}")
+    if not isinstance(value.get("reasoning_method"), str) or not value[
+        "reasoning_method"
+    ].strip():
+        raise ValueError(f"Invalid or missing reasoning_method in {label}")
+    if model_name == GPT_OSS_MODEL_NAME:
+        expected = {
+            "reasoning_mode": "reasoning",
+            "reasoning_method": "harmony",
+            "reasoning_effort": "low",
+        }
+        for field, expected_value in expected.items():
+            if value.get(field) != expected_value:
+                raise ValueError(
+                    f"GPT-OSS requires {field}={expected_value!r} in {label}"
+                )
+        if value.get("effective_generation_limit") != 4096:
+            raise ValueError(
+                f"GPT-OSS requires effective_generation_limit=4096 in {label}"
+            )
+    elif value.get("reasoning_effort") is not None:
+        raise ValueError(
+            f"reasoning_effort is GPT-OSS-only and must be absent in {label}"
+        )
 
 
 def safe_path_component(value: str, *, label: str) -> str:
@@ -225,12 +259,11 @@ def validate_and_index_dataset(
                 f"{summary.get(field)!r} != {expected_value!r}"
             )
 
-    if summary.get("reasoning_mode") not in {"direct", "reasoning"}:
-        raise ValueError(f"Invalid or missing reasoning_mode in {summary_path}")
-    if not isinstance(summary.get("reasoning_method"), str) or not summary[
-        "reasoning_method"
-    ].strip():
-        raise ValueError(f"Invalid or missing reasoning_method in {summary_path}")
+    _validate_reasoning_contract(
+        summary,
+        model_name=summary.get("model_name"),
+        label=str(summary_path),
+    )
     generation_limit = summary.get("effective_generation_limit")
     if (
         isinstance(generation_limit, bool)
@@ -258,6 +291,8 @@ def validate_and_index_dataset(
         "tool_registry_fingerprint",
         "tool_registry_fingerprint_version",
     )
+    if "reasoning_effort" in summary:
+        shared_fields += ("reasoning_effort",)
     matchers: set[str] = set()
     benchmark_modes: set[str] = set()
     for line_number, sample in enumerate(samples, start=1):
@@ -310,6 +345,11 @@ def validate_and_index_dataset(
         "prompt_template": expected_prompt_template,
         "reasoning_mode": summary["reasoning_mode"],
         "reasoning_method": summary["reasoning_method"],
+        **(
+            {"reasoning_effort": summary["reasoning_effort"]}
+            if "reasoning_effort" in summary
+            else {}
+        ),
         "effective_generation_limit": summary["effective_generation_limit"],
         "effective_generation_limit_unit": summary[
             "effective_generation_limit_unit"
@@ -374,6 +414,11 @@ def validate_run_metadata(*, index_path: Path, metadata_path: Path) -> None:
     records = _existing_index_records(index_path.resolve())
     if not records:
         raise ValueError("Run artifact index is empty")
+    _validate_reasoning_contract(
+        metadata,
+        model_name=metadata.get("expected_model_name"),
+        label=str(metadata_path),
+    )
     expected = {
         "model_name": metadata.get("expected_model_name"),
         "prompt_template": metadata.get("prompt_template_id"),
@@ -391,6 +436,8 @@ def validate_run_metadata(*, index_path: Path, metadata_path: Path) -> None:
             "tool_registry_fingerprint_version"
         ),
     }
+    if "reasoning_effort" in metadata:
+        expected["reasoning_effort"] = metadata.get("reasoning_effort")
     missing = [field for field, value in expected.items() if value in (None, "")]
     if missing:
         raise ValueError(

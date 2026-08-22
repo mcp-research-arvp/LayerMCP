@@ -626,7 +626,8 @@ class RouterRegistryTests(unittest.TestCase):
         for router, generator in cases:
             with self.subTest(router=router.ROUTER_ID):
                 response = (
-                    "to=functions.factor_expression<|message|>"
+                    "<|channel|>commentary to=functions.factor_expression"
+                    "<|constrain|>json<|message|>"
                     '{"expression":"t^2-49"}<|call|>'
                     if router is gpt_oss_local_router
                     else (
@@ -639,10 +640,19 @@ class RouterRegistryTests(unittest.TestCase):
                     tool_call=None,
                 )
                 with patch.object(router, "_load_generator", return_value=generator):
+                    kwargs = (
+                        {
+                            "reasoning_mode": "reasoning",
+                            "reasoning_effort": "low",
+                        }
+                        if router is gpt_oss_local_router
+                        else {}
+                    )
                     prediction = router.choose_tool_call(
                         "Factor t^2-49.",
                         available_tools,
                         {"factor_expression": {"type": "object"}},
+                        **kwargs,
                     )
                 self.assertEqual(prediction.selected_tool, "factor_expression")
                 self.assertEqual(prediction.selected_args, {"expression": "t^2-49"})
@@ -751,10 +761,11 @@ class RouterRegistryTests(unittest.TestCase):
         from models.routers.structured_tool_call import parse_tool_call
 
         responses = (
-            "to=functions.calculator<|message|>"
+            "<|channel|>commentary to=functions.calculator"
+            "<|constrain|>json<|message|>"
             '{"expression":"2 + 2"}<|call|>',
             "<|channel|>analysis<|message|>Use arithmetic.<|end|>"
-            "<|start|>assistant<|channel|>analysis "
+            "<|start|>assistant<|channel|>commentary "
             "to=functions.calculator<|constrain|>json<|message|>"
             '{"expression":"2 + 2"}<|call|>',
         )
@@ -780,27 +791,44 @@ class RouterRegistryTests(unittest.TestCase):
                 "calculator to=functions<|message|>{}<|call|>"
             ),
             "missing call delimiter": (
-                "to=functions.calculator<|message|>{}"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>{}"
+            ),
+            "missing argument payload": (
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|><|call|>"
             ),
             "two complete calls": (
-                "to=functions.calculator<|message|>{}<|call|> "
-                "to=functions.calculator<|message|>{}<|call|>"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>{}<|call|> "
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>{}<|call|>"
             ),
             "trailing content after payload": (
-                "to=functions.calculator<|message|>{} trailing<|call|>"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>{} trailing<|call|>"
             ),
             "trailing content after call": (
-                "to=functions.calculator<|message|>{}<|call|> trailing"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>{}<|call|> trailing"
             ),
             "conflicting recipients": (
-                "to=functions.search to=functions.calculator<|message|>{}<|call|>"
+                "<|channel|>commentary to=functions.search "
+                "to=functions.calculator<|constrain|>json<|message|>{}<|call|>"
             ),
             "array payload": (
-                "to=functions.calculator<|message|>[]<|call|>"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>[]<|call|>"
             ),
             "scalar payload": (
-                "to=functions.calculator<|message|>42<|call|>"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>42<|call|>"
             ),
+        }
+        expected_status = {
+            "missing call delimiter": "incomplete_harmony_call",
+            "two complete calls": "multiple_calls",
+            "conflicting recipients": "multiple_calls",
         }
         for label, response in cases.items():
             with self.subTest(label=label):
@@ -810,7 +838,10 @@ class RouterRegistryTests(unittest.TestCase):
                     allow_harmony=True,
                 )
                 self.assertEqual(prediction.selected_tool, PARSE_ERROR)
-                self.assertEqual(prediction.parse_status, "parse_error")
+                self.assertEqual(
+                    prediction.parse_status,
+                    expected_status.get(label, "parse_error"),
+                )
 
     def test_harmony_parsing_is_opt_in_for_non_gpt_oss_routers(self) -> None:
         from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
@@ -827,7 +858,8 @@ class RouterRegistryTests(unittest.TestCase):
         from models.routers.structured_tool_call import UNKNOWN_TOOL, parse_tool_call
 
         prediction = parse_tool_call(
-            "to=functions.calculatr<|message|>{}<|call|>",
+            "<|channel|>commentary to=functions.calculatr"
+            "<|constrain|>json<|message|>{}<|call|>",
             ["calculator", "search"],
             allow_harmony=True,
         )
@@ -840,8 +872,9 @@ class RouterRegistryTests(unittest.TestCase):
         from models.routers.structured_tool_call import UNKNOWN_TOOL, parse_tool_call
 
         prediction = parse_tool_call(
-            "We should use calculator, but output misspelled. "
-            "to=functions.calculatr<|message|>{}<|call|>",
+            "<|channel|>analysis<|message|>We should use calculator.<|end|>"
+            "<|start|>assistant<|channel|>commentary to=functions.calculatr"
+            "<|constrain|>json<|message|>{}<|call|>",
             ["calculator"],
             allow_harmony=True,
         )
@@ -854,7 +887,8 @@ class RouterRegistryTests(unittest.TestCase):
         from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
 
         prediction = parse_tool_call(
-            "to=functions.ping<|message|>{bad<|call|>",
+            "<|channel|>commentary to=functions.ping"
+            "<|constrain|>json<|message|>{bad<|call|>",
             ["ping"],
             tool_schemas={
                 "ping": {"type": "object", "properties": {}},
@@ -880,7 +914,8 @@ class RouterRegistryTests(unittest.TestCase):
         generator.assistant_action_stop_tokens = [2]
         generator.generate_text.return_value = SimpleNamespace(
             text=(
-                "to=functions.calculator<|message|>"
+                "<|channel|>commentary to=functions.calculator"
+                "<|constrain|>json<|message|>"
                 '{"expression":4}<|call|>'
             ),
             tool_call=None,
@@ -896,9 +931,11 @@ class RouterRegistryTests(unittest.TestCase):
                 ["calculator"],
                 {"calculator": schema},
                 {"calculator": "Evaluate arithmetic."},
+                reasoning_mode="reasoning",
+                reasoning_effort="low",
             )
 
-        self.assertEqual(prediction.selected_tool, "calculator")
+        self.assertEqual(prediction.selected_tool, "invalid_arguments")
         self.assertEqual(prediction.parse_status, "invalid_arguments")
         self.assertEqual(
             prediction.diagnostic,
@@ -913,6 +950,7 @@ class RouterRegistryTests(unittest.TestCase):
                     "parameters": schema,
                 }
             ],
+            reasoning_effort="low",
         )
         generator.generate_text.assert_called_once_with(
             prompt_tokens=[1],
@@ -920,6 +958,81 @@ class RouterRegistryTests(unittest.TestCase):
             temperature=0.0,
             max_tokens=gpt_oss_local_router.MAX_GENERATED_TOKENS,
         )
+        self.assertEqual(gpt_oss_local_router.MAX_GENERATED_TOKENS, 4096)
+
+    def test_gpt_oss_router_rejects_direct_missing_and_unsupported_effort(self) -> None:
+        from models.routers import gpt_oss_local_router
+
+        with self.assertRaisesRegex(ValueError, "only in native Harmony"):
+            gpt_oss_local_router.normalize_reasoning_effort("direct", "low")
+        with self.assertRaisesRegex(ValueError, "requires reasoning_effort='low'"):
+            gpt_oss_local_router.normalize_reasoning_effort("reasoning", None)
+        with self.assertRaisesRegex(ValueError, "expected 'low'"):
+            gpt_oss_local_router.normalize_reasoning_effort("reasoning", "high")
+
+    def test_gpt_oss_prompt_uses_official_low_reasoning_effort(self) -> None:
+        from models.architectures.gpt_oss_pytorch import inference
+
+        tokenizer = Mock()
+        tokenizer.render_conversation_for_completion.return_value = [1, 2, 3]
+        system = Mock()
+        system.with_reasoning_effort.return_value = system
+        developer = Mock()
+        developer.with_instructions.return_value = developer
+        developer.with_function_tools.return_value = developer
+        conversation = object()
+        with (
+            patch.object(inference.SystemContent, "new", return_value=system),
+            patch.object(inference.DeveloperContent, "new", return_value=developer),
+            patch.object(
+                inference.Conversation,
+                "from_messages",
+                return_value=conversation,
+            ),
+            patch.object(
+                inference.Message,
+                "from_role_and_content",
+                side_effect=[object(), object(), object()],
+            ),
+        ):
+            rendered = inference.render_tool_prompt_tokens(
+                tokenizer,
+                "Calculate 2 + 2.",
+                [
+                    {
+                        "name": "calculator",
+                        "description": "Evaluate arithmetic.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "expression": {"type": "string"},
+                            },
+                        },
+                    }
+                ],
+                "low",
+            )
+
+        self.assertEqual(rendered, [1, 2, 3])
+        system.with_reasoning_effort.assert_called_once_with(
+            inference.ReasoningEffort.LOW
+        )
+        developer.with_function_tools.assert_called_once()
+        tokenizer.render_conversation_for_completion.assert_called_once_with(
+            conversation,
+            inference.Role.ASSISTANT,
+        )
+
+    def test_harmony_parser_never_scans_arbitrary_prose_for_known_tool(self) -> None:
+        from models.routers.structured_tool_call import PARSE_ERROR, parse_tool_call
+
+        prediction = parse_tool_call(
+            "I should use calculator, so calculator is the answer.",
+            ["calculator"],
+            allow_harmony=True,
+        )
+        self.assertEqual(prediction.selected_tool, PARSE_ERROR)
+        self.assertEqual(prediction.parse_status, "parse_error")
 
     def test_gpt_oss_benchmark_parser_ignores_api_tool_call(self) -> None:
         from models.routers import gpt_oss_local_router
@@ -943,6 +1056,8 @@ class RouterRegistryTests(unittest.TestCase):
             prediction = gpt_oss_local_router.choose_tool_call(
                 "Calculate something.",
                 ["calculator"],
+                reasoning_mode="reasoning",
+                reasoning_effort="low",
             )
 
         self.assertEqual(prediction.selected_tool, PARSE_ERROR)

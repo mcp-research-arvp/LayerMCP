@@ -37,6 +37,11 @@ def _write_dataset_artifacts(
     benchmark: Path,
     *,
     models: tuple[str, ...] = (MODEL, MODEL),
+    summary_model: str = MODEL,
+    reasoning_mode: str = "direct",
+    reasoning_method: str = "none",
+    reasoning_effort: str | None = None,
+    generation_limit: int = 128,
 ) -> Path:
     dataset_dir = root / "domains" / "coding" / "coding_public"
     dataset_dir.mkdir(parents=True)
@@ -49,9 +54,9 @@ def _write_dataset_artifacts(
                 "model_name": model,
                 "prompt_template": PROMPT,
                 "evaluation_protocol": "single_step_tool_routing_v1",
-                "reasoning_mode": "direct",
-                "reasoning_method": "none",
-                "effective_generation_limit": 128,
+                "reasoning_mode": reasoning_mode,
+                "reasoning_method": reasoning_method,
+                "effective_generation_limit": generation_limit,
                 "effective_generation_limit_unit": "tokens",
                 "benchmark_mode": "grounded_tool_execution",
                 "tool_pool": TOOL_POOL,
@@ -61,6 +66,8 @@ def _write_dataset_artifacts(
                 "final_outcome_matcher": "recursive_json_subset_v1",
             }
         )
+        if reasoning_effort is not None:
+            samples[-1]["reasoning_effort"] = reasoning_effort
     (dataset_dir / "samples.jsonl").write_text(
         "".join(json.dumps(sample) + "\n" for sample in samples),
         encoding="utf-8",
@@ -69,12 +76,12 @@ def _write_dataset_artifacts(
         json.dumps(
             {
                 "benchmark_path": str(benchmark),
-                "model_name": MODEL,
+                "model_name": summary_model,
                 "prompt_template": PROMPT,
                 "evaluation_protocol": "single_step_tool_routing_v1",
-                "reasoning_mode": "direct",
-                "reasoning_method": "none",
-                "effective_generation_limit": 128,
+                "reasoning_mode": reasoning_mode,
+                "reasoning_method": reasoning_method,
+                "effective_generation_limit": generation_limit,
                 "effective_generation_limit_unit": "tokens",
                 "benchmark_mode_counts": {"grounded_tool_execution": len(samples)},
                 "tool_pool": TOOL_POOL,
@@ -82,6 +89,11 @@ def _write_dataset_artifacts(
                 "tool_registry_fingerprint": FINGERPRINT,
                 "tool_registry_fingerprint_version": FINGERPRINT_VERSION,
                 "total_samples": len(samples),
+                **(
+                    {"reasoning_effort": reasoning_effort}
+                    if reasoning_effort is not None
+                    else {}
+                ),
             }
         ),
         encoding="utf-8",
@@ -121,6 +133,49 @@ class RunArtifactTests(unittest.TestCase):
                 ])
                 rendered.append(index.read_text(encoding="utf-8"))
             self.assertEqual(rendered[0], rendered[1])
+
+    def test_gpt_oss_effort_propagates_to_index_and_run_metadata(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            benchmark = self._benchmark(root)
+            run = root / "run"
+            dataset = _write_dataset_artifacts(
+                run,
+                benchmark,
+                models=("openai/gpt-oss-20b", "openai/gpt-oss-20b"),
+                summary_model="openai/gpt-oss-20b",
+                reasoning_mode="reasoning",
+                reasoning_method="harmony",
+                reasoning_effort="low",
+                generation_limit=4096,
+            )
+            index = run / "artifact_index.jsonl"
+            record = validate_and_index_dataset(
+                dataset_directory=dataset,
+                index_path=index,
+                expected_benchmark=benchmark,
+                expected_model="openai/gpt-oss-20b",
+                expected_prompt_template=PROMPT,
+                **REGISTRY_EXPECTATIONS,
+            )
+            self.assertEqual(record["reasoning_effort"], "low")
+            metadata = {
+                "expected_model_name": "openai/gpt-oss-20b",
+                "prompt_template_id": PROMPT,
+                "reasoning_mode": "reasoning",
+                "reasoning_method": "harmony",
+                "reasoning_effort": "low",
+                "effective_generation_limit": 4096,
+                "effective_generation_limit_unit": "tokens",
+                "evaluation_protocol": "single_step_tool_routing_v1",
+                "tool_pool": TOOL_POOL,
+                "tool_count": TOOL_COUNT,
+                "tool_registry_fingerprint": FINGERPRINT,
+                "tool_registry_fingerprint_version": FINGERPRINT_VERSION,
+            }
+            metadata_path = run / "run_metadata.json"
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            validate_run_metadata(index_path=index, metadata_path=metadata_path)
 
     def test_path_components_reject_escape_and_empty_values(self) -> None:
         for value in ("", ".", "..", "../escape", "a/b", "a\\b", "two words"):
@@ -294,7 +349,7 @@ class RunArtifactTests(unittest.TestCase):
 
     def test_single_step_launcher_separates_and_passes_reasoning_mode(self) -> None:
         launcher = (Path(__file__).resolve().parents[1] / "scripts/slurm/run_single_step.sbatch").read_text()
-        self.assertIn("${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}", launcher)
+        self.assertIn("${CONDITION_COMPONENT}_${RUN_KIND_COMPONENT}", launcher)
         self.assertIn('--reasoning-mode "$REASONING_MODE"', launcher)
         self.assertIn('--run-metadata "$RUN_DIR/run_metadata.json"', launcher)
         self.assertNotRegex(launcher, r"sha256:[0-9a-f]{64}")
@@ -311,6 +366,83 @@ class RunArtifactTests(unittest.TestCase):
             launcher.index("does not implement reasoning mode"),
             launcher.index("--capture-live-registry"),
         )
+
+    def test_launchers_enforce_gpt_oss_harmony_low_condition(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        launchers = (
+            root / "scripts/slurm/run_single_step.sbatch",
+            root / "scripts/slurm/run_multi_step.sbatch",
+        )
+
+        def run(
+            launcher: Path,
+            *,
+            model: str,
+            mode: str,
+            effort: str | None,
+        ) -> subprocess.CompletedProcess[str]:
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "LAYERMCP_REPO_ROOT": str(root),
+                    "LAYERMCP_VALIDATE_REASONING_ONLY": "1",
+                    "MODEL": model,
+                    "REASONING_MODE": mode,
+                    "RUN_KIND": "smoke" if "single" in launcher.name else "short_test",
+                    "DATASET_GROUP": "math_controlled",
+                    "SLURM_JOB_ID": "123",
+                    "SLURM_JOB_NAME": "validation-only",
+                }
+            )
+            if effort is None:
+                environment.pop("REASONING_EFFORT", None)
+            else:
+                environment["REASONING_EFFORT"] = effort
+            return subprocess.run(
+                ["bash", str(launcher)],
+                cwd=root,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        for launcher in launchers:
+            with self.subTest(launcher=launcher.name, case="accepted"):
+                result = run(
+                    launcher,
+                    model="gpt-oss-local",
+                    mode="reasoning",
+                    effort="low",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(
+                    result.stdout.strip(),
+                    "gpt-oss-local\treasoning\tlow",
+                )
+            for label, mode, effort, error in (
+                ("direct", "direct", "low", "requires REASONING_MODE=reasoning"),
+                ("missing", "reasoning", None, "REASONING_EFFORT=low"),
+                ("unsupported", "reasoning", "high", "expected low"),
+            ):
+                with self.subTest(launcher=launcher.name, case=label):
+                    result = run(
+                        launcher,
+                        model="gpt-oss-local",
+                        mode=mode,
+                        effort=effort,
+                    )
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn(error, result.stderr)
+            with self.subTest(launcher=launcher.name, case="non-gpt-effort"):
+                result = run(
+                    launcher,
+                    model="qwen-3.6-local",
+                    mode="reasoning",
+                    effort="low",
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("GPT-OSS-only", result.stderr)
 
     def _validate_launcher_root(
         self,
@@ -444,19 +576,15 @@ class RunArtifactTests(unittest.TestCase):
                     launcher,
                 )
                 self.assertIn("REQUIRED_CHECKPOINT_FILES=(config.json model.safetensors)", launcher)
-                if launcher_name == "run_single_step.sbatch":
-                    self.assertIn("gpt-oss-local:reasoning", launcher)
-                    self.assertIn(
-                        "$MODEL does not implement reasoning mode; use "
-                        "REASONING_MODE=direct",
-                        launcher,
-                    )
-                else:
-                    self.assertIn(
-                        "gpt-oss-local does not implement reasoning mode; use "
-                        "REASONING_MODE=direct",
-                        launcher,
-                    )
+                self.assertIn("REASONING_EFFORT", launcher)
+                self.assertIn("gpt-oss-local requires REASONING_MODE=reasoning", launcher)
+                self.assertIn('REASONING_METHOD="harmony"', launcher)
+                self.assertIn("GENERATION_LIMIT=4096", launcher)
+                self.assertIn('--reasoning-effort "$REASONING_EFFORT_VALUE"', launcher)
+                self.assertNotIn(
+                    "gpt-oss-local does not implement reasoning mode",
+                    launcher,
+                )
                 self.assertIn('--router "$MODEL"', launcher)
                 self.assertLess(
                     launcher.index('Missing required checkpoint file:'),

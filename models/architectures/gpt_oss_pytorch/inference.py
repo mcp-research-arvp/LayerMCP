@@ -34,6 +34,59 @@ def get_tokenizer():
     tokenizer = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
     return tokenizer
 
+
+def render_tool_prompt_tokens(
+    tokenizer: Any,
+    query: str,
+    tools: list[dict[str, Any]],
+    reasoning_effort: str = "low",
+) -> list[int]:
+    """Render a native Harmony function-calling prompt without loading weights."""
+    descriptions = [
+        ToolDescription.new(
+            tool["name"],
+            tool.get("description", ""),
+            parameters=tool.get("parameters") or {
+                "type": "object",
+                "properties": {},
+            },
+        )
+        for tool in tools
+    ]
+    efforts = {
+        "low": ReasoningEffort.LOW,
+        "medium": ReasoningEffort.MEDIUM,
+        "high": ReasoningEffort.HIGH,
+    }
+    try:
+        harmony_effort = efforts[reasoning_effort.strip().lower()]
+    except (AttributeError, KeyError) as exc:
+        raise ValueError(
+            f"Unsupported Harmony reasoning effort: {reasoning_effort!r}"
+        ) from exc
+    system = SystemContent.new().with_reasoning_effort(harmony_effort)
+    developer = (
+        DeveloperContent.new()
+        .with_instructions(
+            "Route the user's request by calling exactly one available "
+            "function. Never invent a function name."
+        )
+        .with_function_tools(descriptions)
+    )
+    conversation = Conversation.from_messages(
+        [
+            Message.from_role_and_content(Role.SYSTEM, system),
+            Message.from_role_and_content(Role.DEVELOPER, developer),
+            Message.from_role_and_content(Role.USER, query),
+        ]
+    )
+    return list(
+        tokenizer.render_conversation_for_completion(
+            conversation,
+            Role.ASSISTANT,
+        )
+    )
+
 # ------------------------------------------------------------------ #
 # parse_tool_call is defined BEFORE TokenGenerator so generate_text   #
 # can reference it without relying on forward-declaration timing.      #
@@ -137,41 +190,15 @@ class TokenGenerator:
         self,
         query: str,
         tools: list[dict[str, Any]],
+        reasoning_effort: str = "low",
     ) -> list[int]:
         """Render a GPT-OSS request using the model's native Harmony format."""
         self._active_tool_names = [tool["name"] for tool in tools]
-        descriptions = [
-            ToolDescription.new(
-                tool["name"],
-                tool.get("description", ""),
-                parameters=tool.get("parameters") or {
-                    "type": "object",
-                    "properties": {},
-                },
-            )
-            for tool in tools
-        ]
-        system = SystemContent.new().with_reasoning_effort(ReasoningEffort.LOW)
-        developer = (
-            DeveloperContent.new()
-            .with_instructions(
-                "Route the user's request by calling exactly one available "
-                "function. Never invent a function name."
-            )
-            .with_function_tools(descriptions)
-        )
-        conversation = Conversation.from_messages(
-            [
-                Message.from_role_and_content(Role.SYSTEM, system),
-                Message.from_role_and_content(Role.DEVELOPER, developer),
-                Message.from_role_and_content(Role.USER, query),
-            ]
-        )
-        return list(
-            self.tokenizer.render_conversation_for_completion(
-                conversation,
-                Role.ASSISTANT,
-            )
+        return render_tool_prompt_tokens(
+            self.tokenizer,
+            query,
+            tools,
+            reasoning_effort,
         )
 
     @property

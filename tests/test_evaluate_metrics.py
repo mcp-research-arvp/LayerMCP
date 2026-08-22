@@ -104,6 +104,51 @@ class EvaluateMetricTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not implement reasoning mode"):
             _reasoning_metadata(router, "reasoning")
 
+    def test_gpt_oss_reasoning_metadata_requires_harmony_low(self) -> None:
+        router = SimpleNamespace(
+            ROUTER_ID="gpt_oss_local_router",
+            SUPPORTS_REASONING_MODE=True,
+            SUPPORTS_REASONING_EFFORT=True,
+            reasoning_method=lambda mode: "harmony" if mode == "reasoning" else "none",
+            normalize_reasoning_effort=lambda mode, effort: (
+                "low"
+                if (mode, effort) == ("reasoning", "low")
+                else (_ for _ in ()).throw(ValueError("requires low"))
+            ),
+        )
+        self.assertEqual(
+            _reasoning_metadata(router, "reasoning", "low"),
+            {
+                "reasoning_mode": "reasoning",
+                "reasoning_method": "harmony",
+                "reasoning_effort": "low",
+            },
+        )
+        with self.assertRaisesRegex(ValueError, "requires low"):
+            _reasoning_metadata(router, "reasoning", None)
+
+    def test_non_gpt_router_rejects_reasoning_effort(self) -> None:
+        router = SimpleNamespace(
+            ROUTER_ID="qwen36_local_router",
+            SUPPORTS_REASONING_MODE=True,
+            reasoning_method=lambda mode: "native_enabled",
+        )
+        with self.assertRaisesRegex(ValueError, "does not accept reasoning_effort"):
+            _reasoning_metadata(router, "reasoning", "low")
+
+    def test_cli_parses_gpt_oss_reasoning_effort(self) -> None:
+        args = _build_parser().parse_args(
+            [
+                "--router",
+                "gpt-oss-local",
+                "--reasoning-mode",
+                "reasoning",
+                "--reasoning-effort",
+                "low",
+            ]
+        )
+        self.assertEqual(args.reasoning_effort, "low")
+
     def test_effective_generation_limit_metadata_comes_from_router(self) -> None:
         router = SimpleNamespace(
             ROUTER_ID="gemma4_local_router",

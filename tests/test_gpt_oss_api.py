@@ -1,10 +1,9 @@
 import importlib
+import asyncio
 import json
 import sys
 import unittest
 from unittest.mock import patch
-
-from fastapi.testclient import TestClient
 
 from models.architectures.gpt_oss_pytorch import inference
 from models.architectures.gpt_oss_pytorch.schemas import ChatCompletionRequest
@@ -46,10 +45,61 @@ with patch.object(
     _IMPORT_INITIALIZATION_COUNT = _token_generator_constructor.call_count
 
 
+class _Request:
+    def __init__(self, body: dict) -> None:
+        self.body = body
+
+    async def json(self) -> dict:
+        return self.body
+
+
+class _Response:
+    def __init__(
+        self,
+        payload: dict | None = None,
+        *,
+        text: str = "",
+        content_type: str = "application/json",
+    ) -> None:
+        self.status_code = 200
+        self._payload = payload
+        self.text = text
+        self.headers = {"content-type": content_type}
+
+    def json(self) -> dict:
+        assert self._payload is not None
+        return self._payload
+
+
+class _DirectApiClient:
+    """Exercise Tony's endpoint functions without Starlette's cluster thread pool."""
+
+    def get(self, path: str) -> _Response:
+        handlers = {
+            "/health": api.health,
+            "/v1/models": api.models,
+        }
+        return _Response(handlers[path]())
+
+    def post(self, path: str, *, json: dict) -> _Response:
+        if path != "/v1/chat/completions":
+            raise AssertionError(path)
+        result = asyncio.run(api.chat(_Request(json)))
+        if not json.get("stream"):
+            return _Response(result)
+        self_response = result
+        req = ChatCompletionRequest(**json)
+        text = "".join(api.stream_response(req))
+        return _Response(
+            text=text,
+            content_type=f"{self_response.media_type}; charset=utf-8",
+        )
+
+
 class GptOssApiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(api.app)
+        cls.client = _DirectApiClient()
 
     def test_generator_is_initialized_when_api_module_is_imported(self) -> None:
         self.assertEqual(_IMPORT_INITIALIZATION_COUNT, 1)

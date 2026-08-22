@@ -12,7 +12,7 @@ dependencies = [
     "fastapi>=0.115,<1",
     "matplotlib>=3.8,<4",
     "mcp[cli]>=1.27,<2",
-    "openai-harmony",
+    "openai-harmony==0.0.8",
     "pint>=0.24,<1",
     "sympy>=1.13,<2",
     "safetensors>=0.4,<1",

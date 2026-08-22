@@ -186,17 +186,30 @@ class MultiStepRunTests(unittest.TestCase):
             self.assertEqual([row["id"] for row in selected], ["long", "short"])
             self.assertEqual(metadata["selected_workflow_count"], 2)
 
-    def _artifacts(self, root: Path, benchmark: Path, *, mode="grounded_tool_execution") -> Path:
+    def _artifacts(
+        self,
+        root: Path,
+        benchmark: Path,
+        *,
+        mode="grounded_tool_execution",
+        model=MODEL,
+        reasoning_mode="direct",
+        reasoning_method="none",
+        reasoning_effort=None,
+        generation_limit=128,
+    ) -> Path:
         data=json.loads(benchmark.read_text()); dataset=root/"domains/math/test"; dataset.mkdir(parents=True)
         records=[]; benchmark_hash=hashlib.sha256(benchmark.read_bytes()).hexdigest()
+        condition={"reasoning_mode":reasoning_mode,"reasoning_method":reasoning_method,"effective_generation_limit":generation_limit,"effective_generation_limit_unit":"tokens"}
+        if reasoning_effort is not None: condition["reasoning_effort"]=reasoning_effort
         for row in data:
             steps=[{"step_id":s["id"],"benchmark_mode":mode,"tool_selection_correct":True,"argument_match_correct":True,"final_outcome_correct":True,"final_outcome_status":"correct","final_outcome_matcher":"recursive_json_subset_v1"} for s in row["expected_steps"]]
-            records.append({"sample_id":row["id"],"benchmark_path":str(benchmark),"benchmark_sha256":benchmark_hash,"model_name":MODEL,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","benchmark_mode":mode,"workflow_execution_mode":"predicted_sequence","steps":steps,"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"outcome_metric_names":list(OUTCOME_METRIC_NAMES),"all_tools_correct":True,"all_arguments_correct":True,"all_steps_correct":True,"expected_final_step_outcome":row["expected_steps"][-1]["expected_answer"],"final_step_outcome_contract":"final_step_expected_outcome","final_step_outcome_correct":True,"final_step_outcome_status":"correct","final_step_outcome_matcher":"recursive_json_subset_v1"})
+            records.append({"sample_id":row["id"],"benchmark_path":str(benchmark),"benchmark_sha256":benchmark_hash,"model_name":model,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,**condition,"benchmark_mode":mode,"workflow_execution_mode":"predicted_sequence","steps":steps,"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,"outcome_metric_names":list(OUTCOME_METRIC_NAMES),"all_tools_correct":True,"all_arguments_correct":True,"all_steps_correct":True,"expected_final_step_outcome":row["expected_steps"][-1]["expected_answer"],"final_step_outcome_contract":"final_step_expected_outcome","final_step_outcome_correct":True,"final_step_outcome_status":"correct","final_step_outcome_matcher":"recursive_json_subset_v1"})
         workflow_metrics = _build_multistep_metrics(
             records, [step for record in records for step in record["steps"]]
         )
         (dataset/"samples.jsonl").write_text("".join(json.dumps(x)+"\n" for x in records))
-        (dataset/"summary.json").write_text(json.dumps({"benchmark_path":str(benchmark),"benchmark_sha256":benchmark_hash,"model_name":MODEL,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,"reasoning_mode":"direct","reasoning_method":"none","effective_generation_limit":128,"effective_generation_limit_unit":"tokens","workflow_execution_modes":["predicted_sequence"],"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,**workflow_metrics}))
+        (dataset/"summary.json").write_text(json.dumps({"benchmark_path":str(benchmark),"benchmark_sha256":benchmark_hash,"model_name":model,"prompt_template":PROMPT,"evaluation_protocol":MULTISTEP_EVALUATION_PROTOCOL,**condition,"workflow_execution_modes":["predicted_sequence"],"tool_pool":"full_mcp_registry","tool_count":60,"tool_registry_fingerprint":FINGERPRINT,"tool_registry_fingerprint_version":VERSION,**workflow_metrics}))
         (dataset/"evaluation.log").write_text("complete\n")
         return dataset
 
@@ -211,6 +224,30 @@ class MultiStepRunTests(unittest.TestCase):
             validate_complete_multistep_run(index,[benchmark])
             with self.assertRaisesRegex(ValueError,"already indexed"):
                 validate_and_index_multistep(**kwargs)
+
+    def test_gpt_oss_effort_is_indexed_for_multistep_runs(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root=Path(temporary); benchmark=self._benchmark(root); run=root/"run"
+            dataset=self._artifacts(
+                run,
+                benchmark,
+                model="openai/gpt-oss-20b",
+                reasoning_mode="reasoning",
+                reasoning_method="harmony",
+                reasoning_effort="low",
+                generation_limit=4096,
+            )
+            record=validate_and_index_multistep(
+                dataset_directory=dataset,index_path=run/"artifact_index.jsonl",
+                source_benchmark=benchmark,evaluated_benchmark=benchmark,
+                expected_model="openai/gpt-oss-20b",expected_prompt_template=PROMPT,
+                expected_registry_fingerprint=FINGERPRINT,
+                expected_registry_fingerprint_version=VERSION,
+                expected_tool_count=60,expected_tool_pool="full_mcp_registry",
+                expected_reasoning_mode="reasoning",expected_reasoning_method="harmony",
+                expected_reasoning_effort="low",expected_generation_limit=4096,
+            )
+            self.assertEqual(record["reasoning_effort"],"low")
 
     def test_wrong_protocol_and_mixed_mode_are_rejected(self) -> None:
         with TemporaryDirectory() as temporary:

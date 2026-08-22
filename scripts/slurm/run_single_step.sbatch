@@ -4,8 +4,8 @@
 #   --export=ALL,MODEL=phi-4-local,REASONING_MODE=direct,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
 # sbatch --job-name=qwen-3.6-local-reasoning-primary \
 #   --export=ALL,MODEL=qwen-3.6-local,REASONING_MODE=reasoning,RUN_KIND=primary scripts/slurm/run_single_step.sbatch
-# sbatch --job-name=gpt-oss-local-direct-smoke \
-#   --export=ALL,MODEL=gpt-oss-local,REASONING_MODE=direct,RUN_KIND=smoke scripts/slurm/run_single_step.sbatch
+# sbatch --job-name=gpt-oss-local-reasoning-low-single-primary \
+#   --export=ALL,MODEL=gpt-oss-local,REASONING_MODE=reasoning,REASONING_EFFORT=low,RUN_KIND=primary scripts/slurm/run_single_step.sbatch
 #SBATCH --job-name=lmcp-std-pr30
 #SBATCH --account=def-yousefne_gpu
 #SBATCH --gres=gpu:h100:1
@@ -50,13 +50,6 @@ if [[ "${LAYERMCP_VALIDATE_REPO_ROOT_ONLY:-0}" == 1 ]]; then
   exit 0
 fi
 
-module load python/3.11
-source "$HOME/venvs/layermcp/bin/activate"
-
-export HF_HOME="$SCRATCH/hf_cache"
-export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
-unset TRANSFORMERS_CACHE || true
-
 ACTUAL_COMMIT="$(git rev-parse HEAD)"
 
 if grep -Eq "MAX_TOOL_CORRECTIONS|repair_tool_call" evaluation/evaluate.py; then
@@ -74,11 +67,40 @@ fi
   exit 2
 }
 case "$MODEL:$REASONING_MODE" in
-  phi-4-local:reasoning|llama-3.1-8b-local:reasoning|gpt-oss-local:reasoning)
+  phi-4-local:reasoning|llama-3.1-8b-local:reasoning)
     echo "$MODEL does not implement reasoning mode; use REASONING_MODE=direct" >&2
     exit 2
     ;;
 esac
+if [[ "$MODEL" == gpt-oss-local ]]; then
+  [[ "$REASONING_MODE" == reasoning ]] || {
+    echo "gpt-oss-local requires REASONING_MODE=reasoning" >&2
+    exit 2
+  }
+  [[ -n "${REASONING_EFFORT:-}" ]] || {
+    echo "Set REASONING_EFFORT=low for gpt-oss-local" >&2
+    exit 2
+  }
+  [[ "$REASONING_EFFORT" == low ]] || {
+    echo "Unsupported GPT-OSS REASONING_EFFORT: $REASONING_EFFORT (expected low)" >&2
+    exit 2
+  }
+elif [[ -n "${REASONING_EFFORT:-}" ]]; then
+  echo "REASONING_EFFORT is GPT-OSS-only; omit it for $MODEL" >&2
+  exit 2
+fi
+REASONING_EFFORT_VALUE="${REASONING_EFFORT:-}"
+if [[ "${LAYERMCP_VALIDATE_REASONING_ONLY:-0}" == 1 ]]; then
+  printf '%s\t%s\t%s\n' "$MODEL" "$REASONING_MODE" "$REASONING_EFFORT_VALUE"
+  exit 0
+fi
+
+module load python/3.11
+source "$HOME/venvs/layermcp/bin/activate"
+
+export HF_HOME="$SCRATCH/hf_cache"
+export HF_HUB_CACHE="$SCRATCH/hf_cache/hub"
+unset TRANSFORMERS_CACHE || true
 
 REGISTRY_METADATA_TMP="$(mktemp)"
 trap 'rm -f "$REGISTRY_METADATA_TMP"' EXIT
@@ -172,8 +194,8 @@ case "$MODEL" in
     CHECKPOINT="$LAYERMCP_GPT_OSS_CHECKPOINT"
     PROMPT_TEMPLATE_ID="harmony_structured_context_sql_v2"
     EXPECTED_MODEL_NAME="openai/gpt-oss-20b"
-    REASONING_METHOD="none"
-    GENERATION_LIMIT=128
+    REASONING_METHOD="harmony"
+    GENERATION_LIMIT=4096
     REQUIRED_CHECKPOINT_FILES=(config.json model.safetensors)
     ;;
   *)
@@ -222,6 +244,11 @@ esac
 PROMPT_MODE="$REASONING_MODE"
 MODEL_COMPONENT="$(safe_component model "$MODEL")"
 REASONING_COMPONENT="$(safe_component reasoning_mode "$REASONING_MODE")"
+if [[ -n "$REASONING_EFFORT_VALUE" ]]; then
+  REASONING_EFFORT_COMPONENT="$(safe_component reasoning_effort "$REASONING_EFFORT_VALUE")"
+else
+  REASONING_EFFORT_COMPONENT=""
+fi
 RUN_KIND_COMPONENT="$(safe_component run_kind "$RUN_KIND")"
 JOB_ID_COMPONENT="$(safe_component slurm_job_id "$SLURM_JOB_ID")"
 JOB_NAME_COMPONENT="$(safe_component slurm_job_name "$SLURM_JOB_NAME")"
@@ -232,10 +259,25 @@ for required_name_part in "$MODEL_COMPONENT" "$REASONING_COMPONENT" "$RUN_KIND_C
     exit 2
   fi
 done
+if [[ -n "$REASONING_EFFORT_COMPONENT" && "$JOB_NAME_COMPONENT" != *"$REASONING_EFFORT_COMPONENT"* ]]; then
+  echo "Slurm job name must identify reasoning effort: $SLURM_JOB_NAME is missing $REASONING_EFFORT_COMPONENT" >&2
+  exit 2
+fi
+if [[ "$MODEL" == gpt-oss-local ]]; then
+  EXPECTED_GPT_OSS_JOB_NAME="gpt-oss-local-reasoning-low-single-${RUN_KIND_COMPONENT}"
+  [[ "$JOB_NAME_COMPONENT" == "$EXPECTED_GPT_OSS_JOB_NAME" ]] || {
+    echo "GPT-OSS job name must be: $EXPECTED_GPT_OSS_JOB_NAME" >&2
+    exit 2
+  }
+fi
 
 RUNS_ROOT="results/runs/single_step"
 RUN_DATE="$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}"
+CONDITION_COMPONENT="$REASONING_COMPONENT"
+if [[ -n "$REASONING_EFFORT_COMPONENT" ]]; then
+  CONDITION_COMPONENT="${CONDITION_COMPONENT}_${REASONING_EFFORT_COMPONENT}"
+fi
+RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${CONDITION_COMPONENT}_${RUN_KIND_COMPONENT}"
 mkdir -p "$RUNS_ROOT"
 mkdir "$RUN_DIR"
 
@@ -297,6 +339,9 @@ metadata = {
     "model_attempts_per_sample": 1,
     "tool_call_retries": 0,
 }
+reasoning_effort = "$REASONING_EFFORT_VALUE"
+if reasoning_effort:
+    metadata["reasoning_effort"] = reasoning_effort
 with metadata_path.open("x", encoding="utf-8") as handle:
     json.dump(metadata, handle, indent=2, sort_keys=True)
     handle.write("\n")
@@ -319,10 +364,15 @@ for benchmark in "${BENCHMARKS[@]}"; do
   echo "Log: $log_path"
   echo "------------------------------------------------------------"
 
+  REASONING_EFFORT_ARGS=()
+  if [[ -n "$REASONING_EFFORT_VALUE" ]]; then
+    REASONING_EFFORT_ARGS=(--reasoning-effort "$REASONING_EFFORT_VALUE")
+  fi
   python -m evaluation.evaluate \
     --dataset "$benchmark" \
     --router "$MODEL" \
     --reasoning-mode "$REASONING_MODE" \
+    "${REASONING_EFFORT_ARGS[@]}" \
     --call-predicted-tools \
     --output-dir "$dataset_dir" \
     2>&1 | tee "$log_path"

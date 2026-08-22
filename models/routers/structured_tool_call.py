@@ -9,6 +9,7 @@ from typing import Any, Mapping, Sequence
 HALLUCINATED_TOOL = "hallucinated_tool"
 PARSE_ERROR = "parse_error"
 UNKNOWN_TOOL = "unknown_tool"
+INVALID_ARGUMENTS = "invalid_arguments"
 
 
 @dataclass(frozen=True)
@@ -111,48 +112,91 @@ def _parse_qwen_native_call(response: str) -> tuple[str, dict[str, Any]] | None:
 def _parse_harmony_native_call(
     response: str,
     catalog: set[str],
-) -> tuple[str, dict[str, Any], str | None, str | None] | None:
+) -> tuple[str, dict[str, Any], str, str | None, str | None]:
     """Strictly parse one official GPT-OSS Harmony function call."""
-    recipients = re.findall(r"\bto=([a-zA-Z0-9_.\-]+)", response)
+    stripped = response.strip()
+    recipients = re.findall(r"\bto=functions\.([a-zA-Z0-9_.\-]+)", stripped)
+    call_count = stripped.count("<|call|>")
+    if len(recipients) > 1 or call_count > 1:
+        return (
+            PARSE_ERROR,
+            {},
+            "multiple_calls",
+            "Harmony output must contain exactly one tool call",
+            recipients[0].lower() if recipients else None,
+        )
     if not recipients:
-        return PARSE_ERROR, {}, "Harmony output has no function recipient", None
-    if len(recipients) != 1 or not recipients[0].lower().startswith("functions."):
-        return PARSE_ERROR, {}, "Harmony output must contain exactly one qualified function recipient", None
+        return (
+            PARSE_ERROR,
+            {},
+            "parse_error",
+            "Harmony output has no qualified function recipient",
+            None,
+        )
 
-    attempted_name = recipients[0][len("functions."):].strip().lower()
-    if not attempted_name:
-        return PARSE_ERROR, {}, "Harmony function recipient has no tool name", None
+    attempted_name = recipients[0].lower()
+    if call_count == 0:
+        return (
+            PARSE_ERROR,
+            {},
+            "incomplete_harmony_call",
+            "Harmony function call is missing its terminating <|call|> token",
+            attempted_name,
+        )
 
-    recipient_match = re.search(
-        rf"\bto=functions\.{re.escape(recipients[0][len('functions.'):])}\b",
-        response,
-        re.IGNORECASE,
+    non_call_message = (
+        r"(?:<\|start\|>assistant)?"
+        r"<\|channel\|>(?:analysis|commentary)"
+        r"<\|message\|>"
+        r"(?:(?!<\|(?:call|return)\|>)[\s\S])*?"
+        r"<\|end\|>"
     )
-    assert recipient_match is not None
-    call_region = response[recipient_match.end():]
-    message_index = call_region.find("<|message|>")
-    call_index = call_region.find("<|call|>")
-    if message_index < 0 or call_index < 0 or call_index < message_index:
-        return PARSE_ERROR, {}, "Harmony tool call requires <|message|> followed by <|call|>", attempted_name
-    if call_region.find("<|message|>", message_index + len("<|message|>")) >= 0:
-        return PARSE_ERROR, {}, "Harmony tool call contains multiple message delimiters", attempted_name
-    if call_region.find("<|call|>", call_index + len("<|call|>")) >= 0:
-        return PARSE_ERROR, {}, "Harmony output contains multiple tool calls", attempted_name
-    if call_region[call_index + len("<|call|>"):].strip():
-        return PARSE_ERROR, {}, "Harmony tool call has trailing content", attempted_name
+    function_name = r"(?P<name>[a-zA-Z0-9_.\-]+)"
+    call_header = (
+        r"(?:"
+        r"<\|channel\|>commentary\s+to=functions\." + function_name
+        + r"|to=functions\." + function_name.replace("name", "name_before_channel")
+        + r"\s*<\|channel\|>commentary"
+        r")"
+    )
+    complete_call = re.compile(
+        r"^(?:" + non_call_message + r")*"
+        r"(?:<\|start\|>assistant)?"
+        + call_header
+        + r"\s*<\|constrain\|>json"
+        r"<\|message\|>(?P<payload>[\s\S]*)<\|call\|>$"
+    )
+    match = complete_call.fullmatch(stripped)
+    if match is None:
+        return (
+            PARSE_ERROR,
+            {},
+            "parse_error",
+            "output is not one complete official Harmony commentary tool-call structure",
+            attempted_name,
+        )
+    parsed_name = match.group("name") or match.group("name_before_channel")
+    if parsed_name.lower() != attempted_name:
+        return (
+            PARSE_ERROR,
+            {},
+            "parse_error",
+            "Harmony recipient is inconsistent",
+            attempted_name,
+        )
 
-    raw = call_region[message_index + len("<|message|>"):call_index].lstrip()
+    raw = match.group("payload").lstrip()
     try:
         payload, end = json.JSONDecoder().raw_decode(raw)
     except (json.JSONDecodeError, TypeError):
-        return PARSE_ERROR, {}, "arguments are not valid JSON", attempted_name
+        return PARSE_ERROR, {}, "parse_error", "arguments are not valid JSON", attempted_name
     if raw[end:].strip():
-        return PARSE_ERROR, {}, "Harmony argument payload has trailing content", attempted_name
+        return PARSE_ERROR, {}, "parse_error", "Harmony argument payload has trailing content", attempted_name
     if not isinstance(payload, dict):
-        return PARSE_ERROR, {}, "decoded arguments must be a JSON object", attempted_name
+        return PARSE_ERROR, {}, "parse_error", "decoded arguments must be a JSON object", attempted_name
     if attempted_name not in catalog:
-        return UNKNOWN_TOOL, {}, "tool name is not in the live MCP catalog", attempted_name
-    return attempted_name, payload, None, attempted_name
+        return UNKNOWN_TOOL, {}, "unknown_tool", "tool name is not in the live MCP catalog", attempted_name
+    return attempted_name, payload, "ok", None, attempted_name
 
 
 def _decode_arguments(arguments: Any) -> tuple[dict[str, Any], str | None]:
@@ -266,13 +310,13 @@ def parse_tool_call(
 
     harmony_call = _parse_harmony_native_call(response, catalog) if allow_harmony else None
     if harmony_call is not None:
-        name, arguments, parse_error, attempted_name = harmony_call
+        name, arguments, parse_status, parse_error, attempted_name = harmony_call
         if name == PARSE_ERROR:
             return ToolCallPrediction(
                 PARSE_ERROR,
                 {},
                 response,
-                parse_status="parse_error",
+                parse_status=parse_status,
                 attempted_tool=attempted_name,
                 diagnostic=parse_error,
             )
@@ -286,19 +330,22 @@ def parse_tool_call(
                 diagnostic=parse_error,
             )
         schema_error = _argument_schema_error(name, arguments, tool_schemas)
+        if schema_error:
+            return ToolCallPrediction(
+                INVALID_ARGUMENTS,
+                arguments,
+                response,
+                parse_status="invalid_arguments",
+                attempted_tool=attempted_name,
+                diagnostic=schema_error,
+            )
         return ToolCallPrediction(
-            PARSE_ERROR if parse_error else name,
+            name,
             arguments,
             response,
-            parse_status=(
-                "parse_error"
-                if parse_error
-                else "invalid_arguments"
-                if schema_error
-                else "ok"
-            ),
+            parse_status="ok",
             attempted_tool=attempted_name,
-            diagnostic=parse_error or schema_error,
+            diagnostic=None,
         )
 
     qwen_call = _parse_qwen_native_call(response)

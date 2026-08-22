@@ -30,24 +30,47 @@ DEFAULT_ARCHIVE = (
 )
 
 
+def _configured_archive() -> Path:
+    archive_text = os.environ.get("LAYERMCP_MATHQA_ARCHIVE")
+    return Path(archive_text) if archive_text else DEFAULT_ARCHIVE
+
+
+def _available_archive(path: Path | None = None) -> Path | None:
+    candidate = path or _configured_archive()
+    return candidate if candidate.is_file() else None
+
+
+ARCHIVE_AVAILABLE = _available_archive() is not None
+ARCHIVE_SKIP_REASON = (
+    "Set LAYERMCP_MATHQA_ARCHIVE to the pinned MathQA.zip source archive."
+)
+
+
 class MathQAPublicMultistepTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        archive_text = os.environ.get("LAYERMCP_MATHQA_ARCHIVE")
-        cls.archive = Path(archive_text) if archive_text else DEFAULT_ARCHIVE
-        if not cls.archive.is_file():
-            raise unittest.SkipTest(
-                "Set LAYERMCP_MATHQA_ARCHIVE to the pinned MathQA.zip source archive."
-            )
-        cls.built = builder.build_from_archive(cls.archive)
-        cls.benchmark = cls.built["benchmark"]
-        cls.manifest = cls.built["manifest"]
+        cls.benchmark = json.loads((MATH_ROOT / builder.BENCHMARK_NAME).read_text())
+        cls.fixture = json.loads((MATH_ROOT / builder.FIXTURE_NAME).read_text())
+        cls.manifest = json.loads((MATH_ROOT / builder.MANIFEST_NAME).read_text())
+        cls.mapping = json.loads((MATH_ROOT / builder.MAPPING_NAME).read_text())
 
+    @classmethod
+    def _built_from_archive(cls) -> dict[str, object]:
+        archive = _available_archive()
+        if archive is None:
+            raise AssertionError(ARCHIVE_SKIP_REASON)
+        if not hasattr(cls, "_archive_built"):
+            cls._archive_built = builder.build_from_archive(archive)
+        return cls._archive_built
+
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
     def test_archive_and_member_hashes_are_pinned(self) -> None:
-        self.assertEqual(hashlib.sha256(self.archive.read_bytes()).hexdigest(), builder.ARCHIVE_SHA256)
-        with zipfile.ZipFile(self.archive) as archive:
+        archive = _available_archive()
+        assert archive is not None
+        self.assertEqual(hashlib.sha256(archive.read_bytes()).hexdigest(), builder.ARCHIVE_SHA256)
+        with zipfile.ZipFile(archive) as source_archive:
             for name, expected in builder.MEMBER_SHA256.items():
-                self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(), expected)
+                self.assertEqual(hashlib.sha256(source_archive.read(name)).hexdigest(), expected)
 
     def test_population_and_selected_counts_are_exact(self) -> None:
         inventory = self.manifest["source_inventory"]
@@ -92,20 +115,48 @@ class MathQAPublicMultistepTests(unittest.TestCase):
         self.assertTrue(all(row["source_coordinate"] for row in unresolved))
         self.assertTrue(all(len(row["source_row_sha256"]) == 64 for row in unresolved))
 
+    def test_committed_fixture_manifest_and_benchmark_are_consistent(self) -> None:
+        self.assertEqual(self.fixture["provenance"], self.manifest["provenance"])
+        self.assertEqual(
+            self.fixture["selected_source_coordinates"],
+            self.manifest["selected_source_coordinates"],
+        )
+        self.assertEqual(len(self.fixture["rows"]), len(self.benchmark))
+        self.assertEqual(len(self.benchmark), 200)
+        for benchmark_row, fixture_row in zip(self.benchmark, self.fixture["rows"]):
+            self.assertEqual(benchmark_row["source_coordinate"], fixture_row["source_coordinate"])
+            self.assertEqual(benchmark_row["source_row_index"], fixture_row["source_row_index"])
+            self.assertEqual(benchmark_row["source_row_sha256"], fixture_row["source_row_sha256"])
+            self.assertEqual(benchmark_row["source_record"], fixture_row["source_record"])
+        for name, expected_hash in self.manifest["generated_artifact_sha256"].items():
+            self.assertEqual(
+                hashlib.sha256((MATH_ROOT / name).read_bytes()).hexdigest(),
+                expected_hash,
+                name,
+            )
+
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
     def test_generation_is_repeatedly_identical_and_matches_committed_bytes(self) -> None:
-        second = builder.build_from_archive(self.archive)
-        self.assertEqual(self.built["artifact_bytes"], second["artifact_bytes"])
-        for name, data in self.built["artifact_bytes"].items():
+        built = self._built_from_archive()
+        archive = _available_archive()
+        assert archive is not None
+        second = builder.build_from_archive(archive)
+        self.assertEqual(built["artifact_bytes"], second["artifact_bytes"])
+        for name, data in built["artifact_bytes"].items():
             self.assertEqual((MATH_ROOT / name).read_bytes(), data, name)
         self.assertEqual(
             hashlib.sha256((MATH_ROOT / builder.MANIFEST_NAME).read_bytes()).hexdigest(),
             "ca49dad10675634acfab981ab697051de48cc3fe34362f53691d23c4d0e00a1e",
         )
 
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
     def test_selected_source_fields_and_hashes_are_exact(self) -> None:
-        with zipfile.ZipFile(self.archive) as archive:
-            source = json.loads(archive.read("test.json"))
-        fixture = self.built["fixture"]
+        built = self._built_from_archive()
+        archive = _available_archive()
+        assert archive is not None
+        with zipfile.ZipFile(archive) as source_archive:
+            source = json.loads(source_archive.read("test.json"))
+        fixture = built["fixture"]
         self.assertEqual(len(fixture["rows"]), 200)
         for benchmark_row, fixture_row in zip(self.benchmark, fixture["rows"]):
             index = fixture_row["source_row_index"]
@@ -123,9 +174,12 @@ class MathQAPublicMultistepTests(unittest.TestCase):
                 [call for call in source_row["linear_formula"].split("|") if call],
             )
 
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
     def test_no_selected_question_duplicates_train_or_dev(self) -> None:
-        with zipfile.ZipFile(self.archive) as archive:
-            other = json.loads(archive.read("train.json")) + json.loads(archive.read("dev.json"))
+        archive = _available_archive()
+        assert archive is not None
+        with zipfile.ZipFile(archive) as source_archive:
+            other = json.loads(source_archive.read("train.json")) + json.loads(source_archive.read("dev.json"))
         questions = {row["Problem"] for row in other}
         self.assertFalse({row["query"] for row in self.benchmark} & questions)
 
@@ -145,7 +199,7 @@ class MathQAPublicMultistepTests(unittest.TestCase):
                 self.assertTrue(all(int(dep.split("_")[1]) < index for dep in expected_dependencies))
         self.assertIn("lcm", observed_operations)
         self.assertIn("reminder", observed_operations)
-        self.assertEqual(self.built["mapping"]["supported_operations"]["gcd"], "gcd_lcm")
+        self.assertEqual(self.mapping["supported_operations"]["gcd"], "gcd_lcm")
 
     def test_every_selected_call_validates_and_replays_through_registered_tool(self) -> None:
         registered = mcp._tool_manager._tools
@@ -197,8 +251,13 @@ class MathQAPublicMultistepTests(unittest.TestCase):
                 builder.Ineligible, "destination_tool_exponent_limit"
             ):
                 builder._translate_and_execute("power", [2, exponent])
-        with zipfile.ZipFile(self.archive) as archive:
-            source = json.loads(archive.read("test.json"))
+
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
+    def test_source_negative_power_constraint_is_preserved(self) -> None:
+        archive = _available_archive()
+        assert archive is not None
+        with zipfile.ZipFile(archive) as source_archive:
+            source = json.loads(source_archive.read("test.json"))
         # MathQA has no resolved negative power exponent in [-10, -1]. Its
         # supplied negative case is far outside the destination limit.
         self.assertEqual(
@@ -209,9 +268,12 @@ class MathQAPublicMultistepTests(unittest.TestCase):
         ):
             builder._evaluate_row(source[2973], 2973)
 
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
     def test_test_2800_is_excluded_without_altering_its_exponent(self) -> None:
-        with zipfile.ZipFile(self.archive) as archive:
-            row = json.loads(archive.read("test.json"))[2800]
+        archive = _available_archive()
+        assert archive is not None
+        with zipfile.ZipFile(archive) as source_archive:
+            row = json.loads(source_archive.read("test.json"))[2800]
         self.assertEqual(
             row["linear_formula"], "power(n0,n1)|reminder(#0,n2)|"
         )
@@ -326,10 +388,13 @@ class MathQAPublicMultistepTests(unittest.TestCase):
         self.assertEqual(dict(sorted(operations.items())), self.manifest["selected_distribution"]["operation"])
         self.assertEqual(dict(sorted(tools.items())), self.manifest["selected_distribution"]["tool"])
 
+    @unittest.skipUnless(ARCHIVE_AVAILABLE, ARCHIVE_SKIP_REASON)
     def test_corrupt_archive_and_member_are_rejected(self) -> None:
+        archive = _available_archive()
+        assert archive is not None
         with TemporaryDirectory() as temporary:
             path = Path(temporary) / "bad.zip"
-            data = bytearray(self.archive.read_bytes())
+            data = bytearray(archive.read_bytes())
             data[-10] ^= 1
             path.write_bytes(data)
             with self.assertRaisesRegex(ValueError, "archive SHA-256"):
@@ -340,9 +405,18 @@ class MathQAPublicMultistepTests(unittest.TestCase):
         row["linear_formula"] = "factorial(n0)|add(#0,const_1)|"
         with self.assertRaisesRegex(builder.Ineligible, "unsupported_operation"):
             builder._evaluate_row(row, self.benchmark[0]["source_row_index"])
-        mapping = copy.deepcopy(self.built["mapping"])
+        mapping = copy.deepcopy(self.mapping)
         mapping["supported_operations"]["gcd"] = "calculator"
-        self.assertNotEqual(builder._pretty_bytes(mapping), self.built["artifact_bytes"][builder.MAPPING_NAME])
+        self.assertNotEqual(
+            builder._pretty_bytes(mapping),
+            (MATH_ROOT / builder.MAPPING_NAME).read_bytes(),
+        )
+
+    def test_missing_archive_does_not_disable_committed_artifact_validation(self) -> None:
+        missing = MATH_ROOT / "fixtures" / "MathQA.zip-not-present"
+        self.assertIsNone(_available_archive(missing))
+        self.assertEqual(len(self.benchmark), 200)
+        self.assertEqual(sum(len(row["expected_steps"]) for row in self.benchmark), 892)
 
     def test_equivalent_calculator_expression_separates_arguments_and_outcomes(self) -> None:
         reference_call = _score_sample(

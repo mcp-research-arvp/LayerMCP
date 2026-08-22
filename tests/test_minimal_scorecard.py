@@ -26,6 +26,7 @@ def _sample(
     benchmark_mode: str | None | object = DEFAULT_BENCHMARK_MODE,
     reasoning_mode: str = "direct",
     reasoning_method: str = "none",
+    reasoning_effort: str | None = None,
 ) -> dict:
     sample = {
         "sample_id": sample_id,
@@ -43,6 +44,8 @@ def _sample(
         "reasoning_mode": reasoning_mode,
         "reasoning_method": reasoning_method,
     }
+    if reasoning_effort is not None:
+        sample["reasoning_effort"] = reasoning_effort
     if benchmark_mode is not _MISSING:
         sample["benchmark_mode"] = benchmark_mode
     return sample
@@ -60,11 +63,24 @@ def _write_result(
     missing_registry_field: str | None = None,
     reasoning_mode: str = "direct",
     reasoning_method: str = "none",
+    reasoning_effort: str | None = None,
 ) -> None:
     artifacts = run / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
     samples_path = artifacts / f"{name}_samples.jsonl"
     summary_path = artifacts / f"{name}_summary.json"
+    generation_limit = (summary_overrides or {}).get(
+        "effective_generation_limit",
+        128,
+    )
+    samples = [
+        {
+            **sample,
+            "effective_generation_limit": generation_limit,
+            "effective_generation_limit_unit": "tokens",
+        }
+        for sample in samples
+    ]
     samples_path.write_text(
         "".join(json.dumps(sample) + "\n" for sample in samples),
         encoding="utf-8",
@@ -75,6 +91,8 @@ def _write_result(
         "evaluation_protocol": "single_step_tool_routing_v1",
         "reasoning_mode": reasoning_mode,
         "reasoning_method": reasoning_method,
+        "effective_generation_limit": generation_limit,
+        "effective_generation_limit_unit": "tokens",
         "total_samples": len(samples),
         "tool_pool": "full_mcp_registry",
         "tool_count": 60,
@@ -83,6 +101,8 @@ def _write_result(
             "tool_registry_name_schema_description_v1"
         ),
     }
+    if reasoning_effort is not None:
+        summary["reasoning_effort"] = reasoning_effort
     summary.update(summary_overrides or {})
     if missing_registry_field is not None:
         summary.pop(missing_registry_field)
@@ -186,7 +206,7 @@ class MinimalScorecardTests(unittest.TestCase):
             self.assertIn("Exact Reference Argument Match", markdown)
             self.assertNotIn("Exact canonical args", markdown)
             header = (
-                "| Model | Reasoning mode | Reasoning method | Benchmark mode | Mode source | N | Final Outcome "
+                "| Model | Condition | Reasoning method | Benchmark mode | Mode source | N | Final Outcome "
                 "Accuracy | Final Outcome Coverage | Tool Selection Accuracy | "
                 "Valid Arguments / SVCA |"
             )
@@ -229,13 +249,45 @@ class MinimalScorecardTests(unittest.TestCase):
                 )
 
             markdown = build_scorecard([run])
-
             self.assertIn("| gemma | direct | native_disabled |", markdown)
             self.assertIn("| gemma | reasoning | native_enabled |", markdown)
             self.assertNotIn(
                 "| gemma | direct | native_disabled | grounded_tool_execution | explicit | 2 |",
                 markdown,
             )
+
+    def test_gpt_oss_harmony_low_has_a_distinct_condition_label(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            run = Path(temporary_directory)
+            sample = _sample(
+                "gpt-oss",
+                model="openai/gpt-oss-20b",
+                domain="mathematics",
+                tool=True,
+                args=True,
+                execution=True,
+                final=True,
+                failure="none",
+                reasoning_mode="reasoning",
+                reasoning_method="harmony",
+                reasoning_effort="low",
+            )
+            _write_result(
+                run,
+                "math",
+                model="openai/gpt-oss-20b",
+                domain="mathematics",
+                fingerprint="sha256:gpt-oss",
+                samples=[sample],
+                reasoning_mode="reasoning",
+                reasoning_method="harmony",
+                reasoning_effort="low",
+                summary_overrides={"effective_generation_limit": 4096},
+            )
+            markdown = build_scorecard([run])
+            self.assertIn("Reasoning — Harmony LOW", markdown)
+            self.assertIn("4096 tokens", markdown)
+            self.assertNotIn("| openai/gpt-oss-20b | direct |", markdown)
 
     def test_sgoa_uses_scored_denominator(self) -> None:
         with TemporaryDirectory() as temporary_directory:
@@ -372,13 +424,15 @@ class MinimalScorecardTests(unittest.TestCase):
             markdown = build_scorecard([other_run, run])
 
             self.assertIn(
-                "| model | direct | none | `grounded_tool_execution (explicit)` | "
+                "| model | direct | none | 128 tokens | "
+                "`grounded_tool_execution (explicit)` | "
                 "`finance_query_table_rows_v1`, "
                 "`recursive_json_subset_v1` |",
                 markdown,
             )
             self.assertIn(
-                "| other-model | direct | none | `grounded_tool_execution (explicit)` | "
+                "| other-model | direct | none | 128 tokens | "
+                "`grounded_tool_execution (explicit)` | "
                 "`recursive_json_subset_v1` |",
                 markdown,
             )
@@ -660,6 +714,8 @@ class MinimalScorecardTests(unittest.TestCase):
             dataset.mkdir(parents=True)
             sample = self._correct_sample("model")
             sample["benchmark_path"] = "benchmark/coding/coding_public.json"
+            sample["effective_generation_limit"] = 128
+            sample["effective_generation_limit_unit"] = "tokens"
             samples_path = dataset / "samples.jsonl"
             summary_path = dataset / "summary.json"
             samples_path.write_text(json.dumps(sample) + "\n", encoding="utf-8")
@@ -671,6 +727,8 @@ class MinimalScorecardTests(unittest.TestCase):
                         "evaluation_protocol": "single_step_tool_routing_v1",
                         "reasoning_mode": "direct",
                         "reasoning_method": "none",
+                        "effective_generation_limit": 128,
+                        "effective_generation_limit_unit": "tokens",
                         "total_samples": 1,
                         "tool_pool": "full_mcp_registry",
                         "tool_count": 60,

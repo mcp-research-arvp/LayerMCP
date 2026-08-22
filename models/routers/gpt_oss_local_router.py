@@ -24,10 +24,42 @@ ROUTER_BACKEND = "local_gpt_oss_pytorch"
 ARCHITECTURE_SOURCE = "models.architectures.gpt_oss_pytorch"
 WEIGHT_SOURCE = "local_checkpoint"
 HALLUCINATED_TOOL = "hallucinated_tool"
-MAX_GENERATED_TOKENS = 128
+MAX_GENERATED_TOKENS = 4096
 PROMPT_TEMPLATE = "harmony_structured_context_sql_v2"
 SUPPORTS_TOOL_DESCRIPTIONS = True
 SUPPORTS_STRUCTURED_TOOL_DESCRIPTIONS = True
+SUPPORTS_REASONING_MODE = True
+SUPPORTS_REASONING_EFFORT = True
+REASONING_METHODS = {"reasoning": "harmony"}
+SUPPORTED_REASONING_EFFORTS = frozenset({"low"})
+
+
+def reasoning_method(reasoning_mode: str) -> str:
+    try:
+        return REASONING_METHODS[reasoning_mode]
+    except KeyError as exc:
+        raise ValueError(
+            "GPT-OSS is evaluated only in native Harmony reasoning mode; "
+            "reasoning_mode must be 'reasoning'."
+        ) from exc
+
+
+def normalize_reasoning_effort(
+    reasoning_mode: str,
+    reasoning_effort: str | None,
+) -> str:
+    reasoning_method(reasoning_mode)
+    if reasoning_effort is None:
+        raise ValueError(
+            "GPT-OSS native Harmony reasoning requires reasoning_effort='low'."
+        )
+    normalized = reasoning_effort.strip().lower()
+    if normalized not in SUPPORTED_REASONING_EFFORTS:
+        raise ValueError(
+            "Unsupported GPT-OSS reasoning effort "
+            f"{reasoning_effort!r}; expected 'low'."
+        )
+    return normalized
 
 
 def resolve_checkpoint_path(checkpoint_path: str | Path | None = None) -> Path:
@@ -116,7 +148,14 @@ def _extract_tool_name(response: str, available_tools: Sequence[str]) -> str:
 
 
 def choose_tool(query: str, available_tools: Sequence[str], tool_descriptions: Mapping[str, str] | None = None) -> str:
-    return choose_tool_call(query, available_tools, None, tool_descriptions).selected_tool
+    return choose_tool_call(
+        query,
+        available_tools,
+        None,
+        tool_descriptions,
+        reasoning_mode="reasoning",
+        reasoning_effort="low",
+    ).selected_tool
 
 
 def _build_native_tools(
@@ -143,8 +182,13 @@ def _generate_prediction(
     tool_catalog: Sequence[str],
     native_tools: list[dict[str, Any]],
     tool_schemas: Mapping[str, Any],
+    reasoning_effort: str,
 ) -> ToolCallPrediction:
-    prompt_tokens = generator.render_tool_prompt(prompt_query, native_tools)
+    prompt_tokens = generator.render_tool_prompt(
+        prompt_query,
+        native_tools,
+        reasoning_effort=reasoning_effort,
+    )
     result = generator.generate_text(
         prompt_tokens=prompt_tokens,
         stop_tokens=generator.assistant_action_stop_tokens,
@@ -163,7 +207,15 @@ def _generate_prediction(
     )
 
 
-def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: Mapping[str, Any] | None = None, tool_descriptions: Mapping[str, str] | None = None) -> ToolCallPrediction:
+def choose_tool_call(
+    query: str,
+    available_tools: Sequence[str],
+    tool_schemas: Mapping[str, Any] | None = None,
+    tool_descriptions: Mapping[str, str] | None = None,
+    *,
+    reasoning_mode: str = "reasoning",
+    reasoning_effort: str | None = None,
+) -> ToolCallPrediction:
     normalized_query = query.strip()
     if not normalized_query:
         raise ValueError("query must not be empty.")
@@ -171,6 +223,11 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
     tool_catalog = tuple(tool.lower() for tool in available_tools)
     if not tool_catalog:
         raise ValueError("available_tools must not be empty.")
+
+    normalized_effort = normalize_reasoning_effort(
+        reasoning_mode,
+        reasoning_effort,
+    )
 
     generator = _load_generator()
     schemas = tool_schemas or {}
@@ -184,6 +241,7 @@ def choose_tool_call(query: str, available_tools: Sequence[str], tool_schemas: M
             tool_catalog,
             native_tools,
             schemas,
+            normalized_effort,
         )
 
     return generate_prediction(normalized_query)

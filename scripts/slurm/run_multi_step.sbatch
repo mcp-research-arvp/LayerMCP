@@ -4,6 +4,12 @@
 # sbatch --job-name="${MODEL}-${REASONING_MODE}-${RUN_KIND}-${DATASET_GROUP}" \
 #   --export=ALL,MODEL,REASONING_MODE,DATASET_GROUP,RUN_KIND \
 #   scripts/slurm/run_multi_step.sbatch
+# GPT-OSS full example:
+# MODEL=gpt-oss-local REASONING_MODE=reasoning REASONING_EFFORT=low \
+# DATASET_GROUP=finance_finqa RUN_KIND=full \
+# sbatch --job-name=gpt-oss-local-reasoning-low-multi-full-finance_finqa \
+#   --export=ALL,MODEL,REASONING_MODE,REASONING_EFFORT,DATASET_GROUP,RUN_KIND \
+#   scripts/slurm/run_multi_step.sbatch
 #SBATCH --job-name=lmcp-multistep
 #SBATCH --account=def-yousefne_gpu
 #SBATCH --gres=gpu:h100:1
@@ -170,6 +176,33 @@ fi
 : "${SLURM_JOB_ID:?This launcher must run under Slurm}"
 : "${SLURM_JOB_NAME:?Slurm must provide a job name}"
 
+if [[ "$MODEL" == gpt-oss-local ]]; then
+  [[ "$REASONING_MODE" == reasoning ]] || {
+    echo "gpt-oss-local requires REASONING_MODE=reasoning" >&2
+    exit 2
+  }
+  [[ -n "${REASONING_EFFORT:-}" ]] || {
+    echo "Set REASONING_EFFORT=low for gpt-oss-local" >&2
+    exit 2
+  }
+  [[ "$REASONING_EFFORT" == low ]] || {
+    echo "Unsupported GPT-OSS REASONING_EFFORT: $REASONING_EFFORT (expected low)" >&2
+    exit 2
+  }
+elif [[ -n "${REASONING_EFFORT:-}" ]]; then
+  echo "REASONING_EFFORT is GPT-OSS-only; omit it for $MODEL" >&2
+  exit 2
+fi
+REASONING_EFFORT_VALUE="${REASONING_EFFORT:-}"
+REASONING_EFFORT_ARGS=()
+if [[ -n "$REASONING_EFFORT_VALUE" ]]; then
+  REASONING_EFFORT_ARGS=(--reasoning-effort "$REASONING_EFFORT_VALUE")
+fi
+if [[ "${LAYERMCP_VALIDATE_REASONING_ONLY:-0}" == 1 ]]; then
+  printf '%s\t%s\t%s\n' "$MODEL" "$REASONING_MODE" "$REASONING_EFFORT_VALUE"
+  exit 0
+fi
+
 module load python/3.11
 source "$HOME/venvs/layermcp/bin/activate"
 export HF_HOME="$SCRATCH/hf_cache"
@@ -257,14 +290,10 @@ case "$MODEL" in
     [[ "$REASONING_MODE" == reasoning ]] && REASONING_METHOD="native_enabled" || REASONING_METHOD="native_disabled"
     ;;
   gpt-oss-local)
-    [[ "$REASONING_MODE" == direct ]] || {
-      echo "gpt-oss-local does not implement reasoning mode; use REASONING_MODE=direct" >&2
-      exit 2
-    }
     : "${LAYERMCP_GPT_OSS_CHECKPOINT:=$REPO_ROOT/checkpoints/gpt-oss-20b/original}"
     export LAYERMCP_GPT_OSS_CHECKPOINT
     CHECKPOINT="$LAYERMCP_GPT_OSS_CHECKPOINT"; EXPECTED_MODEL_NAME="openai/gpt-oss-20b"
-    PROMPT_TEMPLATE_ID="harmony_structured_context_sql_v2"; REASONING_METHOD="none"; GENERATION_LIMIT=128
+    PROMPT_TEMPLATE_ID="harmony_structured_context_sql_v2"; REASONING_METHOD="harmony"; GENERATION_LIMIT=4096
     REQUIRED_CHECKPOINT_FILES=(config.json model.safetensors)
     ;;
   *) echo "Unsupported MODEL: $MODEL" >&2; exit 2 ;;
@@ -279,6 +308,11 @@ done
 safe_component() { python -m analysis.run_artifacts --safe-component "$1" "$2"; }
 MODEL_COMPONENT="$(safe_component model "$MODEL")"
 REASONING_COMPONENT="$(safe_component reasoning_mode "$REASONING_MODE")"
+if [[ -n "$REASONING_EFFORT_VALUE" ]]; then
+  REASONING_EFFORT_COMPONENT="$(safe_component reasoning_effort "$REASONING_EFFORT_VALUE")"
+else
+  REASONING_EFFORT_COMPONENT=""
+fi
 GROUP_COMPONENT="$(safe_component dataset_group "$DATASET_GROUP")"
 RUN_KIND_COMPONENT="$(safe_component run_kind "$RUN_KIND")"
 JOB_ID_COMPONENT="$(safe_component slurm_job_id "$SLURM_JOB_ID")"
@@ -289,10 +323,25 @@ for required in "$MODEL_COMPONENT" "$REASONING_COMPONENT" "$RUN_KIND_COMPONENT" 
     exit 2
   }
 done
+if [[ -n "$REASONING_EFFORT_COMPONENT" && "$JOB_NAME_COMPONENT" != *"$REASONING_EFFORT_COMPONENT"* ]]; then
+  echo "Slurm job name must include reasoning effort: missing $REASONING_EFFORT_COMPONENT" >&2
+  exit 2
+fi
+if [[ "$MODEL" == gpt-oss-local ]]; then
+  EXPECTED_GPT_OSS_JOB_NAME="gpt-oss-local-reasoning-low-multi-${RUN_KIND_COMPONENT}-${GROUP_COMPONENT}"
+  [[ "$JOB_NAME_COMPONENT" == "$EXPECTED_GPT_OSS_JOB_NAME" ]] || {
+    echo "GPT-OSS job name must be: $EXPECTED_GPT_OSS_JOB_NAME" >&2
+    exit 2
+  }
+fi
 
 RUN_DATE="$(date -u +%Y%m%dT%H%M%SZ)"
 RUNS_ROOT="results/runs/multi_step"
-RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${REASONING_COMPONENT}_${RUN_KIND_COMPONENT}_${GROUP_COMPONENT}"
+CONDITION_COMPONENT="$REASONING_COMPONENT"
+if [[ -n "$REASONING_EFFORT_COMPONENT" ]]; then
+  CONDITION_COMPONENT="${CONDITION_COMPONENT}_${REASONING_EFFORT_COMPONENT}"
+fi
+RUN_DIR="$RUNS_ROOT/${RUN_DATE}_${JOB_ID_COMPONENT}_${MODEL_COMPONENT}_${CONDITION_COMPONENT}_${RUN_KIND_COMPONENT}_${GROUP_COMPONENT}"
 mkdir -p "$RUNS_ROOT"; mkdir "$RUN_DIR"
 cp "$LAUNCHER_PATH" "$RUN_DIR/launcher.sbatch"
 sha256sum "$LAUNCHER_PATH" > "$RUN_DIR/launcher.sha256"
@@ -327,7 +376,8 @@ for group in "${SELECTED_DATASET_GROUPS[@]}"; do
       --source-benchmark "$source_benchmark" --subset "${EVALUATED[$group]}" \
       --provenance "${PROVENANCE[$group]}" --model "$MODEL" \
       --checkpoint "$CHECKPOINT" --registry-snapshot "$REGISTRY_SNAPSHOT" \
-      --reasoning-mode "$REASONING_MODE"
+      --reasoning-mode "$REASONING_MODE" \
+      "${REASONING_EFFORT_ARGS[@]}"
   fi
 done
 
@@ -345,6 +395,8 @@ for path in paths:
 for p in sorted(run.glob("short_test_subsets/*/provenance.json")):
     selections[p.parent.name]=json.loads(p.read_text())
 data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"benchmark_sha256":hashes,"source_counts":counts,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","outcome_metric_names":["tool_selection_accuracy","argument_accuracy","step_outcome_accuracy","all_steps_correct_accuracy","final_step_outcome_accuracy","final_program_execution_accuracy"],"model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
+reasoning_effort="$REASONING_EFFORT_VALUE"
+if reasoning_effort:data["reasoning_effort"]=reasoning_effort
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")
 PY
 
@@ -355,12 +407,13 @@ for group in "${SELECTED_DATASET_GROUPS[@]}"; do
   dataset="$(safe_component dataset "$(basename "$source_benchmark" .json)")"
   dataset_dir="$RUN_DIR/domains/$domain/$dataset"; mkdir -p "$(dirname "$dataset_dir")"; mkdir "$dataset_dir"
   python -m evaluation.evaluate --dataset "$evaluated_benchmark" --router "$MODEL" \
-    --reasoning-mode "$REASONING_MODE" --call-predicted-tools --output-dir "$dataset_dir" \
+    --reasoning-mode "$REASONING_MODE" "${REASONING_EFFORT_ARGS[@]}" --call-predicted-tools --output-dir "$dataset_dir" \
     2>&1 | tee "$dataset_dir/evaluation.log"
   python -m analysis.multi_step_run --dataset-dir "$dataset_dir" --index "$RUN_DIR/artifact_index.jsonl" \
     --source-benchmark "$source_benchmark" --evaluated-benchmark "$evaluated_benchmark" \
     --model "$EXPECTED_MODEL_NAME" --prompt-template "$PROMPT_TEMPLATE_ID" \
     --reasoning-mode "$REASONING_MODE" --reasoning-method "$REASONING_METHOD" \
+    "${REASONING_EFFORT_ARGS[@]}" \
     --generation-limit "$GENERATION_LIMIT" --registry-fingerprint "$EXPECTED_REGISTRY_FINGERPRINT" \
     --registry-fingerprint-version "$REGISTRY_FINGERPRINT_VERSION" --tool-count "$TOOL_COUNT" \
     --tool-pool "$TOOL_POOL" "${provenance_args[@]}"

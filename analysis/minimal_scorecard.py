@@ -33,6 +33,9 @@ class RunRecord:
     model: str
     reasoning_mode: str
     reasoning_method: str
+    reasoning_effort: str | None
+    effective_generation_limit: int
+    effective_generation_limit_unit: str
     benchmark_mode: str
     mode_source: str
     benchmark: str
@@ -259,6 +262,11 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
             model = str(summary.get("model_name") or run_directory.name)
             reasoning_mode = summary.get("reasoning_mode")
             reasoning_method = summary.get("reasoning_method")
+            reasoning_effort = summary.get("reasoning_effort")
+            generation_limit = summary.get("effective_generation_limit")
+            generation_limit_unit = summary.get(
+                "effective_generation_limit_unit"
+            )
             if reasoning_mode not in {"direct", "reasoning"}:
                 raise ValueError(
                     f"{summary_path} has missing or invalid reasoning_mode: "
@@ -268,6 +276,33 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                 raise ValueError(
                     f"{summary_path} has missing or invalid reasoning_method: "
                     f"{reasoning_method!r}"
+                )
+            if model == "openai/gpt-oss-20b":
+                if (
+                    reasoning_mode,
+                    reasoning_method,
+                    reasoning_effort,
+                ) != ("reasoning", "harmony", "low"):
+                    raise ValueError(
+                        f"{summary_path} is not a GPT-OSS Harmony LOW artifact"
+                    )
+                if summary.get("effective_generation_limit") != 4096:
+                    raise ValueError(
+                        f"{summary_path} does not use the GPT-OSS 4096-token limit"
+                    )
+            elif reasoning_effort is not None:
+                raise ValueError(
+                    f"{summary_path} assigns GPT-OSS-only reasoning_effort "
+                    f"to {model!r}"
+                )
+            if (
+                isinstance(generation_limit, bool)
+                or not isinstance(generation_limit, int)
+                or generation_limit <= 0
+                or generation_limit_unit != "tokens"
+            ):
+                raise ValueError(
+                    f"{summary_path} has invalid generation-limit metadata"
                 )
             benchmark_path = str(summary.get("benchmark_path") or summary_path.parent.name)
             family = _benchmark_family(benchmark_path, samples)
@@ -290,6 +325,9 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                 for field, expected_value in (
                     ("reasoning_mode", reasoning_mode),
                     ("reasoning_method", reasoning_method),
+                    ("reasoning_effort", reasoning_effort),
+                    ("effective_generation_limit", generation_limit),
+                    ("effective_generation_limit_unit", generation_limit_unit),
                 ):
                     if sample.get(field) != expected_value:
                         raise ValueError(
@@ -312,6 +350,9 @@ def load_runs(run_directories: Sequence[Path]) -> LoadedRuns:
                         model=model,
                         reasoning_mode=reasoning_mode,
                         reasoning_method=reasoning_method,
+                        reasoning_effort=reasoning_effort,
+                        effective_generation_limit=generation_limit,
+                        effective_generation_limit_unit=generation_limit_unit,
                         benchmark_mode=benchmark_mode,
                         mode_source=mode_source,
                         benchmark=Path(benchmark_path).stem,
@@ -429,6 +470,20 @@ def _domain_label(domain: str) -> str:
     return DOMAIN_LABELS.get(domain, domain.replace("_", " ").title())
 
 
+def _condition_label(
+    reasoning_mode: str,
+    reasoning_method: str,
+    reasoning_effort: str | None,
+) -> str:
+    if (
+        reasoning_mode,
+        reasoning_method,
+        reasoning_effort,
+    ) == ("reasoning", "harmony", "low"):
+        return "Reasoning — Harmony LOW"
+    return reasoning_mode
+
+
 def _table(headers: Sequence[str], rows: Iterable[Sequence[Any]]) -> str:
     lines = [
         "| " + " | ".join(headers) + " |",
@@ -440,7 +495,13 @@ def _table(headers: Sequence[str], rows: Iterable[Sequence[Any]]) -> str:
 
 def render_markdown(loaded: LoadedRuns) -> str:
     records = loaded.records
-    reasoning_dimensions = ("model", "reasoning_mode", "reasoning_method")
+    reasoning_dimensions = (
+        "model",
+        "reasoning_mode",
+        "reasoning_method",
+        "effective_generation_limit",
+        "effective_generation_limit_unit",
+    )
     models = _group_records(
         records,
         (*reasoning_dimensions, "benchmark_mode", "mode_source"),
@@ -476,14 +537,18 @@ def render_markdown(loaded: LoadedRuns) -> str:
         model,
         reasoning_mode,
         reasoning_method,
+        generation_limit,
+        generation_limit_unit,
         benchmark_mode,
         mode_source,
     ), group in models:
         metrics = _metrics(group)
+        effort = group[0].reasoning_effort
+        condition = _condition_label(reasoning_mode, reasoning_method, effort)
         overall_rows.append(
             (
                 model,
-                reasoning_mode,
+                condition,
                 reasoning_method,
                 benchmark_mode,
                 mode_source,
@@ -497,7 +562,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
         diagnostics_rows.append(
             (
                 model,
-                reasoning_mode,
+                condition,
                 reasoning_method,
                 benchmark_mode,
                 mode_source,
@@ -516,15 +581,19 @@ def render_markdown(loaded: LoadedRuns) -> str:
         model,
         reasoning_mode,
         reasoning_method,
+        generation_limit,
+        generation_limit_unit,
         benchmark_mode,
         mode_source,
         domain,
     ), group in domains:
         metrics = _metrics(group)
+        effort = group[0].reasoning_effort
+        condition = _condition_label(reasoning_mode, reasoning_method, effort)
         domain_rows.append(
             (
                 model,
-                reasoning_mode,
+                condition,
                 reasoning_method,
                 benchmark_mode,
                 mode_source,
@@ -542,16 +611,20 @@ def render_markdown(loaded: LoadedRuns) -> str:
         model,
         reasoning_mode,
         reasoning_method,
+        generation_limit,
+        generation_limit_unit,
         benchmark_mode,
         mode_source,
         domain,
         family,
     ), group in families:
         metrics = _metrics(group)
+        effort = group[0].reasoning_effort
+        condition = _condition_label(reasoning_mode, reasoning_method, effort)
         family_rows.append(
             (
                 model,
-                reasoning_mode,
+                condition,
                 reasoning_method,
                 benchmark_mode,
                 mode_source,
@@ -565,7 +638,14 @@ def render_markdown(loaded: LoadedRuns) -> str:
             )
         )
 
-    for (model, reasoning_mode, reasoning_method), group in records_by_model:
+    for (
+        model,
+        reasoning_mode,
+        reasoning_method,
+        generation_limit,
+        generation_limit_unit,
+    ), group in records_by_model:
+        effort = group[0].reasoning_effort
         matchers = sorted(
             {
                 str(record.sample["final_outcome_matcher"])
@@ -579,8 +659,9 @@ def render_markdown(loaded: LoadedRuns) -> str:
         matcher_rows.append(
             (
                 model,
-                reasoning_mode,
+                _condition_label(reasoning_mode, reasoning_method, effort),
                 reasoning_method,
+                f"{generation_limit} {generation_limit_unit}",
                 ", ".join(f"`{mode}`" for mode in modes),
                 ", ".join(f"`{matcher}`" for matcher in matchers)
                 if matchers
@@ -610,8 +691,9 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
-                    "Reasoning mode",
+                    "Condition",
                     "Reasoning method",
+                    "Max generated tokens",
                     "Observed benchmark modes",
                     "Observed final-outcome matchers",
                 ),
@@ -623,7 +705,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
-                    "Reasoning mode",
+                    "Condition",
                     "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
@@ -641,7 +723,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
-                    "Reasoning mode",
+                    "Condition",
                     "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
@@ -660,7 +742,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
-                    "Reasoning mode",
+                    "Condition",
                     "Reasoning method",
                     "Benchmark mode",
                     "Mode source",
@@ -680,7 +762,7 @@ def render_markdown(loaded: LoadedRuns) -> str:
             _table(
                 (
                     "Model",
-                    "Reasoning mode",
+                    "Condition",
                     "Reasoning method",
                     "Benchmark mode",
                     "Mode source",

@@ -4,7 +4,7 @@ matplotlib>=3.8,<4
 mcp[cli]>=1.27,<2
 pint>=0.24,<1
 sympy>=1.13,<2
-openai-harmony
+openai-harmony==0.0.8
 pandas>=2.2,<3
 safetensors>=0.4,<1
 torch>=2.6,<3

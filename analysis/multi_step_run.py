@@ -16,6 +16,7 @@ from analysis.run_artifacts import (
     _load_json_object,
     _load_jsonl_objects,
     _resolve_index_path,
+    _validate_reasoning_contract,
     validate_run_metadata,
 )
 from evaluation.evaluate import (
@@ -228,6 +229,7 @@ def write_short_test_subset(
 def write_model_short_test_subset(
     *, source: Path, subset: Path, provenance: Path, model: str,
     checkpoint: Path, registry_snapshot: Path, reasoning_mode: str,
+    reasoning_effort: str | None = None,
 ) -> dict[str, Any]:
     """Render the production router prompt with a tokenizer, never model weights."""
     from models.routers.structured_tool_call import build_native_tools, build_tool_call_prompt
@@ -244,9 +246,15 @@ def write_model_short_test_subset(
         from models.architectures.phi4_pytorch.inference import get_tokenizer
     elif model == "llama-3.1-8b-local":
         from models.architectures.llama31_8b_pytorch.inference import get_tokenizer
+    elif model == "gpt-oss-local":
+        from models.architectures.gpt_oss_pytorch.inference import get_tokenizer
     else:
         raise ValueError(f"Unsupported short-test model: {model}")
-    tokenizer = get_tokenizer(str(checkpoint))
+    tokenizer = (
+        get_tokenizer()
+        if model == "gpt-oss-local"
+        else get_tokenizer(str(checkpoint))
+    )
 
     def prompt_length(query: str) -> int:
         if model == "llama-3.1-8b-local":
@@ -289,6 +297,27 @@ def write_model_short_test_subset(
                 add_generation_prompt=True,
                 enable_thinking=reasoning_mode == "reasoning",
             )
+        elif model == "gpt-oss-local":
+            from models.architectures.gpt_oss_pytorch.inference import (
+                render_tool_prompt_tokens,
+            )
+            from models.routers.gpt_oss_local_router import (
+                _build_native_tools,
+                normalize_reasoning_effort,
+            )
+
+            effort = normalize_reasoning_effort(
+                reasoning_mode,
+                reasoning_effort,
+            )
+            return len(
+                render_tool_prompt_tokens(
+                    tokenizer,
+                    query,
+                    _build_native_tools(names, schemas, descriptions),
+                    effort,
+                )
+            )
         else:
             raise ValueError(f"Unsupported short-test model: {model}")
         return len(tokenizer.encode(rendered, add_special_tokens=False))
@@ -305,6 +334,7 @@ def validate_and_index_multistep(
     expected_registry_fingerprint: str, expected_registry_fingerprint_version: str,
     expected_tool_count: int, expected_tool_pool: str,
     expected_reasoning_mode: str, expected_reasoning_method: str,
+    expected_reasoning_effort: str | None = None,
     expected_generation_limit: int,
     short_test_provenance: Path | None = None,
 ) -> dict[str, Any]:
@@ -346,6 +376,13 @@ def validate_and_index_multistep(
         "tool_registry_fingerprint_version": expected_registry_fingerprint_version,
         "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
     }
+    if expected_reasoning_effort is not None:
+        required_summary["reasoning_effort"] = expected_reasoning_effort
+    _validate_reasoning_contract(
+        summary,
+        model_name=summary.get("model_name"),
+        label=str(paths[1]),
+    )
     for field, value in required_summary.items():
         if summary.get(field) != value:
             raise ValueError(f"Unexpected summary {field}: {summary.get(field)!r} != {value!r}")
@@ -464,6 +501,11 @@ def validate_and_index_multistep(
         "prompt_template": expected_prompt_template,
         "reasoning_mode": summary["reasoning_mode"],
         "reasoning_method": summary["reasoning_method"],
+        **(
+            {"reasoning_effort": summary["reasoning_effort"]}
+            if "reasoning_effort" in summary
+            else {}
+        ),
         "effective_generation_limit": summary["effective_generation_limit"],
         "effective_generation_limit_unit": summary[
             "effective_generation_limit_unit"
@@ -660,6 +702,7 @@ def main() -> None:
     parser.add_argument("--tool-count", type=int)
     parser.add_argument("--tool-pool")
     parser.add_argument("--reasoning-method")
+    parser.add_argument("--reasoning-effort")
     parser.add_argument("--generation-limit", type=int)
     parser.add_argument("--short-test-provenance", type=Path)
     parser.add_argument("--run-metadata", type=Path)
@@ -677,6 +720,7 @@ def main() -> None:
             checkpoint=args.checkpoint,
             registry_snapshot=args.registry_snapshot,
             reasoning_mode=args.reasoning_mode,
+            reasoning_effort=args.reasoning_effort,
         )
         return
     if args.validate_index:
@@ -696,6 +740,7 @@ def main() -> None:
         expected_tool_count=args.tool_count, expected_tool_pool=args.tool_pool,
         expected_reasoning_mode=args.reasoning_mode,
         expected_reasoning_method=args.reasoning_method,
+        expected_reasoning_effort=args.reasoning_effort,
         expected_generation_limit=args.generation_limit,
         short_test_provenance=args.short_test_provenance,
     )

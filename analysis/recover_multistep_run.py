@@ -231,6 +231,8 @@ def recover_multistep_run(
         "benchmark_mode", "workflow_execution_mode", "outcome_metric_names",
     )
     values = {field: _uniform(records, field) for field in required_record_fields}
+    if any("reasoning_effort" in record for record in records):
+        values["reasoning_effort"] = _uniform(records, "reasoning_effort")
     if values["evaluation_protocol"] != MULTISTEP_EVALUATION_PROTOCOL:
         raise ValueError("Saved workflows use an unsupported evaluation protocol")
     if values["workflow_execution_mode"] != PREDICTED_ROLLOUT_EXECUTION_MODE:
@@ -265,6 +267,7 @@ def recover_multistep_run(
         ("prompt_template", "prompt_template_id"),
         ("reasoning_mode", "reasoning_mode"),
         ("reasoning_method", "reasoning_method"),
+        ("reasoning_effort", "reasoning_effort"),
         ("effective_generation_limit", "effective_generation_limit"),
         ("effective_generation_limit_unit", "effective_generation_limit_unit"),
         ("tool_pool", "tool_pool"),
@@ -272,7 +275,7 @@ def recover_multistep_run(
         ("tool_registry_fingerprint", "tool_registry_fingerprint"),
         ("tool_registry_fingerprint_version", "tool_registry_fingerprint_version"),
     ):
-        if values[field] != metadata.get(metadata_field):
+        if values.get(field) != metadata.get(metadata_field):
             raise ValueError(f"Saved {field} does not match source run metadata")
 
     step_records = [step for record in records for step in record["steps"]]
@@ -311,6 +314,11 @@ def recover_multistep_run(
         "prompt_template": values["prompt_template"],
         "reasoning_mode": values["reasoning_mode"],
         "reasoning_method": values["reasoning_method"],
+        **(
+            {"reasoning_effort": values["reasoning_effort"]}
+            if "reasoning_effort" in values
+            else {}
+        ),
         "effective_generation_limit": values["effective_generation_limit"],
         "effective_generation_limit_unit": values["effective_generation_limit_unit"],
         "evaluation_protocol": values["evaluation_protocol"],
@@ -448,6 +456,7 @@ def recover_multistep_run(
             expected_tool_pool=values["tool_pool"],
             expected_reasoning_mode=values["reasoning_mode"],
             expected_reasoning_method=values["reasoning_method"],
+            expected_reasoning_effort=values.get("reasoning_effort"),
             expected_generation_limit=values["effective_generation_limit"],
         )
         validate_complete_multistep_run(

@@ -91,6 +91,37 @@ def _validate_summary(value: dict[str, Any], path: Path) -> None:
         _FINAL_PROGRAM_FIELDS
     ):
         raise ValueError(f"Incomplete final program metrics in {path}")
+    generation_limit = value.get("effective_generation_limit")
+    if (
+        isinstance(generation_limit, bool)
+        or not isinstance(generation_limit, int)
+        or generation_limit <= 0
+        or value.get("effective_generation_limit_unit") != "tokens"
+    ):
+        raise ValueError(f"Invalid generation-limit metadata in {path}")
+    model = value.get("model_name")
+    effort = value.get("reasoning_effort")
+    if model == "openai/gpt-oss-20b":
+        if (
+            value.get("reasoning_mode"),
+            value.get("reasoning_method"),
+            effort,
+        ) != ("reasoning", "harmony", "low"):
+            raise ValueError(f"Invalid GPT-OSS Harmony LOW condition in {path}")
+        if value.get("effective_generation_limit") != 4096:
+            raise ValueError(f"Invalid GPT-OSS generation limit in {path}")
+    elif effort is not None:
+        raise ValueError(f"reasoning_effort is GPT-OSS-only in {path}")
+
+
+def _condition_label(value: dict[str, Any]) -> str:
+    if (
+        value.get("reasoning_mode"),
+        value.get("reasoning_method"),
+        value.get("reasoning_effort"),
+    ) == ("reasoning", "harmony", "low"):
+        return "Reasoning — Harmony LOW"
+    return str(value.get("reasoning_mode"))
 
 
 def load_rows(run_directories: Sequence[Path]) -> list[dict[str, Any]]:
@@ -111,7 +142,16 @@ def load_rows(run_directories: Sequence[Path]) -> list[dict[str, Any]]:
                     "run": run.name,
                     "dataset": summary_path.parent.name,
                     "model": summary.get("model_name"),
-                    "condition": summary.get("reasoning_mode"),
+                    "condition": _condition_label(summary),
+                    "reasoning_mode": summary.get("reasoning_mode"),
+                    "reasoning_method": summary.get("reasoning_method"),
+                    "reasoning_effort": summary.get("reasoning_effort"),
+                    "effective_generation_limit": summary.get(
+                        "effective_generation_limit"
+                    ),
+                    "effective_generation_limit_unit": summary.get(
+                        "effective_generation_limit_unit"
+                    ),
                     "tool_selection_accuracy": summary.get(
                         "tool_selection_accuracy"
                     ),
@@ -151,7 +191,13 @@ def build_scorecard(run_directories: Sequence[Path]) -> str:
         metric_columns.append(
             ("Final Program Execution", "final_program_execution_accuracy")
         )
-    headers = ["Run", "Dataset", "Model", "Condition"] + [
+    headers = [
+        "Run",
+        "Dataset",
+        "Model",
+        "Condition",
+        "Max generated tokens",
+    ] + [
         heading for heading, _ in metric_columns
     ]
     lines = [
@@ -159,7 +205,16 @@ def build_scorecard(run_directories: Sequence[Path]) -> str:
         "|" + "|".join("---" for _ in headers) + "|",
     ]
     for row in rows:
-        values = [row["run"], row["dataset"], row["model"], row["condition"]]
+        values = [
+            row["run"],
+            row["dataset"],
+            row["model"],
+            row["condition"],
+            (
+                f'{row["effective_generation_limit"]} '
+                f'{row["effective_generation_limit_unit"]}'
+            ),
+        ]
         values.extend(_accuracy(row[field]) for _, field in metric_columns)
         lines.append(
             "| "

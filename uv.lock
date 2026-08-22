@@ -1002,7 +1002,7 @@ requires-dist = [
     { name = "accelerate", specifier = ">=1.7,<2" },
     { name = "matplotlib", specifier = ">=3.8,<4" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.27,<2" },
-    { name = "openai-harmony" },
+    { name = "openai-harmony", specifier = "==0.0.8" },
     { name = "pint", specifier = ">=0.24,<1" },
     { name = "safetensors", specifier = ">=0.4,<1" },
     { name = "sympy", specifier = ">=1.13,<2" },

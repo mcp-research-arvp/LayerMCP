@@ -10,7 +10,17 @@ from evaluation.evaluate import OUTCOME_METRIC_NAMES
 
 
 class MultiStepScorecardTests(unittest.TestCase):
-    def _run(self, root: Path, *, program_accuracy=None) -> Path:
+    def _run(
+        self,
+        root: Path,
+        *,
+        program_accuracy=None,
+        model: str = "model",
+        reasoning_mode: str = "direct",
+        reasoning_method: str = "none",
+        reasoning_effort: str | None = None,
+        generation_limit: int = 128,
+    ) -> Path:
         run = root / "run"
         dataset = run / "domains/finance/finretrieval"
         dataset.mkdir(parents=True)
@@ -23,8 +33,11 @@ class MultiStepScorecardTests(unittest.TestCase):
         )
         summary = {
             **contract,
-            "model_name": "model",
-            "reasoning_mode": "direct",
+            "model_name": model,
+            "reasoning_mode": reasoning_mode,
+            "reasoning_method": reasoning_method,
+            "effective_generation_limit": generation_limit,
+            "effective_generation_limit_unit": "tokens",
             "tool_selection_accuracy": 0.9,
             "argument_accuracy": 0.8,
             "step_outcome_accuracy": 0.7,
@@ -46,6 +59,8 @@ class MultiStepScorecardTests(unittest.TestCase):
             "final_step_outcome_contracts": ["final_step_expected_outcome"],
             "final_step_outcome_matchers": ["recursive_json_subset_v1"],
         }
+        if reasoning_effort is not None:
+            summary["reasoning_effort"] = reasoning_effort
         if program_accuracy is not None:
             summary.update(
                 {
@@ -94,6 +109,20 @@ class MultiStepScorecardTests(unittest.TestCase):
             )
             self.assertIn("Final Program Execution", markdown)
             self.assertIn("75.00%", markdown)
+
+    def test_gpt_oss_harmony_low_condition_is_labeled(self) -> None:
+        with TemporaryDirectory() as temporary:
+            run = self._run(
+                Path(temporary),
+                model="openai/gpt-oss-20b",
+                reasoning_mode="reasoning",
+                reasoning_method="harmony",
+                reasoning_effort="low",
+                generation_limit=4096,
+            )
+            markdown = build_scorecard([run])
+            self.assertIn("Reasoning — Harmony LOW", markdown)
+            self.assertIn("4096 tokens", markdown)
 
     def test_rejects_historical_scalar_in_metadata(self) -> None:
         with TemporaryDirectory() as temporary:

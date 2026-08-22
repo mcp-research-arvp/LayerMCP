@@ -17,7 +17,7 @@
     "operation_list_sha256": "3ea53c71034e52605f8203f1525d7f03bd4a0ddc3e4384c93b3ee1e4ddc1e8ca",
     "constant_list_sha256": "611b5d1089f0d10e6486b5ffeaee92c95efc5df9e385b809d4d142181e2bb4a0",
     "selected_subset_sha256": "4c23c53096819c128a11f1496e6eb24cb99797a7eec22cd62a1dcc0a35f9311e",
-    "operation_mapping_sha256": "b7f2825070c665768b37cddcbf684bbb17db574e3e9b8ea3f5d6b2ff9ffab059",
+    "operation_mapping_sha256": "3cb5eb2c46c948a25d16eb3e50e6aa57ea5655bfacf653b0291fde6dc011bd2f",
     "selection_method": "category/program-length proportional allocation; SHA-256 rank within stratum",
     "llm_generated_content": false
   },

@@ -83,6 +83,12 @@
       "constraint": "resolved arguments are integers and modulus > 1"
     }
   },
+  "outcome_scoring": {
+    "calculator": "expected_args preserves the exact mechanically translated MathQA expression; expected_answer contains only result so recursive subset outcome matching scores computed value",
+    "gcd_lcm": "preserve the complete structured semantic tool result",
+    "modular_arithmetic": "preserve the complete structured semantic tool result",
+    "final_step": "reuse the final step's recursive subset outcome score; do not apply exact full-object matching"
+  },
   "canonical_pi": 3.141592653589793,
   "destination_tool_constraints": {
     "calculator_power_maximum_exponent_magnitude": 10,

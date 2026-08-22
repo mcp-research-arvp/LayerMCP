@@ -17,7 +17,7 @@
     "operation_list_sha256": "3ea53c71034e52605f8203f1525d7f03bd4a0ddc3e4384c93b3ee1e4ddc1e8ca",
     "constant_list_sha256": "611b5d1089f0d10e6486b5ffeaee92c95efc5df9e385b809d4d142181e2bb4a0",
     "selected_subset_sha256": "4c23c53096819c128a11f1496e6eb24cb99797a7eec22cd62a1dcc0a35f9311e",
-    "operation_mapping_sha256": "b7f2825070c665768b37cddcbf684bbb17db574e3e9b8ea3f5d6b2ff9ffab059",
+    "operation_mapping_sha256": "3cb5eb2c46c948a25d16eb3e50e6aa57ea5655bfacf653b0291fde6dc011bd2f",
     "selection_method": "category/program-length proportional allocation; SHA-256 rank within stratum",
     "llm_generated_content": false
   },
@@ -21510,9 +21510,9 @@
     }
   ],
   "generated_artifact_sha256": {
-    "fixtures/mathqa_test_selected_rows.json": "331f39f85940dc194bf160e4f8086f0aa6a1881167a4ce47c5c14e563dc79451",
-    "math_public_mathqa_multistep.json": "261e6e14fba3e362794833bbdd427a23adffeafab96cde2293861143fc85a8a2",
-    "mathqa_operation_mapping.json": "b7f2825070c665768b37cddcbf684bbb17db574e3e9b8ea3f5d6b2ff9ffab059"
+    "fixtures/mathqa_test_selected_rows.json": "33b3371165ba15f49a2a9f995a57e55b788481f070ecdfc375bd359b23ad58c0",
+    "math_public_mathqa_multistep.json": "6c6c14b431ecedbbba6002ef7324716703e27f739ab207374dd16b0f294515d2",
+    "mathqa_operation_mapping.json": "3cb5eb2c46c948a25d16eb3e50e6aa57ea5655bfacf653b0291fde6dc011bd2f"
   },
-  "generation_sha256": "a74a86db23c2bfe274052d3b10d0d4a018712dd3c7472e0d135332de13abb32a"
+  "generation_sha256": "df5109e5fcd2b6267b73dfa85edbd6f769eb3f8692da72821737ddb19c6ecfa7"
 }

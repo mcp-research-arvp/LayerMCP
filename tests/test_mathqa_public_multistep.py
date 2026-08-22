@@ -10,7 +10,12 @@ import unittest
 import zipfile
 
 from benchmark.math import build_mathqa_public_multistep as builder
-from evaluation.evaluate import _score_final_step_outcome, load_benchmark
+from evaluation.evaluate import (
+    _score_final_outcome,
+    _score_final_step_outcome,
+    _score_sample,
+    load_benchmark,
+)
 from mcp_server.server import mcp
 from mcp_server.tool_impls import calculator
 
@@ -94,7 +99,7 @@ class MathQAPublicMultistepTests(unittest.TestCase):
             self.assertEqual((MATH_ROOT / name).read_bytes(), data, name)
         self.assertEqual(
             hashlib.sha256((MATH_ROOT / builder.MANIFEST_NAME).read_bytes()).hexdigest(),
-            "833fa81a69a69fc3bbe66b80cdc7ba89dad0aac0e3ac697d7bb69faf22b7cc34",
+            "ca49dad10675634acfab981ab697051de48cc3fe34362f53691d23c4d0e00a1e",
         )
 
     def test_selected_source_fields_and_hashes_are_exact(self) -> None:
@@ -150,7 +155,12 @@ class MathQAPublicMultistepTests(unittest.TestCase):
                 schema = tool.parameters
                 self.assertTrue(set(schema.get("required", ())) <= set(step["expected_args"]))
                 self.assertTrue(set(step["expected_args"]) <= set(schema["properties"]))
-                self.assertEqual(tool.fn(**step["expected_args"]), step["expected_answer"])
+                result = tool.fn(**step["expected_args"])
+                if step["expected_tool"] == "calculator":
+                    self.assertEqual(step["expected_answer"], {"result": result["result"]})
+                    self.assertNotIn("expression", step["expected_answer"])
+                else:
+                    self.assertEqual(result, step["expected_answer"])
             self.assertTrue(
                 __import__("math").isclose(
                     float(row["expected_steps"][-1]["source_scalar_result"]),
@@ -237,9 +247,36 @@ class MathQAPublicMultistepTests(unittest.TestCase):
         for row in self.benchmark:
             self.assertIsInstance(row["expected_final_answer"], str)
             self.assertEqual(row["expected_final_step_outcome"], row["expected_steps"][-1]["expected_answer"])
-            self.assertEqual(row["final_step_outcome_contract"], "exact_normalized_json")
+            self.assertNotIn("final_step_outcome_contract", row)
             self.assertNotIn("final_program_execution_contract", row)
             self.assertNotIn("workflow_final_answer_accuracy", row)
+
+    def test_model_facing_projection_is_unchanged(self) -> None:
+        projection = [
+            {
+                "id": row["id"],
+                "query": row["query"],
+                "expected_steps": [
+                    {
+                        key: step[key]
+                        for key in (
+                            "id",
+                            "query",
+                            "prompt_context",
+                            "expected_tool",
+                            "expected_args",
+                            "depends_on",
+                        )
+                    }
+                    for step in row["expected_steps"]
+                ],
+            }
+            for row in self.benchmark
+        ]
+        self.assertEqual(
+            hashlib.sha256(builder._canonical_bytes(projection)).hexdigest(),
+            "74127d4a770a94acc23b172eb03cac32617dfaa5e844169fa5bc1d94390343de",
+        )
 
     def test_evaluator_loads_every_workflow_without_model_facing_synthetic_steps(self) -> None:
         samples = load_benchmark(MATH_ROOT / builder.BENCHMARK_NAME)
@@ -307,12 +344,102 @@ class MathQAPublicMultistepTests(unittest.TestCase):
         mapping["supported_operations"]["gcd"] = "calculator"
         self.assertNotEqual(builder._pretty_bytes(mapping), self.built["artifact_bytes"][builder.MAPPING_NAME])
 
-    def test_exact_final_object_rejects_extra_keys_contractually(self) -> None:
-        expected = self.benchmark[0]["expected_final_step_outcome"]
-        self.assertTrue(_score_final_step_outcome(final_step_record=None, expected_final_step_outcome=expected, final_step_outcome_contract="exact_normalized_json", final_tool_result_value=expected, call_predicted_tools=True).correct)
-        actual = copy.deepcopy(expected)
-        actual["extra"] = "not allowed"
-        self.assertFalse(_score_final_step_outcome(final_step_record=None, expected_final_step_outcome=expected, final_step_outcome_contract="exact_normalized_json", final_tool_result_value=actual, call_predicted_tools=True).correct)
+    def test_equivalent_calculator_expression_separates_arguments_and_outcomes(self) -> None:
+        reference_call = _score_sample(
+            expected_tool="calculator",
+            selected_tool="calculator",
+            expected_args={"expression": "1 + 1"},
+            selected_args={"expression": "1 + 1"},
+            execution_success=True,
+            execution_attempted=True,
+        )
+        equivalent_call = _score_sample(
+            expected_tool="calculator",
+            selected_tool="calculator",
+            expected_args={"expression": "1 + 1"},
+            selected_args={"expression": "2"},
+            execution_success=True,
+            execution_attempted=True,
+        )
+        self.assertTrue(reference_call.argument_match_correct)
+        self.assertFalse(equivalent_call.argument_match_correct)
+
+        step_outcome = _score_final_outcome(
+            expected_answer={"result": 2},
+            tool_result_value={"expression": "2", "result": 2},
+            result_extraction_diagnostic=None,
+            domain="mathematics",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="calculator",
+            called_tool="calculator",
+        )
+        self.assertTrue(step_outcome.correct)
+        self.assertEqual(step_outcome.matcher, "recursive_json_subset_v1")
+
+        final_outcome = _score_final_step_outcome(
+            final_step_record={
+                "final_outcome_correct": step_outcome.correct,
+                "final_outcome_status": step_outcome.status,
+                "final_outcome_matcher": step_outcome.matcher,
+                "final_outcome_diagnostic": step_outcome.diagnostic,
+            },
+            expected_final_step_outcome={"result": 2},
+            final_step_outcome_contract=None,
+            final_tool_result_value={"expression": "2", "result": 2},
+            call_predicted_tools=True,
+        )
+        self.assertTrue(final_outcome.correct)
+        self.assertEqual(final_outcome.matcher, "recursive_json_subset_v1")
+
+    def test_wrong_calculator_value_remains_incorrect_at_step_and_final_step(self) -> None:
+        step_outcome = _score_final_outcome(
+            expected_answer={"result": 2},
+            tool_result_value={"expression": "2 + 1", "result": 3},
+            result_extraction_diagnostic=None,
+            domain="mathematics",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="calculator",
+            called_tool="calculator",
+        )
+        self.assertFalse(step_outcome.correct)
+        final_outcome = _score_final_step_outcome(
+            final_step_record={
+                "final_outcome_correct": step_outcome.correct,
+                "final_outcome_status": step_outcome.status,
+                "final_outcome_matcher": step_outcome.matcher,
+                "final_outcome_diagnostic": step_outcome.diagnostic,
+            },
+            expected_final_step_outcome={"result": 2},
+            final_step_outcome_contract=None,
+            final_tool_result_value={"expression": "2 + 1", "result": 3},
+            call_predicted_tools=True,
+        )
+        self.assertFalse(final_outcome.correct)
+
+    def test_non_calculator_semantic_result_fields_remain_strict(self) -> None:
+        expected = {
+            "values": ["6", "8"],
+            "integer_values": [6, 8],
+            "operation": "gcd",
+            "source": "python-math",
+            "gcd": 2,
+        }
+        score = _score_final_outcome(
+            expected_answer=expected,
+            tool_result_value={**expected, "gcd": 4},
+            result_extraction_diagnostic=None,
+            domain="mathematics",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="gcd_lcm",
+            called_tool="gcd_lcm",
+        )
+        self.assertFalse(score.correct)
 
     def test_controlled_diagnostic_artifact_is_unchanged(self) -> None:
         self.assertEqual(

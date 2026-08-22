@@ -236,6 +236,15 @@ operations listed in `mathqa_operation_mapping.json`. Pi is always
 min/max, trigonometry, `surface_cylinder`, and unlisted operations are excluded.
 No LayerMCP tool was added.
 
+For the 888 calculator steps, `expected_args.expression` remains the exact
+mechanical translation of the MathQA reference program. Exact Argument Match
+therefore measures fidelity to that source program. Calculator outcome gold
+contains only the computed `result`; Step Outcome and Final Step Outcome use
+recursive subset matching so an equivalent expression with the same value is
+correct even though its argument diagnostic is different. The four structured
+non-calculator steps retain their complete semantic result objects, and changed
+semantic fields remain incorrect. No fuzzy expression matcher is used.
+
 ```bash
 python benchmark/math/build_mathqa_public_multistep.py \
   --source-archive /path/to/MathQA.zip
@@ -245,17 +254,19 @@ python benchmark/math/build_mathqa_public_multistep.py \
 
 | Artifact | SHA-256 |
 | --- | --- |
-| benchmark | `261e6e14fba3e362794833bbdd427a23adffeafab96cde2293861143fc85a8a2` |
-| selected fixture | `331f39f85940dc194bf160e4f8086f0aa6a1881167a4ce47c5c14e563dc79451` |
-| mapping | `b7f2825070c665768b37cddcbf684bbb17db574e3e9b8ea3f5d6b2ff9ffab059` |
-| manifest | `833fa81a69a69fc3bbe66b80cdc7ba89dad0aac0e3ac697d7bb69faf22b7cc34` |
+| benchmark | `6c6c14b431ecedbbba6002ef7324716703e27f739ab207374dd16b0f294515d2` |
+| selected fixture | `33b3371165ba15f49a2a9f995a57e55b788481f070ecdfc375bd359b23ad58c0` |
+| mapping | `3cb5eb2c46c948a25d16eb3e50e6aa57ea5655bfacf653b0291fde6dc011bd2f` |
+| manifest | `ca49dad10675634acfab981ab697051de48cc3fe34362f53691d23c4d0e00a1e` |
 | selected-source subset | `4c23c53096819c128a11f1496e6eb24cb99797a7eec22cd62a1dcc0a35f9311e` |
-| generation | `a74a86db23c2bfe274052d3b10d0d4a018712dd3c7472e0d135332de13abb32a` |
+| generation | `df5109e5fcd2b6267b73dfa85edbd6f769eb3f8692da72821737ddb19c6ecfa7` |
 
 `expected_final_answer` preserves the published option as provenance only.
-Evaluation scores exact final-step and all-step tool outcomes, not a separate
-user-facing answer. This is not an unmodified official MathQA score: LayerMCP
-filters rows and translates the public DSL into its tool interfaces. Launch as
+Evaluation scores final-step and all-step tool outcomes, not a separate
+user-facing answer. Final-step outcome reuses the final step's recursive subset
+outcome score; it does not compare the calculator's echoed expression. This is
+not an unmodified official MathQA score: LayerMCP filters rows and translates
+the public DSL into its tool interfaces. Launch as
 `DATASET_GROUP=math_public_mathqa`; artifacts live at
 `domains/math/math_public_mathqa_multistep/` and report as `MathQA
 public-derived`. Controlled Math remains a separately reported diagnostic.

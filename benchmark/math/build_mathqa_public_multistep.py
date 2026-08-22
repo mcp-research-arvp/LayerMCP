@@ -389,6 +389,20 @@ def _translate_and_execute(
     return "calculator", arguments, result, scalar
 
 
+def _semantic_outcome_gold(tool: str, result: dict[str, Any]) -> dict[str, Any]:
+    """Keep argument echoes out of calculator outcome gold.
+
+    MathQA's source program fixes the reference calculator expression, which
+    belongs in ``expected_args``. The calculator's mathematical result is the
+    semantic outcome: an equivalent expression must therefore retain a strict
+    argument mismatch while receiving outcome credit for the same value.
+    Structured non-calculator tools keep their complete semantic result.
+    """
+    if tool == "calculator":
+        return {"result": result["result"]}
+    return result
+
+
 def _split_nested_arguments(text: str) -> list[str]:
     arguments = []
     start = 0
@@ -507,7 +521,7 @@ def _evaluate_row(row: dict[str, Any], index: int) -> dict[str, Any]:
             "prompt_context": json.dumps(context, ensure_ascii=False, sort_keys=True),
             "expected_tool": tool,
             "expected_args": arguments,
-            "expected_answer": result,
+            "expected_answer": _semantic_outcome_gold(tool, result),
             "depends_on": sorted(set(dependencies)),
             "source_operation": operation,
             "source_arguments": tokens,
@@ -600,6 +614,21 @@ def _mapping_document() -> dict[str, Any]:
             "gcd": {"tool": "gcd_lcm", "operation": "gcd", "constraint": "resolved arguments are integers"},
             "lcm": {"tool": "gcd_lcm", "operation": "lcm", "constraint": "resolved arguments are integers"},
             "reminder": {"tool": "modular_arithmetic", "operation": "mod", "constraint": "resolved arguments are integers and modulus > 1"},
+        },
+        "outcome_scoring": {
+            "calculator": (
+                "expected_args preserves the exact mechanically translated "
+                "MathQA expression; expected_answer contains only result so "
+                "recursive subset outcome matching scores computed value"
+            ),
+            "gcd_lcm": "preserve the complete structured semantic tool result",
+            "modular_arithmetic": (
+                "preserve the complete structured semantic tool result"
+            ),
+            "final_step": (
+                "reuse the final step's recursive subset outcome score; do not "
+                "apply exact full-object matching"
+            ),
         },
         "canonical_pi": math.pi,
         "destination_tool_constraints": {
@@ -765,7 +794,6 @@ def build_from_archive(archive_path: Path) -> dict[str, Any]:
             "query": row["Problem"],
             "expected_steps": item["steps"],
             "expected_final_answer": item["selected_option"],
-            "final_step_outcome_contract": "exact_normalized_json",
             "expected_final_step_outcome": item["steps"][-1]["expected_answer"],
             "source_coordinate": f"test:{item['index']}",
             "source_row_index": item["index"],

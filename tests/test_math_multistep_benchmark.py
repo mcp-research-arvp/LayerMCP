@@ -40,6 +40,14 @@ class MathMultistepBenchmarkTests(unittest.TestCase):
                 self.assertEqual(row["task_type"], "multi_step_tool_routing")
                 self.assertEqual(row["source"], "controlled_synthetic")
                 self.assertEqual(row["benchmark_mode"], "grounded_tool_execution")
+                self.assertEqual(
+                    row["final_step_outcome_contract"],
+                    "exact_normalized_json",
+                )
+                self.assertEqual(
+                    row["expected_final_step_outcome"],
+                    row["expected_final_answer"],
+                )
                 self.assertGreaterEqual(len(row["expected_steps"]), 2)
                 self.assertLessEqual(len(row["expected_steps"]), 5)
                 self.assertTrue(row["query"].strip())

@@ -108,6 +108,10 @@ class BenchmarkSample:
     notes: str
     benchmark_family: str = "unspecified"
     expected_final_answer: Any = None
+    expected_final_program_result: Any = None
+    final_program_execution_contract: str | None = None
+    expected_final_step_outcome: Any = None
+    final_step_outcome_contract: str | None = None
     prompt_context: str = ""
     expected_steps: tuple[BenchmarkStep, ...] = ()
     benchmark_mode: str = DEFAULT_BENCHMARK_MODE
@@ -283,7 +287,18 @@ class FinalOutcomeScore:
 
 
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
-WORKFLOW_FINAL_ANSWER_MATCHER = "formatted_final_scalar_v1"
+FINQA_EXECUTION_MATCHER = "finqa_program_execution"
+CONVFINQA_EXECUTION_MATCHER = "convfinqa_program_execution"
+EXACT_NORMALIZED_JSON_MATCHER = "exact_normalized_json"
+FINAL_STEP_EXPECTED_OUTCOME_CONTRACT = "final_step_expected_outcome"
+OUTCOME_METRIC_NAMES = (
+    "tool_selection_accuracy",
+    "argument_accuracy",
+    "step_outcome_accuracy",
+    "all_steps_correct_accuracy",
+    "final_step_outcome_accuracy",
+    "final_program_execution_accuracy",
+)
 FINANCE_QUERY_TABLE_RESULT_MATCHER = "finance_query_table_rows_v1"
 NUMERIC_REL_TOL = 1e-9
 NUMERIC_ABS_TOL = 1e-6
@@ -294,6 +309,11 @@ _SYMBOLIC_MATH_FIELDS = {
     "derivative",
     "solutions",
 }
+_FINAL_PROGRAM_EXECUTION_CONTRACTS = {
+    "finqa_program_execution",
+    "convfinqa_program_execution",
+}
+_FINAL_STEP_OUTCOME_CONTRACTS = {"exact_normalized_json"}
 
 
 def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
@@ -336,6 +356,27 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
     if expected_tool is None:
         raise ValueError(f"Sample {index} expected_tool is required.")
 
+    final_program_execution_contract = sample.get("final_program_execution_contract")
+    if (
+        final_program_execution_contract is not None
+        and final_program_execution_contract not in _FINAL_PROGRAM_EXECUTION_CONTRACTS
+    ):
+        allowed = ", ".join(sorted(_FINAL_PROGRAM_EXECUTION_CONTRACTS))
+        raise ValueError(
+            f"Sample {index} final_program_execution_contract must be one of: "
+            f"{allowed}."
+        )
+    final_step_outcome_contract = sample.get("final_step_outcome_contract")
+    if (
+        final_step_outcome_contract is not None
+        and final_step_outcome_contract not in _FINAL_STEP_OUTCOME_CONTRACTS
+    ):
+        allowed = ", ".join(sorted(_FINAL_STEP_OUTCOME_CONTRACTS))
+        raise ValueError(
+            f"Sample {index} final_step_outcome_contract must be one of: "
+            f"{allowed}."
+        )
+
     return BenchmarkSample(
         id=str(sample_id),
         domain=str(sample.get("domain", "unknown")),
@@ -360,6 +401,10 @@ def _normalize_sample(sample: dict[str, Any], index: int) -> BenchmarkSample:
             f"Sample {index}",
         ),
         expected_final_answer=sample.get("expected_final_answer"),
+        expected_final_program_result=sample.get("expected_final_program_result"),
+        final_program_execution_contract=final_program_execution_contract,
+        expected_final_step_outcome=sample.get("expected_final_step_outcome"),
+        final_step_outcome_contract=final_step_outcome_contract,
         prompt_context=_normalize_prompt_context(
             sample.get("prompt_context"),
             f"Sample {index}",
@@ -616,7 +661,7 @@ def _final_outcome_record_fields(score: FinalOutcomeScore) -> dict[str, Any]:
     }
 
 
-def _extract_workflow_final_scalar(tool_result_value: Any) -> tuple[Any, str | None]:
+def _extract_final_program_scalar(tool_result_value: Any) -> tuple[Any, str | None]:
     if isinstance(tool_result_value, dict):
         if "result" in tool_result_value:
             return tool_result_value["result"], None
@@ -634,35 +679,58 @@ def _extract_workflow_final_scalar(tool_result_value: Any) -> tuple[Any, str | N
     return None, "Final tool result is not a supported scalar value."
 
 
-def _display_decimal_places(value: str) -> int:
-    normalized = value.strip().rstrip("%").replace(",", "")
-    if "." not in normalized:
-        return 0
-    return len(normalized.rsplit(".", 1)[1])
-
-
-def _parse_display_number(value: str) -> float | None:
-    normalized = value.strip().rstrip("%").replace(",", "").replace("$", "")
-    try:
-        return float(normalized)
-    except ValueError:
-        return None
-
-
-def _score_workflow_final_answer(
+def _score_published_execution_result(
     *,
-    expected_final_answer: Any,
+    expected: Any,
+    final_tool_result_value: Any,
+    matcher: str,
+    source_name: str,
+) -> FinalOutcomeScore:
+    """Match a FinQA-family program result using its published execution rule."""
+    actual, extraction_error = _extract_final_program_scalar(final_tool_result_value)
+    if extraction_error is not None:
+        return FinalOutcomeScore(
+            False,
+            "result_extraction_error",
+            matcher,
+            extraction_error,
+        )
+
+    numeric_expected = isinstance(expected, (int, float)) and not isinstance(
+        expected, bool
+    )
+    numeric_actual = isinstance(actual, (int, float)) and not isinstance(actual, bool)
+    if numeric_expected and numeric_actual:
+        # FinQA executes a predicted program, rounds a numeric result to five
+        # decimal places, then compares it directly with the gold exe_ans.
+        matched = round(float(actual), 5) == float(expected)
+    else:
+        matched = actual == expected
+
+    return FinalOutcomeScore(
+        matched,
+        "correct" if matched else "mismatch",
+        matcher,
+        None
+        if matched
+        else (
+            f"Expected {source_name} execution result {expected!r}, "
+            f"got {actual!r}."
+        ),
+    )
+
+
+def _score_final_program_execution(
+    *,
+    expected_final_program_result: Any,
+    final_program_execution_contract: str | None,
     final_tool_result_value: Any,
     call_predicted_tools: bool,
-    benchmark_family: str,
 ) -> FinalOutcomeScore:
-    if expected_final_answer is None or expected_final_answer == "":
-        return FinalOutcomeScore(
-            None,
-            "missing_expected_final_answer",
-            None,
-            "Benchmark workflow does not provide a non-empty expected_final_answer.",
-        )
+    if final_program_execution_contract is None:
+        return FinalOutcomeScore(None, "unsupported", None, "No program contract.")
+    if expected_final_program_result is None or expected_final_program_result == "":
+        return FinalOutcomeScore(None, "missing_gold", None, "No program-result gold.")
     if not call_predicted_tools:
         return FinalOutcomeScore(
             None,
@@ -670,60 +738,58 @@ def _score_workflow_final_answer(
             None,
             "Predicted-tool execution is disabled.",
         )
-
-    actual, extraction_error = _extract_workflow_final_scalar(
-        final_tool_result_value
-    )
-    if extraction_error is not None:
-        return FinalOutcomeScore(
-            False,
-            "result_extraction_error",
-            WORKFLOW_FINAL_ANSWER_MATCHER,
-            extraction_error,
+    if final_program_execution_contract == "finqa_program_execution":
+        return _score_published_execution_result(
+            expected=expected_final_program_result,
+            final_tool_result_value=final_tool_result_value,
+            matcher=FINQA_EXECUTION_MATCHER,
+            source_name="FinQA",
         )
+    if final_program_execution_contract == "convfinqa_program_execution":
+        return _score_published_execution_result(
+            expected=expected_final_program_result,
+            final_tool_result_value=final_tool_result_value,
+            matcher=CONVFINQA_EXECUTION_MATCHER,
+            source_name="ConvFinQA",
+        )
+    raise ValueError(
+        f"Unsupported final program contract: {final_program_execution_contract}"
+    )
 
-    if isinstance(expected_final_answer, str):
-        expected_number = _parse_display_number(expected_final_answer)
-        if expected_number is not None and isinstance(actual, (int, float)):
-            actual_number = float(actual)
-            if expected_final_answer.strip().endswith("%") and benchmark_family in {
-                "finqa",
-                "convfinqa",
-            }:
-                actual_number *= 100.0
-            decimal_places = _display_decimal_places(expected_final_answer)
-            matched = math.isclose(
-                round(actual_number, decimal_places),
-                expected_number,
-                rel_tol=0.0,
-                abs_tol=10 ** (-(decimal_places + 6)),
-            )
-            return FinalOutcomeScore(
-                matched,
-                "correct" if matched else "mismatch",
-                WORKFLOW_FINAL_ANSWER_MATCHER,
-                None
-                if matched
-                else (
-                    f"Expected displayed final answer {expected_final_answer!r}, "
-                    f"got scalar {actual!r}."
-                ),
-            )
-        matched = str(actual).strip().casefold() == expected_final_answer.strip().casefold()
-    else:
-        matched = _match_expected_answer(
-            actual,
-            expected_final_answer,
-            domain="finance",
-        ).matched
 
+def _score_final_step_outcome(
+    *,
+    final_step_record: dict[str, Any] | None,
+    expected_final_step_outcome: Any,
+    final_step_outcome_contract: str | None,
+    final_tool_result_value: Any,
+    call_predicted_tools: bool,
+) -> FinalOutcomeScore:
+    if final_step_outcome_contract is None:
+        if final_step_record is None:
+            return FinalOutcomeScore(None, "missing_final_step", None, "No final step.")
+        return FinalOutcomeScore(
+            final_step_record.get("final_outcome_correct"),
+            str(final_step_record.get("final_outcome_status", "missing")),
+            final_step_record.get("final_outcome_matcher"),
+            final_step_record.get("final_outcome_diagnostic"),
+        )
+    if expected_final_step_outcome is None or expected_final_step_outcome == "":
+        return FinalOutcomeScore(None, "missing_gold", None, "No final-step gold.")
+    if not call_predicted_tools:
+        return FinalOutcomeScore(None, "execution_disabled", None, "Execution disabled.")
+    if final_step_outcome_contract != "exact_normalized_json":
+        raise ValueError(
+            f"Unsupported final-step outcome contract: {final_step_outcome_contract}"
+        )
+    matched = _normalize_json(final_tool_result_value) == _normalize_json(
+        expected_final_step_outcome
+    )
     return FinalOutcomeScore(
         matched,
         "correct" if matched else "mismatch",
-        WORKFLOW_FINAL_ANSWER_MATCHER,
-        None
-        if matched
-        else f"Expected final answer {expected_final_answer!r}, got {actual!r}.",
+        EXACT_NORMALIZED_JSON_MATCHER,
+        None if matched else "Final-step result differs from exact gold JSON.",
     )
 
 
@@ -1173,20 +1239,71 @@ def _multistep_step_metrics(
     )
     return {
         "total_steps": total_steps,
-        "step_correct_tool_accuracy": tool_accuracy,
-        "step_correct_arguments_accuracy": argument_accuracy,
-        "step_correct_result_accuracy": result_accuracy,
-        # Backwards-compatible metric names retained for historical consumers.
-        "step_tool_selection_accuracy": tool_accuracy,
-        "step_exact_argument_match_accuracy": argument_accuracy,
-        "step_semantic_output_accuracy": result_accuracy,
-        "step_semantic_output_scored": len(semantic_output_scores),
+        "tool_selection_accuracy": tool_accuracy,
+        "argument_accuracy": argument_accuracy,
+        "step_outcome_accuracy": result_accuracy,
+        "step_outcome_scored": len(semantic_output_scores),
+        "step_outcome_status_counts": dict(
+            sorted(
+                Counter(
+                    str(step.get("final_outcome_status", "missing"))
+                    for step in step_records
+                ).items()
+            )
+        ),
+        "step_outcome_matchers": sorted(
+            {
+                str(step["final_outcome_matcher"])
+                for step in step_records
+                if step.get("final_outcome_matcher")
+            }
+        ),
     }
 
 
-def _has_expected_final_answer(value: Any) -> bool:
-    """Return whether a workflow supplies a gold final answer."""
+def _has_gold(value: Any) -> bool:
     return value is not None and value != ""
+
+
+def _workflow_score_metrics(
+    workflow_records: list[dict[str, Any]],
+    *,
+    prefix: str,
+    expected_field: str,
+    correct_field: str,
+    status_field: str,
+    contract_field: str,
+    matcher_field: str,
+) -> dict[str, Any]:
+    scores = [
+        row.get(correct_field)
+        for row in workflow_records
+        if row.get(correct_field) is not None
+    ]
+    statuses = Counter(str(row.get(status_field, "missing")) for row in workflow_records)
+    contracts = sorted(
+        {str(row[contract_field]) for row in workflow_records if row.get(contract_field)}
+    )
+    matchers = sorted(
+        {str(row[matcher_field]) for row in workflow_records if row.get(matcher_field)}
+    )
+    return {
+        f"{prefix}_accuracy": (
+            sum(score is True for score in scores) / len(scores) if scores else None
+        ),
+        f"{prefix}_gold": sum(
+            _has_gold(row.get(expected_field))
+            for row in workflow_records
+        ),
+        f"{prefix}_scored": len(scores),
+        f"{prefix}_correct": sum(score is True for score in scores),
+        f"{prefix}_mismatch": statuses.get("mismatch", 0),
+        f"{prefix}_extraction_error": statuses.get("result_extraction_error", 0),
+        f"{prefix}_unavailable": len(workflow_records) - len(scores),
+        f"{prefix}_status_counts": dict(sorted(statuses.items())),
+        f"{prefix}_contracts": contracts,
+        f"{prefix}_matchers": matchers,
+    }
 
 
 def _multistep_workflow_metrics(
@@ -1194,18 +1311,13 @@ def _multistep_workflow_metrics(
 ) -> dict[str, Any]:
     total_workflows = len(workflow_records)
     semantic_output_scores = [
-        workflow["sequence_semantic_output_correct"]
+        workflow["all_steps_correct"]
         for workflow in workflow_records
-        if workflow["sequence_semantic_output_correct"] is not None
-    ]
-    final_answer_scores = [
-        workflow["workflow_final_answer_correct"]
-        for workflow in workflow_records
-        if workflow.get("workflow_final_answer_correct") is not None
+        if workflow["all_steps_correct"] is not None
     ]
     all_tools_accuracy = (
         sum(
-            workflow["sequence_tool_selection_correct"]
+            workflow["all_tools_correct"]
             for workflow in workflow_records
         )
         / total_workflows
@@ -1214,7 +1326,7 @@ def _multistep_workflow_metrics(
     )
     all_arguments_accuracy = (
         sum(
-            workflow["sequence_argument_match_correct"]
+            workflow["all_arguments_correct"]
             for workflow in workflow_records
         )
         / total_workflows
@@ -1227,35 +1339,38 @@ def _multistep_workflow_metrics(
         if semantic_output_scores
         else None
     )
-    final_answer_accuracy = (
-        sum(score is True for score in final_answer_scores)
-        / len(final_answer_scores)
-        if final_answer_scores
-        else None
-    )
-    return {
+    metrics = {
         "total_workflows": total_workflows,
-        "workflow_all_tools_correct_accuracy": all_tools_accuracy,
-        "workflow_all_arguments_correct_accuracy": all_arguments_accuracy,
-        "workflow_all_step_results_correct_accuracy": all_step_results_accuracy,
-        "workflow_final_answer_accuracy": final_answer_accuracy,
-        "workflow_final_answer_scored": len(final_answer_scores),
-        "workflow_final_answer_gold": sum(
-            _has_expected_final_answer(workflow.get("expected_final_answer"))
-            for workflow in workflow_records
-        ),
-        # Backwards-compatible metric names retained for historical consumers.
-        "workflow_tool_sequence_accuracy": all_tools_accuracy,
-        "workflow_exact_sequence_accuracy": all_arguments_accuracy,
-        "workflow_semantic_output_sequence_accuracy": all_step_results_accuracy,
-        "workflow_semantic_output_sequence_scored": len(
-            semantic_output_scores
-        ),
-        "workflow_expected_final_answer_gold": sum(
-            _has_expected_final_answer(workflow.get("expected_final_answer"))
-            for workflow in workflow_records
+        "all_tools_correct_accuracy": all_tools_accuracy,
+        "all_arguments_correct_accuracy": all_arguments_accuracy,
+        "all_steps_correct_accuracy": all_step_results_accuracy,
+        "all_steps_correct_scored": len(semantic_output_scores),
+        **_workflow_score_metrics(
+            workflow_records,
+            prefix="final_step_outcome",
+            expected_field="expected_final_step_outcome",
+            correct_field="final_step_outcome_correct",
+            status_field="final_step_outcome_status",
+            contract_field="final_step_outcome_contract",
+            matcher_field="final_step_outcome_matcher",
         ),
     }
+    if any(
+        workflow.get("final_program_execution_contract") is not None
+        for workflow in workflow_records
+    ):
+        metrics.update(
+            _workflow_score_metrics(
+                workflow_records,
+                prefix="final_program_execution",
+                expected_field="expected_final_program_result",
+                correct_field="final_program_execution_correct",
+                status_field="final_program_execution_status",
+                contract_field="final_program_execution_contract",
+                matcher_field="final_program_execution_matcher",
+            )
+        )
+    return metrics
 
 
 def _build_multistep_metrics(
@@ -1275,6 +1390,7 @@ def _build_multistep_metrics(
         ].append(step)
 
     return {
+        "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
         "benchmark_mode_counts": _benchmark_mode_counts(workflow_records),
         "step_benchmark_mode_counts": _benchmark_mode_counts(step_records),
         **_multistep_workflow_metrics(workflow_records),
@@ -1429,6 +1545,7 @@ async def _evaluate_multistep_with_server(
     artifacts = _evaluation_artifact_paths(output_dir, timestamp)
     samples_path = artifacts.samples
     summary_path = artifacts.summary
+    benchmark_sha256 = hashlib.sha256(benchmark_path.read_bytes()).hexdigest()
 
     workflow_records: list[dict[str, Any]] = []
     step_records: list[dict[str, Any]] = []
@@ -1609,15 +1726,43 @@ async def _evaluate_multistep_with_server(
                     if workflow_steps
                     else None
                 )
-                workflow_final_answer = _score_workflow_final_answer(
-                    expected_final_answer=sample.expected_final_answer,
+                final_step_record = workflow_steps[-1] if workflow_steps else None
+                expected_final_step_outcome = (
+                    sample.expected_final_step_outcome
+                    if sample.final_step_outcome_contract is not None
+                    else (
+                        final_step_record.get("expected_answer")
+                        if final_step_record is not None
+                        else None
+                    )
+                )
+                final_step_outcome_contract = (
+                    sample.final_step_outcome_contract
+                    or FINAL_STEP_EXPECTED_OUTCOME_CONTRACT
+                )
+                final_step_outcome = _score_final_step_outcome(
+                    final_step_record=final_step_record,
+                    expected_final_step_outcome=expected_final_step_outcome,
+                    final_step_outcome_contract=sample.final_step_outcome_contract,
                     final_tool_result_value=final_step_result_value,
                     call_predicted_tools=call_predicted_tools,
-                    benchmark_family=sample.benchmark_family,
+                )
+                final_program_execution = (
+                    _score_final_program_execution(
+                        expected_final_program_result=(
+                            sample.expected_final_program_result
+                        ),
+                        final_program_execution_contract=(
+                            sample.final_program_execution_contract
+                        ),
+                        final_tool_result_value=final_step_result_value,
+                        call_predicted_tools=call_predicted_tools,
+                    )
                 )
                 workflow_record = {
                     "sample_id": sample.id,
                     "benchmark_path": str(benchmark_path),
+                    "benchmark_sha256": benchmark_sha256,
                     "domain": sample.domain,
                     "benchmark_mode": sample.benchmark_mode,
                     "benchmark_family": sample.benchmark_family,
@@ -1633,27 +1778,56 @@ async def _evaluate_multistep_with_server(
                     ),
                     "query": sample.query,
                     "prompt_context": sample.prompt_context,
+                    # Preserved source/display provenance. The guided protocol
+                    # does not generate or score a user-facing final response.
                     "expected_final_answer": sample.expected_final_answer,
                     "final_step_result_value": final_step_result_value,
-                    "workflow_final_answer_correct": workflow_final_answer.correct,
-                    "workflow_final_answer_status": workflow_final_answer.status,
-                    "workflow_final_answer_matcher": workflow_final_answer.matcher,
-                    "workflow_final_answer_diagnostic": workflow_final_answer.diagnostic,
+                    "expected_final_step_outcome": expected_final_step_outcome,
+                    "final_step_outcome_contract": final_step_outcome_contract,
+                    "final_step_outcome_correct": final_step_outcome.correct,
+                    "final_step_outcome_status": final_step_outcome.status,
+                    "final_step_outcome_matcher": final_step_outcome.matcher,
+                    "final_step_outcome_diagnostic": final_step_outcome.diagnostic,
+                    **(
+                        {
+                            "expected_final_program_result": (
+                                sample.expected_final_program_result
+                            ),
+                            "final_program_execution_contract": (
+                                sample.final_program_execution_contract
+                            ),
+                            "final_program_execution_correct": (
+                                final_program_execution.correct
+                            ),
+                            "final_program_execution_status": (
+                                final_program_execution.status
+                            ),
+                            "final_program_execution_matcher": (
+                                final_program_execution.matcher
+                            ),
+                            "final_program_execution_diagnostic": (
+                                final_program_execution.diagnostic
+                            ),
+                        }
+                        if sample.final_program_execution_contract is not None
+                        else {}
+                    ),
+                    "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
                     "task_type": sample.task_type,
                     "difficulty": sample.difficulty,
                     "source": sample.source,
                     **tool_pool_metadata,
-                    "sequence_tool_selection_correct": all(
+                    "all_tools_correct": all(
                         step["tool_selection_correct"] for step in workflow_steps
                     ),
-                    "sequence_argument_match_correct": all(
+                    "all_arguments_correct": all(
                         step["argument_match_correct"] for step in workflow_steps
                     ),
-                    "sequence_execution_success": (
+                    "all_steps_execution_success": (
                         call_predicted_tools
                         and all(step["execution_success"] for step in workflow_steps)
                     ),
-                    "sequence_semantic_output_correct": (
+                    "all_steps_correct": (
                         all(
                             step["final_outcome_correct"] is True
                             for step in workflow_steps
@@ -1689,6 +1863,7 @@ async def _evaluate_multistep_with_server(
     summary = {
         "timestamp": timestamp,
         "benchmark_path": str(benchmark_path),
+        "benchmark_sha256": benchmark_sha256,
         "model_name": model_name,
         "router_id": getattr(router, "ROUTER_ID", router_name),
         "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
@@ -1721,42 +1896,48 @@ async def _evaluate_multistep_with_server(
     print(f"Workflows: {total_workflows}")
     print(f"Steps: {total_steps}")
     print(
-        "Correct tool per provided step: "
-        f"{summary['step_correct_tool_accuracy']:.2%}"
+        "Tool Selection: "
+        f"{summary['tool_selection_accuracy']:.2%}"
     )
     print(
-        "Correct arguments per provided step: "
-        f"{summary['step_correct_arguments_accuracy']:.2%}"
+        "Argument Accuracy: "
+        f"{summary['argument_accuracy']:.2%}"
     )
-    step_semantic_output_accuracy = summary["step_correct_result_accuracy"]
+    step_outcome_accuracy = summary["step_outcome_accuracy"]
     print(
-        "Correct result per provided step: "
+        "Step Outcome Accuracy: "
         + (
-            f"{step_semantic_output_accuracy:.2%}"
-            if step_semantic_output_accuracy is not None
+            f"{step_outcome_accuracy:.2%}"
+            if step_outcome_accuracy is not None
             else "not scored"
         )
     )
-    workflow_semantic_output_accuracy = summary[
-        "workflow_all_step_results_correct_accuracy"
-    ]
+    all_steps_correct_accuracy = summary["all_steps_correct_accuracy"]
     print(
-        "All provided step results correct: "
+        "All Steps Correct: "
         + (
-            f"{workflow_semantic_output_accuracy:.2%}"
-            if workflow_semantic_output_accuracy is not None
+            f"{all_steps_correct_accuracy:.2%}"
+            if all_steps_correct_accuracy is not None
             else "not scored"
         )
     )
-    workflow_final_answer_accuracy = summary["workflow_final_answer_accuracy"]
+    final_step_outcome_accuracy = summary["final_step_outcome_accuracy"]
     print(
-        "Final answer accuracy: "
+        "Final Step Outcome: "
         + (
-            f"{workflow_final_answer_accuracy:.2%}"
-            if workflow_final_answer_accuracy is not None
+            f"{final_step_outcome_accuracy:.2%}"
+            if final_step_outcome_accuracy is not None
             else "not scored"
         )
     )
+    final_program_execution_accuracy = summary.get(
+        "final_program_execution_accuracy"
+    )
+    if final_program_execution_accuracy is not None:
+        print(
+            "Final Program Execution: "
+            f"{final_program_execution_accuracy:.2%}"
+        )
     for mode, workflow_metrics in summary[
         "workflow_metrics_by_benchmark_mode"
     ].items():
@@ -1764,11 +1945,11 @@ async def _evaluate_multistep_with_server(
         print(
             f"Benchmark mode {mode}: "
             f"workflows={workflow_metrics['total_workflows']}, "
-            "all-step argument accuracy="
-            f"{workflow_metrics['workflow_exact_sequence_accuracy']:.2%}, "
+            "all-arguments-correct accuracy="
+            f"{workflow_metrics['all_arguments_correct_accuracy']:.2%}, "
             f"steps={step_metrics.get('total_steps', 0)}, "
-            "provided-step tool-selection accuracy="
-            f"{step_metrics.get('step_tool_selection_accuracy', 0.0):.2%}"
+            "tool-selection accuracy="
+            f"{step_metrics.get('tool_selection_accuracy', 0.0):.2%}"
         )
     print(f"Results: {samples_path}")
     print(f"Summary: {summary_path}")

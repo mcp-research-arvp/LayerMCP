@@ -706,7 +706,7 @@ def build(
     fixture_path = output_root / "fixtures" / FIXTURE_FILENAME
     fixture_path.parent.mkdir(parents=True, exist_ok=True)
     benchmark_path.write_text(
-        json.dumps(workflows, ensure_ascii=False, indent=2) + "\n",
+        json.dumps(workflows, ensure_ascii=True, indent=2) + "\n",
         encoding="utf-8",
     )
     fixture_path.write_text(

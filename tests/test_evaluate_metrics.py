@@ -38,7 +38,6 @@ from evaluation.evaluate import (
     _evaluate_with_server,
     _final_outcome_record_fields,
     _generation_metadata,
-    _has_expected_final_answer,
     _predicted_history_item,
     _is_no_tool_call,
     _is_gold_resolved_step_context,
@@ -54,7 +53,8 @@ from evaluation.evaluate import (
     _route_sample,
     _score_sample,
     _score_final_outcome,
-    _score_workflow_final_answer,
+    _score_final_program_execution,
+    _score_final_step_outcome,
     _tool_pool_metadata,
     _validate_expected_tools,
     _write_summary_exclusive,
@@ -825,57 +825,148 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertFalse(score.correct)
         self.assertEqual(score.status, "execution_error")
 
-    def test_workflow_final_percentage_uses_published_rounding(self) -> None:
-        score = _score_workflow_final_answer(
-            expected_final_answer="9.9%",
+    def test_finqa_program_execution_uses_canonical_result(self) -> None:
+        score = _score_final_program_execution(
+            expected_final_program_result=0.09864,
+            final_program_execution_contract="finqa_program_execution",
             final_tool_result_value={"result": 0.09864188706218716},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
         self.assertEqual(score.status, "correct")
+        self.assertEqual(score.matcher, "finqa_program_execution")
 
-    def test_workflow_final_plain_number_uses_published_rounding(self) -> None:
-        score = _score_workflow_final_answer(
-            expected_final_answer="719.7",
-            final_tool_result_value={"result": 719.6833393306945},
+    def test_convfinqa_program_execution_uses_canonical_result(self) -> None:
+        score = _score_final_program_execution(
+            expected_final_program_result=1.42403,
+            final_program_execution_contract="convfinqa_program_execution",
+            final_tool_result_value={"result": 1.4240254574383452},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
 
         self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "convfinqa_program_execution")
 
-    def test_workflow_final_text_is_case_insensitive(self) -> None:
-        score = _score_workflow_final_answer(
-            expected_final_answer="yes",
-            final_tool_result_value={"rows": [["YES"]]},
+    def test_convfinqa_display_answer_is_not_substituted_for_execution_target(self) -> None:
+        score = _score_final_program_execution(
+            expected_final_program_result=18770,
+            final_program_execution_contract="convfinqa_program_execution",
+            final_tool_result_value={"result": 1877},
             call_predicted_tools=True,
-            benchmark_family="finqa",
         )
-
-        self.assertTrue(score.correct)
-
-    def test_empty_workflow_final_answer_is_unscored(self) -> None:
-        score = _score_workflow_final_answer(
-            expected_final_answer="",
-            final_tool_result_value={"result": 1.0},
-            call_predicted_tools=True,
-            benchmark_family="finqa",
-        )
-
-        self.assertIsNone(score.correct)
-        self.assertEqual(score.status, "missing_expected_final_answer")
-
-    def test_percentage_scaling_is_not_applied_outside_finance_families(self) -> None:
-        score = _score_workflow_final_answer(
-            expected_final_answer="9.9%",
-            final_tool_result_value={"result": 0.099},
-            call_predicted_tools=True,
-            benchmark_family="other",
-        )
-
         self.assertFalse(score.correct)
+        self.assertEqual(score.status, "mismatch")
+
+    def test_finqa_program_execution_preserves_supported_target_forms(self) -> None:
+        for expected in (0.099, 9.9, -12.5, "yes", "no", "$1,250", "some prose"):
+            with self.subTest(expected=expected):
+                score = _score_final_program_execution(
+                    expected_final_program_result=expected,
+                    final_program_execution_contract="finqa_program_execution",
+                    final_tool_result_value={"result": expected},
+                    call_predicted_tools=True,
+                )
+                self.assertTrue(score.correct)
+
+        missing = _score_final_program_execution(
+            expected_final_program_result="",
+            final_program_execution_contract="finqa_program_execution",
+            final_tool_result_value={"result": 0},
+            call_predicted_tools=True,
+        )
+        self.assertIsNone(missing.correct)
+        self.assertEqual(missing.status, "missing_gold")
+
+    def test_multistep_metrics_do_not_publish_final_answer_accuracy(self) -> None:
+        metrics = _build_multistep_metrics([], [])
+        self.assertNotIn("workflow_final_answer_accuracy", metrics)
+
+    def test_display_answer_is_not_an_outcome_metric_input(self) -> None:
+        metrics = _build_multistep_metrics([], [])
+        self.assertNotIn("expected_final_answer", metrics)
+
+    def test_finqa_program_execution_is_independent_of_display_answer(self) -> None:
+        score = _score_final_program_execution(
+            expected_final_program_result=1.1197,
+            final_program_execution_contract="finqa_program_execution",
+            final_tool_result_value={"result": 1.119704},
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "finqa_program_execution")
+
+    def test_structured_workflow_final_matches_the_full_tool_result(self) -> None:
+        expected = {
+            "value": "180",
+            "integer_value": 180,
+            "prime_factors": {"2": 2, "3": 2, "5": 1},
+        }
+        score = _score_final_step_outcome(
+            final_step_record={},
+            expected_final_step_outcome=expected,
+            final_step_outcome_contract="exact_normalized_json",
+            final_tool_result_value=expected,
+            call_predicted_tools=True,
+        )
+
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "exact_normalized_json")
+
+        extra = _score_final_step_outcome(
+            final_step_record={},
+            expected_final_step_outcome=expected,
+            final_step_outcome_contract="exact_normalized_json",
+            final_tool_result_value={**expected, "source": "sympy"},
+            call_predicted_tools=True,
+        )
+        self.assertFalse(extra.correct)
+
+    def test_default_final_step_outcome_reuses_step_score(self) -> None:
+        score = _score_final_step_outcome(
+            final_step_record={
+                "final_outcome_correct": True,
+                "final_outcome_status": "correct",
+                "final_outcome_matcher": "recursive_json_subset_v1",
+                "final_outcome_diagnostic": None,
+            },
+            expected_final_step_outcome={"rows": [["evidence"]]},
+            final_step_outcome_contract=None,
+            final_tool_result_value={"rows": [["evidence"]]},
+            call_predicted_tools=True,
+        )
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "recursive_json_subset_v1")
+
+    def test_finretrieval_prose_gold_has_no_tool_only_final_answer_score(self) -> None:
+        outcome = _score_final_step_outcome(
+            final_step_record={
+                "final_outcome_correct": True,
+                "final_outcome_status": "correct",
+                "final_outcome_matcher": "recursive_json_subset_v1",
+                "final_outcome_diagnostic": None,
+            },
+            expected_final_step_outcome={"rows": [["retrieval evidence"]]},
+            final_step_outcome_contract=None,
+            final_tool_result_value={"rows": [["retrieval evidence"]]},
+            call_predicted_tools=True,
+        )
+        program = _score_final_program_execution(
+            expected_final_program_result=None,
+            final_program_execution_contract=None,
+            final_tool_result_value={"rows": [["retrieval evidence"]]},
+            call_predicted_tools=True,
+        )
+        self.assertTrue(outcome.correct)
+        self.assertIsNone(program.correct)
+        self.assertEqual(program.status, "unsupported")
+
+    def test_no_gold_coding_or_enterprise_workflow_is_unavailable(self) -> None:
+        for domain in ("coding", "enterprise"):
+            with self.subTest(domain=domain):
+                metrics = _build_multistep_metrics([], [])
+                self.assertNotIn("workflow_final_answer_accuracy", metrics)
 
     def test_result_extraction_error_counts_incorrect(self) -> None:
         score = _score_final_outcome(
@@ -1062,19 +1153,35 @@ class EvaluateMetricTests(unittest.TestCase):
         workflow_records = [
             {
                 "benchmark_mode": "grounded_tool_execution",
-                "sequence_tool_selection_correct": True,
-                "sequence_argument_match_correct": True,
-                "sequence_semantic_output_correct": True,
-                "workflow_final_answer_correct": True,
-                "expected_final_answer": "done",
+                "all_tools_correct": True,
+                "all_arguments_correct": True,
+                "all_steps_correct": True,
+                "expected_final_step_outcome": {"result": 1},
+                "final_step_outcome_contract": "final_step_expected_outcome",
+                "final_step_outcome_correct": True,
+                "final_step_outcome_status": "correct",
+                "final_step_outcome_matcher": "recursive_json_subset_v1",
+                "expected_final_program_result": None,
+                "final_program_execution_contract": None,
+                "final_program_execution_correct": None,
+                "final_program_execution_status": "unsupported",
+                "final_program_execution_matcher": None,
             },
             {
                 "benchmark_mode": "offline_trace_replay",
-                "sequence_tool_selection_correct": False,
-                "sequence_argument_match_correct": False,
-                "sequence_semantic_output_correct": False,
-                "workflow_final_answer_correct": False,
-                "expected_final_answer": None,
+                "all_tools_correct": False,
+                "all_arguments_correct": False,
+                "all_steps_correct": False,
+                "expected_final_step_outcome": {"rows": [["evidence"]]},
+                "final_step_outcome_contract": "final_step_expected_outcome",
+                "final_step_outcome_correct": False,
+                "final_step_outcome_status": "mismatch",
+                "final_step_outcome_matcher": "recursive_json_subset_v1",
+                "expected_final_program_result": None,
+                "final_program_execution_contract": None,
+                "final_program_execution_correct": None,
+                "final_program_execution_status": "unsupported",
+                "final_program_execution_matcher": None,
             },
         ]
         step_records = [
@@ -1102,32 +1209,31 @@ class EvaluateMetricTests(unittest.TestCase):
         workflow_by_mode = metrics["workflow_metrics_by_benchmark_mode"]
         steps_by_mode = metrics["step_metrics_by_benchmark_mode"]
 
-        self.assertEqual(metrics["workflow_exact_sequence_accuracy"], 0.5)
-        self.assertEqual(metrics["workflow_final_answer_accuracy"], 0.5)
-        self.assertEqual(metrics["workflow_all_arguments_correct_accuracy"], 0.5)
-        self.assertEqual(metrics["step_tool_selection_accuracy"], 1 / 3)
-        self.assertEqual(metrics["step_correct_tool_accuracy"], 1 / 3)
+        self.assertEqual(metrics["all_steps_correct_accuracy"], 0.5)
+        self.assertEqual(metrics["final_step_outcome_accuracy"], 0.5)
+        self.assertEqual(metrics["all_arguments_correct_accuracy"], 0.5)
+        self.assertEqual(metrics["tool_selection_accuracy"], 1 / 3)
         self.assertEqual(
             workflow_by_mode["grounded_tool_execution"][
-                "workflow_exact_sequence_accuracy"
+                "all_steps_correct_accuracy"
             ],
             1.0,
         )
         self.assertEqual(
             workflow_by_mode["offline_trace_replay"][
-                "workflow_exact_sequence_accuracy"
+                "all_steps_correct_accuracy"
             ],
             0.0,
         )
         self.assertEqual(
             steps_by_mode["grounded_tool_execution"][
-                "step_tool_selection_accuracy"
+                "tool_selection_accuracy"
             ],
             0.5,
         )
         self.assertEqual(
             steps_by_mode["offline_trace_replay"][
-                "step_tool_selection_accuracy"
+                "tool_selection_accuracy"
             ],
             0.0,
         )
@@ -1136,7 +1242,7 @@ class EvaluateMetricTests(unittest.TestCase):
             steps_by_mode["grounded_tool_execution"],
         )
 
-    def test_multistep_gold_final_answer_supports_json_value_types(self) -> None:
+    def test_final_step_outcome_gold_supports_json_value_types(self) -> None:
         values = [
             {"result": 4},
             [1, 2],
@@ -1150,61 +1256,97 @@ class EvaluateMetricTests(unittest.TestCase):
         ]
         workflow_records = [
             {
-                "sequence_tool_selection_correct": True,
-                "sequence_argument_match_correct": True,
-                "sequence_semantic_output_correct": True,
-                "workflow_final_answer_correct": (
-                    True if _has_expected_final_answer(value) else None
-                ),
-                "expected_final_answer": value,
+                "all_tools_correct": True,
+                "all_arguments_correct": True,
+                "all_steps_correct": True,
+                "expected_final_step_outcome": value,
+                "final_step_outcome_correct": None,
+                "final_step_outcome_status": "missing_gold",
+                "final_step_outcome_contract": "final_step_expected_outcome",
+                "final_step_outcome_matcher": None,
+                "expected_final_program_result": None,
+                "final_program_execution_correct": None,
+                "final_program_execution_status": "unsupported",
+                "final_program_execution_contract": None,
+                "final_program_execution_matcher": None,
             }
             for value in values
         ]
 
         metrics = _build_multistep_metrics(workflow_records, [])
 
-        self.assertEqual(metrics["workflow_final_answer_gold"], 7)
-        self.assertEqual(metrics["workflow_expected_final_answer_gold"], 7)
-        self.assertEqual(metrics["workflow_final_answer_scored"], 7)
-        self.assertEqual(metrics["workflow_final_answer_accuracy"], 1.0)
+        self.assertEqual(metrics["final_step_outcome_gold"], 7)
+        self.assertEqual(metrics["final_step_outcome_scored"], 0)
+        self.assertIsNone(metrics["final_step_outcome_accuracy"])
 
-    def test_multistep_scalar_final_answer_metrics_remain_unchanged(self) -> None:
+    def test_multistep_scalar_final_answers_remain_unscored(self) -> None:
         workflow_records = [
             {
-                "sequence_tool_selection_correct": True,
-                "sequence_argument_match_correct": True,
-                "sequence_semantic_output_correct": True,
-                "workflow_final_answer_correct": True,
+                "all_tools_correct": True,
+                "all_arguments_correct": True,
+                "all_steps_correct": True,
                 "expected_final_answer": "done",
+                "expected_final_step_outcome": None,
+                "final_step_outcome_correct": None,
+                "final_step_outcome_status": "missing_gold",
+                "final_step_outcome_contract": None,
+                "final_step_outcome_matcher": None,
+                "expected_final_program_result": None,
+                "final_program_execution_correct": None,
+                "final_program_execution_status": "unsupported",
+                "final_program_execution_contract": None,
+                "final_program_execution_matcher": None,
             },
             {
-                "sequence_tool_selection_correct": False,
-                "sequence_argument_match_correct": False,
-                "sequence_semantic_output_correct": False,
-                "workflow_final_answer_correct": False,
+                "all_tools_correct": False,
+                "all_arguments_correct": False,
+                "all_steps_correct": False,
                 "expected_final_answer": 42,
-            },
-            {
-                "sequence_tool_selection_correct": False,
-                "sequence_argument_match_correct": False,
-                "sequence_semantic_output_correct": None,
-                "workflow_final_answer_correct": None,
-                "expected_final_answer": "",
-            },
-            {
-                "sequence_tool_selection_correct": False,
-                "sequence_argument_match_correct": False,
-                "sequence_semantic_output_correct": None,
-                "workflow_final_answer_correct": None,
-                "expected_final_answer": None,
+                "expected_final_step_outcome": None,
+                "final_step_outcome_correct": None,
+                "final_step_outcome_status": "missing_gold",
+                "final_step_outcome_contract": None,
+                "final_step_outcome_matcher": None,
+                "expected_final_program_result": None,
+                "final_program_execution_correct": None,
+                "final_program_execution_status": "unsupported",
+                "final_program_execution_contract": None,
+                "final_program_execution_matcher": None,
             },
         ]
 
         metrics = _build_multistep_metrics(workflow_records, [])
 
-        self.assertEqual(metrics["workflow_final_answer_gold"], 2)
-        self.assertEqual(metrics["workflow_final_answer_scored"], 2)
-        self.assertEqual(metrics["workflow_final_answer_accuracy"], 0.5)
+        self.assertNotIn("workflow_final_answer_accuracy", metrics)
+        self.assertEqual(metrics["final_step_outcome_gold"], 0)
+        self.assertEqual(metrics["final_step_outcome_scored"], 0)
+
+    def test_multistep_metrics_separate_program_gold(self) -> None:
+        metrics = _build_multistep_metrics(
+            [
+                {
+                    "all_tools_correct": True,
+                    "all_arguments_correct": True,
+                    "all_steps_correct": True,
+                    "expected_final_step_outcome": {"result": 1.1197},
+                    "final_step_outcome_contract": "final_step_expected_outcome",
+                    "final_step_outcome_correct": True,
+                    "final_step_outcome_status": "correct",
+                    "final_step_outcome_matcher": "recursive_json_subset_v1",
+                    "expected_final_program_result": 1.1197,
+                    "final_program_execution_contract": "finqa_program_execution",
+                    "final_program_execution_correct": True,
+                    "final_program_execution_status": "correct",
+                    "final_program_execution_matcher": "finqa_program_execution",
+                }
+            ],
+            [],
+        )
+
+        self.assertEqual(metrics["final_step_outcome_accuracy"], 1.0)
+        self.assertEqual(metrics["final_program_execution_gold"], 1)
+        self.assertEqual(metrics["final_program_execution_scored"], 1)
+        self.assertEqual(metrics["final_program_execution_accuracy"], 1.0)
 
     def test_structured_mcp_result_extraction(self) -> None:
         extraction = _extract_structured_tool_result(

@@ -239,6 +239,14 @@ class FinancePublicExpansionTests(unittest.TestCase):
                 self.assertEqual(len(steps), len(operations))
                 self.assertGreaterEqual(len(steps), 2)
                 self.assertEqual(
+                    row["final_program_execution_contract"],
+                    "finqa_program_execution",
+                )
+                self.assertEqual(
+                    row["expected_final_program_result"],
+                    row["source_exe_answer"],
+                )
+                self.assertEqual(
                     steps[0]["expected_tool"],
                     "finance_query_table",
                 )
@@ -328,6 +336,8 @@ class FinancePublicExpansionTests(unittest.TestCase):
                     len(steps),
                 )
                 self.assertTrue(row["source_trace_correct"])
+                self.assertNotIn("final_program_execution_contract", row)
+                self.assertNotIn("final_step_outcome_contract", row)
                 for step_index, step in enumerate(steps):
                     self.assertFalse(step["source_is_error"])
                     self.assertEqual(

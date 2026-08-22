@@ -334,17 +334,17 @@ done
 SLURM_STDOUT_PATH="$SUBMIT_DIR/slurm-${JOB_NAME_COMPONENT}-${JOB_ID_COMPONENT}.out"
 SLURM_STDERR_PATH="$SUBMIT_DIR/slurm-${JOB_NAME_COMPONENT}-${JOB_ID_COMPONENT}.err"
 python - "$RUN_DIR/run_metadata.json" "$SOURCE_LIST" "$RUN_DIR" <<PY
-import collections,json,sys
+import collections,hashlib,json,sys
 from pathlib import Path
 paths=Path(sys.argv[2]).read_text().splitlines(); run=Path(sys.argv[3])
-counts={}; modes={}; declared={}; selections={}
+counts={}; hashes={}; modes={}; declared={}; selections={}
 for path in paths:
-    rows=json.loads(Path(path).read_text()); counts[path]={"workflows":len(rows),"routed_steps":sum(len(r["expected_steps"]) for r in rows)}
+    source=Path(path); rows=json.loads(source.read_text()); hashes[path]=hashlib.sha256(source.read_bytes()).hexdigest(); counts[path]={"workflows":len(rows),"routed_steps":sum(len(r["expected_steps"]) for r in rows)}
     modes[path]=dict(sorted(collections.Counter(r.get("benchmark_mode") or "grounded_tool_execution" for r in rows).items()))
     declared[path]=dict(sorted(collections.Counter(r.get("workflow_execution_mode") or "isolated_step" for r in rows).items()))
 for p in sorted(run.glob("short_test_subsets/*/provenance.json")):
     selections[p.parent.name]=json.loads(p.read_text())
-data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"source_counts":counts,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
+data={"git_commit":"$ACTUAL_COMMIT","model":"$MODEL","expected_model_name":"$EXPECTED_MODEL_NAME","checkpoint":"$CHECKPOINT","prompt_condition":"$REASONING_MODE","prompt_template_id":"$PROMPT_TEMPLATE_ID","reasoning_mode":"$REASONING_MODE","reasoning_method":"$REASONING_METHOD","effective_generation_limit":$GENERATION_LIMIT,"effective_generation_limit_unit":"tokens","run_kind":"$RUN_KIND","headline_eligible":False if "$RUN_KIND"=="short_test" else True,"dataset_group":"$DATASET_GROUP","benchmark_paths":paths,"benchmark_sha256":hashes,"source_counts":counts,"short_test_selection":selections,"benchmark_mode_distributions":modes,"declared_workflow_execution_mode_distributions":declared,"workflow_execution_mode":"$WORKFLOW_EXECUTION_MODE","evaluation_protocol":"$EVALUATION_PROTOCOL","outcome_metric_names":["tool_selection_accuracy","argument_accuracy","step_outcome_accuracy","all_steps_correct_accuracy","final_step_outcome_accuracy","final_program_execution_accuracy"],"model_attempts_per_step":1,"tool_call_retries":0,"generation":{"temperature":0.0,"max_tokens":$GENERATION_LIMIT,"seed":"not_applicable_deterministic_greedy"},"tool_pool":"$TOOL_POOL","tool_count":int("$TOOL_COUNT"),"tool_registry_fingerprint":"$EXPECTED_REGISTRY_FINGERPRINT","tool_registry_fingerprint_version":"$REGISTRY_FINGERPRINT_VERSION","registry_metadata_source":"live_mcp_registry_at_job_startup","slurm_job_id":"$SLURM_JOB_ID","slurm_job_name":"$SLURM_JOB_NAME","slurm_stdout_path":"$SLURM_STDOUT_PATH","slurm_stderr_path":"$SLURM_STDERR_PATH"}
 with Path(sys.argv[1]).open("x") as f:json.dump(data,f,indent=2,sort_keys=True);f.write("\n")
 PY
 
@@ -365,6 +365,35 @@ for group in "${SELECTED_DATASET_GROUPS[@]}"; do
     --registry-fingerprint-version "$REGISTRY_FINGERPRINT_VERSION" --tool-count "$TOOL_COUNT" \
     --tool-pool "$TOOL_POOL" "${provenance_args[@]}"
 done
+
+python - "$RUN_DIR/run_metadata.json" "$RUN_DIR/artifact_index.jsonl" <<'PY'
+import json, os, sys
+from pathlib import Path
+metadata_path, index_path = map(Path, sys.argv[1:])
+metadata = json.loads(metadata_path.read_text())
+entries = [json.loads(line) for line in index_path.read_text().splitlines() if line.strip()]
+metadata["outcome_metric_summaries"] = {
+    entry["benchmark_path"]: {
+        key: value for key, value in entry.items()
+        if key in {
+            "outcome_metric_names",
+            "tool_selection_accuracy", "argument_accuracy",
+            "step_outcome_accuracy", "step_outcome_scored",
+            "step_outcome_status_counts", "step_outcome_matchers",
+            "all_tools_correct_accuracy", "all_arguments_correct_accuracy",
+            "all_steps_correct_accuracy", "all_steps_correct_scored",
+        }
+        or key.startswith("final_step_outcome_")
+        or key.startswith("final_program_execution_")
+    }
+    for entry in entries
+}
+temporary = metadata_path.with_suffix(".json.tmp")
+with temporary.open("x") as handle:
+    json.dump(metadata, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+os.replace(temporary, metadata_path)
+PY
 
 python -m analysis.multi_step_run --validate-index --index "$RUN_DIR/artifact_index.jsonl" \
   --source-benchmark "$SOURCE_LIST" --run-metadata "$RUN_DIR/run_metadata.json"

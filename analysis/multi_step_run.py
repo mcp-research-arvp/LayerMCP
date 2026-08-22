@@ -22,6 +22,7 @@ from evaluation.evaluate import (
     DEFAULT_BENCHMARK_MODE,
     DEFAULT_WORKFLOW_EXECUTION_MODE,
     MULTISTEP_EVALUATION_PROTOCOL,
+    OUTCOME_METRIC_NAMES,
     PREDICTED_ROLLOUT_EXECUTION_MODE,
     _multistep_query,
     load_benchmark,
@@ -44,6 +45,67 @@ DATASET_GROUPS = {
 EMPTY_PLACEHOLDER = Path(
     "benchmark/coding/coding_nebius_swerebench_openhands_replay_multistep.json"
 )
+
+FINAL_METRIC_SUFFIXES = (
+    "accuracy",
+    "gold",
+    "scored",
+    "correct",
+    "mismatch",
+    "extraction_error",
+    "unavailable",
+    "status_counts",
+    "contracts",
+    "matchers",
+)
+CORE_SUMMARY_METRIC_FIELDS = (
+    "tool_selection_accuracy",
+    "argument_accuracy",
+    "step_outcome_accuracy",
+    "step_outcome_scored",
+    "step_outcome_status_counts",
+    "step_outcome_matchers",
+    "all_tools_correct_accuracy",
+    "all_arguments_correct_accuracy",
+    "all_steps_correct_accuracy",
+    "all_steps_correct_scored",
+)
+FINAL_STEP_METRIC_FIELDS = tuple(
+    f"final_step_outcome_{suffix}" for suffix in FINAL_METRIC_SUFFIXES
+)
+FINAL_PROGRAM_METRIC_FIELDS = tuple(
+    f"final_program_execution_{suffix}" for suffix in FINAL_METRIC_SUFFIXES
+)
+WORKFLOW_OUTCOME_FIELDS = (
+    "all_tools_correct",
+    "all_arguments_correct",
+    "all_steps_correct",
+    "expected_final_step_outcome",
+    "final_step_outcome_contract",
+    "final_step_outcome_correct",
+    "final_step_outcome_status",
+    "final_step_outcome_matcher",
+)
+STEP_OUTCOME_FIELDS = (
+    "tool_selection_correct",
+    "argument_match_correct",
+    "final_outcome_correct",
+    "final_outcome_status",
+    "final_outcome_matcher",
+)
+
+
+def _require_fields(value: dict[str, Any], fields: tuple[str, ...], label: str) -> None:
+    missing = [field for field in fields if field not in value]
+    if missing:
+        raise ValueError(f"{label} is missing required fields: {', '.join(missing)}")
+
+
+def _require_optional_complete_bundle(
+    value: dict[str, Any], fields: tuple[str, ...], label: str
+) -> None:
+    if any(field in value for field in fields):
+        _require_fields(value, fields, label)
 
 
 def resolve_dataset_groups(group: str, run_kind: str) -> list[tuple[str, Path]]:
@@ -282,12 +344,24 @@ def validate_and_index_multistep(
         "tool_count": expected_tool_count,
         "tool_registry_fingerprint": expected_registry_fingerprint,
         "tool_registry_fingerprint_version": expected_registry_fingerprint_version,
+        "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
     }
     for field, value in required_summary.items():
         if summary.get(field) != value:
             raise ValueError(f"Unexpected summary {field}: {summary.get(field)!r} != {value!r}")
+    _require_fields(
+        summary,
+        CORE_SUMMARY_METRIC_FIELDS + FINAL_STEP_METRIC_FIELDS,
+        "Multi-step summary",
+    )
+    _require_optional_complete_bundle(
+        summary, FINAL_PROGRAM_METRIC_FIELDS, "Final program metrics"
+    )
     if _canonical_benchmark(summary.get("benchmark_path", "")) != expected_path:
         raise ValueError("Unexpected summary benchmark path")
+    evaluated_hash = hashlib.sha256(evaluated_benchmark.read_bytes()).hexdigest()
+    if summary.get("benchmark_sha256") != evaluated_hash:
+        raise ValueError("Summary benchmark SHA-256 does not match evaluated benchmark")
     expected_rows = json.loads(evaluated_benchmark.read_text(encoding="utf-8"))
     expected_ids = {str(row["id"]): [str(step["id"]) for step in row["expected_steps"]] for row in expected_rows}
     observed_ids: dict[str, list[str]] = {}
@@ -302,6 +376,10 @@ def validate_and_index_multistep(
             raise ValueError(f"Mixed or unexpected model in workflow {workflow_id}")
         if _canonical_benchmark(record.get("benchmark_path", "")) != expected_path:
             raise ValueError(f"Unexpected benchmark in workflow {workflow_id}")
+        if record.get("benchmark_sha256") != evaluated_hash:
+            raise ValueError(
+                f"Benchmark SHA-256 mismatch in workflow {workflow_id}"
+            )
         if record.get("evaluation_protocol") != MULTISTEP_EVALUATION_PROTOCOL:
             raise ValueError(f"Unexpected evaluation protocol in workflow {workflow_id}")
         for field, value in required_summary.items():
@@ -309,12 +387,30 @@ def validate_and_index_multistep(
                 raise ValueError(
                     f"Metadata mismatch for {field} in workflow {workflow_id}"
                 )
+        _require_fields(record, WORKFLOW_OUTCOME_FIELDS, f"Workflow {workflow_id}")
+        _require_optional_complete_bundle(
+            record,
+            (
+                "expected_final_program_result",
+                "final_program_execution_contract",
+                "final_program_execution_correct",
+                "final_program_execution_status",
+                "final_program_execution_matcher",
+            ),
+            f"Workflow {workflow_id} final program outcome",
+        )
         steps = record.get("steps")
         if not isinstance(steps, list):
             raise ValueError(f"Missing routed steps in workflow {workflow_id}")
         step_ids = [str(step.get("step_id")) for step in steps]
         if len(step_ids) != len(set(step_ids)):
             raise ValueError(f"Duplicate routed step in workflow {workflow_id}")
+        for step in steps:
+            _require_fields(
+                step,
+                STEP_OUTCOME_FIELDS,
+                f"Workflow {workflow_id} step {step.get('step_id')}",
+            )
         observed_ids[workflow_id] = step_ids
         benchmark_modes.add(str(record.get("benchmark_mode", DEFAULT_BENCHMARK_MODE)))
         execution_modes.add(str(record.get("workflow_execution_mode", DEFAULT_WORKFLOW_EXECUTION_MODE)))
@@ -342,12 +438,28 @@ def validate_and_index_multistep(
     record = {
         "benchmark_path": str(source_benchmark.resolve()),
         "evaluated_benchmark_path": str(evaluated_benchmark.resolve()),
+        "benchmark_sha256": hashlib.sha256(
+            source_benchmark.read_bytes()
+        ).hexdigest(),
+        "evaluated_benchmark_sha256": hashlib.sha256(
+            evaluated_benchmark.read_bytes()
+        ).hexdigest(),
         "workflow_count": source_count,
         "expected_step_count": source_steps,
         "benchmark_modes": sorted(benchmark_modes),
         "workflow_execution_modes": sorted(execution_modes),
         "evaluation_protocol": MULTISTEP_EVALUATION_PROTOCOL,
         "final_outcome_matchers": sorted(matchers),
+        "outcome_metric_names": summary["outcome_metric_names"],
+        **{
+            field: summary[field]
+            for field in (
+                CORE_SUMMARY_METRIC_FIELDS
+                + FINAL_STEP_METRIC_FIELDS
+                + FINAL_PROGRAM_METRIC_FIELDS
+            )
+            if field in summary
+        },
         "model_name": expected_model,
         "prompt_template": expected_prompt_template,
         "reasoning_mode": summary["reasoning_mode"],
@@ -384,6 +496,38 @@ def validate_complete_multistep_run(
         raise ValueError(f"Run index is incomplete: expected {expected}, observed {observed}")
     artifact_paths: list[Path] = []
     for record in records:
+        if record.get("outcome_metric_names") != list(OUTCOME_METRIC_NAMES):
+            raise ValueError("Run index declares unexpected outcome metrics")
+        _require_fields(
+            record,
+            CORE_SUMMARY_METRIC_FIELDS + FINAL_STEP_METRIC_FIELDS,
+            "Run index entry",
+        )
+        _require_optional_complete_bundle(
+            record, FINAL_PROGRAM_METRIC_FIELDS, "Run index final program metrics"
+        )
+        source_benchmark = Path(str(record.get("benchmark_path", ""))).resolve()
+        if not source_benchmark.is_file():
+            raise FileNotFoundError(
+                f"Indexed benchmark does not exist: {source_benchmark}"
+            )
+        if record.get("benchmark_sha256") != hashlib.sha256(
+            source_benchmark.read_bytes()
+        ).hexdigest():
+            raise ValueError("Indexed benchmark SHA-256 does not match its file")
+        evaluated_benchmark = Path(
+            str(record.get("evaluated_benchmark_path", ""))
+        ).resolve()
+        if not evaluated_benchmark.is_file():
+            raise FileNotFoundError(
+                f"Indexed evaluated benchmark does not exist: {evaluated_benchmark}"
+            )
+        if record.get("evaluated_benchmark_sha256") != hashlib.sha256(
+            evaluated_benchmark.read_bytes()
+        ).hexdigest():
+            raise ValueError(
+                "Indexed evaluated benchmark SHA-256 does not match its file"
+            )
         for field in ("samples_path", "summary_path", "evaluation_log_path"):
             if not record.get(field):
                 raise ValueError(f"Run index entry is missing {field}")
@@ -404,10 +548,54 @@ def validate_complete_multistep_run(
     if run_metadata_path is not None:
         validate_run_metadata(index_path=index_path, metadata_path=run_metadata_path)
         metadata = _load_json_object(run_metadata_path)
+        if not isinstance(metadata.get("git_commit"), str) or not metadata[
+            "git_commit"
+        ].strip():
+            raise ValueError("Run metadata is missing its producing Git commit")
+        benchmark_hashes = metadata.get("benchmark_sha256")
+        if not isinstance(benchmark_hashes, dict):
+            raise ValueError("Run metadata is missing benchmark SHA-256 values")
+        expected_hashes = {
+            str(Path(record["benchmark_path"]).resolve()): record["benchmark_sha256"]
+            for record in records
+        }
+        normalized_hashes = {
+            str(Path(path).resolve()): value
+            for path, value in benchmark_hashes.items()
+        }
+        if normalized_hashes != expected_hashes:
+            raise ValueError("Run metadata benchmark SHA-256 values do not match")
         if metadata.get("evaluation_protocol") != MULTISTEP_EVALUATION_PROTOCOL:
             raise ValueError("Run metadata uses an obsolete multi-step protocol")
         if metadata.get("workflow_execution_mode") != PREDICTED_ROLLOUT_EXECUTION_MODE:
             raise ValueError("Run metadata does not declare predicted_sequence")
+        if metadata.get("outcome_metric_names") != list(OUTCOME_METRIC_NAMES):
+            raise ValueError("Run metadata declares unexpected outcome metrics")
+        metric_summaries = metadata.get("outcome_metric_summaries")
+        if not isinstance(metric_summaries, dict):
+            raise ValueError("Run metadata is missing outcome metric summaries")
+        for record in records:
+            expected_metric_summary = {
+                key: value
+                for key, value in record.items()
+                if key in {
+                    "outcome_metric_names",
+                    "tool_selection_accuracy",
+                    "argument_accuracy",
+                    "step_outcome_accuracy",
+                    "step_outcome_scored",
+                    "step_outcome_status_counts",
+                    "step_outcome_matchers",
+                    "all_tools_correct_accuracy",
+                    "all_arguments_correct_accuracy",
+                    "all_steps_correct_accuracy",
+                    "all_steps_correct_scored",
+                }
+                or key.startswith("final_step_outcome_")
+                or key.startswith("final_program_execution_")
+            }
+            if metric_summaries.get(record["benchmark_path"]) != expected_metric_summary:
+                raise ValueError("Run metadata outcome metrics do not match its index")
         run_kind = metadata.get("run_kind")
         if run_kind not in {"short_test", "full"}:
             raise ValueError(f"Unsupported run kind in metadata: {run_kind!r}")

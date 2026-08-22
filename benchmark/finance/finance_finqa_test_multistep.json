@@ -55,6 +55,8 @@
       }
     ],
     "expected_final_answer": "9.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.09864,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -197,6 +199,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.1197,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -286,6 +290,8 @@
       }
     ],
     "expected_final_answer": "7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.06757,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -372,6 +378,8 @@
       }
     ],
     "expected_final_answer": "1.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01714,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -477,6 +485,8 @@
       }
     ],
     "expected_final_answer": "704.25",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 705.25,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -564,6 +574,8 @@
       }
     ],
     "expected_final_answer": "11.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10964,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -668,6 +680,8 @@
       }
     ],
     "expected_final_answer": "68.9",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 68.9,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -755,6 +769,8 @@
       }
     ],
     "expected_final_answer": "-8.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.08422,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -897,6 +913,8 @@
       }
     ],
     "expected_final_answer": "113.63%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.1363,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -986,6 +1004,8 @@
       }
     ],
     "expected_final_answer": "9.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.09302,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1072,6 +1092,8 @@
       }
     ],
     "expected_final_answer": "-30.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.30851,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1158,6 +1180,8 @@
       }
     ],
     "expected_final_answer": "5.8",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 5.8,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1244,6 +1268,8 @@
       }
     ],
     "expected_final_answer": "12.1",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 12.1,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1386,6 +1412,8 @@
       }
     ],
     "expected_final_answer": "12.16%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.1216,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1475,6 +1503,8 @@
       }
     ],
     "expected_final_answer": "42.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.42889,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1561,6 +1591,8 @@
       }
     ],
     "expected_final_answer": "8.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.07951,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1647,6 +1679,8 @@
       }
     ],
     "expected_final_answer": "16.93%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 16.93811,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1733,6 +1767,8 @@
       }
     ],
     "expected_final_answer": "-3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02918,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1819,6 +1855,8 @@
       }
     ],
     "expected_final_answer": "12.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.12204,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1905,6 +1943,8 @@
       }
     ],
     "expected_final_answer": "10.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10563,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -1991,6 +2031,8 @@
       }
     ],
     "expected_final_answer": "42%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.41935,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2077,6 +2119,8 @@
       }
     ],
     "expected_final_answer": "29%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.27273,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2163,6 +2207,8 @@
       }
     ],
     "expected_final_answer": "18",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 18.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2249,6 +2295,8 @@
       }
     ],
     "expected_final_answer": "102%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.01571,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2335,6 +2383,8 @@
       }
     ],
     "expected_final_answer": "60375000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 60375000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2421,6 +2471,8 @@
       }
     ],
     "expected_final_answer": "-17.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.17588,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2507,6 +2559,8 @@
       }
     ],
     "expected_final_answer": "60.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.608,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2593,6 +2647,8 @@
       }
     ],
     "expected_final_answer": "15.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.12159,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2679,6 +2735,8 @@
       }
     ],
     "expected_final_answer": "2.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.02778,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2765,6 +2823,8 @@
       }
     ],
     "expected_final_answer": "7.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.07756,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2851,6 +2911,8 @@
       }
     ],
     "expected_final_answer": "719.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 719.68334,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -2937,6 +2999,8 @@
       }
     ],
     "expected_final_answer": "11.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.11825,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3023,6 +3087,8 @@
       }
     ],
     "expected_final_answer": "37.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.379,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3109,6 +3175,8 @@
       }
     ],
     "expected_final_answer": "21.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.2148,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3195,6 +3263,8 @@
       }
     ],
     "expected_final_answer": "-62.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.62548,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3281,6 +3351,8 @@
       }
     ],
     "expected_final_answer": "124.65%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.2465,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3405,6 +3477,8 @@
       }
     ],
     "expected_final_answer": "-4.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.04148,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3493,6 +3567,8 @@
       }
     ],
     "expected_final_answer": "67.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.67536,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3579,6 +3655,8 @@
       }
     ],
     "expected_final_answer": "-9.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.09731,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3665,6 +3743,8 @@
       }
     ],
     "expected_final_answer": "-8.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.08451,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3751,6 +3831,8 @@
       }
     ],
     "expected_final_answer": "45.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.45861,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3837,6 +3919,8 @@
       }
     ],
     "expected_final_answer": "4.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.04828,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -3923,6 +4007,8 @@
       }
     ],
     "expected_final_answer": "21.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.21277,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4009,6 +4095,8 @@
       }
     ],
     "expected_final_answer": "17447",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 17447.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4095,6 +4183,8 @@
       }
     ],
     "expected_final_answer": "43.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.00543,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4237,6 +4327,8 @@
       }
     ],
     "expected_final_answer": "2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01577,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4326,6 +4418,8 @@
       }
     ],
     "expected_final_answer": "-198",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -198.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4412,6 +4506,8 @@
       }
     ],
     "expected_final_answer": "26.8",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 26.8,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4498,6 +4594,8 @@
       }
     ],
     "expected_final_answer": "196.67",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.9667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4584,6 +4682,8 @@
       }
     ],
     "expected_final_answer": "313%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 3.13115,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4689,6 +4789,8 @@
       }
     ],
     "expected_final_answer": "-26.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -26.06635,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4776,6 +4878,8 @@
       }
     ],
     "expected_final_answer": "39.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.39024,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4862,6 +4966,8 @@
       }
     ],
     "expected_final_answer": "2186",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2185.50348,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -4948,6 +5054,8 @@
       }
     ],
     "expected_final_answer": "48.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.48519,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5034,6 +5142,8 @@
       }
     ],
     "expected_final_answer": "11",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 11.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5130,6 +5240,8 @@
       }
     ],
     "expected_final_answer": "yes",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": "yes",
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5216,6 +5328,8 @@
       }
     ],
     "expected_final_answer": "7947",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 7947.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5302,6 +5416,8 @@
       }
     ],
     "expected_final_answer": "6111",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6111.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5406,6 +5522,8 @@
       }
     ],
     "expected_final_answer": "3829",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 38290.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5512,6 +5630,8 @@
       }
     ],
     "expected_final_answer": "2.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5599,6 +5719,8 @@
       }
     ],
     "expected_final_answer": "-55.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.55319,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5685,6 +5807,8 @@
       }
     ],
     "expected_final_answer": "29.63%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 349.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5790,6 +5914,8 @@
       }
     ],
     "expected_final_answer": "231341.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 231341.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5877,6 +6003,8 @@
       }
     ],
     "expected_final_answer": "7.42%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.07427,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -5982,6 +6110,8 @@
       }
     ],
     "expected_final_answer": "-32.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -1.32432,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6088,6 +6218,8 @@
       }
     ],
     "expected_final_answer": "34.05",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 31.77215,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6175,6 +6307,8 @@
       }
     ],
     "expected_final_answer": "-7.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0777,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6261,6 +6395,8 @@
       }
     ],
     "expected_final_answer": "7.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.0776,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6347,6 +6483,8 @@
       }
     ],
     "expected_final_answer": "53.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.52977,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6451,6 +6589,8 @@
       }
     ],
     "expected_final_answer": "16.43",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 16.43,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6538,6 +6678,8 @@
       }
     ],
     "expected_final_answer": "615.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6.15385,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6643,6 +6785,8 @@
       }
     ],
     "expected_final_answer": "382.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 382.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6730,6 +6874,8 @@
       }
     ],
     "expected_final_answer": "107.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.07555,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6816,6 +6962,8 @@
       }
     ],
     "expected_final_answer": "81.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.80991,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -6921,6 +7069,8 @@
       }
     ],
     "expected_final_answer": "2.63",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.63333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7008,6 +7158,8 @@
       }
     ],
     "expected_final_answer": "251%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.50515,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7094,6 +7246,8 @@
       }
     ],
     "expected_final_answer": "38.8",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 38.81487,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7180,6 +7334,8 @@
       }
     ],
     "expected_final_answer": "11.08",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 11.07996,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7266,6 +7422,8 @@
       }
     ],
     "expected_final_answer": "57.65%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 57.65604,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7352,6 +7510,8 @@
       }
     ],
     "expected_final_answer": "1.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01307,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7438,6 +7598,8 @@
       }
     ],
     "expected_final_answer": "10.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10058,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7524,6 +7686,8 @@
       }
     ],
     "expected_final_answer": "-19%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.18519,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7610,6 +7774,8 @@
       }
     ],
     "expected_final_answer": "10.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10253,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7696,6 +7862,8 @@
       }
     ],
     "expected_final_answer": "33.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.33333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7782,6 +7950,8 @@
       }
     ],
     "expected_final_answer": "1.1",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.136,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7868,6 +8038,8 @@
       }
     ],
     "expected_final_answer": "32.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.32012,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -7954,6 +8126,8 @@
       }
     ],
     "expected_final_answer": "-9.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.09785,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8040,6 +8214,8 @@
       }
     ],
     "expected_final_answer": "-22%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.29167,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8145,6 +8321,8 @@
       }
     ],
     "expected_final_answer": "19.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 19.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8232,6 +8410,8 @@
       }
     ],
     "expected_final_answer": "6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.05677,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8356,6 +8536,8 @@
       }
     ],
     "expected_final_answer": "4781374",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 4781374.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8444,6 +8626,8 @@
       }
     ],
     "expected_final_answer": "1.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01639,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8530,6 +8714,8 @@
       }
     ],
     "expected_final_answer": "23.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.23529,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8635,6 +8821,8 @@
       }
     ],
     "expected_final_answer": "6055.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6055.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8722,6 +8910,8 @@
       }
     ],
     "expected_final_answer": "-3.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8808,6 +8998,8 @@
       }
     ],
     "expected_final_answer": "6.25",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6.25,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8894,6 +9086,8 @@
       }
     ],
     "expected_final_answer": "1.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01639,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -8980,6 +9174,8 @@
       }
     ],
     "expected_final_answer": "18.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.18186,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9066,6 +9262,8 @@
       }
     ],
     "expected_final_answer": "-68%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.18154,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9152,6 +9350,8 @@
       }
     ],
     "expected_final_answer": "126%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.26067,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9276,6 +9476,8 @@
       }
     ],
     "expected_final_answer": "100.9",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 100.9,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9402,6 +9604,8 @@
       }
     ],
     "expected_final_answer": "194.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.94099,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9490,6 +9694,8 @@
       }
     ],
     "expected_final_answer": "64.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2e-05,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9595,6 +9801,8 @@
       }
     ],
     "expected_final_answer": "231341.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 231341.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9682,6 +9890,8 @@
       }
     ],
     "expected_final_answer": "88.57",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 88.57527,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9768,6 +9978,8 @@
       }
     ],
     "expected_final_answer": "62.12%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.62121,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9854,6 +10066,8 @@
       }
     ],
     "expected_final_answer": "8.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.08639,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -9940,6 +10154,8 @@
       }
     ],
     "expected_final_answer": "13.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13785,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10026,6 +10242,8 @@
       }
     ],
     "expected_final_answer": "107.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.0762,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10112,6 +10330,8 @@
       }
     ],
     "expected_final_answer": "-5.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.05114,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10198,6 +10418,8 @@
       }
     ],
     "expected_final_answer": "47.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.47887,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10284,6 +10506,8 @@
       }
     ],
     "expected_final_answer": "13.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13194,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10388,6 +10612,8 @@
       }
     ],
     "expected_final_answer": "58665",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 58665.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10475,6 +10701,8 @@
       }
     ],
     "expected_final_answer": "3.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.03816,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10561,6 +10789,8 @@
       }
     ],
     "expected_final_answer": "32.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.3227,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10647,6 +10877,8 @@
       }
     ],
     "expected_final_answer": "26.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.26856,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10733,6 +10965,8 @@
       }
     ],
     "expected_final_answer": "-8.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.08353,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10819,6 +11053,8 @@
       }
     ],
     "expected_final_answer": "-18.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.18309,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10905,6 +11141,8 @@
       }
     ],
     "expected_final_answer": "13.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.1326,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -10991,6 +11229,8 @@
       }
     ],
     "expected_final_answer": "-7.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0733,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11134,6 +11374,8 @@
       }
     ],
     "expected_final_answer": "79.3",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 61.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11223,6 +11465,8 @@
       }
     ],
     "expected_final_answer": "10.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10789,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11309,6 +11553,8 @@
       }
     ],
     "expected_final_answer": "51%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.51419,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11395,6 +11641,8 @@
       }
     ],
     "expected_final_answer": "-2.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02882,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11481,6 +11729,8 @@
       }
     ],
     "expected_final_answer": "69.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.69002,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11567,6 +11817,8 @@
       }
     ],
     "expected_final_answer": "4.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.0473,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11653,6 +11905,8 @@
       }
     ],
     "expected_final_answer": "-8.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.07917,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11739,6 +11993,8 @@
       }
     ],
     "expected_final_answer": "-34%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.33962,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11825,6 +12081,8 @@
       }
     ],
     "expected_final_answer": "300%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 3.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -11967,6 +12225,8 @@
       }
     ],
     "expected_final_answer": "22%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.22004,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12056,6 +12316,8 @@
       }
     ],
     "expected_final_answer": "-6.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.05959,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12142,6 +12404,8 @@
       }
     ],
     "expected_final_answer": "-18%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.17521,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12248,6 +12512,8 @@
       }
     ],
     "expected_final_answer": "44.59%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.44583,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12335,6 +12601,8 @@
       }
     ],
     "expected_final_answer": "9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.08607,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12440,6 +12708,8 @@
       }
     ],
     "expected_final_answer": "1000000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 100000000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12527,6 +12797,8 @@
       }
     ],
     "expected_final_answer": "93.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.93333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12613,6 +12885,8 @@
       }
     ],
     "expected_final_answer": "13%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13401,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12699,6 +12973,8 @@
       }
     ],
     "expected_final_answer": "-5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0495,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12841,6 +13117,8 @@
       }
     ],
     "expected_final_answer": "22.25%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.96929,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -12930,6 +13208,8 @@
       }
     ],
     "expected_final_answer": "45",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 45.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13016,6 +13296,8 @@
       }
     ],
     "expected_final_answer": "275.124",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 56.05455,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13102,6 +13384,8 @@
       }
     ],
     "expected_final_answer": "18%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.18025,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13188,6 +13472,8 @@
       }
     ],
     "expected_final_answer": "-2.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0291,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13274,6 +13560,8 @@
       }
     ],
     "expected_final_answer": "211.81%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.1181,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13360,6 +13648,8 @@
       }
     ],
     "expected_final_answer": "22%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.22024,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13446,6 +13736,8 @@
       }
     ],
     "expected_final_answer": "72%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.71903,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13532,6 +13824,8 @@
       }
     ],
     "expected_final_answer": "0.13%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.00136,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13618,6 +13912,8 @@
       }
     ],
     "expected_final_answer": "-4.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.04355,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13704,6 +14000,8 @@
       }
     ],
     "expected_final_answer": "39.73",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 39.725,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13790,6 +14088,8 @@
       }
     ],
     "expected_final_answer": "39.49",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 39.485,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13894,6 +14194,8 @@
       }
     ],
     "expected_final_answer": "18210",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 18210.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -13981,6 +14283,8 @@
       }
     ],
     "expected_final_answer": "-8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.07951,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14067,6 +14371,8 @@
       }
     ],
     "expected_final_answer": "218.5",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 218.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14209,6 +14515,8 @@
       }
     ],
     "expected_final_answer": "90.62%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.9062,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14298,6 +14606,8 @@
       }
     ],
     "expected_final_answer": "3.95%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.03957,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14384,6 +14694,8 @@
       }
     ],
     "expected_final_answer": "10.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10419,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14470,6 +14782,8 @@
       }
     ],
     "expected_final_answer": "30.9",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 30.87736,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14556,6 +14870,8 @@
       }
     ],
     "expected_final_answer": "-70.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -3813.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14642,6 +14958,8 @@
       }
     ],
     "expected_final_answer": "44.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.44104,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14728,6 +15046,8 @@
       }
     ],
     "expected_final_answer": "70.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.70481,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14814,6 +15134,8 @@
       }
     ],
     "expected_final_answer": "12.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.12853,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -14900,6 +15222,8 @@
       }
     ],
     "expected_final_answer": "3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02652,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15005,6 +15329,8 @@
       }
     ],
     "expected_final_answer": "2.55",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.5491,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15092,6 +15418,8 @@
       }
     ],
     "expected_final_answer": "150%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 150.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15178,6 +15506,8 @@
       }
     ],
     "expected_final_answer": "43.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.4375,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15264,6 +15594,8 @@
       }
     ],
     "expected_final_answer": "498",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 498.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15350,6 +15682,8 @@
       }
     ],
     "expected_final_answer": "30.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.30435,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15436,6 +15770,8 @@
       }
     ],
     "expected_final_answer": "72%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.72101,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15522,6 +15858,8 @@
       }
     ],
     "expected_final_answer": "32.07%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.32075,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15608,6 +15946,8 @@
       }
     ],
     "expected_final_answer": "-7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.06793,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15713,6 +16053,8 @@
       }
     ],
     "expected_final_answer": "940%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 940.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15800,6 +16142,8 @@
       }
     ],
     "expected_final_answer": "5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.05268,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15886,6 +16230,8 @@
       }
     ],
     "expected_final_answer": "20.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -31.1,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -15972,6 +16318,8 @@
       }
     ],
     "expected_final_answer": "33.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.33333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16058,6 +16406,8 @@
       }
     ],
     "expected_final_answer": "41.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.41061,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16144,6 +16494,8 @@
       }
     ],
     "expected_final_answer": "21.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.21593,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16286,6 +16638,8 @@
       }
     ],
     "expected_final_answer": "55%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.55,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16375,6 +16729,8 @@
       }
     ],
     "expected_final_answer": "-21%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.20669,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16461,6 +16817,8 @@
       }
     ],
     "expected_final_answer": "7.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 7.68293,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16547,6 +16905,8 @@
       }
     ],
     "expected_final_answer": "219.35",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 21.93548,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16633,6 +16993,8 @@
       }
     ],
     "expected_final_answer": "92",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 92.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16719,6 +17081,8 @@
       }
     ],
     "expected_final_answer": "17%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.17172,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16805,6 +17169,8 @@
       }
     ],
     "expected_final_answer": "11.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11347,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16909,6 +17275,8 @@
       }
     ],
     "expected_final_answer": "6820",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6820.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -16996,6 +17364,8 @@
       }
     ],
     "expected_final_answer": "74",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 74.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17082,6 +17452,8 @@
       }
     ],
     "expected_final_answer": "17.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.17277,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17168,6 +17540,8 @@
       }
     ],
     "expected_final_answer": "81.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.761,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17293,6 +17667,8 @@
       }
     ],
     "expected_final_answer": "94%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.94,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17400,6 +17776,8 @@
       }
     ],
     "expected_final_answer": "35000000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 35000000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17487,6 +17865,8 @@
       }
     ],
     "expected_final_answer": "80.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.80473,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17592,6 +17972,8 @@
       }
     ],
     "expected_final_answer": "-44.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -44.57174,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17679,6 +18061,8 @@
       }
     ],
     "expected_final_answer": "41.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.41667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17765,6 +18149,8 @@
       }
     ],
     "expected_final_answer": "86",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 86.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17851,6 +18237,8 @@
       }
     ],
     "expected_final_answer": "214.36%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.1436,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -17956,6 +18344,8 @@
       }
     ],
     "expected_final_answer": "77.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 77.65,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18043,6 +18433,8 @@
       }
     ],
     "expected_final_answer": "20",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 20.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18129,6 +18521,8 @@
       }
     ],
     "expected_final_answer": "5.8",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 5.81308,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18215,6 +18609,8 @@
       }
     ],
     "expected_final_answer": "45",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 45.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18320,6 +18716,8 @@
       }
     ],
     "expected_final_answer": "15.53%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 15.52764,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18407,6 +18805,8 @@
       }
     ],
     "expected_final_answer": "98.27%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.9827,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18493,6 +18893,8 @@
       }
     ],
     "expected_final_answer": "9.37%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.09371,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18579,6 +18981,8 @@
       }
     ],
     "expected_final_answer": "-83.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.83333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18665,6 +19069,8 @@
       }
     ],
     "expected_final_answer": "91300",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 91300.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18751,6 +19157,8 @@
       }
     ],
     "expected_final_answer": "448.5",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 448.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18837,6 +19245,8 @@
       }
     ],
     "expected_final_answer": "-6.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.06842,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -18923,6 +19333,8 @@
       }
     ],
     "expected_final_answer": "10.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10843,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19028,6 +19440,8 @@
       }
     ],
     "expected_final_answer": "33.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.33333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19134,6 +19548,8 @@
       }
     ],
     "expected_final_answer": "77",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 77.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19221,6 +19637,8 @@
       }
     ],
     "expected_final_answer": "0.35%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.00357,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19307,6 +19725,8 @@
       }
     ],
     "expected_final_answer": "46.34%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.46341,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19393,6 +19813,8 @@
       }
     ],
     "expected_final_answer": "9.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.09716,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19479,6 +19901,8 @@
       }
     ],
     "expected_final_answer": "133.86%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.3386,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19565,6 +19989,8 @@
       }
     ],
     "expected_final_answer": "3138",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 3138.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19651,6 +20077,8 @@
       }
     ],
     "expected_final_answer": "-53.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.53018,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19737,6 +20165,8 @@
       }
     ],
     "expected_final_answer": "8.6",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 8.6168,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19879,6 +20309,8 @@
       }
     ],
     "expected_final_answer": "-30.76%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -30.76,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -19968,6 +20400,8 @@
       }
     ],
     "expected_final_answer": "81%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.81372,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20054,6 +20488,8 @@
       }
     ],
     "expected_final_answer": "14%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13606,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20140,6 +20576,8 @@
       }
     ],
     "expected_final_answer": "-18.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.18725,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20282,6 +20720,8 @@
       }
     ],
     "expected_final_answer": "65.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.652,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20428,6 +20868,8 @@
       }
     ],
     "expected_final_answer": "37079.75",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 74161.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20517,6 +20959,8 @@
       }
     ],
     "expected_final_answer": "22.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.22158,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20603,6 +21047,8 @@
       }
     ],
     "expected_final_answer": "39%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.39007,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20689,6 +21135,8 @@
       }
     ],
     "expected_final_answer": "148.36%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.4836,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20794,6 +21242,8 @@
       }
     ],
     "expected_final_answer": "940%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 940.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20881,6 +21331,8 @@
       }
     ],
     "expected_final_answer": "-14.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.12381,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -20967,6 +21419,8 @@
       }
     ],
     "expected_final_answer": "24000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 24000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21053,6 +21507,8 @@
       }
     ],
     "expected_final_answer": "1.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.0166,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21139,6 +21595,8 @@
       }
     ],
     "expected_final_answer": "19.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.1954,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21225,6 +21683,8 @@
       }
     ],
     "expected_final_answer": "62.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.62329,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21311,6 +21771,8 @@
       }
     ],
     "expected_final_answer": "5.38%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.0585,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21397,6 +21859,8 @@
       }
     ],
     "expected_final_answer": "21.9",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 21.86398,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21483,6 +21947,8 @@
       }
     ],
     "expected_final_answer": "-1.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.01326,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21569,6 +22035,8 @@
       }
     ],
     "expected_final_answer": "11.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11813,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21674,6 +22142,8 @@
       }
     ],
     "expected_final_answer": "2.93",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.93333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21761,6 +22231,8 @@
       }
     ],
     "expected_final_answer": "156%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.55986,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21847,6 +22319,8 @@
       }
     ],
     "expected_final_answer": "-28%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.27547,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -21933,6 +22407,8 @@
       }
     ],
     "expected_final_answer": "-14%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.13666,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22038,6 +22514,8 @@
       }
     ],
     "expected_final_answer": "5.4",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 5.36667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22125,6 +22603,8 @@
       }
     ],
     "expected_final_answer": "2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22211,6 +22691,8 @@
       }
     ],
     "expected_final_answer": "9.42%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.00573,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22297,6 +22779,8 @@
       }
     ],
     "expected_final_answer": "18.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.18182,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22383,6 +22867,8 @@
       }
     ],
     "expected_final_answer": "-5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.05497,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22469,6 +22955,8 @@
       }
     ],
     "expected_final_answer": "15%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.15421,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22574,6 +23062,8 @@
       }
     ],
     "expected_final_answer": "10.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 10.38576,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22661,6 +23151,8 @@
       }
     ],
     "expected_final_answer": "2.41%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02414,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22747,6 +23239,8 @@
       }
     ],
     "expected_final_answer": "12%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11538,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22833,6 +23327,8 @@
       }
     ],
     "expected_final_answer": "18.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.18081,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -22919,6 +23415,8 @@
       }
     ],
     "expected_final_answer": "6.6",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23024,6 +23522,8 @@
       }
     ],
     "expected_final_answer": "383",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 382.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23111,6 +23611,8 @@
       }
     ],
     "expected_final_answer": "-9.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0934,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23197,6 +23699,8 @@
       }
     ],
     "expected_final_answer": "26.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.2646,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23339,6 +23843,8 @@
       }
     ],
     "expected_final_answer": "10.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10222,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23428,6 +23934,8 @@
       }
     ],
     "expected_final_answer": "2.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02652,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23514,6 +24022,8 @@
       }
     ],
     "expected_final_answer": "25%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.25431,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23600,6 +24110,8 @@
       }
     ],
     "expected_final_answer": "300",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 299.99999,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23686,6 +24198,8 @@
       }
     ],
     "expected_final_answer": "7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.07012,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23772,6 +24286,8 @@
       }
     ],
     "expected_final_answer": "42.0",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.38213,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23858,6 +24374,8 @@
       }
     ],
     "expected_final_answer": "34.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.34755,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -23944,6 +24462,8 @@
       }
     ],
     "expected_final_answer": "14.55%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.14555,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24030,6 +24550,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11212,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24116,6 +24638,8 @@
       }
     ],
     "expected_final_answer": "21.46%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.2146,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24202,6 +24726,8 @@
       }
     ],
     "expected_final_answer": "2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01961,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24288,6 +24814,8 @@
       }
     ],
     "expected_final_answer": "10%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.09996,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24412,6 +24940,8 @@
       }
     ],
     "expected_final_answer": "130%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.30121,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24500,6 +25030,8 @@
       }
     ],
     "expected_final_answer": "1073",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1073.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24586,6 +25118,8 @@
       }
     ],
     "expected_final_answer": "-16%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.16226,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24672,6 +25206,8 @@
       }
     ],
     "expected_final_answer": "60%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.6,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24758,6 +25294,8 @@
       }
     ],
     "expected_final_answer": "1.64%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01639,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24844,6 +25382,8 @@
       }
     ],
     "expected_final_answer": "-20%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.20479,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -24949,6 +25489,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 59.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25036,6 +25578,8 @@
       }
     ],
     "expected_final_answer": "17.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -125.06,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25122,6 +25666,8 @@
       }
     ],
     "expected_final_answer": "3.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02976,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25208,6 +25754,8 @@
       }
     ],
     "expected_final_answer": "-37.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.37001,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25294,6 +25842,8 @@
       }
     ],
     "expected_final_answer": "7.2",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 7.2,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25380,6 +25930,8 @@
       }
     ],
     "expected_final_answer": "-2.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02121,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25466,6 +26018,8 @@
       }
     ],
     "expected_final_answer": "3081",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 3081.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25552,6 +26106,8 @@
       }
     ],
     "expected_final_answer": "-1.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.01623,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25638,6 +26194,8 @@
       }
     ],
     "expected_final_answer": "-3.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.03804,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25724,6 +26282,8 @@
       }
     ],
     "expected_final_answer": "76%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.76002,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25829,6 +26389,8 @@
       }
     ],
     "expected_final_answer": "6.3",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6.3,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -25916,6 +26478,8 @@
       }
     ],
     "expected_final_answer": "117.56%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.1756,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26002,6 +26566,8 @@
       }
     ],
     "expected_final_answer": "566808000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 56680800.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26088,6 +26654,8 @@
       }
     ],
     "expected_final_answer": "-6.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.06667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26174,6 +26742,8 @@
       }
     ],
     "expected_final_answer": "33.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.33333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26260,6 +26830,8 @@
       }
     ],
     "expected_final_answer": "6.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.0641,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26346,6 +26918,8 @@
       }
     ],
     "expected_final_answer": "19.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.19088,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26432,6 +27006,8 @@
       }
     ],
     "expected_final_answer": "10%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10101,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26518,6 +27094,8 @@
       }
     ],
     "expected_final_answer": "107.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.07555,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26604,6 +27182,8 @@
       }
     ],
     "expected_final_answer": "41.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.41429,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26690,6 +27270,8 @@
       }
     ],
     "expected_final_answer": "89167520",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 89167520.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26832,6 +27414,8 @@
       }
     ],
     "expected_final_answer": "115.27%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.1527,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -26921,6 +27505,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.22464,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27007,6 +27593,8 @@
       }
     ],
     "expected_final_answer": "80.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.80085,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27093,6 +27681,8 @@
       }
     ],
     "expected_final_answer": "36.83%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.36833,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27179,6 +27769,8 @@
       }
     ],
     "expected_final_answer": "47.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.47104,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27284,6 +27876,8 @@
       }
     ],
     "expected_final_answer": "79900",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 79900.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27371,6 +27965,8 @@
       }
     ],
     "expected_final_answer": "-20%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.20473,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27457,6 +28053,8 @@
       }
     ],
     "expected_final_answer": "17.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.1761,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27543,6 +28141,8 @@
       }
     ],
     "expected_final_answer": "-31.47,",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.3142,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27629,6 +28229,8 @@
       }
     ],
     "expected_final_answer": "25.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.25349,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27715,6 +28317,8 @@
       }
     ],
     "expected_final_answer": "-3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02796,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27801,6 +28405,8 @@
       }
     ],
     "expected_final_answer": "1.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.01696,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27887,6 +28493,8 @@
       }
     ],
     "expected_final_answer": "70",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 70.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -27973,6 +28581,8 @@
       }
     ],
     "expected_final_answer": "35.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.35829,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28059,6 +28669,8 @@
       }
     ],
     "expected_final_answer": "4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.04171,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28164,6 +28776,8 @@
       }
     ],
     "expected_final_answer": "55.3",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 55.33333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28251,6 +28865,8 @@
       }
     ],
     "expected_final_answer": "50.73",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 50.725,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28375,6 +28991,8 @@
       }
     ],
     "expected_final_answer": "139801",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 209703.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28463,6 +29081,8 @@
       }
     ],
     "expected_final_answer": "76.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.76505,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28549,6 +29169,8 @@
       }
     ],
     "expected_final_answer": "63.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.62946,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28635,6 +29257,8 @@
       }
     ],
     "expected_final_answer": "115%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.15217,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28721,6 +29345,8 @@
       }
     ],
     "expected_final_answer": "33.085",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 33.085,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28807,6 +29433,8 @@
       }
     ],
     "expected_final_answer": "18.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.18721,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28893,6 +29521,8 @@
       }
     ],
     "expected_final_answer": "17.32%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.17323,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -28979,6 +29609,8 @@
       }
     ],
     "expected_final_answer": "10.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10482,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29065,6 +29697,8 @@
       }
     ],
     "expected_final_answer": "-12%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.11998,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29170,6 +29804,8 @@
       }
     ],
     "expected_final_answer": "229",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 229.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29276,6 +29912,8 @@
       }
     ],
     "expected_final_answer": "446%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 446.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29363,6 +30001,8 @@
       }
     ],
     "expected_final_answer": "18525000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 14750000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29449,6 +30089,8 @@
       }
     ],
     "expected_final_answer": "-2.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02597,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29533,6 +30175,8 @@
       }
     ],
     "expected_final_answer": "yes",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 43900000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29619,6 +30263,8 @@
       }
     ],
     "expected_final_answer": "34.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.34915,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29705,6 +30351,8 @@
       }
     ],
     "expected_final_answer": "-50%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.49835,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29791,6 +30439,8 @@
       }
     ],
     "expected_final_answer": "16.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.16614,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29877,6 +30527,8 @@
       }
     ],
     "expected_final_answer": "-2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02433,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -29963,6 +30615,8 @@
       }
     ],
     "expected_final_answer": "375.15",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 373.15316,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30049,6 +30703,8 @@
       }
     ],
     "expected_final_answer": "10.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.10345,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30135,6 +30791,8 @@
       }
     ],
     "expected_final_answer": "70000000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 70000000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30221,6 +30879,8 @@
       }
     ],
     "expected_final_answer": "25.93%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.25926,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30307,6 +30967,8 @@
       }
     ],
     "expected_final_answer": "12%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.12027,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30393,6 +31055,8 @@
       }
     ],
     "expected_final_answer": "39.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.39024,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30479,6 +31143,8 @@
       }
     ],
     "expected_final_answer": "11%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11029,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30565,6 +31231,8 @@
       }
     ],
     "expected_final_answer": "2270000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2272727.27273,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30651,6 +31319,8 @@
       }
     ],
     "expected_final_answer": "-3.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.03632,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30737,6 +31407,8 @@
       }
     ],
     "expected_final_answer": "11.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11828,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30823,6 +31495,8 @@
       }
     ],
     "expected_final_answer": "12.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.12284,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30909,6 +31583,8 @@
       }
     ],
     "expected_final_answer": "2.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02776,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -30995,6 +31671,8 @@
       }
     ],
     "expected_final_answer": "-3.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.03383,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31081,6 +31759,8 @@
       }
     ],
     "expected_final_answer": "58.9",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 58.91433,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31186,6 +31866,8 @@
       }
     ],
     "expected_final_answer": "223990",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 223990.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31273,6 +31955,8 @@
       }
     ],
     "expected_final_answer": "780%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 7.8,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31359,6 +32043,8 @@
       }
     ],
     "expected_final_answer": "13.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13118,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31445,6 +32131,8 @@
       }
     ],
     "expected_final_answer": "-2.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0291,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31531,6 +32219,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 10.2,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31617,6 +32307,8 @@
       }
     ],
     "expected_final_answer": "6.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.06358,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31703,6 +32395,8 @@
       }
     ],
     "expected_final_answer": "58909091",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -900842.52252,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31845,6 +32539,8 @@
       }
     ],
     "expected_final_answer": "7.87%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.07879,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -31934,6 +32630,8 @@
       }
     ],
     "expected_final_answer": "213.45%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.1345,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32020,6 +32718,8 @@
       }
     ],
     "expected_final_answer": "-3.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.03438,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32106,6 +32806,8 @@
       }
     ],
     "expected_final_answer": "1450",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1450.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32192,6 +32894,8 @@
       }
     ],
     "expected_final_answer": "-56.19%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.5619,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32278,6 +32982,8 @@
       }
     ],
     "expected_final_answer": "-92.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.9228,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32364,6 +33070,8 @@
       }
     ],
     "expected_final_answer": "114%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.14,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32450,6 +33158,8 @@
       }
     ],
     "expected_final_answer": "-7.51%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0751,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32536,6 +33246,8 @@
       }
     ],
     "expected_final_answer": "11.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11713,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32622,6 +33334,8 @@
       }
     ],
     "expected_final_answer": "-4.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.04138,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32726,6 +33440,8 @@
       }
     ],
     "expected_final_answer": "211810",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2118100.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32813,6 +33529,8 @@
       }
     ],
     "expected_final_answer": "365.4",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 365.4316,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -32917,6 +33635,8 @@
       }
     ],
     "expected_final_answer": "290395",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 290395.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33004,6 +33724,8 @@
       }
     ],
     "expected_final_answer": "85.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.85714,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33146,6 +33868,8 @@
       }
     ],
     "expected_final_answer": "-22%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.22,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33235,6 +33959,8 @@
       }
     ],
     "expected_final_answer": "-43%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.43333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33321,6 +34047,8 @@
       }
     ],
     "expected_final_answer": "-7.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.07937,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33407,6 +34135,8 @@
       }
     ],
     "expected_final_answer": "11.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11713,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33511,6 +34241,8 @@
       }
     ],
     "expected_final_answer": "1.26",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.26207,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33598,6 +34330,8 @@
       }
     ],
     "expected_final_answer": "-71",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -71.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33722,6 +34456,8 @@
       }
     ],
     "expected_final_answer": "25.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.25532,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33810,6 +34546,8 @@
       }
     ],
     "expected_final_answer": "405",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 405.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33896,6 +34634,8 @@
       }
     ],
     "expected_final_answer": "-6.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.06063,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -33982,6 +34722,8 @@
       }
     ],
     "expected_final_answer": "6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.05988,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34068,6 +34810,8 @@
       }
     ],
     "expected_final_answer": "-1.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.01694,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34154,6 +34898,8 @@
       }
     ],
     "expected_final_answer": "13.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13704,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34240,6 +34986,8 @@
       }
     ],
     "expected_final_answer": "-5.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.05085,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34345,6 +35093,8 @@
       }
     ],
     "expected_final_answer": "6957",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 6957.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34432,6 +35182,8 @@
       }
     ],
     "expected_final_answer": "27.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.27403,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34518,6 +35270,8 @@
       }
     ],
     "expected_final_answer": "-32.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.3282,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34623,6 +35377,8 @@
       }
     ],
     "expected_final_answer": "50.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -99.49966,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34710,6 +35466,8 @@
       }
     ],
     "expected_final_answer": "58.2",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 58.2,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34796,6 +35554,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.43333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34882,6 +35642,8 @@
       }
     ],
     "expected_final_answer": "1375",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1375.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -34968,6 +35730,8 @@
       }
     ],
     "expected_final_answer": "100.5",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 100.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35073,6 +35837,8 @@
       }
     ],
     "expected_final_answer": "2.9266",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.92667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35160,6 +35926,8 @@
       }
     ],
     "expected_final_answer": "28910000",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 28910000.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35246,6 +36014,8 @@
       }
     ],
     "expected_final_answer": "35%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2845.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35332,6 +36102,8 @@
       }
     ],
     "expected_final_answer": "-79%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.79122,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35418,6 +36190,8 @@
       }
     ],
     "expected_final_answer": "40.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.40558,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35504,6 +36278,8 @@
       }
     ],
     "expected_final_answer": "3.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.03743,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35590,6 +36366,8 @@
       }
     ],
     "expected_final_answer": "-55.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.5544,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35676,6 +36454,8 @@
       }
     ],
     "expected_final_answer": ".33%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.00327,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35762,6 +36542,8 @@
       }
     ],
     "expected_final_answer": "8.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.08333,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35848,6 +36630,8 @@
       }
     ],
     "expected_final_answer": "-44%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.44118,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -35934,6 +36718,8 @@
       }
     ],
     "expected_final_answer": "3.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.03091,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36020,6 +36806,8 @@
       }
     ],
     "expected_final_answer": "11",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -99.89,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36106,6 +36894,8 @@
       }
     ],
     "expected_final_answer": "5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.05366,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36192,6 +36982,8 @@
       }
     ],
     "expected_final_answer": "14",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 14.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36278,6 +37070,8 @@
       }
     ],
     "expected_final_answer": "57.2",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 57.20703,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36364,6 +37158,8 @@
       }
     ],
     "expected_final_answer": "70.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.70203,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36506,6 +37302,8 @@
       }
     ],
     "expected_final_answer": "-5.61%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0561,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36593,6 +37391,8 @@
       }
     ],
     "expected_final_answer": "13.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13423,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36698,6 +37498,8 @@
       }
     ],
     "expected_final_answer": "31.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 31.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36823,6 +37625,8 @@
       }
     ],
     "expected_final_answer": "-287%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.87073,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36911,6 +37715,8 @@
       }
     ],
     "expected_final_answer": "179.35",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 179.345,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -36997,6 +37803,8 @@
       }
     ],
     "expected_final_answer": "70%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.70203,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37083,6 +37891,8 @@
       }
     ],
     "expected_final_answer": "68.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.67988,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37169,6 +37979,8 @@
       }
     ],
     "expected_final_answer": "19.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.18956,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37274,6 +38086,8 @@
       }
     ],
     "expected_final_answer": "81.6",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 81.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37361,6 +38175,8 @@
       }
     ],
     "expected_final_answer": "19.23%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.19231,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37447,6 +38263,8 @@
       }
     ],
     "expected_final_answer": "-14.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.14641,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37590,6 +38408,8 @@
       }
     ],
     "expected_final_answer": "26.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.26341,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37679,6 +38499,8 @@
       }
     ],
     "expected_final_answer": "40%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.4,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37765,6 +38587,8 @@
       }
     ],
     "expected_final_answer": "14.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.14273,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37851,6 +38675,8 @@
       }
     ],
     "expected_final_answer": "29.9",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 29.88986,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -37956,6 +38782,8 @@
       }
     ],
     "expected_final_answer": "145.97",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 640.9,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38043,6 +38871,8 @@
       }
     ],
     "expected_final_answer": "3.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.03091,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38147,6 +38977,8 @@
       }
     ],
     "expected_final_answer": "98180",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 98180.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38234,6 +39066,8 @@
       }
     ],
     "expected_final_answer": "218.46%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 2.1846,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38320,6 +39154,8 @@
       }
     ],
     "expected_final_answer": "-46.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.46798,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38406,6 +39242,8 @@
       }
     ],
     "expected_final_answer": "7.96%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.07965,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38492,6 +39330,8 @@
       }
     ],
     "expected_final_answer": "53.24%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.5324,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38578,6 +39418,8 @@
       }
     ],
     "expected_final_answer": "14.77",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -1047.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38664,6 +39506,8 @@
       }
     ],
     "expected_final_answer": "-11.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.11404,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38750,6 +39594,8 @@
       }
     ],
     "expected_final_answer": "45.51",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.4551,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38836,6 +39682,8 @@
       }
     ],
     "expected_final_answer": "3.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.0346,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -38922,6 +39770,8 @@
       }
     ],
     "expected_final_answer": "25%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.25199,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39008,6 +39858,8 @@
       }
     ],
     "expected_final_answer": "63.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.63055,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39132,6 +39984,8 @@
       }
     ],
     "expected_final_answer": "56.3",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 56.3,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39220,6 +40074,8 @@
       }
     ],
     "expected_final_answer": "283",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 283.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39306,6 +40162,8 @@
       }
     ],
     "expected_final_answer": "1.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.00971,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39392,6 +40250,8 @@
       }
     ],
     "expected_final_answer": "",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.58974,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39478,6 +40338,8 @@
       }
     ],
     "expected_final_answer": "-7.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.07394,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39564,6 +40426,8 @@
       }
     ],
     "expected_final_answer": "14.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.14243,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39650,6 +40514,8 @@
       }
     ],
     "expected_final_answer": "0.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.00338,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39736,6 +40602,8 @@
       }
     ],
     "expected_final_answer": "8.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.08639,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39822,6 +40690,8 @@
       }
     ],
     "expected_final_answer": "327",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 327.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39908,6 +40778,8 @@
       }
     ],
     "expected_final_answer": "26%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.25594,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -39994,6 +40866,8 @@
       }
     ],
     "expected_final_answer": "-2.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02828,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40080,6 +40954,8 @@
       }
     ],
     "expected_final_answer": "34.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.34946,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40166,6 +41042,8 @@
       }
     ],
     "expected_final_answer": "-2.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.02393,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40250,6 +41128,8 @@
       }
     ],
     "expected_final_answer": "78.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.78082,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40355,6 +41235,8 @@
       }
     ],
     "expected_final_answer": "325.7",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 980.3,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40442,6 +41324,8 @@
       }
     ],
     "expected_final_answer": "10.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 9.3,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40528,6 +41412,8 @@
       }
     ],
     "expected_final_answer": "-11%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.10819,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40614,6 +41500,8 @@
       }
     ],
     "expected_final_answer": "-28%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -905.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40700,6 +41588,8 @@
       }
     ],
     "expected_final_answer": "-25%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.25181,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40786,6 +41676,8 @@
       }
     ],
     "expected_final_answer": "60.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.60875,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40872,6 +41764,8 @@
       }
     ],
     "expected_final_answer": "43.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.4369,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -40958,6 +41852,8 @@
       }
     ],
     "expected_final_answer": "27.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.27403,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41044,6 +41940,8 @@
       }
     ],
     "expected_final_answer": "12.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.12,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41130,6 +42028,8 @@
       }
     ],
     "expected_final_answer": "9.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.09405,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41272,6 +42172,8 @@
       }
     ],
     "expected_final_answer": "14.91%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.14913,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41361,6 +42263,8 @@
       }
     ],
     "expected_final_answer": "-25.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.25,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41447,6 +42351,8 @@
       }
     ],
     "expected_final_answer": "2.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02256,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41533,6 +42439,8 @@
       }
     ],
     "expected_final_answer": "-3.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0365,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41619,6 +42527,8 @@
       }
     ],
     "expected_final_answer": "150%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.5,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41705,6 +42615,8 @@
       }
     ],
     "expected_final_answer": "3.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.03008,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41791,6 +42703,8 @@
       }
     ],
     "expected_final_answer": "-29.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.29907,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41877,6 +42791,8 @@
       }
     ],
     "expected_final_answer": "9.8",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 9.8,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -41963,6 +42879,8 @@
       }
     ],
     "expected_final_answer": "26.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.26856,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42049,6 +42967,8 @@
       }
     ],
     "expected_final_answer": "-12.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.12329,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42154,6 +43074,8 @@
       }
     ],
     "expected_final_answer": "33.1%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.33084,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42241,6 +43163,8 @@
       }
     ],
     "expected_final_answer": "296",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 296.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42327,6 +43251,8 @@
       }
     ],
     "expected_final_answer": "$ 9015431",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 9015431.44,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42413,6 +43339,8 @@
       }
     ],
     "expected_final_answer": "51.2%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.51172,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42499,6 +43427,8 @@
       }
     ],
     "expected_final_answer": "2.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.02564,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42585,6 +43515,8 @@
       }
     ],
     "expected_final_answer": "53.55%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.5355,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42671,6 +43603,8 @@
       }
     ],
     "expected_final_answer": "32.3%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.32258,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42757,6 +43691,8 @@
       }
     ],
     "expected_final_answer": "-24.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.2445,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42843,6 +43779,8 @@
       }
     ],
     "expected_final_answer": "13.6%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.13621,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -42929,6 +43867,8 @@
       }
     ],
     "expected_final_answer": "8.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.08493,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43015,6 +43955,8 @@
       }
     ],
     "expected_final_answer": "658",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 658.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43101,6 +44043,8 @@
       }
     ],
     "expected_final_answer": "30.7%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.30702,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43187,6 +44131,8 @@
       }
     ],
     "expected_final_answer": "the interest decreased 25.7% from year 1 to years 3-5",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.25741,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43273,6 +44219,8 @@
       }
     ],
     "expected_final_answer": "88.81%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.88816,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43359,6 +44307,8 @@
       }
     ],
     "expected_final_answer": "-21.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.21029,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43445,6 +44395,8 @@
       }
     ],
     "expected_final_answer": "50",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 50.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43531,6 +44483,8 @@
       }
     ],
     "expected_final_answer": "528.4",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 528.4,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43617,6 +44571,8 @@
       }
     ],
     "expected_final_answer": "102%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 1.02432,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43703,6 +44659,8 @@
       }
     ],
     "expected_final_answer": "-10%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.1,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43789,6 +44747,8 @@
       }
     ],
     "expected_final_answer": "34.4%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.34363,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43875,6 +44835,8 @@
       }
     ],
     "expected_final_answer": "-312",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -312.0,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -43961,6 +44923,8 @@
       }
     ],
     "expected_final_answer": "16.5%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.16498,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44066,6 +45030,8 @@
       }
     ],
     "expected_final_answer": "43.9%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.4386,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44153,6 +45119,8 @@
       }
     ],
     "expected_final_answer": "11.8%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.11797,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44239,6 +45207,8 @@
       }
     ],
     "expected_final_answer": "11.2",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 11.16667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44343,6 +45313,8 @@
       }
     ],
     "expected_final_answer": "3462694",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 3462694.66,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44430,6 +45402,8 @@
       }
     ],
     "expected_final_answer": "35%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 0.35477,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44516,6 +45490,8 @@
       }
     ],
     "expected_final_answer": "-1.0%",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": -0.0098,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44621,6 +45597,8 @@
       }
     ],
     "expected_final_answer": "90.67",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 90.66667,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",
@@ -44708,6 +45686,8 @@
       }
     ],
     "expected_final_answer": "4.4",
+    "final_program_execution_contract": "finqa_program_execution",
+    "expected_final_program_result": 4.4,
     "perturbation_type": "gold_program_sequence",
     "notes": "Exact FinQA test question with one ordered tool call per exact gold program operation.",
     "source_dataset": "FinQA",

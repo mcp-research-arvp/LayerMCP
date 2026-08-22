@@ -255,6 +255,14 @@ class FinanceMultistepBenchmarkTests(unittest.TestCase):
                 expected["programs"],
             )
             self.assertEqual(row["source_execution_answers"], expected["answers"])
+            self.assertEqual(
+                row["final_program_execution_contract"],
+                "convfinqa_program_execution",
+            )
+            self.assertEqual(
+                row["expected_final_program_result"],
+                expected["answers"][-1],
+            )
             self.assertEqual(row["source_revision"], SOURCE_REVISION)
             self.assertEqual(row["source_license"], "MIT")
             self.assertEqual(

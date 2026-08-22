@@ -125,6 +125,12 @@ Difficulty comes from the public source levels:
 
 - Workflows: 50
 - Expected steps: 105
+
+Each workflow uses `exact_normalized_json` for its final-step outcome contract.
+The evaluator compares the complete normalized final tool result to
+the expected object, including the exact set of object keys. This diagnostic is
+reported separately from tool selection, argument accuracy, and all-step
+outcome metrics; the guided protocol does not score a user-facing final answer.
 - Source: `controlled_synthetic`
 - Domain: `mathematics`
 - Task type: `multi_step_tool_routing`

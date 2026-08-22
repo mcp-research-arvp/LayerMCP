@@ -14,6 +14,10 @@ import tempfile
 from typing import Any
 
 from analysis.multi_step_run import (
+    STEP_OUTCOME_FIELDS,
+    WORKFLOW_OUTCOME_FIELDS,
+    _require_fields,
+    _require_optional_complete_bundle,
     dataset_counts,
     validate_and_index_multistep,
     validate_complete_multistep_run,
@@ -21,12 +25,13 @@ from analysis.multi_step_run import (
 from analysis.run_artifacts import _load_json_object, _load_jsonl_objects
 from evaluation.evaluate import (
     MULTISTEP_EVALUATION_PROTOCOL,
+    OUTCOME_METRIC_NAMES,
     PREDICTED_ROLLOUT_EXECUTION_MODE,
     _build_multistep_metrics,
 )
 
 
-RECOVERY_METHOD = "summary_only_from_complete_saved_workflows_v1"
+RECOVERY_METHOD = "summary_only_from_complete_saved_workflows"
 
 
 def _sha256(path: Path) -> str:
@@ -124,6 +129,14 @@ def _validate_source_benchmark_metadata(
             "Source run metadata benchmark_paths does not match supplied benchmark"
         )
 
+    recorded_hash = _metadata_entry_for_benchmark(
+        metadata.get("benchmark_sha256"),
+        field="benchmark_sha256",
+        benchmark=benchmark,
+    )
+    if recorded_hash != _sha256(benchmark):
+        raise ValueError("Source run metadata benchmark SHA-256 mismatch")
+
     source_counts = _metadata_entry_for_benchmark(
         metadata.get("source_counts"), field="source_counts", benchmark=benchmark
     )
@@ -215,13 +228,37 @@ def recover_multistep_run(
         "reasoning_method", "effective_generation_limit",
         "effective_generation_limit_unit", "tool_pool", "tool_count",
         "tool_registry_fingerprint", "tool_registry_fingerprint_version",
-        "benchmark_mode", "workflow_execution_mode",
+        "benchmark_mode", "workflow_execution_mode", "outcome_metric_names",
     )
     values = {field: _uniform(records, field) for field in required_record_fields}
     if values["evaluation_protocol"] != MULTISTEP_EVALUATION_PROTOCOL:
         raise ValueError("Saved workflows use an unsupported evaluation protocol")
     if values["workflow_execution_mode"] != PREDICTED_ROLLOUT_EXECUTION_MODE:
         raise ValueError("Saved workflows are not predicted-sequence rollout records")
+    if values["outcome_metric_names"] != list(OUTCOME_METRIC_NAMES):
+        raise ValueError("Saved workflows declare unexpected outcome metrics")
+    if metadata.get("outcome_metric_names") != list(OUTCOME_METRIC_NAMES):
+        raise ValueError("Source metadata declares unexpected outcome metrics")
+    for record in records:
+        workflow_id = str(record.get("sample_id"))
+        _require_fields(record, WORKFLOW_OUTCOME_FIELDS, f"Workflow {workflow_id}")
+        _require_optional_complete_bundle(
+            record,
+            (
+                "expected_final_program_result",
+                "final_program_execution_contract",
+                "final_program_execution_correct",
+                "final_program_execution_status",
+                "final_program_execution_matcher",
+            ),
+            f"Workflow {workflow_id} final program outcome",
+        )
+        for step in record["steps"]:
+            _require_fields(
+                step,
+                STEP_OUTCOME_FIELDS,
+                f"Workflow {workflow_id} step {step.get('step_id')}",
+            )
     if values["model_name"] != metadata.get("expected_model_name"):
         raise ValueError("Saved model does not match source run metadata")
     for field, metadata_field in (
@@ -265,6 +302,7 @@ def recover_multistep_run(
     summary = {
         "timestamp": source_run.name.split("_", 1)[0],
         "benchmark_path": original_benchmark_identity,
+        "benchmark_sha256": original_benchmark_hash,
         "model_name": values["model_name"],
         "router_id": first.get("router_id"),
         "router_backend": first.get("router_backend"),
@@ -303,8 +341,13 @@ def recover_multistep_run(
     }
     recovered_metadata = {
         **metadata,
+        "git_commit": recovery_commit,
+        "source_git_commit": metadata.get("git_commit"),
         "source_run_metadata": metadata,
         "benchmark_paths": [original_benchmark_identity],
+        "benchmark_sha256": {
+            original_benchmark_identity: original_benchmark_hash,
+        },
         "source_counts": {
             original_benchmark_identity: {
                 "workflows": expected_workflows,
@@ -322,6 +365,28 @@ def recover_multistep_run(
         "source_run_path": str(source_run),
         "source_job_id": str(metadata.get("slurm_job_id")),
         "source_artifact_sha256": source_hashes,
+        "outcome_metric_names": list(OUTCOME_METRIC_NAMES),
+        "outcome_metric_summaries": {
+            original_benchmark_identity: {
+                key: value
+                for key, value in summary.items()
+                if key in {
+                    "outcome_metric_names",
+                    "tool_selection_accuracy",
+                    "argument_accuracy",
+                    "step_outcome_accuracy",
+                    "step_outcome_scored",
+                    "step_outcome_status_counts",
+                    "step_outcome_matchers",
+                    "all_tools_correct_accuracy",
+                    "all_arguments_correct_accuracy",
+                    "all_steps_correct_accuracy",
+                    "all_steps_correct_scored",
+                }
+                or key.startswith("final_step_outcome_")
+                or key.startswith("final_program_execution_")
+            }
+        },
     }
 
     output_run.parent.mkdir(parents=True, exist_ok=True)

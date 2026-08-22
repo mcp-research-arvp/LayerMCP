@@ -595,6 +595,8 @@ def _multistep_sample(
         "query": qa["question"],
         "expected_steps": expected_steps,
         "expected_final_answer": qa.get("answer"),
+        "final_program_execution_contract": "finqa_program_execution",
+        "expected_final_program_result": qa["exe_ans"],
         "perturbation_type": "gold_program_sequence",
         "notes": (
             "Exact FinQA test question with one ordered tool call per exact "

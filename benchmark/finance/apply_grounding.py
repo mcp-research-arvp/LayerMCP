@@ -102,8 +102,8 @@ def ground_benchmark_rows(
     return grounded_rows
 
 
-def _render_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+def _render_json(value: Any, *, ensure_ascii: bool = False) -> str:
+    return json.dumps(value, ensure_ascii=ensure_ascii, indent=2) + "\n"
 
 
 def apply_grounding(*, check: bool = False) -> list[Path]:
@@ -115,7 +115,13 @@ def apply_grounding(*, check: bool = False) -> list[Path]:
             isinstance(row, dict) for row in rows
         ):
             raise ValueError(f"{path} must contain a list of objects.")
-        rendered = _render_json(ground_benchmark_rows(rows, tables))
+        # The deterministic FinRetrieval builder intentionally emits escaped
+        # JSON so its parquet-derived artifact reproduces byte for byte.
+        ensure_ascii = path.name == "finance_finretrieval_replay_multistep.json"
+        rendered = _render_json(
+            ground_benchmark_rows(rows, tables),
+            ensure_ascii=ensure_ascii,
+        )
         current = path.read_text(encoding="utf-8")
         if rendered == current:
             continue

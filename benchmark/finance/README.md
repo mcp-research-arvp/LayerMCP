@@ -91,6 +91,11 @@ projects or live clients for their services.
   4.0 license, and the changes made for this repository.
 - `fixtures/convfinqa_dev_cells.json` contains the 20 normalized evidence rows
   needed by the selected ConvFinQA conversations.
+- `fixtures/convfinqa_dev_source_subset.json` preserves the exact source-owned
+  fields extracted from the ten pinned development rows for offline validation.
+- `fixtures/convfinqa_build_manifest.json` records the source, subset,
+  translation, model-facing, benchmark, and fixture hashes produced by the
+  deterministic builder.
 - `fixtures/CONVFINQA_ATTRIBUTION.md` and `fixtures/CONVFINQA_LICENSE.txt`
   record the pinned ConvFinQA source, archive hash, paper, and MIT license.
 
@@ -177,8 +182,16 @@ executed results, so errors propagate. Gold prior answers and reference-prefix
 state replay are not used, and dependent-step contexts with gold-resolved
 expressions are withheld. These metrics therefore measure guided rollout over
 the supplied plan, not autonomous decomposition from only the top-level query.
-The final executed scalar is scored against a non-empty
-`expected_final_answer`; no separate natural-language response is synthesized.
+The guided workflow does not generate a post-tool model response, so upstream
+display answers are retained only as provenance and are not scored. The
+The evaluator reports tool selection, argument accuracy, step-outcome
+accuracy, all-steps-correct accuracy, and final-step outcome accuracy
+independently. FinRetrieval's final structured evidence is
+therefore compared only with its final step's structured expected result, never
+with the upstream prose response. FinQA and ConvFinQA additionally report
+`final_program_execution_accuracy`: the saved final tool scalar is rounded to
+five decimal places and compared with the source `exe_ans`. This is
+program-execution accuracy, not displayed-answer accuracy.
 
 Finance prompt contexts use four versioned JSON kinds:
 
@@ -257,6 +270,10 @@ benchmark rows: 757 single-step rows and 985 multi-step workflows.
 The importers are deterministic and offline:
 
 ```bash
+python benchmark/finance/build_convfinqa_multistep.py \
+  --source-archive /path/to/ConvFinQA/data.zip \
+  --output-root benchmark/finance
+
 python benchmark/finance/build_finqa_expansion.py \
   --source-test /path/to/FinQA/dataset/test.json
 

@@ -115,6 +115,8 @@
       }
     ],
     "expected_final_answer": "142.4%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 1.42403,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 0,
@@ -187,6 +189,8 @@
       }
     ],
     "expected_final_answer": "10.83%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 10.82621,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 2,
@@ -322,6 +326,8 @@
       }
     ],
     "expected_final_answer": "-10%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": -0.09709,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 3,
@@ -460,6 +466,8 @@
       }
     ],
     "expected_final_answer": "11%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 0.10745,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 6,
@@ -532,6 +540,8 @@
       }
     ],
     "expected_final_answer": "24.69%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 24.69136,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 7,
@@ -643,6 +653,8 @@
       }
     ],
     "expected_final_answer": "1.7%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 0.01743,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 8,
@@ -729,6 +741,8 @@
       }
     ],
     "expected_final_answer": "1877",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 18770.0,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 9,
@@ -799,6 +813,8 @@
       }
     ],
     "expected_final_answer": "7.51%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 0.07513,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 10,
@@ -910,6 +926,8 @@
       }
     ],
     "expected_final_answer": "8%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 0.0814,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 11,
@@ -1006,6 +1024,8 @@
       }
     ],
     "expected_final_answer": "1.4%",
+    "final_program_execution_contract": "convfinqa_program_execution",
+    "expected_final_program_result": 0.01408,
     "source_dataset": "ConvFinQA",
     "source_split": "dev",
     "source_row_index": 13,

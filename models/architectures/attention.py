@@ -10,10 +10,10 @@ from torch.nn.attention import SDPBackend, sdpa_kernel
 from torch.nn.attention.bias import causal_lower_right
 
 
-CUDA_MEMORY_EFFICIENT_BACKENDS = (
+CUDA_MEMORY_EFFICIENT_BACKENDS = [
     SDPBackend.FLASH_ATTENTION,
     SDPBackend.EFFICIENT_ATTENTION,
-)
+]
 
 
 def causal_scaled_dot_product_attention(

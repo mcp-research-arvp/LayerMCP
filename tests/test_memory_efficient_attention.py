@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import torch
+from torch.nn.attention import sdpa_kernel
 from torch.nn.attention.bias import CausalBias
 
 from models.architectures.attention import (
@@ -189,6 +190,10 @@ class MemoryEfficientAttentionTests(unittest.TestCase):
 
     def test_cuda_backend_allowlist_excludes_quadratic_math_fallback(self) -> None:
         self.assertNotIn(torch.nn.attention.SDPBackend.MATH, CUDA_MEMORY_EFFICIENT_BACKENDS)
+
+    def test_cuda_backend_allowlist_enters_real_sdpa_context(self) -> None:
+        with sdpa_kernel(CUDA_MEMORY_EFFICIENT_BACKENDS):
+            pass
 
     def test_invalid_cache_geometry_fails_before_attention(self) -> None:
         with self.assertRaisesRegex(ValueError, "key length must equal"):

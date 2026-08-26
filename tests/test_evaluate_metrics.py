@@ -882,6 +882,60 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertEqual(score.status, "correct")
         self.assertEqual(score.matcher, "finqa_program_execution")
 
+    def test_finqa_value_only_outcome_accepts_equivalent_expression(self) -> None:
+        score = _score_final_outcome(
+            expected_answer={"result": 2},
+            tool_result_value={"expression": "2", "result": 2},
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="calculator",
+            called_tool="calculator",
+        )
+        self.assertTrue(score.correct)
+        self.assertEqual(score.matcher, "recursive_json_subset_v1")
+
+        wrong = _score_final_outcome(
+            expected_answer={"result": 2},
+            tool_result_value={"expression": "1 + 2", "result": 3},
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="calculator",
+            called_tool="calculator",
+        )
+        self.assertFalse(wrong.correct)
+
+    def test_finqa_equivalent_expression_remains_an_argument_mismatch(self) -> None:
+        score = _score_sample(
+            expected_tool="calculator",
+            selected_tool="calculator",
+            expected_args={"expression": "1 + 1"},
+            selected_args={"expression": "2"},
+            execution_success=True,
+            execution_attempted=True,
+        )
+        self.assertTrue(score.tool_selection_correct)
+        self.assertFalse(score.argument_match_correct)
+
+    def test_finqa_value_outcome_does_not_accept_implicit_percentage_scaling(self) -> None:
+        score = _score_final_outcome(
+            expected_answer={"result": 0.2},
+            tool_result_value={"expression": "20", "result": 20},
+            result_extraction_diagnostic=None,
+            domain="finance",
+            call_predicted_tools=True,
+            no_tool_call=False,
+            execution_success=True,
+            expected_tool="calculator",
+            called_tool="calculator",
+        )
+        self.assertFalse(score.correct)
+
     def test_convfinqa_program_execution_uses_canonical_result(self) -> None:
         score = _score_final_program_execution(
             expected_final_program_result=1.42403,

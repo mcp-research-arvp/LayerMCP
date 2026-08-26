@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.architectures.attention import causal_scaled_dot_product_attention
 from models.architectures.llama31_8b_pytorch.weights import Checkpoint
 
 
@@ -228,21 +229,19 @@ class AttentionBlock(nn.Module):
         offset: torch.LongTensor,
     ) -> torch.Tensor:
         batch_size, seq_len, _, _ = q.shape
-        n_ctx = k.shape[1]
         offset_int = int(offset.item())
 
         q = q.transpose(1, 2)
-        k = k.repeat_interleave(self.num_groups, dim=2).transpose(1, 2)
-        v = v.repeat_interleave(self.num_groups, dim=2).transpose(1, 2)
+        k = k.transpose(1, 2)
+        v = v.transpose(1, 2)
 
-        attn = torch.matmul(q, k.transpose(-2, -1)) * self.sm_scale
-        causal_mask = torch.triu(
-            attn.new_full((seq_len, n_ctx), -float("inf")),
-            diagonal=offset_int + 1,
+        out = causal_scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            offset=offset_int,
+            scale=self.sm_scale,
         )
-        attn = attn + causal_mask.unsqueeze(0).unsqueeze(0)
-        attn = F.softmax(attn.float(), dim=-1).to(q.dtype)
-        out = torch.matmul(attn, v)
         return out.transpose(1, 2).reshape(batch_size, seq_len, -1)
 
     def forward(self, x: torch.Tensor, cache: Cache | None = None) -> torch.Tensor:

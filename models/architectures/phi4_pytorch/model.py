@@ -4,6 +4,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from models.architectures.attention import causal_scaled_dot_product_attention
 from models.architectures.phi4_pytorch.weights import Checkpoint
 from dataclasses import dataclass
 
@@ -280,21 +281,13 @@ class AttentionBlock(nn.Module):
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
 
-        k = repeat_kv(k, self.num_key_value_groups)
-        v = repeat_kv(v, self.num_key_value_groups)
-        n_ctx = k.shape[2]
-
-        # Attention logits in fp32 for stability (matches HF eager path).
-        attn = torch.matmul(q.float(), k.float().transpose(2, 3)) * self.scaling
-
-        # Causal mask aligned to the cache offset: query at local index t maps to
-        # absolute position offset + t, so anything strictly future is masked.
-        mask = torch.full((seq_len, n_ctx), float("-inf"), device=x.device, dtype=torch.float32)
-        mask = torch.triu(mask, diagonal=offset + 1)
-        attn = attn + mask[None, None]
-
-        attn = torch.softmax(attn, dim=-1).to(v.dtype)
-        out = torch.matmul(attn, v)               # (B, H, S, D)
+        out = causal_scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            offset=offset,
+            scale=self.scaling,
+        )
         out = out.transpose(1, 2).reshape(batch_size, seq_len, -1)
         return self.o_proj(out)
 

@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import inspect
+import hashlib
 import json
+import os
 import re
 import unittest
 from collections import Counter
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from benchmark.finance.build_finqa_expansion import (
     FINQA_EXCLUSION_POLICY,
     INTENTIONALLY_EXCLUDED_LONG_CONTEXT_FINQA_SOURCE_INDICES,
+    SOURCE_FILE_SHA256,
+    build_expansion,
 )
 from evaluation.evaluate import BenchmarkSample, load_benchmark
 from mcp_server import finance_tools
@@ -36,6 +41,9 @@ FINRETRIEVAL_FIXTURE_PATH = (
 
 FINQA_DATASET_ID = "finqa-public-test-program-results-v1"
 FINQA_SOURCE_REVISION = "0f16e2867befa6840783e58be38c9efb9229d742"
+FINQA_MULTISTEP_NON_OUTCOME_PROJECTION_SHA256 = (
+    "65f80836e458458c9a0c00e07ee6be40fa27a35b3ab168cfa6fb0ceca72dd6c7"
+)
 FINQA_TOTAL_TEST_ROWS = 1_147
 FINRETRIEVAL_TOTAL_QUESTIONS = 500
 UNSUPPORTED_FINRETRIEVAL_INDICES = {253, 455}
@@ -275,6 +283,67 @@ class FinancePublicExpansionTests(unittest.TestCase):
             Counter({2: 407, 3: 54, 4: 10, 5: 19}),
         )
         self.assertEqual(total_steps, 1_111)
+
+    def test_finqa_calculator_arguments_and_outcomes_are_separate(self) -> None:
+        calculator_steps = [
+            step
+            for row in self.raw_finqa_multistep
+            for step in row["expected_steps"]
+            if step["expected_tool"] == "calculator"
+        ]
+        self.assertEqual(len(calculator_steps), 620)
+        for step in calculator_steps:
+            with self.subTest(step=step["id"], source=step["source_program"]):
+                self.assertEqual(set(step["expected_args"]), {"expression"})
+                self.assertIsInstance(step["expected_args"]["expression"], str)
+                self.assertEqual(set(step["expected_answer"]), {"result"})
+
+        for row in self.raw_finqa_multistep:
+            for step in row["expected_steps"]:
+                if step["expected_tool"] == "finance_query_table":
+                    self.assertEqual(
+                        set(step["expected_answer"]),
+                        {"dataset_id", "columns", "rows", "row_count", "truncated"},
+                    )
+
+    def test_finqa_multistep_non_outcome_projection_is_unchanged(self) -> None:
+        projection = json.loads(json.dumps(self.raw_finqa_multistep))
+        for row in projection:
+            for step in row["expected_steps"]:
+                step.pop("expected_answer")
+        canonical = json.dumps(
+            projection,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        self.assertEqual(
+            hashlib.sha256(canonical).hexdigest(),
+            FINQA_MULTISTEP_NON_OUTCOME_PROJECTION_SHA256,
+        )
+
+    def test_pinned_source_rebuild_matches_every_committed_artifact(self) -> None:
+        source_value = os.environ.get("LAYERMCP_FINQA_SOURCE_TEST")
+        if not source_value:
+            self.skipTest("LAYERMCP_FINQA_SOURCE_TEST is not set")
+        source_path = Path(source_value)
+        self.assertTrue(source_path.is_file())
+        self.assertEqual(
+            hashlib.sha256(source_path.read_bytes()).hexdigest(),
+            SOURCE_FILE_SHA256,
+        )
+        with TemporaryDirectory() as temporary:
+            first_root = Path(temporary) / "first"
+            second_root = Path(temporary) / "second"
+            first = build_expansion(source_path, first_root)
+            second = build_expansion(source_path, second_root)
+            for first_path, second_path, committed_path in (
+                (first.single_path, second.single_path, FINQA_SINGLE_PATH),
+                (first.multistep_path, second.multistep_path, FINQA_MULTISTEP_PATH),
+                (first.fixture_path, second.fixture_path, FINQA_FIXTURE_PATH),
+            ):
+                self.assertEqual(first_path.read_bytes(), second_path.read_bytes())
+                self.assertEqual(first_path.read_bytes(), committed_path.read_bytes())
 
     def test_expected_tools_are_in_the_full_registry_without_row_menus(self) -> None:
         registered_tools = set(mcp._tool_manager._tools)

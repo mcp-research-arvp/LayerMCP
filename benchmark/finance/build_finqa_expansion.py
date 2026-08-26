@@ -464,10 +464,7 @@ def _calculator_call(
     expression = _calculator_expression(operation, prior_results)
     return (
         {"expression": expression},
-        {
-            "expression": expression,
-            "result": operation.runtime_result,
-        },
+        {"result": operation.runtime_result},
     )
 
 

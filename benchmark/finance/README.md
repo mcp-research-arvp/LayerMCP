@@ -193,6 +193,14 @@ with the upstream prose response. FinQA and ConvFinQA additionally report
 five decimal places and compared with the source `exe_ans`. This is
 program-execution accuracy, not displayed-answer accuracy.
 
+For FinQA and ConvFinQA calculator steps, `expected_args.expression` preserves
+the exact mechanically translated reference expression. Exact Argument Match
+therefore measures fidelity to that expression. The semantic `expected_answer`
+contains only `result`, so Step Outcome and Final Step Outcome accept an
+equivalent expression only when it computes the same numeric value under the
+ordinary recursive numeric matcher. They do not treat `x` and `100*x` as
+equivalent.
+
 Finance prompt contexts use four versioned JSON kinds:
 
 - `finance_table_query_grounding_v1` supplies the valid dataset ID, the `data`

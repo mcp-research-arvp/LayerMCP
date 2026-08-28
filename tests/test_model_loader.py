@@ -15,6 +15,26 @@ from models.model_loader import LoadedModelComponents
 
 
 class ModelLoaderTests(unittest.TestCase):
+    def test_qwen_transformer_can_limit_logits_to_the_final_token(self) -> None:
+        from models.architectures.qwen36_pytorch.model import Transformer
+
+        hidden = torch.arange(24, dtype=torch.float32).reshape(1, 3, 8)
+        fake_transformer = SimpleNamespace(
+            model=Mock(return_value=hidden),
+            lm_head=Mock(side_effect=lambda values: values),
+        )
+
+        full_logits = Transformer.forward(fake_transformer, torch.tensor([[1, 2, 3]]))
+        final_logits = Transformer.forward(
+            fake_transformer,
+            torch.tensor([[1, 2, 3]]),
+            last_token_only=True,
+        )
+
+        self.assertEqual(tuple(full_logits.shape), (1, 3, 8))
+        self.assertEqual(tuple(final_logits.shape), (1, 1, 8))
+        torch.testing.assert_close(final_logits, full_logits[:, -1:, :])
+
     def test_resolves_default_model_name(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
             self.assertEqual(

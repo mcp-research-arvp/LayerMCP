@@ -21,6 +21,8 @@ dist/
 results/
 *.log
 slurm_logs/
+/slurm-*.out
+/slurm-*.err
 job*.sh
 
 # Keep only the canonical evaluation launcher; other local Slurm helpers remain local.

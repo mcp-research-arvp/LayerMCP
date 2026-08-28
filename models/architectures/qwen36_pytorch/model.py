@@ -729,8 +729,17 @@ class Transformer(nn.Module):
         self.model = Qwen35TextModel(configs, device, dtype)
         self.lm_head = nn.Linear(configs.hidden_size, configs.vocab_size, bias=False, device=device, dtype=dtype)
 
-    def forward(self, input_ids, caches=None, position_ids=None):
+    def forward(self, input_ids, caches=None, position_ids=None, *, last_token_only: bool = False):
+        """Return vocabulary logits, optionally only for the final input position.
+
+        Autoregressive generation needs logits for just the final prompt token.
+        Skipping the output projection for earlier positions avoids materializing a
+        large ``(batch, sequence, vocabulary)`` tensor for long prompts.  The
+        default retains full-sequence logits for diagnostics and layer analysis.
+        """
         hidden = self.model(input_ids, caches=caches, position_ids=position_ids)
+        if last_token_only:
+            hidden = hidden[:, -1:, :]
         return self.lm_head(hidden).float()
 
     # ------------------------------------------------------------------ #
@@ -850,4 +859,3 @@ def _parse_hf_config(raw: dict) -> ModelConfigs:
         mlp_only_layers=text.get("mlp_only_layers", None),
         shared_expert_intermediate_size=text.get("shared_expert_intermediate_size", 0) or 0,
     )
-

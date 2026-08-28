@@ -195,7 +195,12 @@ class TokenGenerator:
         prefill_start = time.time()
         input_tensor = torch.as_tensor([tokens], dtype=torch.long, device=self.device)
         position_ids = torch.arange(len(tokens), device=self.device)[None, :]
-        logits = self.model(input_tensor, caches=caches, position_ids=position_ids)[:, -1, :].squeeze(0)
+        logits = self.model(
+            input_tensor,
+            caches=caches,
+            position_ids=position_ids,
+            last_token_only=True,
+        )[:, -1, :].squeeze(0)
         print(f"\u2713 Prefill complete in {time.time() - prefill_start:.2f}s")
 
         # --- Decode ---
@@ -210,7 +215,12 @@ class TokenGenerator:
             if num_generated > 0:
                 input_tensor = torch.as_tensor([[predicted_token]], dtype=torch.long, device=self.device)
                 position_ids = torch.as_tensor([[cur_pos]], dtype=torch.long, device=self.device)
-                logits = self.model(input_tensor, caches=caches, position_ids=position_ids)[:, -1, :].squeeze(0)
+                logits = self.model(
+                    input_tensor,
+                    caches=caches,
+                    position_ids=position_ids,
+                    last_token_only=True,
+                )[:, -1, :].squeeze(0)
                 cur_pos += 1
 
             predicted_token = self._sample(logits, temperature, top_p, top_k)

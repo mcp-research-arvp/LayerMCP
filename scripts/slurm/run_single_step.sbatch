@@ -242,6 +242,10 @@ esac
 
 if [[ -n "${DATASET_SELECTION:-}" ]]; then
   IFS=':' read -r -a BENCHMARKS <<< "$DATASET_SELECTION"
+  case "$RUN_KIND" in
+    smoke) ALLOWED_BENCHMARKS=("${SMOKE_BENCHMARKS[@]}") ;;
+    primary) ALLOWED_BENCHMARKS=("${PRIMARY_BENCHMARKS[@]}") ;;
+  esac
   [[ "${#BENCHMARKS[@]}" -gt 0 ]] || {
     echo "DATASET_SELECTION must contain at least one colon-separated benchmark path" >&2
     exit 2
@@ -252,7 +256,7 @@ if [[ -n "${DATASET_SELECTION:-}" ]]; then
       exit 2
     fi
     is_allowed_benchmark=0
-    for allowed_benchmark in "${SMOKE_BENCHMARKS[@]}" "${PRIMARY_BENCHMARKS[@]}"; do
+    for allowed_benchmark in "${ALLOWED_BENCHMARKS[@]}"; do
       if [[ "$selected_benchmark" == "$allowed_benchmark" ]]; then
         is_allowed_benchmark=1
         break

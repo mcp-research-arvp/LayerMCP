@@ -113,7 +113,8 @@ if [[ -n "$generic_datasets" ]]; then
 fi
 
 if (( run_single )); then
-  single_selection="$(resolve_single_dataset_selection "$selected_domains" "$single_datasets")"
+  validate_single_run_kind "$single_run_kind"
+  single_selection="$(resolve_single_dataset_selection "$selected_domains" "$single_datasets" "$single_run_kind")"
   submit_single_steps "$selected_model" "$single_run_kind" "$single_selection" "$dry_run"
 fi
 if (( run_multi )); then

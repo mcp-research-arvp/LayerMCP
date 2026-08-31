@@ -744,7 +744,12 @@ Use `--multi-run-kind short_test` for short validation subsets, or
 `--datasets finance_finqa` (or another supported group) to submit a
 single multi-step dataset group. All helpers accept `--dry-run`. `--domains`
 and the run-type-specific dataset selectors are comma-separated and may be
-repeated; domains and datasets form a union.
+repeated; domains and datasets form a union. For single-step submissions,
+selectors must match `--single-run-kind`: `smoke` accepts only `coding_smoke`
+and `finance_smoke`, while `primary` accepts the primary dataset IDs below.
+For multi-step submissions, `--domains math` selects only the primary
+`math_public_mathqa` benchmark; `math_controlled` remains opt-in through
+`--datasets math_controlled`.
 
 Single-step dataset IDs are `coding_smoke`, `finance_smoke`, `math_controlled`, `math_public`,
 `math_public_math_dataset`, `enterprise_controlled`,

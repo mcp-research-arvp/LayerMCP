@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import subprocess
 import unittest
@@ -10,10 +11,19 @@ SCRIPTS = ROOT / "scripts" / "slurm"
 
 
 class SlurmSubmissionScriptTests(unittest.TestCase):
-    def run_script(self, script: str, *arguments: str) -> subprocess.CompletedProcess[str]:
+    def run_script(
+        self,
+        script: str,
+        *arguments: str,
+        environment: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        execution_environment = os.environ.copy()
+        if environment is not None:
+            execution_environment.update(environment)
         return subprocess.run(
             ["bash", str(SCRIPTS / script), *arguments],
             cwd=ROOT,
+            env=execution_environment,
             capture_output=True,
             text=True,
             check=False,
@@ -76,8 +86,7 @@ class SlurmSubmissionScriptTests(unittest.TestCase):
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         command = next(line for line in completed.stdout.splitlines() if line.startswith("sbatch "))
-        self.assertIn("DATASET_SELECTION=benchmark/finance/finance_smoke.json", command)
-        self.assertIn("benchmark/math/math_controlled.json:benchmark/math/math_public.json", command)
+        self.assertIn("DATASET_SELECTION=benchmark/math/math_controlled.json:benchmark/math/math_public.json", command)
         self.assertIn("benchmark/finance/finance_finqa_test_single.json", command)
         self.assertIn("benchmark/coding/coding_controlled.json", command)
 
@@ -104,6 +113,80 @@ class SlurmSubmissionScriptTests(unittest.TestCase):
         completed = self.run_script("submit_all.sh", "--datasets", "math_controlled", "--dry-run")
         self.assertEqual(completed.returncode, 2)
         self.assertIn("--datasets is ambiguous", completed.stderr)
+
+    def test_single_step_selection_rejects_cross_run_kind_datasets(self) -> None:
+        for run_kind, dataset in (
+            ("primary", "finance_smoke"),
+            ("smoke", "finance_finqa_test_single"),
+        ):
+            with self.subTest(run_kind=run_kind, dataset=dataset):
+                completed = self.run_script(
+                    "submit_single_step.sh",
+                    "--single-run-kind",
+                    run_kind,
+                    "--datasets",
+                    dataset,
+                    "--dry-run",
+                )
+                self.assertEqual(completed.returncode, 2)
+                self.assertIn("Unsupported single-step dataset", completed.stderr)
+
+    def test_default_single_step_submission_clears_inherited_dataset_selection(self) -> None:
+        completed = self.run_script(
+            "submit_all.sh",
+            "--dry-run",
+            environment={"DATASET_SELECTION": "benchmark/finance/finance_smoke.json"},
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        single_commands = [
+            line
+            for line in completed.stdout.splitlines()
+            if line.startswith("sbatch ") and "run_single_step.sbatch" in line
+        ]
+        self.assertEqual(len(single_commands), 7)
+        self.assertTrue(all("DATASET_SELECTION=" in line for line in single_commands))
+        self.assertTrue(
+            all(
+                "DATASET_SELECTION=benchmark/finance/finance_smoke.json" not in line
+                for line in single_commands
+            )
+        )
+
+    def test_all_model_submission_clears_inherited_reasoning_effort_for_non_gpt(self) -> None:
+        completed = self.run_script(
+            "submit_all.sh",
+            "--dry-run",
+            environment={"REASONING_EFFORT": "low"},
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        commands = [line for line in completed.stdout.splitlines() if line.startswith("sbatch ")]
+        non_gpt_commands = [line for line in commands if "MODEL=gpt-oss-local" not in line]
+        self.assertTrue(non_gpt_commands)
+        self.assertTrue(all("REASONING_EFFORT=" in line for line in non_gpt_commands))
+        self.assertTrue(all("REASONING_EFFORT=low" not in line for line in non_gpt_commands))
+        gpt_command = next(line for line in commands if "MODEL=gpt-oss-local" in line)
+        self.assertIn("REASONING_EFFORT=low", gpt_command)
+
+    def test_math_domain_excludes_optional_multistep_controlled_diagnostic(self) -> None:
+        completed = self.run_script(
+            "submit_multi_step.sh", "--model", "phi-4-local", "--domains", "math", "--dry-run"
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        commands = [line for line in completed.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(commands), 1)
+        self.assertIn("DATASET_GROUP=math_public_mathqa", commands[0])
+        self.assertNotIn("DATASET_GROUP=math_controlled", commands[0])
+
+        explicit = self.run_script(
+            "submit_multi_step.sh",
+            "--model",
+            "phi-4-local",
+            "--datasets",
+            "math_controlled",
+            "--dry-run",
+        )
+        self.assertEqual(explicit.returncode, 0, explicit.stderr)
+        self.assertIn("DATASET_GROUP=math_controlled", explicit.stdout)
 
     def test_invalid_model_is_rejected_before_submission(self) -> None:
         completed = self.run_script(

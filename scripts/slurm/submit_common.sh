@@ -47,6 +47,25 @@ SINGLE_STEP_DATASET_IDS=(
   finance_tatqa_public_derived
   finance_finqa_test_single
 )
+SINGLE_STEP_SMOKE_DATASET_IDS=(
+  coding_smoke
+  finance_smoke
+)
+SINGLE_STEP_PRIMARY_DATASET_IDS=(
+  math_controlled
+  math_public
+  math_public_math_dataset
+  enterprise_controlled
+  enterprise_tau2_single_step
+  coding_controlled
+  coding_upstream_inspired
+  coding_codesearchnet_public_derived
+  coding_conala_public_derived
+  finance_controlled
+  finance_upstream_inspired
+  finance_tatqa_public_derived
+  finance_finqa_test_single
+)
 declare -A SINGLE_STEP_DATASETS=(
   [coding_smoke]="benchmark/coding/coding_smoke.json"
   [finance_smoke]="benchmark/finance/finance_smoke.json"
@@ -139,7 +158,9 @@ validate_selector_values() {
 resolve_single_dataset_selection() {
   local domains="$1"
   local datasets="$2"
+  local run_kind="$3"
   local id path selection=""
+  local -a eligible_dataset_ids=()
   local -a parsed_domains=()
   local -a parsed_datasets=()
   local -A allowed_domains=([math]=1 [enterprise]=1 [coding]=1 [finance]=1)
@@ -147,7 +168,15 @@ resolve_single_dataset_selection() {
   local -A requested_domains=()
   local -A requested_datasets=()
 
-  for id in "${SINGLE_STEP_DATASET_IDS[@]}"; do
+  case "$run_kind" in
+    smoke) eligible_dataset_ids=("${SINGLE_STEP_SMOKE_DATASET_IDS[@]}") ;;
+    primary) eligible_dataset_ids=("${SINGLE_STEP_PRIMARY_DATASET_IDS[@]}") ;;
+    *)
+      echo "Unsupported single-step run kind: $run_kind (expected smoke or primary)" >&2
+      exit 2
+      ;;
+  esac
+  for id in "${eligible_dataset_ids[@]}"; do
     allowed_datasets[$id]=1
   done
   validate_selector_values "$domains" domain allowed_domains
@@ -157,7 +186,7 @@ resolve_single_dataset_selection() {
   for id in "${parsed_domains[@]}"; do requested_domains[$id]=1; done
   for id in "${parsed_datasets[@]}"; do requested_datasets[$id]=1; done
 
-  for id in "${SINGLE_STEP_DATASET_IDS[@]}"; do
+  for id in "${eligible_dataset_ids[@]}"; do
     if [[ -n "${requested_domains[${SINGLE_STEP_DATASET_DOMAINS[$id]}]:-}" || -n "${requested_datasets[$id]:-}" ]]; then
       path="${SINGLE_STEP_DATASETS[$id]}"
       selection+="${selection:+:}$path"
@@ -192,7 +221,7 @@ resolve_multi_dataset_selection() {
   for id in "${parsed_datasets[@]}"; do requested_datasets[$id]=1; done
 
   for id in "${MULTI_STEP_DATASET_IDS[@]}"; do
-    if [[ -n "${requested_domains[${MULTI_STEP_DATASET_DOMAINS[$id]}]:-}" || -n "${requested_datasets[$id]:-}" ]]; then
+    if [[ -n "${requested_datasets[$id]:-}" || ( -n "${requested_domains[${MULTI_STEP_DATASET_DOMAINS[$id]}]:-}" && "$id" != math_controlled ) ]]; then
       selection+="${selection:+:}$id"
     fi
   done
@@ -290,10 +319,10 @@ submit_single_condition() {
 
   if [[ "$model" == gpt-oss-local ]]; then
     exports+=",REASONING_EFFORT=low"
+  else
+    exports+=",REASONING_EFFORT="
   fi
-  if [[ -n "$dataset_selection" ]]; then
-    exports+=",DATASET_SELECTION=$dataset_selection"
-  fi
+  exports+=",DATASET_SELECTION=$dataset_selection"
   submit_sbatch "$dry_run" --job-name="$job_name" --export="$exports" "$SINGLE_STEP_LAUNCHER"
 }
 
@@ -312,6 +341,8 @@ submit_multi_condition() {
 
   if [[ "$model" == gpt-oss-local ]]; then
     exports+=",REASONING_EFFORT=low"
+  else
+    exports+=",REASONING_EFFORT="
   fi
   submit_sbatch "$dry_run" --job-name="$job_name" --export="$exports" "$MULTI_STEP_LAUNCHER"
 }

@@ -36,7 +36,7 @@ Options:
   --datasets IDS             Dataset IDs when submitting one run type.
   --single-datasets IDS      Comma-separated single-step dataset IDs.
   --multi-datasets IDS       Comma-separated multi-step dataset-group IDs.
-  --multi-dataset-group ID   Deprecated alias for --multi-datasets.
+  --multi-dataset-group ID   Deprecated alias for --multi-datasets; all selects primary groups.
   --dry-run                  Print sbatch commands without submitting.
   -h, --help                 Show this help.
 
@@ -59,6 +59,10 @@ while [[ $# -gt 0 ]]; do
     --model|--single-run-kind|--multi-run-kind|--domains|--datasets|--single-datasets|--multi-datasets|--multi-dataset-group)
       if [[ $# -lt 2 ]]; then
         echo "Missing value for $1" >&2
+        exit 2
+      fi
+      if [[ -z "$2" ]]; then
+        echo "Empty value is not allowed for $1" >&2
         exit 2
       fi
       case "$1" in

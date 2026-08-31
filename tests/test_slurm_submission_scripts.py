@@ -114,6 +114,33 @@ class SlurmSubmissionScriptTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 2)
         self.assertIn("--datasets is ambiguous", completed.stderr)
 
+    def test_empty_selector_values_are_rejected_before_submission(self) -> None:
+        for flag in ("--domains", "--datasets", "--single-datasets", "--multi-datasets"):
+            with self.subTest(flag=flag):
+                arguments = ["--dry-run", flag, ""]
+                if flag == "--single-datasets":
+                    arguments.insert(0, "--single-only")
+                elif flag == "--multi-datasets":
+                    arguments.insert(0, "--multi-only")
+                completed = self.run_script("submit_all.sh", *arguments)
+                self.assertEqual(completed.returncode, 2)
+                self.assertIn(f"Empty value is not allowed for {flag}", completed.stderr)
+                self.assertNotIn("sbatch ", completed.stdout)
+
+    def test_deprecated_multi_dataset_group_all_alias_selects_primary_groups(self) -> None:
+        completed = self.run_script(
+            "submit_multi_step.sh",
+            "--model",
+            "phi-4-local",
+            "--multi-dataset-group",
+            "all",
+            "--dry-run",
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        commands = [line for line in completed.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(commands), 7)
+        self.assertTrue(all("DATASET_GROUP=math_controlled" not in line for line in commands))
+
     def test_single_step_selection_rejects_cross_run_kind_datasets(self) -> None:
         for run_kind, dataset in (
             ("primary", "finance_smoke"),
@@ -130,6 +157,19 @@ class SlurmSubmissionScriptTests(unittest.TestCase):
                 )
                 self.assertEqual(completed.returncode, 2)
                 self.assertIn("Unsupported single-step dataset", completed.stderr)
+
+    def test_single_step_selection_rejects_domains_without_matching_run_kind(self) -> None:
+        completed = self.run_script(
+            "submit_single_step.sh",
+            "--single-run-kind",
+            "smoke",
+            "--domains",
+            "math",
+            "--dry-run",
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("No smoke single-step datasets match", completed.stderr)
+        self.assertNotIn("sbatch ", completed.stdout)
 
     def test_default_single_step_submission_clears_inherited_dataset_selection(self) -> None:
         completed = self.run_script(

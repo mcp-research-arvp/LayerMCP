@@ -192,6 +192,10 @@ resolve_single_dataset_selection() {
       selection+="${selection:+:}$path"
     fi
   done
+  if [[ ( -n "$domains" || -n "$datasets" ) && -z "$selection" ]]; then
+    echo "No $run_kind single-step datasets match the requested selectors." >&2
+    exit 2
+  fi
   printf '%s' "$selection"
 }
 
@@ -209,6 +213,14 @@ resolve_multi_dataset_selection() {
   for id in "${MULTI_STEP_DATASET_IDS[@]}"; do
     allowed_datasets[$id]=1
   done
+  if [[ "$datasets" == all ]]; then
+    if [[ -n "$domains" ]]; then
+      echo "multi-step dataset group all cannot be combined with --domains" >&2
+      exit 2
+    fi
+    printf 'all'
+    return
+  fi
   validate_selector_values "$domains" domain allowed_domains
   validate_selector_values "$datasets" "multi-step dataset group" allowed_datasets
   if [[ -z "$domains" && -z "$datasets" ]]; then

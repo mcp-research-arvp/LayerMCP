@@ -747,9 +747,13 @@ and the run-type-specific dataset selectors are comma-separated and may be
 repeated; domains and datasets form a union. For single-step submissions,
 selectors must match `--single-run-kind`: `smoke` accepts only `coding_smoke`
 and `finance_smoke`, while `primary` accepts the primary dataset IDs below.
+Any non-empty single-step selector that matches no datasets for its run kind is
+rejected before any Slurm job is submitted.
 For multi-step submissions, `--domains math` selects only the primary
 `math_public_mathqa` benchmark; `math_controlled` remains opt-in through
 `--datasets math_controlled`.
+`--multi-dataset-group all` remains supported as a deprecated alias for all
+primary multi-step groups. Empty option values are rejected.
 
 Single-step dataset IDs are `coding_smoke`, `finance_smoke`, `math_controlled`, `math_public`,
 `math_public_math_dataset`, `enterprise_controlled`,

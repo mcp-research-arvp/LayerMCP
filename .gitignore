@@ -25,12 +25,17 @@ slurm_logs/
 /slurm-*.err
 job*.sh
 
-# Keep only the canonical evaluation launcher; other local Slurm helpers remain local.
+# Keep the tracked Slurm launchers and submission helpers; other local helpers
+# remain local.
 !scripts/
 !scripts/slurm/
 scripts/slurm/*
 !scripts/slurm/run_single_step.sbatch
 !scripts/slurm/run_multi_step.sbatch
+!scripts/slurm/submit_common.sh
+!scripts/slurm/submit_all.sh
+!scripts/slurm/submit_single_step.sh
+!scripts/slurm/submit_multi_step.sh
 
 # Local model checkpoints and heavyweight downloaded weights.
 checkpoints/

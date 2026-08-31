@@ -703,6 +703,69 @@ generation limit in run metadata, samples, summaries, and the artifact index.
 Scorecards label this condition `Reasoning — Harmony LOW` and reject obsolete
 GPT-OSS direct/none artifacts, missing effort, or the former 128-token limit.
 
+#### Batch submission helpers
+
+Run these commands from any directory on the cluster; the scripts locate the
+repository from their own paths and pass it to Slurm explicitly. The default
+submission covers every supported model/reasoning condition: Phi and Llama
+direct, Qwen and Gemma direct plus reasoning, and GPT-OSS Harmony LOW.
+
+```bash
+# Preview the full batch: 7 primary single-step jobs and 49 full multi-step jobs.
+scripts/slurm/submit_all.sh --dry-run
+
+# Submit that full batch.
+scripts/slurm/submit_all.sh
+
+# Submit only all-model single-step or multi-step runs.
+scripts/slurm/submit_single_step.sh
+scripts/slurm/submit_multi_step.sh
+
+# Restrict either run type (or the combined wrapper) to one model.
+scripts/slurm/submit_single_step.sh --model qwen-3.6-local
+scripts/slurm/submit_multi_step.sh --model gpt-oss-local
+scripts/slurm/submit_all.sh --model gemma-4-local
+
+# Select one or more domains. Selectors are comma-separated and combined.
+scripts/slurm/submit_single_step.sh --domains math,finance
+scripts/slurm/submit_multi_step.sh --domains coding,enterprise
+
+# Select one or more datasets within one run type.
+scripts/slurm/submit_single_step.sh \
+  --datasets math_public,finance_finqa_test_single
+scripts/slurm/submit_multi_step.sh \
+  --datasets finance_finqa,math_public_mathqa
+```
+
+Single-step submissions default to `RUN_KIND=primary`. Multi-step submissions
+default to a full run of each of the seven primary dataset groups, because the
+canonical multi-step launcher intentionally forbids one monolithic full job.
+Use `--multi-run-kind short_test` for short validation subsets, or
+`--datasets finance_finqa` (or another supported group) to submit a
+single multi-step dataset group. All helpers accept `--dry-run`. `--domains`
+and the run-type-specific dataset selectors are comma-separated and may be
+repeated; domains and datasets form a union. For single-step submissions,
+selectors must match `--single-run-kind`: `smoke` accepts only `coding_smoke`
+and `finance_smoke`, while `primary` accepts the primary dataset IDs below.
+Any non-empty single-step selector that matches no datasets for its run kind is
+rejected before any Slurm job is submitted.
+For multi-step submissions, `--domains math` selects only the primary
+`math_public_mathqa` benchmark; `math_controlled` remains opt-in through
+`--datasets math_controlled`.
+`--multi-dataset-group all` remains supported as a deprecated alias for all
+primary multi-step groups. Empty option values are rejected.
+
+Single-step dataset IDs are `coding_smoke`, `finance_smoke`, `math_controlled`, `math_public`,
+`math_public_math_dataset`, `enterprise_controlled`,
+`enterprise_tau2_single_step`, `coding_controlled`,
+`coding_upstream_inspired`, `coding_codesearchnet_public_derived`,
+`coding_conala_public_derived`, `finance_controlled`,
+`finance_upstream_inspired`, `finance_tatqa_public_derived`, and
+`finance_finqa_test_single`. Multi-step dataset-group IDs are
+`coding_sweagent`, `coding_nebius_replay`, `enterprise_tau2`,
+`finance_convfinqa`, `finance_finqa`, `finance_finretrieval_replay`,
+`math_public_mathqa`, and the optional `math_controlled` diagnostic.
+
 Single-step examples from a fresh clone:
 
 ```bash

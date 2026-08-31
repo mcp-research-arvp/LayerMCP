@@ -233,13 +233,46 @@ PRIMARY_BENCHMARKS=(
 )
 
 case "$RUN_KIND" in
-  smoke) BENCHMARKS=("${SMOKE_BENCHMARKS[@]}") ;;
-  primary) BENCHMARKS=("${PRIMARY_BENCHMARKS[@]}") ;;
+  smoke|primary) ;;
   *)
-    echo "Unsupported RUN_KIND: $RUN_KIND" >&2
+    echo "Unsupported RUN_KIND: $RUN_KIND (expected smoke or primary)" >&2
     exit 2
     ;;
 esac
+
+if [[ -n "${DATASET_SELECTION:-}" ]]; then
+  IFS=':' read -r -a BENCHMARKS <<< "$DATASET_SELECTION"
+  case "$RUN_KIND" in
+    smoke) ALLOWED_BENCHMARKS=("${SMOKE_BENCHMARKS[@]}") ;;
+    primary) ALLOWED_BENCHMARKS=("${PRIMARY_BENCHMARKS[@]}") ;;
+  esac
+  [[ "${#BENCHMARKS[@]}" -gt 0 ]] || {
+    echo "DATASET_SELECTION must contain at least one colon-separated benchmark path" >&2
+    exit 2
+  }
+  for selected_benchmark in "${BENCHMARKS[@]}"; do
+    if [[ -z "$selected_benchmark" ]]; then
+      echo "DATASET_SELECTION must not contain empty benchmark paths" >&2
+      exit 2
+    fi
+    is_allowed_benchmark=0
+    for allowed_benchmark in "${ALLOWED_BENCHMARKS[@]}"; do
+      if [[ "$selected_benchmark" == "$allowed_benchmark" ]]; then
+        is_allowed_benchmark=1
+        break
+      fi
+    done
+    if [[ "$is_allowed_benchmark" != 1 ]]; then
+      echo "DATASET_SELECTION contains an unsupported single-step benchmark: $selected_benchmark" >&2
+      exit 2
+    fi
+  done
+else
+  case "$RUN_KIND" in
+    smoke) BENCHMARKS=("${SMOKE_BENCHMARKS[@]}") ;;
+    primary) BENCHMARKS=("${PRIMARY_BENCHMARKS[@]}") ;;
+  esac
+fi
 
 PROMPT_MODE="$REASONING_MODE"
 MODEL_COMPONENT="$(safe_component model "$MODEL")"

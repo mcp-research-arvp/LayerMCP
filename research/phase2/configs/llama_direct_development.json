@@ -1,0 +1,11 @@
+{
+  "source_run_dir": "/scratch/rishiren/layermcp/LayerMCP/results/runs/single_step/20260826T090907Z_20564089_llama-3.1-8b-local_direct_primary",
+  "sample_id": "math_v1_calculator_easy_001",
+  "baseline_campaign_commit": "0c4f5efc4711452cc787407ca760b507cf523d5a",
+  "layers": [0, 15, 31],
+  "token_selection_mode": "tool_call_fields_v1",
+  "development_only": true,
+  "require_registry_match": false,
+  "observation_enabled": true,
+  "output_dir": "/scratch/rishiren/layermcp/phase2_observations/development_llama_direct_math_v1_calculator_easy_001"
+}

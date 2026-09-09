@@ -1,0 +1,11 @@
+{
+  "source_run_dir": "REPLACE_WITH_SAVED_LLAMA_DIRECT_RUN_DIR",
+  "sample_id": "math_v1_calculator_easy_001",
+  "baseline_campaign_commit": "0c4f5efc4711452cc787407ca760b507cf523d5a",
+  "layers": [0, 15, 31],
+  "token_selection_mode": "tool_call_fields_v1",
+  "development_only": true,
+  "require_registry_match": false,
+  "observation_enabled": true,
+  "output_dir": "REPLACE_WITH_NEW_OBSERVATION_OUTPUT_DIR"
+}

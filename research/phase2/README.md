@@ -18,15 +18,20 @@ are written.
 Set `observation_enabled: false` in a config to make the same ordinary replay
 without installing any hooks or saving activation tensors.
 
-Run from the repository root with a local Llama checkpoint available:
+Run from the repository root with a local Llama checkpoint available.  The
+checked-in development config is deliberately portable: pass local paths on
+the command line (or copy it locally and replace its placeholders):
 
 ```bash
 python -m research.phase2.observe \
-  --config research/phase2/configs/llama_direct_development.json
+  --config research/phase2/configs/llama_direct_development.json \
+  --source-run-dir /path/to/saved_llama_direct_run \
+  --checkpoint /path/to/llama_checkpoint \
+  --output-dir /path/to/new_observation_output
 ```
 
-Use `LAYERMCP_LLAMA31_8B_CHECKPOINT` or the config's optional `checkpoint`
-field to choose the custom-runtime checkpoint.  The development config points
+Use `LAYERMCP_LLAMA31_8B_CHECKPOINT`, `--checkpoint`, or the config's optional
+`checkpoint` field to choose the custom-runtime checkpoint.  The development config points
 to an older saved artifact deliberately marked `development_only`; its recorded
 source commit is retained in the config and it is not headline benchmark
 evidence.  Prompt tokenization uses the router's `encode_chat` method, including
@@ -35,9 +40,14 @@ registry metadata match.  The generated `provenance.json` makes this visible
 through `registry_exact_match`.
 
 Each enabled-observation output directory contains `provenance.json`, selected
-tensors in `activations.pt`, and `OBSERVATION_COMPLETE`. Disabled observation
-records provenance and `OBSERVATION_COMPLETE`, but deliberately writes no
-activation tensor file. These outputs are inputs for
+tensors in `activations.pt`, and `OBSERVATION_COMPLETE`. The provenance records
+the exact parsed tool-call character span and, for every selected generated
+token, its causal-LM input position. These are pre-token predictor states:
+generated token zero is listed but intentionally not captured because its
+predictor state is the final prompt token. A parse error, unknown tool, or
+invalid arguments produces no observation directory or completion marker.
+Disabled observation records provenance and `OBSERVATION_COMPLETE`, but
+deliberately writes no activation tensor file. These outputs are inputs for
 later **read-only probing** and, only after a separate approved design,
 causal/intervention experiments.  This harness does not implement training,
 LoRA/QLoRA, activation patching, or ablation.

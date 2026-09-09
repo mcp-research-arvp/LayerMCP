@@ -10,9 +10,14 @@ import torch
 from research.phase2.observe import (
     ActivationObserver,
     _write_completed_observation,
+    _require_configured_path,
+    annotate_capture_positions,
     capture_selected_activations,
+    parsed_tool_call_span,
+    require_valid_tool_call,
     select_tool_call_positions,
 )
+from models.routers.structured_tool_call import parse_tool_call
 from research.phase2.replay import (
     LLAMA_MODEL_NAME,
     TOKEN_SELECTION_MODE,
@@ -165,6 +170,7 @@ class Phase2ObservabilityTests(unittest.TestCase):
             list(range(len(text))),
             "calculator",
             {"expression": "2+2"},
+            (0, len(text)),
         )
         selected_text = "".join(item["decoded_piece"] for item in positions)
         roles = {role for item in positions for role in item["roles"]}
@@ -173,6 +179,33 @@ class Phase2ObservabilityTests(unittest.TestCase):
         self.assertIn("2+2", selected_text)
         self.assertEqual(roles, {"tool_name", "argument_key", "argument_value"})
         self.assertLess(len(positions), len(text))
+
+    def test_position_selection_excludes_matching_text_outside_parsed_call(self) -> None:
+        call = '{"name":"calculator","arguments":{"expression":"2+2"}}'
+        text = f"calculator expression 2+2 before {call} after calculator expression 2+2"
+        tokenizer = CharacterTokenizer({index: character for index, character in enumerate(text)})
+        span = parsed_tool_call_span(text, "calculator", {"expression": "2+2"})
+        positions = select_tool_call_positions(
+            tokenizer,
+            list(range(len(text))),
+            "calculator",
+            {"expression": "2+2"},
+            span,
+        )
+        self.assertEqual(span, (text.index(call), text.index(call) + len(call)))
+        self.assertTrue(positions)
+        self.assertTrue(
+            all(span[0] <= item["generated_token_index"] < span[1] for item in positions)
+        )
+
+    def test_non_ok_parses_are_not_observations(self) -> None:
+        prediction = parse_tool_call("not a tool call", ["calculator"])
+        with self.assertRaisesRegex(ValueError, "valid parsed tool call; got parse_error"):
+            require_valid_tool_call(prediction)
+
+    def test_example_config_placeholders_require_cli_overrides(self) -> None:
+        with self.assertRaisesRegex(ValueError, "--source-run-dir"):
+            _require_configured_path(Path("REPLACE_WITH_SAVED_LLAMA_DIRECT_RUN_DIR"), "--source-run-dir")
 
     def test_disabled_observation_is_a_noop(self) -> None:
         model = TinyTransformer()
@@ -206,11 +239,23 @@ class Phase2ObservabilityTests(unittest.TestCase):
 
     def test_teacher_forced_capture_keeps_only_selected_positions(self) -> None:
         model = TinyTransformer()
+        selected_positions = annotate_capture_positions(
+            [
+                {"generated_token_index": 0},
+                {"generated_token_index": 1},
+                {"generated_token_index": 2},
+            ],
+            prompt_token_count=3,
+        )
+        self.assertFalse(selected_positions[0]["capture_eligible"])
+        self.assertIsNone(selected_positions[0]["captured_absolute_input_position"])
+        self.assertEqual(selected_positions[1]["captured_absolute_input_position"], 3)
+        self.assertEqual(selected_positions[2]["captured_absolute_input_position"], 4)
         captures = capture_selected_activations(
             model,
             (1, 2, 3),
             [4, 5, 6],
-            [{"generated_token_index": 1}, {"generated_token_index": 2}],
+            selected_positions,
             (0,),
             torch.device("cpu"),
         )

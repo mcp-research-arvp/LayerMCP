@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 from contextlib import AbstractContextManager
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 from pathlib import Path
 import shutil
@@ -38,6 +38,14 @@ from research.phase2.replay import (
 
 
 CAPTURE_MODULES = ("residual_stream", "attention_block", "mlp_block")
+CAPTURE_SEMANTICS = {
+    "representation": "pre_token_causal_lm_predictor_state",
+    "capture_pass": "teacher_forced_replay_of_generated_tokens",
+    "absolute_input_position": "prompt_token_count + generated_token_index - 1",
+    "first_generated_token": (
+        "not captured: its predictor state is the final prompt-token representation"
+    ),
+}
 
 
 class ActivationObserver(AbstractContextManager["ActivationObserver"]):
@@ -108,13 +116,20 @@ def _decoded_token_pieces(tokenizer: Any, token_ids: list[int]) -> list[str]:
     return pieces
 
 
-def _character_token_indices(pieces: list[str], target: str) -> set[int]:
+def _character_token_indices(
+    pieces: list[str],
+    target: str,
+    *,
+    span_start: int,
+    span_end: int,
+) -> set[int]:
+    """Return tokens overlapping occurrences of target within one character span."""
     full = "".join(pieces)
     indices: set[int] = set()
-    start = 0
+    start = span_start
     while True:
         start = full.find(target, start)
-        if start < 0:
+        if start < 0 or start + len(target) > span_end:
             return indices
         end = start + len(target)
         cursor = 0
@@ -126,21 +141,80 @@ def _character_token_indices(pieces: list[str], target: str) -> set[int]:
         start = end
 
 
+def parsed_tool_call_span(
+    raw_output: str,
+    selected_tool: str,
+    selected_args: dict[str, Any],
+) -> tuple[int, int]:
+    """Locate the exact direct-JSON call accepted by the structured parser.
+
+    Phase 2 observes Llama's direct JSON format only.  A valid parse is not
+    sufficient on its own: this returns the precise source span that supplied
+    the accepted tool and arguments, so text outside that call can never be
+    selected for activation capture.
+    """
+    decoder = json.JSONDecoder()
+    for start, character in enumerate(raw_output):
+        if character != "{":
+            continue
+        try:
+            payload, length = decoder.raw_decode(raw_output[start:])
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        function = payload.get("function")
+        if isinstance(function, dict):
+            payload = function
+        name = payload.get("name") or payload.get("tool") or payload.get("tool_name")
+        argument_key = next(
+            (key for key in ("arguments", "parameters", "args") if key in payload),
+            None,
+        )
+        if not isinstance(name, str) or argument_key is None:
+            continue
+        arguments = payload[argument_key]
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except json.JSONDecodeError:
+                continue
+        if (
+            name.strip().lower() == selected_tool
+            and isinstance(arguments, dict)
+            and arguments == selected_args
+        ):
+            return start, start + length
+    raise ValueError(
+        "Observation requires one direct JSON tool-call span matching the parsed prediction"
+    )
+
+
 def select_tool_call_positions(
     tokenizer: Any,
     generated_ids: list[int],
     selected_tool: str,
     selected_args: dict[str, Any],
+    tool_call_span: tuple[int, int],
 ) -> list[dict[str, Any]]:
-    """Select only tool-name plus JSON argument key/value token positions."""
+    """Select tool-call field tokens only within the parsed direct-call span."""
     pieces = _decoded_token_pieces(tokenizer, generated_ids)
+    decoded_output = "".join(pieces)
+    span_start, span_end = tool_call_span
+    if not (0 <= span_start < span_end <= len(decoded_output)):
+        raise ValueError("Parsed tool-call span is outside the decoded generated output")
     roles: dict[int, set[str]] = defaultdict(set)
     targets: list[tuple[str, str]] = [("tool_name", selected_tool)]
     for key, value in selected_args.items():
         targets.append(("argument_key", json.dumps(str(key), ensure_ascii=True)))
         targets.append(("argument_value", json.dumps(value, ensure_ascii=True, sort_keys=True)))
     for role, target in targets:
-        for index in _character_token_indices(pieces, target):
+        for index in _character_token_indices(
+            pieces,
+            target,
+            span_start=span_start,
+            span_end=span_end,
+        ):
             roles[index].add(role)
     return [
         {
@@ -151,6 +225,36 @@ def select_tool_call_positions(
         }
         for index in sorted(roles)
     ]
+
+
+def annotate_capture_positions(
+    selected_positions: list[dict[str, Any]],
+    prompt_token_count: int,
+) -> list[dict[str, Any]]:
+    """Record the causal-LM input position for every selected output token."""
+    annotated: list[dict[str, Any]] = []
+    for position in selected_positions:
+        generated_index = position["generated_token_index"]
+        capture_eligible = generated_index > 0
+        annotated.append(
+            {
+                **position,
+                "capture_eligible": capture_eligible,
+                "captured_absolute_input_position": (
+                    prompt_token_count + generated_index - 1 if capture_eligible else None
+                ),
+            }
+        )
+    return annotated
+
+
+def require_valid_tool_call(prediction: Any) -> None:
+    """Reject non-observations before creating an output directory."""
+    if prediction.parse_status != "ok":
+        raise ValueError(
+            "Observation requires a valid parsed tool call; "
+            f"got {prediction.parse_status}: {prediction.diagnostic or prediction.selected_tool}"
+        )
 
 
 def capture_selected_activations(
@@ -195,6 +299,13 @@ def _safe_output_directory(path: Path) -> Path:
     return path
 
 
+def _require_configured_path(path: Path, option: str) -> None:
+    if any(part.startswith("REPLACE_WITH_") for part in path.parts):
+        raise ValueError(
+            f"Development config path is a placeholder; provide {option} or replace it locally"
+        )
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
@@ -214,6 +325,9 @@ def _write_completed_observation(
 
 def run_observation(config: ReplayConfig, output_dir: Path | None = None) -> Path:
     """Load one real checkpoint and write a small, self-contained observation."""
+    _require_configured_path(config.source_run_dir, "--source-run-dir")
+    target = _safe_output_directory(output_dir or config.output_dir or Path("phase2_observation"))
+    _require_configured_path(target, "--output-dir")
     example: SavedExample = load_saved_example(config.source_run_dir, config.sample_id)
     catalog = load_live_catalog()
     checkpoint = resolve_checkpoint_path(config.checkpoint)
@@ -234,13 +348,23 @@ def run_observation(config: ReplayConfig, output_dir: Path | None = None) -> Pat
         )
     )
     raw_output = generator.tokenizer.decode(generated_ids, skip_special_tokens=False)
+    if "".join(_decoded_token_pieces(generator.tokenizer, generated_ids)) != raw_output:
+        raise ValueError("Cannot map the parsed tool-call character span to generated token pieces")
     prediction = parse_tool_call(raw_output, example.record["tool_names"], tool_schemas=catalog.schemas)
+    require_valid_tool_call(prediction)
+    tool_call_span = parsed_tool_call_span(
+        raw_output,
+        prediction.selected_tool,
+        prediction.selected_args,
+    )
     selected_positions = select_tool_call_positions(
         generator.tokenizer,
         generated_ids,
         prediction.selected_tool,
         prediction.selected_args,
+        tool_call_span,
     )
+    selected_positions = annotate_capture_positions(selected_positions, len(prompt.token_ids))
     captured = capture_selected_activations(
         generator.model,
         prompt.token_ids,
@@ -250,7 +374,6 @@ def run_observation(config: ReplayConfig, output_dir: Path | None = None) -> Pat
         Config.device,
         enabled=config.observation_enabled,
     )
-    target = _safe_output_directory(output_dir or config.output_dir or Path("phase2_observation"))
     target.mkdir(parents=True)
     try:
         provenance = {
@@ -276,8 +399,12 @@ def run_observation(config: ReplayConfig, output_dir: Path | None = None) -> Pat
             },
             "live_registry": catalog.metadata,
             "registry_exact_match": prompt.registry_exact_match,
-            "capture_pass": "teacher_forced_replay_of_generated_tokens",
+            "capture_semantics": CAPTURE_SEMANTICS,
             "captured_modules": list(CAPTURE_MODULES) if config.observation_enabled else [],
+            "parsed_tool_call_character_span": {
+                "start": tool_call_span[0],
+                "end": tool_call_span[1],
+            },
             "selected_token_positions": selected_positions,
             "generated_raw_output": raw_output,
             "parsed_prediction": asdict(prediction),
@@ -298,8 +425,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Observe selected Llama tool-call activations.")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--source-run-dir", type=Path)
+    parser.add_argument("--checkpoint", type=Path)
     args = parser.parse_args()
-    destination = run_observation(load_replay_config(args.config), args.output_dir)
+    config = load_replay_config(args.config)
+    if args.source_run_dir is not None:
+        config = replace(config, source_run_dir=args.source_run_dir)
+    if args.output_dir is not None:
+        config = replace(config, output_dir=args.output_dir)
+    if args.checkpoint is not None:
+        config = replace(config, checkpoint=args.checkpoint)
+    destination = run_observation(config)
     print(destination)
 
 

@@ -39,14 +39,31 @@ The project spans mechanistic interpretability, efficient fine-tuning, and agent
 
 ---
 
-## Models Studied
+## Models studied
 
-| Model Family | Architecture | Notes |
+| Baseline model family | Evaluated condition(s) | Notes |
 |---|---|---|
-| **GPT-OSS** | Mixture-of-Experts (MoE) | Layer localization includes expert routing analysis |
-| **Gemma** (Google) | Dense decoder | Multiple sizes; clean baseline |
-| **Qwen** (Alibaba) | Dense decoder | Strong multilingual & coding baselines |
-| **Llama** (Meta) | Dense decoder | Llama 3.x series; widely studied |
+| **Phi-4** (Microsoft) | direct | Local Phi-4 runtime |
+| **Llama 3.1 8B Instruct** (Meta) | direct | Local Llama 3.1 8B runtime |
+| **Qwen 3.6** (Qwen) | direct; native reasoning | Exact upstream size/revision is not preserved in baseline metadata |
+| **Gemma 4 26B A4B** (Google) | direct; native reasoning | Same local checkpoint convention, with the native thinking setting changed |
+| **GPT-OSS 20B** (OpenAI) | Harmony low reasoning | Harmony-only baseline configuration |
+
+---
+
+## Models used in the frozen baseline
+
+The frozen LayerMCP baseline evaluates seven model/condition rows, including
+direct, native-reasoning, and Harmony-low-reasoning configurations. The
+authoritative inventory—upstream identifiers, published parameter counts,
+checkpoint-location conventions, repository runtimes, tool-call protocols,
+and known identity limitations—is in [Baseline model inventory](docs/model_inventory.md).
+
+The reported baseline bundles were produced at frozen commit
+`4abe8ae6360db16486dcb3c5a92b452042ba7de7`. Read this inventory together
+with each saved run's `run_metadata.json`; the latter is the authoritative
+record of the local checkpoint path, prompt condition, registry fingerprint,
+and generation settings used for that run.
 
 ---
 

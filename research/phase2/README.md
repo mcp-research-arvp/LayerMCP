@@ -51,3 +51,66 @@ deliberately writes no activation tensor file. These outputs are inputs for
 later **read-only probing** and, only after a separate approved design,
 causal/intervention experiments.  This harness does not implement training,
 LoRA/QLoRA, activation patching, or ablation.
+
+## Temporary attention-parameter intervention
+
+`research.phase2.intervention` provides a separate, in-memory context manager
+for a one-layer attention experiment.  It does not alter the evaluator,
+architecture, or checkpoint files.  It supports an identifiable decoder layer
+only when it has one of these tested layouts: `model.layers[i].self_attn`,
+`model.model.layers[i].self_attn` (or `.linear_attn` for the local Qwen hybrid),
+or the local GPT-OSS `model.block[i].attn`.  The local Llama transformer is
+instantiated in the unit tests without a checkpoint; the other repository
+runtimes and Hugging Face causal-LM wrappers are accepted only when their
+loaded instance presents one of those layouts.  Other layouts, ambiguous
+attention attributes, quantized 4-bit/8-bit models, and non-floating-point or
+cross-component-tied attention parameters fail before any parameter is changed.
+
+The valid indices come from the supplied model rather than a fixed model-size
+assumption.  `noise` sets every selected attention parameter `p` to
+`p + strength * z`; `replace` sets it to `strength * z`; in both cases `z` is a
+seeded standard-normal tensor with the same shape.  Generated values are cast
+back to the parameter's original device and dtype.  The original tensors are
+copied back exactly when the context exits, including after an exception.
+
+For the local Llama runtime used by Phase 2, obtain the already-loaded model
+through the same local checkpoint path as `observe.py`:
+
+```python
+from models.architectures.llama31_8b_pytorch.config import Config
+from models.architectures.llama31_8b_pytorch.inference import TokenGenerator
+from research.phase2.intervention import (
+    available_attention_layers,
+    temporary_attention_intervention,
+)
+
+checkpoint_dir = "/path/to/local/llama_checkpoint"
+generator = TokenGenerator(checkpoint=checkpoint_dir, device=Config.device)
+model = generator.model
+print(available_attention_layers(model))
+
+with temporary_attention_intervention(
+    model,
+    layer_index=12,
+    method="noise",       # or "replace"
+    strength=0.01,
+    seed=1234,
+    enabled=True,
+):
+    generated_token_ids = list(generator.generate(prompt_token_ids, max_tokens=8))
+# model parameters are restored here
+```
+
+Use `enabled=False` with the same call site for a no-op baseline; it neither
+inspects nor mutates the model.  This is intentionally unsuitable for the
+loader's optional 4-bit/8-bit mode, which is rejected rather than modified in
+place.  The local Llama runtime can be passed directly after it is loaded; it
+uses the same `model.layers[i].self_attn` layout.
+
+For one bounded real-checkpoint functional check of the saved Phase 2 example,
+run `python -m research.phase2.intervention_smoke` with the development config,
+an explicit saved-run directory, checkpoint directory, and fresh output
+directory.  It runs the reconstructed prompt once with intervention disabled
+and once with seeded `noise` (`strength=0.01`, `seed=1234`), then writes
+`intervention_smoke.json` and `INTERVENTION_SMOKE_COMPLETE`.  It is not an
+accuracy evaluation and does not write model weights.

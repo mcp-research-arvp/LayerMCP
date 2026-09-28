@@ -125,3 +125,26 @@ directory.  It runs the reconstructed prompt once with intervention disabled
 and once with seeded `noise` (`strength=0.01`, `seed=1234`), then writes
 `intervention_smoke.json` and `INTERVENTION_SMOKE_COMPLETE`.  It is not an
 accuracy evaluation and does not write model weights.
+
+## Paired GPT-OSS routing evaluation
+
+`research.phase2.gpt_oss_intervention_eval` runs an unchanged control and one
+attention intervention for each selected saved GPT-OSS example, layer, and
+seed. It reuses the local GPT-OSS Harmony generation/parser and evaluator
+tool-selection scoring, but deliberately does not execute predicted tools.
+Its `paired_records.jsonl` records both conditions' expected and chosen tool,
+correct-choice flag, invalid-output flag, and no-call outcome. A run is valid
+only when it has `RUN_COMPLETE`; interruption or failure leaves no summary or
+completion marker, and weights must restore exactly after every intervention.
+
+```bash
+python -m research.phase2.gpt_oss_intervention_eval \
+  --source-run-dir /path/to/saved_gpt_oss_single_step_run \
+  --checkpoint /path/to/local_gpt_oss_checkpoint \
+  --output-dir /path/to/fresh_output \
+  --layers 0 --seeds 1234 --method noise --strength 0.01 --example-limit 2
+```
+
+The runner requires an exact live-registry match by default, since changed tool
+descriptions change the Harmony prompt. Use comma-separated `--layers` and
+`--seeds` for a later bounded sweep. It never writes model weights.

@@ -107,6 +107,17 @@ loader's optional 4-bit/8-bit mode, which is rejected rather than modified in
 place.  The local Llama runtime can be passed directly after it is loaded; it
 uses the same `model.layers[i].self_attn` layout.
 
+For an interactive, portable walk-through, open
+`research/phase2/attention_intervention_demo.ipynb`. It defaults to a tiny
+random CPU model and explicitly labels that demonstration as mechanics only,
+not pretrained tool-selection behavior. It can also show Llama or GPT-OSS
+layer IDs and expected attention shapes from repository/configuration metadata
+without loading weights. A real checkpoint is loaded only after the notebook
+user supplies a local directory and sets its explicit `LOAD_CHECKPOINT` flag.
+The notebook separately reports checkpoint quantization metadata and actual
+selected-attention dtypes before checking whether the current API accepts the
+target.
+
 For one bounded real-checkpoint functional check of the saved Phase 2 example,
 run `python -m research.phase2.intervention_smoke` with the development config,
 an explicit saved-run directory, checkpoint directory, and fresh output

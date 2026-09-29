@@ -286,6 +286,33 @@ class FinalOutcomeScore:
     diagnostic: str | None
 
 
+@dataclass(frozen=True)
+class RoutedToolCall:
+    """A router's already-generated single-step tool-call prediction.
+
+    Model adapters construct this from their native prompt/generation/parser
+    path.  ``evaluate_single_step_prediction`` then applies the evaluator's
+    canonical execution and scoring rules without needing to know the model
+    architecture or prompt format.
+    """
+
+    selected_tool: str | None
+    selected_args: dict[str, Any]
+    raw_model_output: str
+    parse_status: str
+    attempted_tool: str | None
+    parse_diagnostic: str | None
+
+
+@dataclass(frozen=True)
+class SingleStepEvaluation:
+    """Canonical evaluated record plus counters used by the baseline loop."""
+
+    record: dict[str, Any]
+    executed_tool_call: bool
+    execution_error: bool
+
+
 FINAL_OUTCOME_MATCHER = "recursive_json_subset_v1"
 FINQA_EXECUTION_MATCHER = "finqa_program_execution"
 CONVFINQA_EXECUTION_MATCHER = "convfinqa_program_execution"
@@ -1213,6 +1240,147 @@ def _is_no_tool_call(
     return selected_tool == hallucinated_tool or selected_tool not in live_tool_set
 
 
+async def evaluate_single_step_prediction(
+    *,
+    sample: BenchmarkSample,
+    benchmark_path: Path,
+    router: Any,
+    prediction: RoutedToolCall,
+    session: Any,
+    server_path: Path,
+    live_tools: list[str],
+    tool_schemas: dict[str, dict[str, Any]],
+    tool_descriptions: dict[str, str],
+    call_predicted_tools: bool,
+    reasoning_mode: str = "direct",
+    reasoning_effort: str | None = None,
+    latency_seconds: float = 0.0,
+) -> SingleStepEvaluation:
+    """Apply the baseline's full single-step execution and scoring rules.
+
+    The caller owns model-specific prompt construction, generation, and
+    parsing, then supplies the resulting :class:`RoutedToolCall`.  This keeps
+    the baseline evaluator authoritative for tool execution, argument scoring,
+    and final-outcome scoring while allowing Phase 2 to put only generation
+    inside a temporary model intervention.
+    """
+    live_tool_set = set(live_tools)
+    no_tool_call = _is_no_tool_call(
+        prediction.selected_tool,
+        router.HALLUCINATED_TOOL,
+        live_tool_set,
+    )
+    called_tool = None
+    tool_result = None
+    tool_result_value = None
+    result_extraction_diagnostic = None
+    tool_error = None
+    execution_success = False
+    execution_attempted = False
+    executed_tool_call = False
+
+    if call_predicted_tools and not no_tool_call:
+        called_tool = prediction.selected_tool
+        execution_attempted = True
+        try:
+            call_result = await _call_tool_with_sample_isolation(
+                session,
+                server_path,
+                called_tool,
+                prediction.selected_args,
+            )
+            executed_tool_call = True
+            tool_result = _summarize_tool_result(call_result)
+            extracted_result = _extract_structured_tool_result(call_result)
+            tool_result_value = extracted_result.value
+            result_extraction_diagnostic = extracted_result.diagnostic
+            execution_success = not bool(getattr(call_result, "isError", False))
+            if not execution_success:
+                tool_error = tool_result
+        except Exception as exc:  # pragma: no cover - exercised by integration runs
+            tool_error = str(exc)
+
+    score = _score_sample(
+        expected_tool=sample.expected_tool,
+        selected_tool=None if no_tool_call else prediction.selected_tool,
+        expected_args=sample.expected_args,
+        selected_args=prediction.selected_args,
+        execution_success=execution_success,
+        execution_attempted=execution_attempted,
+    )
+    final_outcome = _score_final_outcome(
+        expected_answer=sample.expected_answer,
+        tool_result_value=tool_result_value,
+        result_extraction_diagnostic=result_extraction_diagnostic,
+        domain=sample.domain,
+        call_predicted_tools=call_predicted_tools,
+        no_tool_call=no_tool_call,
+        execution_success=execution_success,
+        expected_tool=sample.expected_tool,
+        called_tool=called_tool,
+    )
+    reasoning_metadata = _reasoning_metadata(
+        router,
+        reasoning_mode,
+        reasoning_effort,
+    )
+    generation_metadata = _generation_metadata(router)
+    tool_pool_metadata = _tool_pool_metadata(
+        live_tools,
+        tool_schemas,
+        tool_descriptions,
+    )
+    record = {
+        "sample_id": sample.id,
+        "benchmark_path": str(benchmark_path),
+        "domain": sample.domain,
+        "benchmark_mode": sample.benchmark_mode,
+        "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
+        "evaluation_protocol_description": EVALUATION_PROTOCOL_DESCRIPTIONS[
+            SINGLE_STEP_EVALUATION_PROTOCOL
+        ],
+        "query": sample.query,
+        "prompt_context": sample.prompt_context,
+        "routed_query": _query_with_context(sample.query, sample.prompt_context),
+        "expected_tool": sample.expected_tool,
+        "selected_tool": None if no_tool_call else prediction.selected_tool,
+        "expected_args": sample.expected_args,
+        "expected_answer": sample.expected_answer,
+        "selected_args": prediction.selected_args,
+        "tool_selection_correct": score.tool_selection_correct,
+        "argument_match_correct": score.argument_match_correct,
+        "execution_success": score.execution_success,
+        "failure_category": score.failure_category,
+        "raw_model_output": prediction.raw_model_output,
+        "parse_status": prediction.parse_status,
+        "attempted_tool": prediction.attempted_tool,
+        "parse_diagnostic": prediction.parse_diagnostic,
+        "task_type": sample.task_type,
+        "difficulty": sample.difficulty,
+        "source": sample.source,
+        **tool_pool_metadata,
+        "latency_seconds": latency_seconds,
+        "model_name": router.MODEL_NAME,
+        "router_id": getattr(router, "ROUTER_ID", "unknown"),
+        "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
+        "architecture_source": getattr(router, "ARCHITECTURE_SOURCE", "unknown"),
+        "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
+        "prompt_template": router.PROMPT_TEMPLATE,
+        **reasoning_metadata,
+        **generation_metadata,
+        "called_tool": called_tool,
+        "tool_result": tool_result,
+        "tool_result_value": tool_result_value,
+        "tool_error": tool_error,
+        **_final_outcome_record_fields(final_outcome),
+    }
+    return SingleStepEvaluation(
+        record=record,
+        executed_tool_call=executed_tool_call,
+        execution_error=execution_attempted and not execution_success,
+    )
+
+
 def _tool_pool_metadata(
     live_tools: list[str],
     tool_schemas: dict[str, dict[str, Any]],
@@ -2063,7 +2231,6 @@ async def _evaluate_with_server(
         with _open_samples_exclusive(samples_path) as sample_handle:
             for sample in tqdm(dataset):
                 query = sample.query
-                routed_query = _query_with_context(query, sample.prompt_context)
                 expected = sample.expected_tool
 
                 start = time.perf_counter()
@@ -2087,12 +2254,6 @@ async def _evaluate_with_server(
 
                 latencies.append(latency)
 
-                no_tool_call = _is_no_tool_call(
-                    selected_tool,
-                    hallucinated_tool,
-                    live_tool_set,
-                )
-
                 print(f"\nQuery: {query}")
                 print(f"Expected: {expected}")
                 print(f"Selected: {selected_tool}")
@@ -2102,113 +2263,36 @@ async def _evaluate_with_server(
                     if parse_diagnostic:
                         print(f"Parse diagnostic: {parse_diagnostic}")
                     print(f"Raw model output: {raw_model_output[:1000]!r}")
-
-                called_tool = None
-                tool_result = None
-                tool_result_value = None
-                result_extraction_diagnostic = None
-                tool_error = None
-                execution_success = False
-                execution_attempted = False
-
-                if call_predicted_tools and not no_tool_call:
-                    called_tool = selected_tool
-                    execution_attempted = True
-                    try:
-                        call_result = await _call_tool_with_sample_isolation(
-                            session,
-                            server_path,
-                            selected_tool,
-                            selected_args,
-                        )
-                        executed_tool_calls += 1
-                        tool_result = _summarize_tool_result(call_result)
-                        extracted_result = _extract_structured_tool_result(call_result)
-                        tool_result_value = extracted_result.value
-                        result_extraction_diagnostic = extracted_result.diagnostic
-                        execution_success = not bool(
-                            getattr(call_result, "isError", False)
-                        )
-                        if execution_success:
-                            print(f"Tool call: {tool_result}")
-                        else:
-                            errors_count += 1
-                            tool_error = tool_result
-                            print(f"Tool call error: {tool_error}")
-                    except Exception as exc:  # pragma: no cover - exercised by integration runs
-                        errors_count += 1
-                        tool_error = str(exc)
-                        print(f"Tool call error: {tool_error}")
-
-                score = _score_sample(
-                    expected_tool=expected,
-                    selected_tool=None if no_tool_call else selected_tool,
-                    expected_args=sample.expected_args,
-                    selected_args=selected_args,
-                    execution_success=execution_success,
-                    execution_attempted=execution_attempted,
-                )
-                final_outcome = _score_final_outcome(
-                    expected_answer=sample.expected_answer,
-                    tool_result_value=tool_result_value,
-                    result_extraction_diagnostic=result_extraction_diagnostic,
-                    domain=sample.domain,
+                evaluated = await evaluate_single_step_prediction(
+                    sample=sample,
+                    benchmark_path=benchmark_path,
+                    router=router,
+                    prediction=RoutedToolCall(
+                        selected_tool=selected_tool,
+                        selected_args=selected_args,
+                        raw_model_output=raw_model_output,
+                        parse_status=parse_status,
+                        attempted_tool=attempted_tool,
+                        parse_diagnostic=parse_diagnostic,
+                    ),
+                    session=session,
+                    server_path=server_path,
+                    live_tools=live_tools,
+                    tool_schemas=tool_schemas,
+                    tool_descriptions=tool_descriptions,
                     call_predicted_tools=call_predicted_tools,
-                    no_tool_call=no_tool_call,
-                    execution_success=execution_success,
-                    expected_tool=sample.expected_tool,
-                    called_tool=called_tool,
+                    reasoning_mode=reasoning_mode,
+                    reasoning_effort=reasoning_effort,
+                    latency_seconds=latency,
                 )
-                record = {
-                    "sample_id": sample.id,
-                    "benchmark_path": str(benchmark_path),
-                    "domain": sample.domain,
-                    "benchmark_mode": sample.benchmark_mode,
-                    "evaluation_protocol": SINGLE_STEP_EVALUATION_PROTOCOL,
-                    "evaluation_protocol_description": (
-                        EVALUATION_PROTOCOL_DESCRIPTIONS[
-                            SINGLE_STEP_EVALUATION_PROTOCOL
-                        ]
-                    ),
-                    "query": query,
-                    "prompt_context": sample.prompt_context,
-                    "routed_query": routed_query,
-                    "expected_tool": expected,
-                    "selected_tool": None if no_tool_call else selected_tool,
-                    "expected_args": sample.expected_args,
-                    "expected_answer": sample.expected_answer,
-                    "selected_args": selected_args,
-                    "tool_selection_correct": score.tool_selection_correct,
-                    "argument_match_correct": score.argument_match_correct,
-                    "execution_success": score.execution_success,
-                    "failure_category": score.failure_category,
-                    "raw_model_output": raw_model_output,
-                    "parse_status": parse_status,
-                    "attempted_tool": attempted_tool,
-                    "parse_diagnostic": parse_diagnostic,
-                    "task_type": sample.task_type,
-                    "difficulty": sample.difficulty,
-                    "source": sample.source,
-                    **tool_pool_metadata,
-                    "latency_seconds": latency,
-                    "model_name": model_name,
-                    "router_id": getattr(router, "ROUTER_ID", router_name),
-                    "router_backend": getattr(router, "ROUTER_BACKEND", "unknown"),
-                    "architecture_source": getattr(
-                        router,
-                        "ARCHITECTURE_SOURCE",
-                        "unknown",
-                    ),
-                    "weight_source": getattr(router, "WEIGHT_SOURCE", "unknown"),
-                    "prompt_template": prompt_template,
-                    **reasoning_metadata,
-                    **generation_metadata,
-                    "called_tool": called_tool,
-                    "tool_result": tool_result,
-                    "tool_result_value": tool_result_value,
-                    "tool_error": tool_error,
-                    **_final_outcome_record_fields(final_outcome),
-                }
+                record = evaluated.record
+                executed_tool_calls += int(evaluated.executed_tool_call)
+                errors_count += int(evaluated.execution_error)
+                if call_predicted_tools and record["called_tool"] is not None:
+                    if record["tool_error"] is not None:
+                        print(f"Tool call error: {record['tool_error']}")
+                    else:
+                        print(f"Tool call: {record['tool_result']}")
                 records.append(record)
                 sample_handle.write(json.dumps(record, ensure_ascii=True) + "\n")
 

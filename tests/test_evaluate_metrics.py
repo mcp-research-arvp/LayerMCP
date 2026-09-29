@@ -25,6 +25,7 @@ from evaluation.evaluate import (
     MULTISTEP_OVERALL_TASK_CHAR_LIMIT,
     PROMPT_CONTEXT_CHAR_LIMIT,
     REFERENCE_PREFIX_REPLAY_MODE,
+    RoutedToolCall,
     SINGLE_STEP_EVALUATION_PROTOCOL,
     TOOL_REGISTRY_FINGERPRINT_VERSION,
     _build_aggregate_metrics,
@@ -58,6 +59,7 @@ from evaluation.evaluate import (
     _tool_pool_metadata,
     _validate_expected_tools,
     _write_summary_exclusive,
+    evaluate_single_step_prediction,
 )
 
 
@@ -383,6 +385,64 @@ class EvaluateMetricTests(unittest.TestCase):
         self.assertIn("Grounding context:", routed)
         self.assertIn("dataset_id=finance-public-v1", routed)
         self.assertEqual(received_queries, [routed])
+
+    def test_reusable_single_step_evaluator_uses_baseline_execution_and_scores(self) -> None:
+        class FakeRouter:
+            HALLUCINATED_TOOL = "hallucinated_tool"
+            MODEL_NAME = "test-model"
+            ROUTER_ID = "test-router"
+            ROUTER_BACKEND = "test-backend"
+            ARCHITECTURE_SOURCE = "test-architecture"
+            WEIGHT_SOURCE = "test-weights"
+            PROMPT_TEMPLATE = "test-template"
+            MAX_GENERATED_TOKENS = 8
+
+        class FakeSession:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, dict[str, object]]] = []
+
+            async def call_tool(self, name: str, arguments: dict[str, object]):
+                self.calls.append((name, arguments))
+                return SimpleNamespace(
+                    structuredContent={"result": 4},
+                    content=[],
+                    isError=False,
+                )
+
+        session = FakeSession()
+        sample = self._sample()
+        evaluated = asyncio.run(
+            evaluate_single_step_prediction(
+                sample=sample,
+                benchmark_path=Path("benchmark/math/test.json"),
+                router=FakeRouter(),
+                prediction=RoutedToolCall(
+                    selected_tool="calculator",
+                    selected_args={"expression": "2 + 2"},
+                    raw_model_output='{"name":"calculator"}',
+                    parse_status="ok",
+                    attempted_tool="calculator",
+                    parse_diagnostic=None,
+                ),
+                session=session,
+                server_path=Path("mcp_server/server.py"),
+                live_tools=["calculator"],
+                tool_schemas={"calculator": {"type": "object"}},
+                tool_descriptions={"calculator": "Evaluate an expression."},
+                call_predicted_tools=True,
+                latency_seconds=0.25,
+            )
+        )
+
+        self.assertEqual(session.calls, [("calculator", {"expression": "2 + 2"})])
+        self.assertTrue(evaluated.executed_tool_call)
+        self.assertFalse(evaluated.execution_error)
+        self.assertTrue(evaluated.record["tool_selection_correct"])
+        self.assertTrue(evaluated.record["argument_match_correct"])
+        self.assertTrue(evaluated.record["execution_success"])
+        self.assertTrue(evaluated.record["final_outcome_correct"])
+        self.assertEqual(evaluated.record["failure_category"], "correct")
+        self.assertEqual(evaluated.record["tool_result_value"], {"result": 4})
 
     def test_multistep_prompt_includes_overall_and_step_grounding(self) -> None:
         sample = replace(

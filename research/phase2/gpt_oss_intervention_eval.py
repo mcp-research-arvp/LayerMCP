@@ -18,7 +18,10 @@ from evaluation.evaluate import _is_no_tool_call, _query_with_context, _score_sa
 from models.routers import gpt_oss_local_router as gpt_oss_router
 from models.routers.structured_tool_call import ToolCallPrediction
 from research.phase2.intervention import (
+    AttentionTarget,
+    SUPPORTED_ATTENTION_TARGETS,
     available_attention_layers,
+    available_attention_targets,
     temporary_attention_intervention,
 )
 from research.phase2.replay import ToolCatalog, load_live_catalog
@@ -35,6 +38,8 @@ class EvaluationConfig:
     method: InterventionMethod
     strength: float
     example_limit: int
+    target: AttentionTarget = "attention_all"
+    sample_ids: tuple[str, ...] | None = None
     require_registry_match: bool = True
 
 
@@ -136,10 +141,20 @@ def _saved_example(record: dict[str, Any], source: Path, line_number: int) -> Sa
     )
 
 
-def load_saved_gpt_oss_examples(source_run_dir: Path, example_limit: int) -> tuple[dict[str, Any], tuple[SavedGptOssExample, ...]]:
-    """Load a bounded, ordered set of single-step GPT-OSS saved examples."""
+def load_saved_gpt_oss_examples(
+    source_run_dir: Path,
+    example_limit: int,
+    sample_ids: Sequence[str] | None = None,
+) -> tuple[dict[str, Any], tuple[SavedGptOssExample, ...]]:
+    """Load saved GPT-OSS examples by explicit ID or bounded saved-run order."""
     if example_limit <= 0:
         raise ValueError("example_limit must be positive")
+    requested_ids = tuple(sample_ids) if sample_ids is not None else None
+    if requested_ids is not None:
+        if not requested_ids or any(not isinstance(item, str) or not item for item in requested_ids):
+            raise ValueError("sample_ids must be a non-empty sequence of non-empty strings")
+        if len(set(requested_ids)) != len(requested_ids):
+            raise ValueError("sample_ids must not contain duplicates")
     source = source_run_dir.expanduser().resolve(strict=True)
     metadata_path = source / "run_metadata.json"
     if not metadata_path.is_file():
@@ -147,6 +162,7 @@ def load_saved_gpt_oss_examples(source_run_dir: Path, example_limit: int) -> tup
     metadata = _read_json(metadata_path)
     _validate_gpt_oss_run_metadata(metadata)
     examples: list[SavedGptOssExample] = []
+    examples_by_id: dict[str, SavedGptOssExample] = {}
     seen: set[str] = set()
     for samples_path in _index_paths(source):
         for line_number, line in enumerate(samples_path.read_text(encoding="utf-8").splitlines(), 1):
@@ -156,9 +172,17 @@ def load_saved_gpt_oss_examples(source_run_dir: Path, example_limit: int) -> tup
             if example.sample_id in seen:
                 raise ValueError(f"Saved run has duplicate sample ID: {example.sample_id}")
             seen.add(example.sample_id)
-            examples.append(example)
-            if len(examples) == example_limit:
+            if requested_ids is None:
+                examples.append(example)
+            else:
+                examples_by_id[example.sample_id] = example
+            if requested_ids is None and len(examples) == example_limit:
                 return metadata, tuple(examples)
+    if requested_ids is not None:
+        missing = [sample_id for sample_id in requested_ids if sample_id not in examples_by_id]
+        if missing:
+            raise ValueError(f"Saved run has no requested sample IDs: {missing}")
+        return metadata, tuple(examples_by_id[sample_id] for sample_id in requested_ids)
     if not examples:
         raise ValueError(f"Saved run has no GPT-OSS examples: {source}")
     return metadata, tuple(examples)
@@ -210,6 +234,7 @@ def _predict(
     layer_index: int,
     enabled: bool,
     method: InterventionMethod,
+    target: AttentionTarget,
     strength: float,
     seed: int,
 ) -> tuple[ToolCallPrediction, dict[str, Any]]:
@@ -226,6 +251,7 @@ def _predict(
         generator.model,
         layer_index,
         method=method,
+        target=target,
         strength=strength,
         seed=seed,
         enabled=enabled,
@@ -261,6 +287,19 @@ def paired_records(
     invalid_layers = sorted(set(config.layers) - set(valid_layers))
     if invalid_layers:
         raise ValueError(f"Invalid layer indices {invalid_layers}; valid indices: {list(valid_layers)}")
+    unavailable_targets = {
+        layer_index: available_attention_targets(generator.model, layer_index)
+        for layer_index in config.layers
+        if config.target not in available_attention_targets(generator.model, layer_index)
+    }
+    if unavailable_targets:
+        details = "; ".join(
+            f"layer {layer_index}: {list(targets)}"
+            for layer_index, targets in sorted(unavailable_targets.items())
+        )
+        raise ValueError(
+            f"Attention target {config.target!r} is unavailable for selected layer(s); {details}"
+        )
     live_tool_set = set(catalog.names)
     for layer_index in config.layers:
         for seed in config.seeds:
@@ -278,6 +317,7 @@ def paired_records(
                     layer_index=layer_index,
                     enabled=False,
                     method=config.method,
+                    target=config.target,
                     strength=config.strength,
                     seed=seed,
                 )
@@ -288,6 +328,7 @@ def paired_records(
                     layer_index=layer_index,
                     enabled=True,
                     method=config.method,
+                    target=config.target,
                     strength=config.strength,
                     seed=seed,
                 )
@@ -297,6 +338,7 @@ def paired_records(
                     "layer_index": layer_index,
                     "seed": seed,
                     "method": config.method,
+                    "target": config.target,
                     "strength": config.strength,
                     "registry_exact_match": registry_exact_match,
                     "control": _outcome_record(control, example, live_tool_set),
@@ -345,7 +387,9 @@ def run_evaluation(
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
         raise FileNotFoundError(f"GPT-OSS checkpoint does not exist: {checkpoint}")
-    metadata, examples = load_saved_gpt_oss_examples(source_run_dir, config.example_limit)
+    metadata, examples = load_saved_gpt_oss_examples(
+        source_run_dir, config.example_limit, config.sample_ids
+    )
     catalog = catalog_loader()
     generator = generator_loader(str(checkpoint))
 
@@ -362,6 +406,10 @@ def run_evaluation(
                 "source_run_metadata": metadata,
                 "example_count": len(examples),
                 "valid_layer_indices": list(available_attention_layers(generator.model)),
+                "available_attention_targets": {
+                    str(layer_index): list(available_attention_targets(generator.model, layer_index))
+                    for layer_index in available_attention_layers(generator.model)
+                },
             },
             indent=2,
             sort_keys=True,
@@ -411,6 +459,15 @@ def _parse_csv_ints(value: str, option: str) -> tuple[int, ...]:
     return parsed
 
 
+def _parse_csv_sample_ids(value: str) -> tuple[str, ...]:
+    parsed = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not parsed or len(set(parsed)) != len(parsed):
+        raise argparse.ArgumentTypeError(
+            "--sample-ids must be a non-empty comma-separated list of distinct saved sample IDs"
+        )
+    return parsed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run paired GPT-OSS attention-intervention routing evaluations.")
     parser.add_argument("--source-run-dir", type=Path, required=True)
@@ -419,8 +476,10 @@ def main() -> None:
     parser.add_argument("--layers", required=True, help="Comma-separated GPT-OSS layer indices, e.g. 0,12")
     parser.add_argument("--seeds", default="1234", help="Comma-separated intervention seeds")
     parser.add_argument("--method", choices=("noise", "replace"), default="noise")
+    parser.add_argument("--target", choices=sorted(SUPPORTED_ATTENTION_TARGETS), default="attention_all")
     parser.add_argument("--strength", type=float, default=0.01)
     parser.add_argument("--example-limit", type=int, default=2)
+    parser.add_argument("--sample-ids", type=_parse_csv_sample_ids)
     parser.add_argument("--allow-registry-mismatch", action="store_true")
     args = parser.parse_args()
     if args.example_limit <= 0:
@@ -432,7 +491,9 @@ def main() -> None:
         seeds=_parse_csv_ints(args.seeds, "--seeds"),
         method=args.method,
         strength=args.strength,
-        example_limit=args.example_limit,
+        example_limit=len(args.sample_ids) if args.sample_ids is not None else args.example_limit,
+        target=args.target,
+        sample_ids=args.sample_ids,
         require_registry_match=not args.allow_registry_mismatch,
     )
     destination = run_evaluation(

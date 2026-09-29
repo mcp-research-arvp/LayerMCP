@@ -35,10 +35,28 @@ class TinyGptOssModel(nn.Module):
         self.block = nn.ModuleList([TinyGptBlock(), TinyGptBlock()])
 
 
+class TinyTargetedGptBlock(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.attn = nn.Module()
+        self.attn.q_proj = nn.Linear(3, 3)
+        self.attn.k_proj = nn.Linear(3, 3)
+        self.attn.v_proj = nn.Linear(3, 3)
+        self.attn.o_proj = nn.Linear(3, 3)
+        self.mlp = nn.Linear(3, 3)
+
+
+class TinyTargetedGptOssModel(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.block = nn.ModuleList([TinyTargetedGptBlock(), TinyTargetedGptBlock()])
+
+
 class MockGenerator:
-    def __init__(self, model: TinyGptOssModel, *, fail_on_active_prompt: str | None = None) -> None:
+    def __init__(self, model: nn.Module, *, fail_on_active_prompt: str | None = None) -> None:
         self.model = model
-        self._original_attention = model.block[0].attn.weight.detach().clone()
+        self._attention_parameter = next(model.block[0].attn.parameters())
+        self._original_attention = self._attention_parameter.detach().clone()
         self.fail_on_active_prompt = fail_on_active_prompt
         self.assistant_action_stop_tokens = [7]
 
@@ -47,7 +65,7 @@ class MockGenerator:
         return query
 
     def generate_text(self, *, prompt_tokens, stop_tokens, temperature, max_tokens):
-        active = not torch.equal(self.model.block[0].attn.weight, self._original_attention)
+        active = not torch.equal(self._attention_parameter, self._original_attention)
         if active and self.fail_on_active_prompt and self.fail_on_active_prompt in prompt_tokens:
             raise RuntimeError("intentional interrupted pair")
         return SimpleNamespace(text="not a valid Harmony call" if active else VALID_CALL)
@@ -123,6 +141,8 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
         queries: list[str],
         *,
         method: str = "noise",
+        target: str = "attention_all",
+        sample_ids: tuple[str, ...] | None = None,
     ) -> Path:
         catalog = _catalog()
         source = _write_saved_run(directory, catalog, queries)
@@ -133,7 +153,13 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             checkpoint_dir=checkpoint,
             output_dir=directory / "output",
             config=EvaluationConfig(
-                layers=(0,), seeds=(17,), method=method, strength=0.25, example_limit=2
+                layers=(0,),
+                seeds=(17,),
+                method=method,
+                strength=0.25,
+                example_limit=len(sample_ids) if sample_ids is not None else 2,
+                target=target,
+                sample_ids=sample_ids,
             ),
             catalog_loader=lambda: catalog,
             generator_loader=lambda _: generator,
@@ -181,6 +207,50 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertEqual(record["method"], "replace")
             self.assertTrue(record["intervention_verification"]["restored_exactly"])
 
+        for name, parameter in model.named_parameters():
+            self.assertTrue(torch.equal(parameter, before[name]), name)
+
+    def test_explicit_sample_ids_preserve_requested_order(self) -> None:
+        model = TinyGptOssModel()
+        with TemporaryDirectory() as temporary:
+            output = self._run(
+                Path(temporary),
+                MockGenerator(model),
+                ["first", "second"],
+                sample_ids=("sample-1", "sample-0"),
+            )
+            records = [
+                json.loads(line)
+                for line in (output / "paired_records.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual([record["sample_id"] for record in records], ["sample-1", "sample-0"])
+
+    def test_unknown_explicit_sample_id_fails_before_output_is_created(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.assertRaisesRegex(ValueError, "no requested sample IDs"):
+                self._run(
+                    root,
+                    MockGenerator(TinyGptOssModel()),
+                    ["first"],
+                    sample_ids=("missing-sample",),
+                )
+            self.assertFalse((root / "output").exists())
+
+    def test_projection_target_is_recorded_and_changes_only_that_projection(self) -> None:
+        torch.manual_seed(9)
+        model = TinyTargetedGptOssModel()
+        before = {name: parameter.detach().clone() for name, parameter in model.named_parameters()}
+        with TemporaryDirectory() as temporary:
+            output = self._run(
+                Path(temporary), MockGenerator(model), ["one"], target="q_proj"
+            )
+            record = json.loads((output / "paired_records.jsonl").read_text(encoding="utf-8"))
+            self.assertEqual(record["target"], "q_proj")
+            self.assertEqual(
+                set(record["intervention_verification"]["changed_attention_parameter_names"]),
+                {"q_proj.weight", "q_proj.bias"},
+            )
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)
 

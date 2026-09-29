@@ -66,8 +66,15 @@ loaded instance presents one of those layouts.  Other layouts, ambiguous
 attention attributes, quantized 4-bit/8-bit models, and non-floating-point or
 cross-component-tied attention parameters fail before any parameter is changed.
 
-The valid indices come from the supplied model rather than a fixed model-size
-assumption.  `noise` sets every selected attention parameter `p` to
+The valid indices and safe target names come from the supplied model rather
+than a fixed model-size assumption. `attention_all` changes every registered
+floating-point parameter under the selected attention module. Individual
+targets such as `q_proj`, `k_proj`, `v_proj`, `o_proj`, `qkv`, or `out` are
+offered only when the loaded module stores that projection separately. A fused
+QKV parameter is never sliced on an assumption: it is available only as `qkv`.
+For example, the local GPT-OSS architecture exposes fused `qkv` and `out`,
+while the local Llama layout exposes separate Q/K/V/O projections. `noise`
+sets every selected parameter `p` to
 `p + strength * z`; `replace` sets it to `strength * z`; in both cases `z` is a
 seeded standard-normal tensor with the same shape.  Generated values are cast
 back to the parameter's original device and dtype.  The original tensors are
@@ -81,6 +88,7 @@ from models.architectures.llama31_8b_pytorch.config import Config
 from models.architectures.llama31_8b_pytorch.inference import TokenGenerator
 from research.phase2.intervention import (
     available_attention_layers,
+    available_attention_targets,
     temporary_attention_intervention,
 )
 
@@ -88,10 +96,12 @@ checkpoint_dir = "/path/to/local/llama_checkpoint"
 generator = TokenGenerator(checkpoint=checkpoint_dir, device=Config.device)
 model = generator.model
 print(available_attention_layers(model))
+print(available_attention_targets(model, layer_index=12))
 
 with temporary_attention_intervention(
     model,
     layer_index=12,
+    target="q_proj",      # choose only from available_attention_targets(...)
     method="noise",       # or "replace"
     strength=0.01,
     seed=1234,
@@ -142,9 +152,30 @@ python -m research.phase2.gpt_oss_intervention_eval \
   --source-run-dir /path/to/saved_gpt_oss_single_step_run \
   --checkpoint /path/to/local_gpt_oss_checkpoint \
   --output-dir /path/to/fresh_output \
-  --layers 0 --seeds 1234 --method noise --strength 0.01 --example-limit 2
+  --layers 0 --target qkv --seeds 1234 --method noise --strength 0.01 \
+  --sample-ids math_v1_calculator_easy_001,math_v1_convert_units_easy_001
 ```
 
 The runner requires an exact live-registry match by default, since changed tool
-descriptions change the Harmony prompt. Use comma-separated `--layers` and
-`--seeds` for a later bounded sweep. It never writes model weights.
+descriptions change the Harmony prompt. Use comma-separated `--layers`,
+`--seeds`, and `--sample-ids` for a bounded experiment. Omit `--sample-ids`
+and use `--example-limit` only when saved-run order is intentional. It never
+writes model weights.
+
+### Minimal GPT-OSS starter panel
+
+These saved IDs are a quick five-query panel from the frozen GPT-OSS primary
+run. They are intentionally not a scorecard or a layer sweep; they check that
+the paired path can preserve good behavior and expose different failure modes.
+
+| Saved sample ID | What it checks in the frozen GPT-OSS baseline |
+| --- | --- |
+| `math_v1_calculator_easy_001` | Correct control: tool, arguments, execution, and final outcome all succeed. |
+| `math_v1_convert_units_easy_001` | Shared routing boundary: expected `convert_units`, selected `unit_converter`. |
+| `math_v1_calculator_difficult_001` | Reference-argument mismatch but correct final outcome (`4 * 11 + 6` versus `4*11+6`). |
+| `math_public_v2_calculator_005` | Invalid/no-call boundary: GPT-OSS produced a parse error. |
+| `finance_controlled_finance_parse_xbrl_003` | Finance routing boundary: expected `finance_parse_xbrl`, selected `finance_get_company_facts`. |
+
+Use a fresh output directory and the exact saved GPT-OSS primary run that
+contains these IDs. The current runner records routing outcomes only; the full
+tool-execution and final-outcome paired evaluator is the next planned stage.

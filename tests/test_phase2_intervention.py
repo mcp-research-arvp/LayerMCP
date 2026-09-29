@@ -9,6 +9,7 @@ from research.phase2.intervention import (
     AttentionInterventionError,
     attention_module_for_layer,
     available_attention_layers,
+    available_attention_targets,
     temporary_attention_intervention,
 )
 from research.phase2.intervention_smoke import run_generation_pair
@@ -73,6 +74,43 @@ class TinyQwenLayout(nn.Module):
         )
 
 
+class TinyProjectionAttention(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.q_proj = nn.Linear(3, 3)
+        self.k_proj = nn.Linear(3, 3)
+        self.v_proj = nn.Linear(3, 3)
+        self.o_proj = nn.Linear(3, 3)
+
+
+class TinyProjectionLayer(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.self_attn = TinyProjectionAttention()
+        self.mlp = nn.Linear(3, 3)
+
+
+class TinyProjectionLayout(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.layers = nn.ModuleList([TinyProjectionLayer(), TinyProjectionLayer()])
+
+
+class TinyFusedGptBlock(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.attn = nn.Module()
+        self.attn.qkv = nn.Linear(3, 9)
+        self.attn.out = nn.Linear(9, 3)
+        self.mlp = nn.Linear(3, 3)
+
+
+class TinyFusedGptLayout(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.block = nn.ModuleList([TinyFusedGptBlock(), TinyFusedGptBlock()])
+
+
 class TinySmokeGenerator:
     def __init__(self, model: nn.Module) -> None:
         self.model = model
@@ -100,6 +138,40 @@ class Phase2AttentionInterventionTests(unittest.TestCase):
         self.assertEqual(available_attention_layers(TinyHuggingFaceLayout()), (0, 1))
         self.assertEqual(available_attention_layers(TinyGptOssLayout()), (0, 1))
         self.assertEqual(available_attention_layers(TinyQwenLayout()), (0, 1))
+
+    def test_discovers_only_safe_projection_targets(self) -> None:
+        projection_model = TinyProjectionLayout()
+        self.assertEqual(
+            available_attention_targets(projection_model, 0),
+            ("attention_all", "q_proj", "k_proj", "v_proj", "o_proj"),
+        )
+        self.assertEqual(
+            available_attention_targets(TinyFusedGptLayout(), 0),
+            ("attention_all", "qkv", "out"),
+        )
+        self.assertEqual(available_attention_targets(self.model, 0), ("attention_all",))
+
+    def test_projection_target_changes_only_that_projection_and_restores(self) -> None:
+        model = TinyProjectionLayout()
+        before = _parameter_values(model)
+
+        with temporary_attention_intervention(
+            model, 1, target="q_proj", method="noise", seed=2, strength=1.0
+        ) as intervention:
+            changed = _parameter_values(model)
+            self.assertEqual(set(intervention.changed_parameter_names), {"q_proj.weight", "q_proj.bias"})
+            for name, value in changed.items():
+                targeted = name.startswith("layers.1.self_attn.q_proj.")
+                self.assertNotEqual(torch.equal(value, before[name]), targeted, name)
+
+        self.assertTrue(intervention.restored_exactly)
+        for name, parameter in model.named_parameters():
+            self.assertTrue(torch.equal(parameter, before[name]), name)
+
+    def test_unavailable_projection_target_explains_available_targets(self) -> None:
+        with self.assertRaisesRegex(AttentionInterventionError, "Available targets: attention_all"):
+            with temporary_attention_intervention(self.model, 0, target="q_proj"):
+                pass
 
     def test_local_llama_transformer_layout_is_supported_without_a_checkpoint(self) -> None:
         from models.architectures.llama31_8b_pytorch.model import ModelConfigs, Transformer

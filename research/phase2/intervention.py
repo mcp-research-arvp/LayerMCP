@@ -29,7 +29,13 @@ from torch import nn
 
 
 InterventionMethod = Literal["noise", "replace"]
+AttentionTarget = Literal[
+    "attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"
+]
 SUPPORTED_METHODS = frozenset({"noise", "replace"})
+SUPPORTED_ATTENTION_TARGETS = frozenset(
+    {"attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"}
+)
 
 
 class AttentionInterventionError(ValueError):
@@ -142,9 +148,43 @@ def _validate_model_is_not_quantized(model: Any) -> None:
         )
 
 
-def _snapshots(module: nn.Module) -> list[_ParameterSnapshot]:
+def _parameter_names_for_target(module: nn.Module, target: AttentionTarget) -> tuple[str, ...]:
+    """Return registered parameter names belonging to one safely named projection.
+
+    A projection target is available only when the attention module exposes it
+    as its own registered child/module path (for example ``q_proj.weight``).
+    Fused ``qkv`` weights are intentionally offered only as ``qkv``: slicing a
+    fused parameter would require architecture-specific layout assumptions.
+    """
+    all_names = tuple(name for name, _ in module.named_parameters(recurse=True))
+    if target == "attention_all":
+        return all_names
+    prefix = f"{target}."
+    return tuple(name for name in all_names if name.startswith(prefix))
+
+
+def available_attention_targets(model: Any, layer_index: int) -> tuple[AttentionTarget, ...]:
+    """Discover safe attention target groups for one selected layer.
+
+    ``attention_all`` is always available for a supported attention module.
+    Individual projection targets are returned only when that projection is a
+    separately registered parameter group.  This prevents pretending that a
+    fused QKV tensor can be safely split without architecture-specific tests.
+    """
+    module = attention_module_for_layer(model, layer_index)
+    targets: list[AttentionTarget] = ["attention_all"]
+    for target in ("q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"):
+        if _parameter_names_for_target(module, target):
+            targets.append(target)
+    return tuple(targets)
+
+
+def _snapshots(module: nn.Module, target: AttentionTarget) -> list[_ParameterSnapshot]:
     snapshots: list[_ParameterSnapshot] = []
+    selected_names = set(_parameter_names_for_target(module, target))
     for name, parameter in module.named_parameters(recurse=True):
+        if name not in selected_names:
+            continue
         if not parameter.is_floating_point():
             raise AttentionInterventionError(
                 f"Attention parameter {name!r} has dtype {parameter.dtype}; only floating-point "
@@ -155,7 +195,7 @@ def _snapshots(module: nn.Module) -> list[_ParameterSnapshot]:
         )
     if not snapshots:
         raise AttentionInterventionError(
-            "The selected attention module has no registered parameters to intervene on."
+            f"Attention target {target!r} has no registered parameters to intervene on."
         )
     return snapshots
 
@@ -220,6 +260,7 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         layer_index: int,
         *,
         method: InterventionMethod = "noise",
+        target: AttentionTarget = "attention_all",
         seed: int = 0,
         strength: float = 0.01,
         enabled: bool = True,
@@ -228,6 +269,13 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         if method not in SUPPORTED_METHODS:
             supported = ", ".join(sorted(SUPPORTED_METHODS))
             raise ValueError(f"Unsupported intervention method {method!r}. Expected one of: {supported}.")
+        if not isinstance(target, str):
+            raise TypeError("target must be a string.")
+        if target not in SUPPORTED_ATTENTION_TARGETS:
+            supported_targets = ", ".join(sorted(SUPPORTED_ATTENTION_TARGETS))
+            raise ValueError(
+                f"Unsupported attention target {target!r}. Expected one of: {supported_targets}."
+            )
         if isinstance(seed, bool) or not isinstance(seed, int):
             raise TypeError("seed must be an integer.")
         if isinstance(strength, bool) or not isinstance(strength, Real):
@@ -240,6 +288,7 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         self.model = model
         self.layer_index = layer_index
         self.method = method
+        self.target = target
         self.seed = seed
         self.strength = float(strength)
         self.enabled = enabled
@@ -273,7 +322,14 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
 
         _validate_model_is_not_quantized(self.model)
         module = attention_module_for_layer(self.model, self.layer_index)
-        self._saved = _snapshots(module)
+        available_targets = available_attention_targets(self.model, self.layer_index)
+        if self.target not in available_targets:
+            available = ", ".join(available_targets)
+            raise AttentionInterventionError(
+                f"Attention target {self.target!r} is not available at layer {self.layer_index}. "
+                f"Available targets: {available}."
+            )
+        self._saved = _snapshots(module, self.target)
         _ensure_parameters_are_attention_local(self.model, module, self._saved)
         generator = torch.Generator(device="cpu")
         generator.manual_seed(self.seed)
@@ -315,6 +371,7 @@ def temporary_attention_intervention(
     layer_index: int,
     *,
     method: InterventionMethod = "noise",
+    target: AttentionTarget = "attention_all",
     seed: int = 0,
     strength: float = 0.01,
     enabled: bool = True,
@@ -330,6 +387,7 @@ def temporary_attention_intervention(
         model,
         layer_index,
         method=method,
+        target=target,
         seed=seed,
         strength=strength,
         enabled=enabled,

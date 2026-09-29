@@ -125,19 +125,92 @@ repository's Llama, GPT-OSS, Qwen, Gemma, and Phi implementations: they show
 valid layer IDs, the selected attention-module path, projection shapes, and
 the targets that the current API can safely select. This works without weights.
 
-For a real inspection, set the first cell's `CHECKPOINT_DIR` to **your own
-local checkpoint path on the current machine/cluster**, select the matching
-`<family>_checkpoint` choice, and set `LOAD_CHECKPOINT = True` in an
-interactive GPU allocation. The notebook does not contain a personal path and
-does not download weights. It separately reports checkpoint quantization
-metadata and actual selected-attention dtypes before checking whether the
-current API accepts the target.
+For a real inspection, select the matching `<family>_checkpoint` choice and
+set `LOAD_CHECKPOINT = True` in an interactive GPU allocation. The notebook
+gets `CHECKPOINT_DIR` from the matching variable in a local `.env`; it does
+not contain a personal path and does not download weights. It separately
+reports checkpoint quantization metadata and actual selected-attention dtypes
+before checking whether the current API accepts the target.
 
-If VS Code starts the notebook kernel outside the repository, copy the
-root `.env.example` to a local root `.env` and set
-`LAYERMCP_REPO_ROOT` to that checkout. The notebook reads it before importing
-repository code. `.env` is ignored by Git; `.env.example` contains no local
-paths and is the only version that is tracked.
+### Interactive GPU notebook workflow
+
+This is for model inspection and short, manual intervention checks. Use batch
+jobs for a complete benchmark or sweep: an interactive allocation has a fixed
+Slurm end time even while it is active.
+
+1. From the repository root, make a local configuration file. It is ignored
+   by Git and must never be committed:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Set `LAYERMCP_REPO_ROOT` to the current checkout and set only the checkpoint
+   variables that are available locally, for example
+   `LAYERMCP_GPT_OSS_CHECKPOINT`. Set `TIKTOKEN_ENCODINGS_BASE` too when the
+   local GPT-OSS/Harmony tokenizer assets live outside their usual cache.
+
+2. Once per virtual environment, install/register a Jupyter kernel:
+
+   ```bash
+   python -m pip install ipykernel jupyterlab
+   python -m ipykernel install --user --name layermcp --display-name "Python (layermcp)"
+   ```
+
+3. On the cluster login node, request an interactive GPU with a deliberately
+   bounded duration. Replace the account and resources with values valid on
+   your cluster:
+
+   ```bash
+   salloc --account=<gpu_account> --gres=gpu:h100:1 --cpus-per-task=8 --mem=64G --time=00:30:00
+   srun --pty bash -l
+   ```
+
+   On the allocated compute node, load the project environment and start a
+   local-only Jupyter server. Leave this terminal running:
+
+   ```bash
+   cd /path/to/LayerMCP
+   module load StdEnv/2023 python/3.11.5
+   source /path/to/venv/bin/activate
+   jupyter lab --no-browser --ip=127.0.0.1 --port=8888
+   ```
+
+4. In a second login-node terminal, forward the compute node's local Jupyter
+   port; use the hostname printed by `hostname` on the allocated node:
+
+   ```bash
+   ssh -N -L 8888:127.0.0.1:8888 <compute_node_hostname>
+   ```
+
+   In VS Code, forward port 8888 in the **Ports** panel if necessary. Open the
+   Jupyter URL containing its token, then select **Python (layermcp)** from the
+   notebook's kernel picker (or choose **Existing Jupyter Server** and paste
+   that token URL). Confirm the kernel is on the allocation before loading a
+   checkpoint:
+
+   ```python
+   import torch
+   print(torch.cuda.is_available())
+   print(torch.cuda.get_device_name(0))
+   ```
+
+5. In the notebook's one editable settings cell, leave exactly one model and
+   target choice uncommented. Run the setup/import cells, the inspector, the
+   runtime type/quantization cell, and then the real selected-attention probe.
+   The probe reports a disabled no-op, selected parameters changed inside the
+   context, and exact restoration after it. It does not generate an answer or
+   score a benchmark.
+
+6. When finished, save the notebook if desired, interrupt Jupyter with
+   `Ctrl-C`, exit the allocation shell, and let or cancel the interactive
+   allocation. Do not rely on notebook activity to extend its Slurm deadline.
+
+The small CPU model is only a fast explanation of targeting and restoration.
+Configuration-only mode reads model configuration (and, when supplied, local
+`config.json`) without loading checkpoint weights. A `<family>_checkpoint`
+mode is the authoritative view of real parameter names, shapes, dtypes,
+devices, and intervention acceptance.
 
 For one bounded real-checkpoint functional check of the saved Phase 2 example,
 run `python -m research.phase2.intervention_smoke` with the development config,

@@ -120,13 +120,24 @@ uses the same `model.layers[i].self_attn` layout.
 For an interactive, portable walk-through, open
 `research/phase2/attention_intervention_demo.ipynb`. It defaults to a tiny
 random CPU model and explicitly labels that demonstration as mechanics only,
-not pretrained tool-selection behavior. It can also show Llama or GPT-OSS
-layer IDs and expected attention shapes from repository/configuration metadata
-without loading weights. A real checkpoint is loaded only after the notebook
-user supplies a local directory and sets its explicit `LOAD_CHECKPOINT` flag.
-The notebook separately reports checkpoint quantization metadata and actual
-selected-attention dtypes before checking whether the current API accepts the
-target.
+not pretrained tool-selection behavior. Configuration-only views cover the
+repository's Llama, GPT-OSS, Qwen, Gemma, and Phi implementations: they show
+valid layer IDs, the selected attention-module path, projection shapes, and
+the targets that the current API can safely select. This works without weights.
+
+For a real inspection, set the first cell's `CHECKPOINT_DIR` to **your own
+local checkpoint path on the current machine/cluster**, select the matching
+`<family>_checkpoint` choice, and set `LOAD_CHECKPOINT = True` in an
+interactive GPU allocation. The notebook does not contain a personal path and
+does not download weights. It separately reports checkpoint quantization
+metadata and actual selected-attention dtypes before checking whether the
+current API accepts the target.
+
+If VS Code starts the notebook kernel outside the repository, copy the
+root `.env.example` to a local root `.env` and set
+`LAYERMCP_REPO_ROOT` to that checkout. The notebook reads it before importing
+repository code. `.env` is ignored by Git; `.env.example` contains no local
+paths and is the only version that is tracked.
 
 For one bounded real-checkpoint functional check of the saved Phase 2 example,
 run `python -m research.phase2.intervention_smoke` with the development config,

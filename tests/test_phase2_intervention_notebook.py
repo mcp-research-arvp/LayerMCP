@@ -26,8 +26,19 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertIn("temporary_attention_intervention", source)
         self.assertIn("available_attention_layers", source)
         self.assertIn("attention_module_for_layer", source)
-        self.assertIn("MODEL_CHOICE = \"tiny_cpu\"", source)
+        self.assertIn("MODEL_CHOICE = 'tiny_cpu'", source)
         self.assertIn("LOAD_CHECKPOINT = False", source)
+        self.assertIn("available_attention_targets", source)
+        self.assertIn("ATTENTION_TARGET", source)
+        self.assertIn("REPO_ROOT", source)
+        for choice in (
+            "llama31_config_only",
+            "gpt_oss_config_only",
+            "qwen36_config_only",
+            "gemma4_config_only",
+            "phi4_config_only",
+        ):
+            self.assertIn(choice, source)
         self.assertNotIn("from_pretrained", source)
 
     @unittest.skipUnless(importlib.util.find_spec("torch"), "PyTorch is required to execute notebook cells")
@@ -37,9 +48,29 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         for cell in notebook["cells"]:
             if cell["cell_type"] == "code":
                 exec("".join(cell["source"]), namespace)
-        self.assertEqual(namespace["results"]["disabled"], "no-op; exact values retained")
+        self.assertEqual(
+            namespace["results"]["disabled"],
+            "no-op; identical output and exact values retained",
+        )
         self.assertTrue(namespace["results"]["noise"]["restored_after_context"])
         self.assertTrue(namespace["results"]["replace"]["restored_after_context"])
+
+    @unittest.skipUnless(importlib.util.find_spec("torch"), "PyTorch is required for architecture views")
+    def test_configuration_views_cover_all_repository_families_without_weights(self) -> None:
+        notebook = json.loads(NOTEBOOK.read_text())
+        namespace = {"__name__": "__notebook_test__"}
+        for cell in notebook["cells"]:
+            if cell["cell_type"] == "code":
+                exec("".join(cell["source"]), namespace)
+
+        views = {
+            family: namespace["configuration_view"](family, 0, None)
+            for family in ("llama31", "gpt_oss", "qwen36", "gemma4", "phi4")
+        }
+        self.assertEqual(views["gpt_oss"]["targets"], ("attention_all", "qkv", "out"))
+        self.assertEqual(views["phi4"]["targets"], ("attention_all", "o_proj"))
+        self.assertEqual(views["qwen36"]["targets"], ("attention_all",))
+        self.assertTrue(all(view["layer_ids"] for view in views.values()))
 
 
 if __name__ == "__main__":

@@ -160,6 +160,10 @@ settings are deliberately small and explicit:
 | `RUN_REAL_INTERVENTION_PROBE` | `True` or `False` | A mechanics-only check: verifies selected tensors change in the enabled context and restore exactly afterward. It does not generate or score a benchmark answer. |
 | `RUN_PAIRED_SAMPLE_COMPARISON` | `True` or `False` | Runs one real GPT-OSS saved example twice: unchanged control, then enabled intervention. It compares raw output, tool choice, arguments, execution, final outcome, and restoration. |
 | `PAIRED_SAMPLE_ID` / `PAIRED_SOURCE_RUN_DIR` | A saved example ID and compatible run | Selects the one saved GPT-OSS reasoning-low example to compare. The run directory normally comes from ignored `.env`. |
+| `RUN_PAIRED_SWEEP` | `True` or `False` | Runs a bounded grid of the same control/intervention comparison for GPT-OSS. It is disabled by default. |
+| `SWEEP_SAMPLE_IDS`, `SWEEP_LAYERS`, `SWEEP_TARGETS` | Explicit tuples, or literal `"all"` for layers/targets | Selects saved examples and targets. `"all"` expands only to layers and attention targets the loaded model actually exposes. |
+| `SWEEP_METHODS`, `SWEEP_STRENGTHS`, `SWEEP_SEEDS` | Explicit tuples | Selects the noise/replacement methods, absolute strengths, and reproducible perturbation seeds to compare. |
+| `SWEEP_MAX_INTERVENTIONS` / `SWEEP_ALLOW_LARGE` | A positive pair limit / explicit override | Stops an accidental large interactive grid before it generates. The default maximum is 24 complete control/intervention pairs. |
 
 The two probe flags answer different questions. Use the real-intervention probe
 to establish that a target can be changed and restored safely. Use the paired
@@ -288,13 +292,22 @@ Slurm end time even while it is active.
 
 ### Exploration versus sweeps
 
-Use the notebook for architecture inspection and one-sample comparisons. A
-future notebook sweep may expose a deliberately small list of sample IDs,
-layers, targets, strengths, methods, and seeds so that a user can visually
-compare paired controls. Do not use an interactive allocation for all layers,
-all strengths, or a full benchmark: it has a fixed Slurm deadline and does not
-write sweep completion artifacts. Use the paired runner below for reproducible
-multi-sample or Slurm sweeps.
+Use the notebook for architecture inspection, one-sample comparisons, and a
+small visual paired sweep. Its sweep settings expose sample IDs, layers,
+targets, strengths, methods, and seeds. The notebook prints its planned count
+before generation and defaults to at most 24 complete control/intervention
+pairs (48 generations). A request beyond that stops before generation unless
+`SWEEP_ALLOW_LARGE = True` is set deliberately.
+
+There is no model-architecture cap hidden in the notebook. For the current
+GPT-OSS runtime, `SWEEP_LAYERS = 'all'` and `SWEEP_TARGETS = 'all'` expands to
+24 layers times its three safe targets (`attention_all`, `qkv`, and `out`): 72
+pairs for one sample, one method, one strength, and one seed. Adding two
+methods, three strengths, two seeds, and two samples would request 1,728
+pairs (3,456 generations). That is technically allowed only with the explicit
+override, but it is unsuitable for an interactive allocation: use the paired
+runner below for a full model-wide grid so the results have durable output and
+completion markers.
 
 For a larger study, choose settings on a small exploration panel, then verify
 the selected settings on separate held-out examples. This is hyperparameter

@@ -270,6 +270,15 @@ Slurm end time even while it is active.
    fails, the setting harmed a previously correct sample. It does not prove a
    general effect either way.
 
+   To compare a second query with the **same** loaded model, layer, target,
+   method, strength, and seed, change only `PAIRED_SAMPLE_ID`, rerun the
+   settings cell, then rerun the final paired-comparison cell. Do not rerun the
+   model-loading/inspector cell: the local checkpoint model remains in GPU
+   memory for this kernel session, and reloading it only wastes allocation
+   time. This reuse rule applies only while the kernel and Slurm allocation are
+   still alive; a restarted kernel or expired allocation requires a new model
+   load.
+
 6. Keep local paths and GPU outputs out of the tracked notebook. Put paths in
    ignored `.env`; copy results you need elsewhere. Before closing a notebook
    used for a real run, choose **Discard/Don't Save** if prompted, then reopen

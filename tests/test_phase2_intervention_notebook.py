@@ -30,6 +30,9 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertIn("LOAD_CHECKPOINT = False", source)
         self.assertIn("available_attention_targets", source)
         self.assertIn("ATTENTION_TARGET", source)
+        self.assertIn("RUN_PAIRED_SAMPLE_COMPARISON = False", source)
+        self.assertIn("PAIRED_SAMPLE_ID", source)
+        self.assertIn("evaluate_one_saved_example", source)
         self.assertIn("REPO_ROOT", source)
         for choice in (
             "llama31_config_only",
@@ -40,6 +43,8 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         ):
             self.assertIn(choice, source)
         self.assertNotIn("from_pretrained", source)
+        cell_ids = [cell["id"] for cell in notebook["cells"]]
+        self.assertEqual(len(cell_ids), len(set(cell_ids)))
 
     @unittest.skipUnless(importlib.util.find_spec("torch"), "PyTorch is required to execute notebook cells")
     def test_default_cpu_cells_execute_without_a_checkpoint(self) -> None:
@@ -54,6 +59,7 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         )
         self.assertTrue(namespace["results"]["noise"]["restored_after_context"])
         self.assertTrue(namespace["results"]["replace"]["restored_after_context"])
+        self.assertFalse(namespace["RUN_PAIRED_SAMPLE_COMPARISON"])
 
     @unittest.skipUnless(importlib.util.find_spec("torch"), "PyTorch is required for architecture views")
     def test_configuration_views_cover_all_repository_families_without_weights(self) -> None:

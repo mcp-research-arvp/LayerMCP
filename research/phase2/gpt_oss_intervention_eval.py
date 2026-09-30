@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
@@ -424,6 +425,78 @@ async def paired_records(
                     "control_verification": control_verification,
                     "intervention_verification": intervention_verification,
                 }
+
+
+async def evaluate_one_saved_example_async(
+    *,
+    generator: Any,
+    source_run_dir: Path,
+    sample_id: str,
+    layer_index: int,
+    seed: int,
+    method: InterventionMethod,
+    target: AttentionTarget,
+    strength: float,
+    session_factory: Callable[[], Any] | None = None,
+    require_registry_match: bool = True,
+) -> dict[str, Any]:
+    """Evaluate one saved GPT-OSS sample as a visible control/intervention pair.
+
+    This is the interactive counterpart to :func:`run_evaluation_async`: it
+    accepts an already-loaded generator, executes the same native Harmony and
+    baseline evaluator path, and returns one complete pair without creating an
+    output directory.  It is intended for a notebook inspection, not a sweep.
+    """
+    _, examples = load_saved_gpt_oss_examples(
+        source_run_dir,
+        example_limit=1,
+        sample_ids=(sample_id,),
+    )
+    config = EvaluationConfig(
+        layers=(layer_index,),
+        seeds=(seed,),
+        method=method,
+        strength=strength,
+        example_limit=1,
+        target=target,
+        sample_ids=(sample_id,),
+        require_registry_match=require_registry_match,
+    )
+    open_session = session_factory or (lambda: _run_server_session(SERVER_PATH))
+    async with open_session() as session:
+        catalog = await _load_catalog_from_session(session)
+        records = [
+            record
+            async for record in paired_records(
+                generator,
+                examples,
+                catalog,
+                config,
+                session,
+            )
+        ]
+    if len(records) != 1:  # Defensive guard if paired-record iteration changes.
+        raise RuntimeError(f"Expected exactly one paired record, got {len(records)}")
+    return records[0]
+
+
+def evaluate_one_saved_example(**kwargs: Any) -> dict[str, Any]:
+    """Synchronously run one paired sample in scripts and Jupyter notebooks.
+
+    IPython kernels already own an event loop.  In that case the evaluation is
+    run in one short-lived worker thread with its own loop; generation remains
+    strictly sequential and the supplied model instance is never shared across
+    simultaneous evaluations.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(evaluate_one_saved_example_async(**kwargs))
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(
+            lambda: asyncio.run(evaluate_one_saved_example_async(**kwargs))
+        ).result()
 
 
 def _safe_output_directory(path: Path) -> Path:

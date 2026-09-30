@@ -132,6 +132,15 @@ not contain a personal path and does not download weights. It separately
 reports checkpoint quantization metadata and actual selected-attention dtypes
 before checking whether the current API accepts the target.
 
+For a visible, one-query GPT-OSS check, also set
+`LAYERMCP_GPT_OSS_SOURCE_RUN` to a saved compatible GPT-OSS reasoning-low run.
+After loading the checkpoint, set `RUN_PAIRED_SAMPLE_COMPARISON = True` and
+choose `PAIRED_SAMPLE_ID` in the notebook settings cell. The notebook runs an
+unchanged control and the selected intervention through the existing Harmony,
+tool-execution, and final-outcome evaluator path, then displays both raw
+outputs and outcome fields side by side. It is intentionally limited to one
+sample; use the runner below for a panel or sweep.
+
 ### Interactive GPU notebook workflow
 
 This is for model inspection and short, manual intervention checks. Use batch
@@ -147,8 +156,9 @@ Slurm end time even while it is active.
 
    Set `LAYERMCP_REPO_ROOT` to the current checkout and set only the checkpoint
    variables that are available locally, for example
-   `LAYERMCP_GPT_OSS_CHECKPOINT`. Set `TIKTOKEN_ENCODINGS_BASE` too when the
-   local GPT-OSS/Harmony tokenizer assets live outside their usual cache.
+   `LAYERMCP_GPT_OSS_CHECKPOINT`. For the optional one-sample GPT-OSS comparison,
+   also set `LAYERMCP_GPT_OSS_SOURCE_RUN`. Set `TIKTOKEN_ENCODINGS_BASE` too
+   when the local GPT-OSS/Harmony tokenizer assets live outside their usual cache.
 
 2. Once per virtual environment, install/register a Jupyter kernel:
 
@@ -199,8 +209,10 @@ Slurm end time even while it is active.
    target choice uncommented. Run the setup/import cells, the inspector, the
    runtime type/quantization cell, and then the real selected-attention probe.
    The probe reports a disabled no-op, selected parameters changed inside the
-   context, and exact restoration after it. It does not generate an answer or
-   score a benchmark.
+   context, and exact restoration after it. To compare one saved GPT-OSS sample,
+   choose `gpt_oss_checkpoint`, set `RUN_PAIRED_SAMPLE_COMPARISON = True`, and
+   set `PAIRED_SAMPLE_ID`; the final notebook cell shows the unchanged and
+   altered raw outputs, tool calls, execution, final outcome, and restoration.
 
 6. When finished, save the notebook if desired, interrupt Jupyter with
    `Ctrl-C`, exit the allocation shell, and let or cancel the interactive

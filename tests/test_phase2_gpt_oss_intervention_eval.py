@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,6 +14,7 @@ from torch import nn
 from evaluation.evaluate import _tool_pool_metadata
 from research.phase2.gpt_oss_intervention_eval import (
     EvaluationConfig,
+    evaluate_one_saved_example,
     run_evaluation,
 )
 from research.phase2.replay import ToolCatalog
@@ -289,6 +291,41 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
                 set(record["intervention_verification"]["changed_attention_parameter_names"]),
                 {"q_proj.weight", "q_proj.bias"},
             )
+        for name, parameter in model.named_parameters():
+            self.assertTrue(torch.equal(parameter, before[name]), name)
+
+    def test_one_saved_example_returns_a_visible_complete_pair(self) -> None:
+        """The notebook-facing helper reuses the full evaluator without files."""
+        torch.manual_seed(10)
+        model = TinyGptOssModel()
+        before = {name: parameter.detach().clone() for name, parameter in model.named_parameters()}
+        generator = MockGenerator(model)
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            catalog = _catalog()
+            source = _write_saved_run(root, catalog, ["one saved query"])
+            async def from_notebook_event_loop():
+                return evaluate_one_saved_example(
+                    generator=generator,
+                    source_run_dir=source,
+                    sample_id="sample-0",
+                    layer_index=0,
+                    seed=17,
+                    method="noise",
+                    target="attention_all",
+                    strength=0.25,
+                    session_factory=lambda: _session_for_catalog(catalog),
+                )
+
+            record = asyncio.run(from_notebook_event_loop())
+
+        self.assertEqual(record["sample_id"], "sample-0")
+        self.assertTrue(record["control"]["tool_choice_correct"])
+        self.assertTrue(record["control"]["execution_success"])
+        self.assertTrue(record["control"]["final_outcome_correct"])
+        self.assertTrue(record["intervention"]["invalid_output"])
+        self.assertTrue(record["intervention"]["no_call_outcome"])
+        self.assertTrue(record["intervention_verification"]["restored_exactly"])
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)
 

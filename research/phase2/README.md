@@ -1,4 +1,4 @@
-# Phase 2: Llama activation observability
+# Phase 2: observability and attention intervention
 
 This is a deliberately small, read-only replay harness for one saved
 `llama-3.1-8b-local` **direct** tool-routing result.  It reconstructs the
@@ -141,6 +141,32 @@ tool-execution, and final-outcome evaluator path, then displays both raw
 outputs and outcome fields side by side. It is intentionally limited to one
 sample; use the runner below for a panel or sweep.
 
+### Notebook settings reference
+
+The notebook has exactly one user-editable settings cell. Leave one
+`MODEL_CHOICE` and one `ATTENTION_TARGET` line uncommented. Its normal
+settings are deliberately small and explicit:
+
+| Setting | What a user chooses | Effect |
+| --- | --- | --- |
+| `MODEL_CHOICE` | `tiny_cpu`, `<family>_config_only`, or `<family>_checkpoint` | Selects a random CPU mechanics demo, a no-weight architecture view, or a real locally loaded model. |
+| `LOAD_CHECKPOINT` | `False` or `True` | Must be `True` only for a checkpoint choice; large real checkpoints require a GPU. |
+| `LAYER_INDEX` | An ID printed by the inspector | Chooses the one decoder layer to alter. Never assume a layer count from another model. |
+| `ATTENTION_TARGET` | A target printed by the inspector | Chooses all attention parameters or a safe component such as `qkv`, `out`, `q_proj`, or `o_proj`. Targets vary by model family. |
+| `INTERVENTION_METHOD` | `noise` or `replace` | `noise` adds seeded noise to the selected tensors; `replace` temporarily replaces them with seeded noise. |
+| `INTERVENTION_STRENGTH` | A non-negative number | Sets the absolute scale in `p + strength * z` for noise, or `strength * z` for replacement. It is not normalized to the parameter scale and should be calibrated experimentally. |
+| `INTERVENTION_SEED` | An integer | Makes the temporary random perturbation reproducible. |
+| `RUN_ZERO_STRENGTH_ACCEPTANCE_PROBE` | `True` or `False` | Checks whether the loaded target passes the API's safety/quantization checks without changing its values. |
+| `RUN_REAL_INTERVENTION_PROBE` | `True` or `False` | A mechanics-only check: verifies selected tensors change in the enabled context and restore exactly afterward. It does not generate or score a benchmark answer. |
+| `RUN_PAIRED_SAMPLE_COMPARISON` | `True` or `False` | Runs one real GPT-OSS saved example twice: unchanged control, then enabled intervention. It compares raw output, tool choice, arguments, execution, final outcome, and restoration. |
+| `PAIRED_SAMPLE_ID` / `PAIRED_SOURCE_RUN_DIR` | A saved example ID and compatible run | Selects the one saved GPT-OSS reasoning-low example to compare. The run directory normally comes from ignored `.env`. |
+
+The two probe flags answer different questions. Use the real-intervention probe
+to establish that a target can be changed and restored safely. Use the paired
+sample comparison to establish whether that change affects an actual answer.
+They can be enabled independently; a normal one-sample experiment needs the
+paired comparison, not the mechanics probe.
+
 ### Interactive GPU notebook workflow
 
 This is for model inspection and short, manual intervention checks. Use batch
@@ -176,6 +202,10 @@ Slurm end time even while it is active.
    srun --pty bash -l
    ```
 
+   Some clusters place the `salloc` shell directly on a compute node. If
+   `hostname` already shows the allocated compute hostname, do not start a
+   second `srun` shell.
+
    On the allocated compute node, load the project environment and start a
    local-only Jupyter server. Leave this terminal running:
 
@@ -183,11 +213,17 @@ Slurm end time even while it is active.
    cd /path/to/LayerMCP
    module load StdEnv/2023 python/3.11.5
    source /path/to/venv/bin/activate
+   set -a; source .env; set +a
    jupyter lab --no-browser --ip=127.0.0.1 --port=8888
    ```
 
+   The `set -a` line exports the local path/tokenizer settings for this session.
+   The notebook also reads `.env` itself, so this is safe even when only some
+   variables are populated.
+
 4. In a second login-node terminal, forward the compute node's local Jupyter
-   port; use the hostname printed by `hostname` on the allocated node:
+   port; use the hostname printed by `hostname` on the allocated node (not the
+   Slurm job ID):
 
    ```bash
    ssh -N -L 8888:127.0.0.1:8888 <compute_node_hostname>
@@ -206,17 +242,55 @@ Slurm end time even while it is active.
    ```
 
 5. In the notebook's one editable settings cell, leave exactly one model and
-   target choice uncommented. Run the setup/import cells, the inspector, the
-   runtime type/quantization cell, and then the real selected-attention probe.
-   The probe reports a disabled no-op, selected parameters changed inside the
-   context, and exact restoration after it. To compare one saved GPT-OSS sample,
-   choose `gpt_oss_checkpoint`, set `RUN_PAIRED_SAMPLE_COMPARISON = True`, and
-   set `PAIRED_SAMPLE_ID`; the final notebook cell shows the unchanged and
-   altered raw outputs, tool calls, execution, final outcome, and restoration.
+   target choice uncommented. Run the setup/import cells, the inspector, and
+   the runtime type/quantization cell in order. `RUN_REAL_INTERVENTION_PROBE`
+   is optional; when enabled it reports a disabled no-op, selected parameters
+   changed inside the context, and exact restoration after it.
 
-6. When finished, save the notebook if desired, interrupt Jupyter with
+   For the first real one-sample GPT-OSS experiment, use the known successful
+   calculator sample below. The final notebook cell shows unchanged and
+   altered raw outputs, tool calls, execution, final outcome, and restoration:
+
+   ```python
+   MODEL_CHOICE = 'gpt_oss_checkpoint'
+   LOAD_CHECKPOINT = True
+   LAYER_INDEX = 0
+   ATTENTION_TARGET = 'qkv'
+   INTERVENTION_METHOD = 'noise'
+   INTERVENTION_STRENGTH = 0.01
+   INTERVENTION_SEED = 1234
+   RUN_REAL_INTERVENTION_PROBE = False
+   RUN_PAIRED_SAMPLE_COMPARISON = True
+   PAIRED_SAMPLE_ID = 'math_v1_calculator_easy_001'
+   ```
+
+   This is a preservation check. The unchanged control should reproduce the
+   saved baseline's correct calculator result. If the intervention also
+   succeeds, this small perturbation did not visibly damage this sample. If it
+   fails, the setting harmed a previously correct sample. It does not prove a
+   general effect either way.
+
+6. Keep local paths and GPU outputs out of the tracked notebook. Put paths in
+   ignored `.env`; copy results you need elsewhere. Before closing a notebook
+   used for a real run, choose **Discard/Don't Save** if prompted, then reopen
+   it to return to the portable committed defaults. Interrupt Jupyter with
    `Ctrl-C`, exit the allocation shell, and let or cancel the interactive
    allocation. Do not rely on notebook activity to extend its Slurm deadline.
+
+### Exploration versus sweeps
+
+Use the notebook for architecture inspection and one-sample comparisons. A
+future notebook sweep may expose a deliberately small list of sample IDs,
+layers, targets, strengths, methods, and seeds so that a user can visually
+compare paired controls. Do not use an interactive allocation for all layers,
+all strengths, or a full benchmark: it has a fixed Slurm deadline and does not
+write sweep completion artifacts. Use the paired runner below for reproducible
+multi-sample or Slurm sweeps.
+
+For a larger study, choose settings on a small exploration panel, then verify
+the selected settings on separate held-out examples. This is hyperparameter
+selection rather than model-training cross-validation: a one-query sweep can
+show sensitivity for that query but cannot establish general improvement.
 
 The small CPU model is only a fast explanation of targeting and restoration.
 Configuration-only mode reads model configuration (and, when supplied, local

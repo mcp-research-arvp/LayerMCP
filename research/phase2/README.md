@@ -220,16 +220,22 @@ and once with seeded `noise` (`strength=0.01`, `seed=1234`), then writes
 `intervention_smoke.json` and `INTERVENTION_SMOKE_COMPLETE`.  It is not an
 accuracy evaluation and does not write model weights.
 
-## Paired GPT-OSS routing evaluation
+## Paired GPT-OSS full evaluation
 
 `research.phase2.gpt_oss_intervention_eval` runs an unchanged control and one
 attention intervention for each selected saved GPT-OSS example, layer, and
-seed. It reuses the local GPT-OSS Harmony generation/parser and evaluator
-tool-selection scoring, but deliberately does not execute predicted tools.
-Its `paired_records.jsonl` records both conditions' expected and chosen tool,
-correct-choice flag, invalid-output flag, and no-call outcome. A run is valid
-only when it has `RUN_COMPLETE`; interruption or failure leaves no summary or
-completion marker, and weights must restore exactly after every intervention.
+seed. It reuses the local GPT-OSS Harmony generation/parser and the baseline
+evaluator's tool execution, argument scoring, and final-outcome scoring. Its
+`paired_records.jsonl` records both conditions' raw output and parser state,
+expected/selected tool, expected/selected arguments, execution result, and
+final-outcome fields, plus concise routing aliases. A run is valid only when
+it has `RUN_COMPLETE`; interruption or failure leaves no summary or completion
+marker, and weights must restore exactly after every intervention.
+
+Unlike the earlier routing-only prototype, this runner executes predicted MCP
+tools through the same baseline evaluator path. Use a small, deliberate saved
+sample panel first. The evaluator retains its existing per-sample isolation
+for stateful retail tools; this runner does not write model weights.
 
 ```bash
 python -m research.phase2.gpt_oss_intervention_eval \
@@ -261,5 +267,7 @@ the paired path can preserve good behavior and expose different failure modes.
 | `finance_controlled_finance_parse_xbrl_003` | Finance routing boundary: expected `finance_parse_xbrl`, selected `finance_get_company_facts`. |
 
 Use a fresh output directory and the exact saved GPT-OSS primary run that
-contains these IDs. The current runner records routing outcomes only; the full
-tool-execution and final-outcome paired evaluator is the next planned stage.
+contains these IDs. This runner currently supports the tested local GPT-OSS
+Harmony **reasoning-low** path. It is the first adapter to the reusable
+baseline single-step evaluator; other model/runtime adapters must be added
+only after their corresponding baseline path is checked.

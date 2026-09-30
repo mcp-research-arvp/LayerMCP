@@ -1,20 +1,29 @@
-"""Paired GPT-OSS attention-intervention routing evaluation.
+"""Paired GPT-OSS attention-intervention evaluation.
 
-This runner reuses the local GPT-OSS router's Harmony rendering/generation/
-parsing path and the evaluator's tool-selection scoring helpers.  It never
-calls a predicted tool: its records measure paired routing choices only.
+This runner reuses the local GPT-OSS Harmony rendering/generation/parsing path
+and the baseline evaluator's canonical single-step tool execution, argument
+scoring, and final-outcome scoring path.
 """
 
 from __future__ import annotations
 
 import argparse
-from collections import Counter
+import asyncio
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
-from typing import Any, Callable, Iterator, Literal, Sequence
+from typing import Any, AsyncIterator, Callable, Literal, Sequence
 
-from evaluation.evaluate import _is_no_tool_call, _query_with_context, _score_sample
+from evaluation.evaluate import (
+    SERVER_PATH,
+    BenchmarkSample,
+    RoutedToolCall,
+    _query_with_context,
+    _run_server_session,
+    _tool_pool_metadata,
+    _tool_schema,
+    evaluate_single_step_prediction,
+)
 from models.routers import gpt_oss_local_router as gpt_oss_router
 from models.routers.structured_tool_call import ToolCallPrediction
 from research.phase2.intervention import (
@@ -24,7 +33,7 @@ from research.phase2.intervention import (
     available_attention_targets,
     temporary_attention_intervention,
 )
-from research.phase2.replay import ToolCatalog, load_live_catalog
+from research.phase2.replay import ToolCatalog
 
 
 InterventionMethod = Literal["noise", "replace"]
@@ -46,10 +55,17 @@ class EvaluationConfig:
 @dataclass(frozen=True)
 class SavedGptOssExample:
     sample_id: str
+    benchmark_path: str
+    domain: str
+    task_type: str
+    difficulty: str
+    source: str
     query: str
     prompt_context: str
     expected_tool: str
     expected_args: dict[str, Any]
+    expected_answer: Any
+    benchmark_mode: str
     tool_names: tuple[str, ...]
     registry_metadata: dict[str, Any]
 
@@ -124,10 +140,17 @@ def _saved_example(record: dict[str, Any], source: Path, line_number: int) -> Sa
         raise ValueError(f"{source}:{line_number} has no ordered tool list")
     return SavedGptOssExample(
         sample_id=sample_id,
+        benchmark_path=str(record.get("benchmark_path", "<saved_gpt_oss_sample>")),
+        domain=str(record.get("domain", "unspecified")),
+        task_type=str(record.get("task_type", "single_tool_routing")),
+        difficulty=str(record.get("difficulty", "unspecified")),
+        source=str(record.get("source", "saved_gpt_oss_run")),
         query=query,
         prompt_context=str(record.get("prompt_context", "")),
         expected_tool=expected_tool,
         expected_args=expected_args,
+        expected_answer=record.get("expected_answer"),
+        benchmark_mode=str(record.get("benchmark_mode", "grounded_tool_execution")),
         tool_names=tuple(tool_names),
         registry_metadata={
             key: record.get(key)
@@ -195,35 +218,61 @@ def _registry_exact_match(example: SavedGptOssExample, catalog: ToolCatalog) -> 
     )
 
 
-def _outcome_record(
-    prediction: ToolCallPrediction,
-    example: SavedGptOssExample,
-    live_tool_set: set[str],
-) -> dict[str, Any]:
-    no_call = _is_no_tool_call(
-        prediction.selected_tool,
-        gpt_oss_router.HALLUCINATED_TOOL,
-        live_tool_set,
-    )
-    score = _score_sample(
+def _benchmark_sample(example: SavedGptOssExample) -> BenchmarkSample:
+    """Adapt a saved GPT-OSS baseline row to the canonical evaluator input."""
+    return BenchmarkSample(
+        id=example.sample_id,
+        domain=example.domain,
+        task_type=example.task_type,
+        difficulty=example.difficulty,
+        source=example.source,
+        query=example.query,
         expected_tool=example.expected_tool,
-        selected_tool=None if no_call else prediction.selected_tool,
         expected_args=example.expected_args,
-        selected_args=prediction.selected_args,
-        execution_success=False,
-        execution_attempted=False,
+        expected_answer=example.expected_answer,
+        perturbation_type="saved_baseline_replay",
+        notes="",
+        prompt_context=example.prompt_context,
+        benchmark_mode=example.benchmark_mode,
     )
-    return {
-        "expected_tool": example.expected_tool,
-        "chosen_tool": None if no_call else prediction.selected_tool,
-        "attempted_tool": prediction.attempted_tool,
-        "tool_choice_correct": score.tool_selection_correct,
-        "invalid_output": prediction.parse_status != "ok",
-        "no_call_outcome": no_call,
-        "parse_status": prediction.parse_status,
-        "parse_diagnostic": prediction.diagnostic,
-        "raw_model_output": prediction.raw_output,
+
+
+def _routed_tool_call(prediction: ToolCallPrediction) -> RoutedToolCall:
+    """Copy native Harmony parser output into the evaluator-neutral format."""
+    return RoutedToolCall(
+        selected_tool=prediction.selected_tool,
+        selected_args=prediction.selected_args,
+        raw_model_output=prediction.raw_output,
+        parse_status=prediction.parse_status,
+        attempted_tool=prediction.attempted_tool,
+        parse_diagnostic=prediction.diagnostic,
+    )
+
+
+async def _load_catalog_from_session(session: Any) -> ToolCatalog:
+    listed_tools = list((await session.list_tools()).tools)
+    names = tuple(tool.name for tool in listed_tools)
+    schemas = {tool.name: _tool_schema(tool) for tool in listed_tools}
+    descriptions = {
+        tool.name: str(getattr(tool, "description", "") or "")
+        for tool in listed_tools
     }
+    return ToolCatalog(
+        names=names,
+        schemas=schemas,
+        descriptions=descriptions,
+        metadata=_tool_pool_metadata(list(names), schemas, descriptions),
+    )
+
+
+def _condition_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Preserve concise paired-run aliases beside the canonical evaluator record."""
+    condition = dict(record)
+    condition["chosen_tool"] = condition["selected_tool"]
+    condition["tool_choice_correct"] = condition["tool_selection_correct"]
+    condition["invalid_output"] = condition["parse_status"] != "ok"
+    condition["no_call_outcome"] = condition["selected_tool"] is None
+    return condition
 
 
 def _predict(
@@ -274,12 +323,13 @@ def _predict(
     return prediction, verification
 
 
-def paired_records(
+async def paired_records(
     generator: Any,
     examples: Sequence[SavedGptOssExample],
     catalog: ToolCatalog,
     config: EvaluationConfig,
-) -> Iterator[dict[str, Any]]:
+    session: Any,
+) -> AsyncIterator[dict[str, Any]]:
     """Yield one complete unchanged/intervention pair per example, layer, and seed."""
     if not examples:
         raise ValueError("at least one saved example is required")
@@ -300,7 +350,6 @@ def paired_records(
         raise ValueError(
             f"Attention target {config.target!r} is unavailable for selected layer(s); {details}"
         )
-    live_tool_set = set(catalog.names)
     for layer_index in config.layers:
         for seed in config.seeds:
             for example in examples:
@@ -332,6 +381,35 @@ def paired_records(
                     strength=config.strength,
                     seed=seed,
                 )
+                sample = _benchmark_sample(example)
+                control_evaluation = await evaluate_single_step_prediction(
+                    sample=sample,
+                    benchmark_path=Path(example.benchmark_path),
+                    router=gpt_oss_router,
+                    prediction=_routed_tool_call(control),
+                    session=session,
+                    server_path=SERVER_PATH,
+                    live_tools=list(catalog.names),
+                    tool_schemas=catalog.schemas,
+                    tool_descriptions=catalog.descriptions,
+                    call_predicted_tools=True,
+                    reasoning_mode="reasoning",
+                    reasoning_effort="low",
+                )
+                intervention_evaluation = await evaluate_single_step_prediction(
+                    sample=sample,
+                    benchmark_path=Path(example.benchmark_path),
+                    router=gpt_oss_router,
+                    prediction=_routed_tool_call(intervention),
+                    session=session,
+                    server_path=SERVER_PATH,
+                    live_tools=list(catalog.names),
+                    tool_schemas=catalog.schemas,
+                    tool_descriptions=catalog.descriptions,
+                    call_predicted_tools=True,
+                    reasoning_mode="reasoning",
+                    reasoning_effort="low",
+                )
                 yield {
                     "kind": RUN_KIND,
                     "sample_id": example.sample_id,
@@ -341,8 +419,8 @@ def paired_records(
                     "target": config.target,
                     "strength": config.strength,
                     "registry_exact_match": registry_exact_match,
-                    "control": _outcome_record(control, example, live_tool_set),
-                    "intervention": _outcome_record(intervention, example, live_tool_set),
+                    "control": _condition_record(control_evaluation.record),
+                    "intervention": _condition_record(intervention_evaluation.record),
                     "control_verification": control_verification,
                     "intervention_verification": intervention_verification,
                 }
@@ -358,29 +436,44 @@ def _safe_output_directory(path: Path) -> Path:
 
 
 def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
-    conditions: dict[str, dict[str, int]] = {}
+    conditions: dict[str, dict[str, Any]] = {}
     for condition in ("control", "intervention"):
         outcomes = [record[condition] for record in records]
+        final_outcome_scored = sum(
+            outcome["final_outcome_correct"] is not None for outcome in outcomes
+        )
+        final_outcome_correct = sum(
+            outcome["final_outcome_correct"] is True for outcome in outcomes
+        )
         conditions[condition] = {
             "paired_records": len(outcomes),
             "correct_tool_choices": sum(outcome["tool_choice_correct"] for outcome in outcomes),
             "incorrect_tool_choices": sum(not outcome["tool_choice_correct"] for outcome in outcomes),
             "invalid_outputs": sum(outcome["invalid_output"] for outcome in outcomes),
             "no_call_outcomes": sum(outcome["no_call_outcome"] for outcome in outcomes),
+            "exact_argument_matches": sum(outcome["argument_match_correct"] for outcome in outcomes),
+            "execution_successes": sum(outcome["execution_success"] for outcome in outcomes),
+            "final_outcome_scored": final_outcome_scored,
+            "final_outcome_correct": final_outcome_correct,
+            "final_outcome_accuracy": (
+                final_outcome_correct / final_outcome_scored
+                if final_outcome_scored
+                else None
+            ),
         }
     return {"paired_record_count": len(records), "conditions": conditions}
 
 
-def run_evaluation(
+async def run_evaluation_async(
     *,
     source_run_dir: Path,
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
-    catalog_loader: Callable[[], ToolCatalog] = load_live_catalog,
     generator_loader: Callable[[str], Any] = gpt_oss_router._load_generator,
+    session_factory: Callable[[], Any] | None = None,
 ) -> Path:
-    """Run and persist a paired routing evaluation; only ``RUN_COMPLETE`` marks success."""
+    """Run and persist a paired full evaluation; only ``RUN_COMPLETE`` marks success."""
     if not config.layers or not config.seeds:
         raise ValueError("layers and seeds must both be non-empty")
     target = _safe_output_directory(output_dir)
@@ -390,7 +483,6 @@ def run_evaluation(
     metadata, examples = load_saved_gpt_oss_examples(
         source_run_dir, config.example_limit, config.sample_ids
     )
-    catalog = catalog_loader()
     generator = generator_loader(str(checkpoint))
 
     target.mkdir(parents=True)
@@ -405,6 +497,7 @@ def run_evaluation(
                 "config": asdict(config),
                 "source_run_metadata": metadata,
                 "example_count": len(examples),
+                "call_predicted_tools": True,
                 "valid_layer_indices": list(available_attention_layers(generator.model)),
                 "available_attention_targets": {
                     str(layer_index): list(available_attention_targets(generator.model, layer_index))
@@ -419,11 +512,20 @@ def run_evaluation(
     )
     records: list[dict[str, Any]] = []
     try:
-        with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
-            for record in paired_records(generator, examples, catalog, config):
-                handle.write(json.dumps(record, sort_keys=True) + "\n")
-                handle.flush()
-                records.append(record)
+        open_session = session_factory or (lambda: _run_server_session(SERVER_PATH))
+        async with open_session() as session:
+            catalog = await _load_catalog_from_session(session)
+            with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
+                async for record in paired_records(
+                    generator,
+                    examples,
+                    catalog,
+                    config,
+                    session,
+                ):
+                    handle.write(json.dumps(record, sort_keys=True) + "\n")
+                    handle.flush()
+                    records.append(record)
         (target / "summary.json").write_text(
             json.dumps(_summary(records), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -447,6 +549,28 @@ def run_evaluation(
         )
         raise
     return target
+
+
+def run_evaluation(
+    *,
+    source_run_dir: Path,
+    checkpoint_dir: Path,
+    output_dir: Path,
+    config: EvaluationConfig,
+    generator_loader: Callable[[str], Any] = gpt_oss_router._load_generator,
+    session_factory: Callable[[], Any] | None = None,
+) -> Path:
+    """Synchronous CLI wrapper around :func:`run_evaluation_async`."""
+    return asyncio.run(
+        run_evaluation_async(
+            source_run_dir=source_run_dir,
+            checkpoint_dir=checkpoint_dir,
+            output_dir=output_dir,
+            config=config,
+            generator_loader=generator_loader,
+            session_factory=session_factory,
+        )
+    )
 
 
 def _parse_csv_ints(value: str, option: str) -> tuple[int, ...]:

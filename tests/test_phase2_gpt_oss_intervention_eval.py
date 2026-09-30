@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ import unittest
 import torch
 from torch import nn
 
+from evaluation.evaluate import _tool_pool_metadata
 from research.phase2.gpt_oss_intervention_eval import (
     EvaluationConfig,
     run_evaluation,
@@ -72,24 +74,47 @@ class MockGenerator:
 
 
 def _catalog() -> ToolCatalog:
-    metadata = {
-        "tool_pool": "test_pool",
-        "tool_count": 1,
-        "tool_registry_fingerprint": "sha256:test",
-        "tool_registry_fingerprint_version": "tool_registry_name_schema_description_v1",
+    names = ("calculator",)
+    schemas = {
+        "calculator": {
+            "type": "object",
+            "properties": {"expression": {"type": "string"}},
+            "required": ["expression"],
+        }
     }
+    descriptions = {"calculator": "Evaluate an arithmetic expression."}
+    metadata = _tool_pool_metadata(list(names), schemas, descriptions)
     return ToolCatalog(
-        names=("calculator",),
-        schemas={
-            "calculator": {
-                "type": "object",
-                "properties": {"expression": {"type": "string"}},
-                "required": ["expression"],
-            }
-        },
-        descriptions={"calculator": "Evaluate an arithmetic expression."},
+        names=names,
+        schemas=schemas,
+        descriptions=descriptions,
         metadata=metadata,
     )
+
+
+@asynccontextmanager
+async def _session_for_catalog(catalog: ToolCatalog):
+    tools = [
+        SimpleNamespace(
+            name=name,
+            inputSchema=catalog.schemas[name],
+            description=catalog.descriptions[name],
+        )
+        for name in catalog.names
+    ]
+
+    class FakeSession:
+        async def list_tools(self):
+            return SimpleNamespace(tools=tools)
+
+        async def call_tool(self, name: str, arguments: dict[str, object]):
+            return SimpleNamespace(
+                structuredContent={"result": 4},
+                content=[],
+                isError=False,
+            )
+
+    yield FakeSession()
 
 
 def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Path:
@@ -118,8 +143,15 @@ def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Pa
                 "sample_id": f"sample-{index}",
                 "query": query,
                 "prompt_context": "",
+                "benchmark_path": "benchmark/math/test.json",
+                "domain": "mathematics",
+                "task_type": "single_tool_routing",
+                "difficulty": "easy",
+                "source": "test",
                 "expected_tool": "calculator",
                 "expected_args": {"expression": "2+2"},
+                "expected_answer": {"result": 4},
+                "benchmark_mode": "grounded_tool_execution",
                 "tool_names": ["calculator"],
                 "model_name": "openai/gpt-oss-20b",
                 "router_backend": "local_gpt_oss_pytorch",
@@ -161,8 +193,8 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
                 target=target,
                 sample_ids=sample_ids,
             ),
-            catalog_loader=lambda: catalog,
             generator_loader=lambda _: generator,
+            session_factory=lambda: _session_for_catalog(catalog),
         )
 
     def test_writes_paired_control_and_intervention_records_and_restores_weights(self) -> None:
@@ -185,11 +217,17 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertTrue(all(not record["control"]["no_call_outcome"] for record in records))
             self.assertTrue(all(record["intervention"]["invalid_output"] for record in records))
             self.assertTrue(all(record["intervention"]["no_call_outcome"] for record in records))
+            self.assertTrue(all(record["control"]["execution_success"] for record in records))
+            self.assertTrue(all(record["control"]["final_outcome_correct"] for record in records))
+            self.assertTrue(all(not record["intervention"]["execution_success"] for record in records))
+            self.assertTrue(all(not record["intervention"]["final_outcome_correct"] for record in records))
             self.assertTrue(all(record["intervention_verification"]["restored_exactly"] for record in records))
             summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual(summary["paired_record_count"], 2)
             self.assertEqual(summary["conditions"]["control"]["correct_tool_choices"], 2)
             self.assertEqual(summary["conditions"]["intervention"]["no_call_outcomes"], 2)
+            self.assertEqual(summary["conditions"]["control"]["execution_successes"], 2)
+            self.assertEqual(summary["conditions"]["control"]["final_outcome_accuracy"], 1.0)
 
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)

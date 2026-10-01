@@ -15,6 +15,7 @@ from evaluation.evaluate import _tool_pool_metadata
 from research.phase2.gpt_oss_intervention_eval import (
     EvaluationConfig,
     evaluate_one_saved_example,
+    plan_evaluation,
     run_evaluation,
 )
 from research.phase2.replay import ToolCatalog
@@ -177,6 +178,7 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
         method: str = "noise",
         target: str = "attention_all",
         sample_ids: tuple[str, ...] | None = None,
+        seeds: tuple[int, ...] = (17,),
     ) -> Path:
         catalog = _catalog()
         source = _write_saved_run(directory, catalog, queries)
@@ -188,7 +190,7 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             output_dir=directory / "output",
             config=EvaluationConfig(
                 layers=(0,),
-                seeds=(17,),
+                seeds=seeds,
                 method=method,
                 strength=0.25,
                 example_limit=len(sample_ids) if sample_ids is not None else 2,
@@ -230,9 +232,54 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertEqual(summary["conditions"]["intervention"]["no_call_outcomes"], 2)
             self.assertEqual(summary["conditions"]["control"]["execution_successes"], 2)
             self.assertEqual(summary["conditions"]["control"]["final_outcome_accuracy"], 1.0)
+            self.assertIn("0", summary["by_layer"])
+            self.assertTrue(summary["by_layer"]["0"]["intervention_integrity"]["all_restored_exactly"])
+            self.assertTrue((output / "screen_plan.json").is_file())
+            run_config = json.loads((output / "run_config.json").read_text(encoding="utf-8"))
+            self.assertEqual(run_config["config"]["layers"], [0])
 
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)
+
+    def test_plan_only_resolves_all_layers_from_loaded_model(self) -> None:
+        model = TinyGptOssModel()
+        catalog = _catalog()
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = _write_saved_run(root, catalog, ["one", "two"])
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            plan = plan_evaluation(
+                source_run_dir=source,
+                checkpoint_dir=checkpoint,
+                config=EvaluationConfig(
+                    layers="all",
+                    seeds=(1234, 5678),
+                    method="noise",
+                    strength=0.25,
+                    example_limit=2,
+                    target="attention_all",
+                ),
+                generator_loader=lambda _: MockGenerator(model),
+            )
+        self.assertEqual(plan["screen_plan"]["selected_layers"], (0, 1))
+        self.assertEqual(plan["screen_plan"]["total_pair_count"], 8)
+        self.assertEqual(plan["screen_plan"]["total_generation_count"], 16)
+
+    def test_summary_reports_mean_and_sample_standard_deviation_by_layer(self) -> None:
+        model = TinyGptOssModel()
+        with TemporaryDirectory() as temporary:
+            output = self._run(
+                Path(temporary),
+                MockGenerator(model),
+                ["one"],
+                seeds=(1234, 5678),
+            )
+            summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
+        final_outcome = summary["by_layer"]["0"]["conditions"]["control"]["final_outcome_accuracy"]
+        self.assertEqual(final_outcome["defined_seed_count"], 2)
+        self.assertEqual(final_outcome["mean"], 1.0)
+        self.assertEqual(final_outcome["sample_standard_deviation"], 0.0)
 
     def test_replace_is_recorded_and_restores_weights(self) -> None:
         torch.manual_seed(8)

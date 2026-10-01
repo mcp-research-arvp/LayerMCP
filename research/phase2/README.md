@@ -360,6 +360,47 @@ descriptions change the Harmony prompt. Use comma-separated `--layers`,
 and use `--example-limit` only when saved-run order is intentional. It never
 writes model weights.
 
+### GPT-OSS layer-screen planning
+
+The runner supports two model-discovered layer requests in addition to an
+explicit comma-separated list:
+
+- `--layers representative` selects the first, midpoint, and last layers from
+  the actual loaded model. The current 24-layer GPT-OSS model resolves this to
+  `0,12,23`.
+- `--layers all` selects every safely identifiable layer from the actual loaded
+  model. It does not hard-code `0–23`, so the same request can be used only
+  after a future native adapter has loaded a different architecture.
+
+Use `--plan-only` before submitting a GPU job. It loads the supplied local
+model to discover its layers and targets, but it does **not** generate text,
+change parameters, open MCP tools, or create an output directory:
+
+```bash
+python -m research.phase2.gpt_oss_intervention_eval \
+  --source-run-dir /path/to/saved_gpt_oss_single_step_run \
+  --checkpoint /path/to/local_gpt_oss_checkpoint \
+  --layers representative --target attention_all \
+  --seeds 1234,5678,9012 --method noise --strength 0.01 \
+  --sample-ids math_v1_calculator_easy_001,math_v1_convert_units_easy_001 \
+  --plan-only
+```
+
+The printed plan lists discovered layers, requested samples/seeds, complete
+control/intervention pair count, and total generation count. Review it before
+running. A real evaluation writes the same resolved plan to `screen_plan.json`
+before its first generation. `summary.json` then retains the overall totals
+plus `by_layer_and_seed` records and `by_layer` mean/sample-standard-deviation
+metrics across seeds. A one-seed result has no sample standard deviation; this
+is reported as `null`, not zero.
+
+For the first quick screen, use `representative`, one fixed small panel, and at
+least three seeds. Keep the panel, target, method, strength, and seeds fixed
+when expanding to `all`; otherwise a difference between layers is confounded
+with a changed experiment. `attention_all` changes every safe floating-point
+attention parameter in that one layer. It is a sensitivity experiment, not
+evidence that the layer is solely responsible for a behavior.
+
 ### Minimal GPT-OSS starter panel
 
 These saved IDs are a quick five-query panel from the frozen GPT-OSS primary

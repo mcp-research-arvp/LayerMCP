@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import json
 from pathlib import Path
+from statistics import mean, stdev
 from typing import Any, AsyncIterator, Callable, Literal, Sequence
 
 from evaluation.evaluate import (
@@ -34,6 +36,12 @@ from research.phase2.intervention import (
     available_attention_targets,
     temporary_attention_intervention,
 )
+from research.phase2.layer_screen import (
+    LayerRequest,
+    LayerScreenPlan,
+    LayerScreenPlanError,
+    plan_layer_screen,
+)
 from research.phase2.replay import ToolCatalog
 
 
@@ -43,7 +51,7 @@ RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v1"
 
 @dataclass(frozen=True)
 class EvaluationConfig:
-    layers: tuple[int, ...]
+    layers: LayerRequest
     seeds: tuple[int, ...]
     method: InterventionMethod
     strength: float
@@ -508,33 +516,187 @@ def _safe_output_directory(path: Path) -> Path:
     return target
 
 
+def _resolve_screen_config(
+    generator: Any,
+    examples: Sequence[SavedGptOssExample],
+    config: EvaluationConfig,
+) -> tuple[EvaluationConfig, LayerScreenPlan]:
+    """Resolve model-discovered layers and validate a durable screen request."""
+    available_layers = available_attention_layers(generator.model)
+    targets_by_layer = {
+        layer_index: available_attention_targets(generator.model, layer_index)
+        for layer_index in available_layers
+    }
+    try:
+        plan = plan_layer_screen(
+            layer_request=config.layers,
+            available_layers=available_layers,
+            available_targets_by_layer=targets_by_layer,
+            sample_ids=tuple(example.sample_id for example in examples),
+            seeds=config.seeds,
+            target=config.target,
+            method=config.method,
+            strength=config.strength,
+        )
+    except LayerScreenPlanError as error:
+        raise ValueError(str(error)) from error
+    return replace(config, layers=plan.selected_layers), plan
+
+
+def plan_evaluation(
+    *,
+    source_run_dir: Path,
+    checkpoint_dir: Path,
+    config: EvaluationConfig,
+    generator_loader: Callable[[str], Any] = gpt_oss_router._load_generator,
+) -> dict[str, Any]:
+    """Load a model and print-safe plan without generating or opening MCP tools.
+
+    Layer availability is an attribute of the actual loaded architecture, so a
+    truthful ``all`` plan necessarily constructs the local model first.  This
+    helper never generates text, mutates parameters, opens an MCP session, or
+    creates an output directory.
+    """
+    if not config.seeds:
+        raise ValueError("seeds must not be empty")
+    checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
+    if not checkpoint.is_dir():
+        raise FileNotFoundError(f"GPT-OSS checkpoint does not exist: {checkpoint}")
+    metadata, examples = load_saved_gpt_oss_examples(
+        source_run_dir, config.example_limit, config.sample_ids
+    )
+    generator = generator_loader(str(checkpoint))
+    resolved_config, plan = _resolve_screen_config(generator, examples, config)
+    return {
+        "kind": RUN_KIND,
+        "source_run_directory": str(source_run_dir.expanduser().resolve()),
+        "checkpoint_path": str(checkpoint),
+        # Keep the original key for readers of prior run_config.json files.  It
+        # represents the concrete layer list actually evaluated.
+        "config": asdict(resolved_config),
+        "requested_config": asdict(config),
+        "resolved_config": asdict(resolved_config),
+        "screen_plan": plan.as_dict(),
+        "source_run_metadata": metadata,
+        "example_count": len(examples),
+        "valid_layer_indices": list(available_attention_layers(generator.model)),
+        "available_attention_targets": {
+            str(layer_index): list(available_attention_targets(generator.model, layer_index))
+            for layer_index in available_attention_layers(generator.model)
+        },
+    }
+
+
+def _condition_metrics(outcomes: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Return counts and rates for one condition across one screen cell."""
+    final_outcome_scored = sum(outcome["final_outcome_correct"] is not None for outcome in outcomes)
+    final_outcome_correct = sum(outcome["final_outcome_correct"] is True for outcome in outcomes)
+    pair_count = len(outcomes)
+
+    def rate(numerator: int, denominator: int = pair_count) -> float | None:
+        return numerator / denominator if denominator else None
+
+    correct_tools = sum(outcome["tool_choice_correct"] for outcome in outcomes)
+    exact_arguments = sum(outcome["argument_match_correct"] for outcome in outcomes)
+    execution_successes = sum(outcome["execution_success"] for outcome in outcomes)
+    invalid_outputs = sum(outcome["invalid_output"] for outcome in outcomes)
+    no_call_outcomes = sum(outcome["no_call_outcome"] for outcome in outcomes)
+    return {
+        "paired_records": pair_count,
+        "correct_tool_choices": correct_tools,
+        "incorrect_tool_choices": pair_count - correct_tools,
+        "invalid_outputs": invalid_outputs,
+        "no_call_outcomes": no_call_outcomes,
+        "exact_argument_matches": exact_arguments,
+        "execution_successes": execution_successes,
+        "final_outcome_scored": final_outcome_scored,
+        "final_outcome_correct": final_outcome_correct,
+        "tool_choice_accuracy": rate(correct_tools),
+        "exact_argument_match_accuracy": rate(exact_arguments),
+        "execution_success_rate": rate(execution_successes),
+        "invalid_output_rate": rate(invalid_outputs),
+        "no_call_outcome_rate": rate(no_call_outcomes),
+        "final_outcome_accuracy": rate(final_outcome_correct, final_outcome_scored),
+    }
+
+
+def _seed_statistic(values: Sequence[float | None]) -> dict[str, Any]:
+    """Aggregate a metric over seeds without inventing a one-seed deviation."""
+    defined = [value for value in values if value is not None]
+    return {
+        "defined_seed_count": len(defined),
+        "mean": mean(defined) if defined else None,
+        "sample_standard_deviation": stdev(defined) if len(defined) >= 2 else None,
+    }
+
+
 def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
-    conditions: dict[str, dict[str, Any]] = {}
-    for condition in ("control", "intervention"):
-        outcomes = [record[condition] for record in records]
-        final_outcome_scored = sum(
-            outcome["final_outcome_correct"] is not None for outcome in outcomes
-        )
-        final_outcome_correct = sum(
-            outcome["final_outcome_correct"] is True for outcome in outcomes
-        )
-        conditions[condition] = {
-            "paired_records": len(outcomes),
-            "correct_tool_choices": sum(outcome["tool_choice_correct"] for outcome in outcomes),
-            "incorrect_tool_choices": sum(not outcome["tool_choice_correct"] for outcome in outcomes),
-            "invalid_outputs": sum(outcome["invalid_output"] for outcome in outcomes),
-            "no_call_outcomes": sum(outcome["no_call_outcome"] for outcome in outcomes),
-            "exact_argument_matches": sum(outcome["argument_match_correct"] for outcome in outcomes),
-            "execution_successes": sum(outcome["execution_success"] for outcome in outcomes),
-            "final_outcome_scored": final_outcome_scored,
-            "final_outcome_correct": final_outcome_correct,
-            "final_outcome_accuracy": (
-                final_outcome_correct / final_outcome_scored
-                if final_outcome_scored
-                else None
-            ),
+    conditions = {
+        condition: _condition_metrics([record[condition] for record in records])
+        for condition in ("control", "intervention")
+    }
+    grouped: dict[int, dict[int, list[dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+    for record in records:
+        grouped[record["layer_index"]][record["seed"]].append(record)
+
+    by_layer_and_seed: dict[str, dict[str, Any]] = {}
+    by_layer: dict[str, dict[str, Any]] = {}
+    rate_names = (
+        "tool_choice_accuracy",
+        "exact_argument_match_accuracy",
+        "execution_success_rate",
+        "final_outcome_accuracy",
+        "invalid_output_rate",
+        "no_call_outcome_rate",
+    )
+    for layer_index, records_by_seed in sorted(grouped.items()):
+        seed_metrics: dict[str, Any] = {}
+        for seed, seed_records in sorted(records_by_seed.items()):
+            seed_metrics[str(seed)] = {
+                "conditions": {
+                    condition: _condition_metrics([record[condition] for record in seed_records])
+                    for condition in ("control", "intervention")
+                },
+                "intervention_integrity": {
+                    "restoration_failures": sum(
+                        not record["intervention_verification"]["restored_exactly"]
+                        for record in seed_records
+                    ),
+                    "all_restored_exactly": all(
+                        record["intervention_verification"]["restored_exactly"]
+                        for record in seed_records
+                    ),
+                },
+            }
+        by_layer_and_seed[str(layer_index)] = seed_metrics
+        by_layer[str(layer_index)] = {
+            "seed_count": len(seed_metrics),
+            "conditions": {
+                condition: {
+                    metric: _seed_statistic(
+                        [seed_metrics[str(seed)]["conditions"][condition][metric] for seed in sorted(records_by_seed)]
+                    )
+                    for metric in rate_names
+                }
+                for condition in ("control", "intervention")
+            },
+            "intervention_integrity": {
+                "restoration_failures": sum(
+                    item["intervention_integrity"]["restoration_failures"]
+                    for item in seed_metrics.values()
+                ),
+                "all_restored_exactly": all(
+                    item["intervention_integrity"]["all_restored_exactly"]
+                    for item in seed_metrics.values()
+                ),
+            },
         }
-    return {"paired_record_count": len(records), "conditions": conditions}
+    return {
+        "paired_record_count": len(records),
+        "conditions": conditions,
+        "by_layer_and_seed": by_layer_and_seed,
+        "by_layer": by_layer,
+    }
 
 
 async def run_evaluation_async(
@@ -547,8 +709,8 @@ async def run_evaluation_async(
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
     """Run and persist a paired full evaluation; only ``RUN_COMPLETE`` marks success."""
-    if not config.layers or not config.seeds:
-        raise ValueError("layers and seeds must both be non-empty")
+    if not config.seeds:
+        raise ValueError("seeds must not be empty")
     target = _safe_output_directory(output_dir)
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
@@ -557,17 +719,27 @@ async def run_evaluation_async(
         source_run_dir, config.example_limit, config.sample_ids
     )
     generator = generator_loader(str(checkpoint))
+    resolved_config, screen_plan = _resolve_screen_config(generator, examples, config)
 
     target.mkdir(parents=True)
     in_progress = target / "RUN_IN_PROGRESS"
     in_progress.write_text("\n", encoding="utf-8")
+    (target / "screen_plan.json").write_text(
+        json.dumps(screen_plan.as_dict(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     (target / "run_config.json").write_text(
         json.dumps(
             {
                 "kind": RUN_KIND,
                 "source_run_directory": str(source_run_dir.expanduser().resolve()),
                 "checkpoint_path": str(checkpoint),
-                "config": asdict(config),
+                # Backward-compatible concrete configuration.  The requested
+                # form may contain symbolic values such as "all".
+                "config": asdict(resolved_config),
+                "requested_config": asdict(config),
+                "resolved_config": asdict(resolved_config),
+                "screen_plan": screen_plan.as_dict(),
                 "source_run_metadata": metadata,
                 "example_count": len(examples),
                 "call_predicted_tools": True,
@@ -593,7 +765,7 @@ async def run_evaluation_async(
                     generator,
                     examples,
                     catalog,
-                    config,
+                    resolved_config,
                     session,
                 ):
                     handle.write(json.dumps(record, sort_keys=True) + "\n")
@@ -656,6 +828,13 @@ def _parse_csv_ints(value: str, option: str) -> tuple[int, ...]:
     return parsed
 
 
+def _parse_layer_request(value: str) -> LayerRequest:
+    normalized = value.strip().lower()
+    if normalized in {"all", "representative"}:
+        return normalized
+    return _parse_csv_ints(value, "--layers")
+
+
 def _parse_csv_sample_ids(value: str) -> tuple[str, ...]:
     parsed = tuple(item.strip() for item in value.split(",") if item.strip())
     if not parsed or len(set(parsed)) != len(parsed):
@@ -669,8 +848,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run paired GPT-OSS attention-intervention routing evaluations.")
     parser.add_argument("--source-run-dir", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--layers", required=True, help="Comma-separated GPT-OSS layer indices, e.g. 0,12")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument(
+        "--layers",
+        required=True,
+        type=_parse_layer_request,
+        help="Comma-separated layer IDs, or model-discovered 'representative'/'all'.",
+    )
     parser.add_argument("--seeds", default="1234", help="Comma-separated intervention seeds")
     parser.add_argument("--method", choices=("noise", "replace"), default="noise")
     parser.add_argument("--target", choices=sorted(SUPPORTED_ATTENTION_TARGETS), default="attention_all")
@@ -678,13 +862,20 @@ def main() -> None:
     parser.add_argument("--example-limit", type=int, default=2)
     parser.add_argument("--sample-ids", type=_parse_csv_sample_ids)
     parser.add_argument("--allow-registry-mismatch", action="store_true")
+    parser.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="Load the model and print the resolved screen plan without generation or output files.",
+    )
     args = parser.parse_args()
     if args.example_limit <= 0:
         parser.error("--example-limit must be positive")
     if args.strength < 0:
         parser.error("--strength must be non-negative")
+    if not args.plan_only and args.output_dir is None:
+        parser.error("--output-dir is required unless --plan-only is used")
     config = EvaluationConfig(
-        layers=_parse_csv_ints(args.layers, "--layers"),
+        layers=args.layers,
         seeds=_parse_csv_ints(args.seeds, "--seeds"),
         method=args.method,
         strength=args.strength,
@@ -693,6 +884,19 @@ def main() -> None:
         sample_ids=args.sample_ids,
         require_registry_match=not args.allow_registry_mismatch,
     )
+    if args.plan_only:
+        print(
+            json.dumps(
+                plan_evaluation(
+                    source_run_dir=args.source_run_dir,
+                    checkpoint_dir=args.checkpoint,
+                    config=config,
+                ),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
     destination = run_evaluation(
         source_run_dir=args.source_run_dir,
         checkpoint_dir=args.checkpoint,

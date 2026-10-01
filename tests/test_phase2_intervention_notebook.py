@@ -36,6 +36,9 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertIn("RUN_PAIRED_SWEEP = False", source)
         self.assertIn("plan_paired_sweep", source)
         self.assertIn("SWEEP_MAX_INTERVENTIONS", source)
+        self.assertIn("RUN_LAYER_SCREEN_RESULTS_VIEWER = False", source)
+        self.assertIn("screen_plan.json", source)
+        self.assertIn("RUN_COMPLETE", source)
         self.assertIn("REPO_ROOT", source)
         for choice in (
             "llama31_config_only",
@@ -64,6 +67,7 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertTrue(namespace["results"]["replace"]["restored_after_context"])
         self.assertFalse(namespace["RUN_PAIRED_SAMPLE_COMPARISON"])
         self.assertFalse(namespace["RUN_PAIRED_SWEEP"])
+        self.assertFalse(namespace["RUN_LAYER_SCREEN_RESULTS_VIEWER"])
 
     @unittest.skipUnless(importlib.util.find_spec("torch"), "PyTorch is required for architecture views")
     def test_configuration_views_cover_all_repository_families_without_weights(self) -> None:

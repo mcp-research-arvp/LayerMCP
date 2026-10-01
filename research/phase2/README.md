@@ -401,6 +401,98 @@ with a changed experiment. `attention_all` changes every safe floating-point
 attention parameter in that one layer. It is a sensitivity experiment, not
 evidence that the layer is solely responsible for a behavior.
 
+### Combine completed layer-screen chunks (read-only)
+
+Use this CPU reporting command to combine completed paired output folders,
+for example separate layer or seed jobs. Activate the existing project Python
+environment first; no GPU, checkpoint access, MCP server or new notebook is
+needed. This reads `run_config.json` and `paired_records.jsonl`, not model weights,
+and uses the evaluator's **saved scores without rescoring**.
+
+```bash
+python -m analysis.phase2_paired_results \
+  --run-dir /path/to/completed_layer0_seed1234 \
+  --run-dir /path/to/completed_layer12_seed1234 \
+  --output /path/to/reports/combined_layer_screen.json
+```
+
+Repeat `--run-dir` for each folder. Every folder must have `RUN_COMPLETE`,
+without conflicting in-progress/failure markers, and a complete declared
+layer × seed × sample grid. Folders must use the same checkpoint, source run,
+sample panel, target, method, strength and saved prompt/generation/registry
+provenance. Layers and seeds may differ. A different strength or sample panel
+belongs in a separate report. Old full-evaluation folders using only `config`
+are supported; routing-only prototype records are not.
+
+The command rejects duplicate layer–seed–sample pairs, missing/false exact
+intervention restoration, changed sample definitions and differing repeated
+controls. Compare raw controls separately if this last check fails; do not
+silently attribute run-to-run drift to an intervention. Latencies are ignored.
+A disabled control's restoration field may be `null`, because it changed no
+weights; its verification must instead confirm disabled mode and no changed
+parameters. Inputs are never written. The report must be **new** and outside
+all input folders; existing reports are not overwritten.
+
+The JSON `rows` table has one row per layer/seed/benchmark-classification/mode,
+keeping controlled, public/source-derived and diagnostic/replay evidence
+separate. Important columns:
+
+- `sample_count`: distinct queries in this row, not repeated controls.
+- `tool_choice_changes`: selected tool changed (including changes to/from no call).
+- `tool_choice_repairs`: control chose incorrectly, intervention chose correctly.
+- `tool_choice_damage`: control chose correctly, intervention chose incorrectly.
+- Repair/damage rates use eligible control failures/successes respectively;
+  an empty denominator is `null`.
+- Per-condition `invalid_outputs`, `valid_no_call_outputs`,
+  `valid_wrong_tool_calls`, `correct_tool_calls`: **mutually exclusive** buckets.
+  `no_call_outputs` is an additional total that can overlap invalid outputs;
+  do not add it to the four buckets.
+- Saved tool-choice, exact-argument, execution and final-outcome correct counts
+  are retained. `final_outcome_scored` excludes unscored (`null`) outcomes.
+  `final_outcome_repairs`/`final_outcome_damage` use the existing final-outcome
+  scores, separately from tool-choice repairs/damage; only pairs scored in both
+  conditions count (`final_outcome_paired_scored`).
+  Exact argument match and execution success remain diagnostics, not SVCA or
+  substitutes for task success. Existing scoring limitations remain unchanged.
+
+`unique_sample_count` and `unique_controls` count the baseline panel once.
+`paired_observation_count` counts layer/seed trials, not independent benchmark
+examples. Do not sum row control counts into a larger baseline sample size.
+Input paths and SHA-256 digests are saved for traceability. This is a paired
+screen report, not a replacement for `analysis/minimal_scorecard.py` when
+reporting ordinary baseline single-step runs.
+
+The existing `attention_intervention_demo.ipynb` remains the notebook for
+architecture inspection, intervention/restoration checks and small live paired
+comparisons/sweeps. It could later display this report's `rows`; this change
+does not add a notebook or change its current display cells. The batch runner
+remains responsible for generating durable experiment records.
+
+### Remaining work, in priority order
+
+1. Validate this completed-chunk report, then review the representative GPT-OSS
+   screen using the fixed sample panel and separate malformed/no-call failures
+   from valid wrong-tool choices. Extend to all discovered layers as time allows.
+2. Confirm repeatable control behavior and expand the fixed exploration panel
+   before ranking layers. Multiple seeds are repeat trials on the same queries,
+   not extra independent benchmark examples.
+3. Address the scoring-audit follow-up in a separate, versioned change: complete
+   the nine SQL examples' expected result rows and strengthen XBRL fact/value
+   checks; add false-positive tests and re-score saved baselines where feasible.
+   Do this **before claiming improvements in final outcomes**. Tool-choice
+   sensitivity screens can proceed meanwhile; do not alter this experiment's
+   scores retrospectively without labelling the new scoring version.
+4. Add and validate other model families' native paired-evaluation adapters,
+   reusing the baseline evaluator, to meet the "each model" objective. Current
+   architecture inspection coverage does not imply full evaluation support.
+5. Calibrate absolute versus optional weight-size-relative perturbations,
+   keeping historical absolute runs reproducible, then confirm promising
+   settings on held-out queries.
+6. Later: extend observations with labelled natural-failure/reference trajectories
+   to shortlist components, followed by activation patching/ablation tests.
+   Observation alone does not establish causality; this is not needed to finish
+   the current random single-attention-layer screen.
+
 ### Minimal GPT-OSS starter panel
 
 These saved IDs are a quick five-query panel from the frozen GPT-OSS primary

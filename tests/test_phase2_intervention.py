@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 import torch
 from torch import nn
@@ -126,6 +128,83 @@ def _parameter_values(module: nn.Module) -> dict[str, torch.Tensor]:
 
 
 class Phase2AttentionInterventionTests(unittest.TestCase):
+    def test_failed_restore_never_reports_success_or_allows_further_contexts(self):
+        model = TinyGptOssLayout()
+        context = temporary_attention_intervention(model, 0)
+        context.__enter__()
+        with patch.object(torch.Tensor, "copy_", side_effect=RuntimeError("restore failed")):
+            with self.assertRaisesRegex(RuntimeError, "restore failed"):
+                context.__exit__(None, None, None)
+        self.assertFalse(context.restored_exactly)
+        self.assertEqual(context._saved, [])
+        context.__exit__(None, None, None)
+        self.assertFalse(context.restored_exactly)
+        with self.assertRaisesRegex(AttentionInterventionError, "reload a fresh model"):
+            with temporary_attention_intervention(model, 0, enabled=False):
+                pass
+
+    def test_nested_and_concurrent_contexts_fail_without_corrupting_restoration(self):
+        model = TinyGptOssLayout()
+        before = {name: p.detach().clone() for name, p in model.named_parameters()}
+        context = temporary_attention_intervention(model, 0)
+        with context:
+            with self.assertRaises(AttentionInterventionError):
+                with context:
+                    pass
+            for enabled in (True, False):
+                with self.assertRaises(AttentionInterventionError):
+                    with temporary_attention_intervention(model, 1, enabled=enabled):
+                        pass
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                def overlap():
+                    with temporary_attention_intervention(model, 1):
+                        pass
+                with self.assertRaises(AttentionInterventionError):
+                    executor.submit(overlap).result()
+        self.assertTrue(context.restored_exactly)
+        self.assertEqual(context._saved, [])
+        for name, p in model.named_parameters():
+            self.assertTrue(torch.equal(p, before[name]))
+        # Sequential reuse is safe; a different model can run independently.
+        with context:
+            with temporary_attention_intervention(TinyGptOssLayout(), 0):
+                pass
+        self.assertTrue(context.restored_exactly)
+
+    def test_failed_entry_and_base_exception_release_model_and_backups(self):
+        model = TinyGptOssLayout()
+        with self.assertRaises(AttentionInterventionError):
+            with temporary_attention_intervention(model, 0, target="qkv"):
+                pass
+        context = temporary_attention_intervention(model, 0)
+        with self.assertRaises(KeyboardInterrupt):
+            with context:
+                raise KeyboardInterrupt()
+        self.assertTrue(context.restored_exactly)
+        self.assertEqual(context._saved, [])
+        with temporary_attention_intervention(model, 0):
+            pass
+
+    def test_reports_native_dtype_noop_and_effective_changes(self):
+        model = TinyGptOssLayout().to(dtype=torch.bfloat16)
+        with torch.no_grad():
+            for p in model.block[0].attn.parameters():
+                p.fill_(1.0)
+        for strength in (0.0, 1e-12):
+            with temporary_attention_intervention(model, 0, strength=strength) as probe:
+                self.assertEqual(probe.perturbation["status"], "no_op")
+                self.assertEqual(probe.perturbation["changed_elements"], 0)
+                self.assertTrue(all(t["effective_delta_l2"] == 0 for t in probe.perturbation["tensors"]))
+        with temporary_attention_intervention(model, 0, method="replace", strength=0) as probe:
+            self.assertEqual(probe.perturbation["status"], "changed")
+            self.assertEqual(probe.perturbation["changed_elements"], 12)
+            self.assertTrue(all(t["relative_delta_l2"] == 1 for t in probe.perturbation["tensors"]))
+        with torch.no_grad():
+            for p in model.block[0].attn.parameters():
+                p.zero_()
+        with temporary_attention_intervention(model, 0) as probe:
+            self.assertTrue(all(t["relative_delta_l2"] is None for t in probe.perturbation["tensors"]))
+
     def setUp(self) -> None:
         torch.manual_seed(4)
         self.model = TinyLlamaLayout()

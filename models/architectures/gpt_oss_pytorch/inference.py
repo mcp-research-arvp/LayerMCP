@@ -1,6 +1,8 @@
 import re
 import json
 import time
+import os
+from pathlib import Path
 import torch
 from models.architectures.gpt_oss_pytorch.config import Config
 from models.architectures.gpt_oss_pytorch.model import Transformer, Cache
@@ -33,6 +35,20 @@ def get_tokenizer():
     """
     tokenizer = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
     return tokenizer
+
+
+def checkpoint_input_signatures(checkpoint: str, asset_root: Optional[str]):
+    """Include the complete native-loader weight-file set, not just old files."""
+    root = Path(checkpoint).expanduser().resolve()
+    paths = sorted(root.glob("*.safetensors")) + [root / "config.json"]
+    if asset_root:
+        paths.append(Path(asset_root) / "o200k_base.tiktoken")
+    signatures = {}
+    for path in paths:
+        if path.is_file():
+            stat = path.stat()
+            signatures[str(path.resolve())] = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    return signatures
 
 
 def render_tool_prompt_tokens(
@@ -145,6 +161,9 @@ def parse_tool_call(
 class TokenGenerator:
     _model: Optional[Transformer] = None
     _tokenizer = None
+    _checkpoint_path: Optional[str] = None
+    _tokenizer_asset_root: Optional[str] = None
+    _checkpoint_signatures = None
     _eot_token: Optional[int] = None
 
     def __init__(
@@ -153,20 +172,36 @@ class TokenGenerator:
         device: torch.device = Config.device,
     ):
         self.device = device
+        resolved_checkpoint = str(Path(checkpoint).expanduser().resolve())
+        asset_root = os.environ.get("TIKTOKEN_ENCODINGS_BASE")
+        resolved_asset_root = str(Path(asset_root).expanduser().resolve()) if asset_root else None
+        if TokenGenerator._model is not None and TokenGenerator._checkpoint_path != resolved_checkpoint:
+            raise RuntimeError("A different/unknown GPT-OSS checkpoint is cached; restart the process/kernel before switching checkpoints.")
+        if TokenGenerator._tokenizer is not None and TokenGenerator._tokenizer_asset_root != resolved_asset_root:
+            raise RuntimeError("Harmony tokenizer assets changed; restart the process/kernel before switching tokenizer assets.")
+        signatures = checkpoint_input_signatures(resolved_checkpoint, resolved_asset_root)
+        if TokenGenerator._model is not None and TokenGenerator._checkpoint_signatures != signatures:
+            raise RuntimeError("Cached GPT-OSS input files changed; restart the process/kernel.")
 
         if TokenGenerator._model is None:
             debug_print(f"Loading model weights from {checkpoint}...")
             start = time.time()
             TokenGenerator._model = Transformer.from_checkpoint(checkpoint, device=self.device)
+            TokenGenerator._checkpoint_path = resolved_checkpoint
+            TokenGenerator._checkpoint_signatures = signatures
             print(f"✓ Model weights loaded in {time.time() - start:.2f}s")
         else:
             print("Model weights already loaded. Reusing existing instance.")
 
         self.model: Transformer = TokenGenerator._model
+        self.checkpoint_path = resolved_checkpoint
+        self.checkpoint_file_signatures = TokenGenerator._checkpoint_signatures
+        self.tokenizer_asset_root = resolved_asset_root
 
         if TokenGenerator._tokenizer is None:
             print("Loading tokenizer...")
             TokenGenerator._tokenizer = get_tokenizer()
+            TokenGenerator._tokenizer_asset_root = resolved_asset_root
             tok = TokenGenerator._tokenizer
 
             TokenGenerator._eot_token = tok.encode("<|return|>", allowed_special="all")[0]

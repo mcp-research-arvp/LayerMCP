@@ -80,6 +80,28 @@ seeded standard-normal tensor with the same shape.  Generated values are cast
 back to the parameter's original device and dtype.  The original tensors are
 copied back exactly when the context exits, including after an exception.
 
+Contexts cannot be nested/re-entered or used concurrently on the **same model**,
+even for different layers or a disabled control. They fail before mutation;
+sequential reuse and separate models are allowed. This guard covers this API's
+contexts, not arbitrary unwrapped inference/training in another thread: use a
+loaded model sequentially. Backup tensors are released on exit/error.
+If restoration itself fails, that model is rejected by future contexts; reload
+a fresh model before continuing rather than trusting the altered instance.
+
+`probe.perturbation` reports actual changed-element counts and, for each tensor,
+the original/effective-delta RMS and L2 norms and their ratio **after dtype
+rounding**. A zero original norm has a `null` ratio. Noise that rounds away is
+explicitly `no_op`, not evidence of a perturbation. `noise, strength=0` is a
+no-op; **`replace, strength=0` zeros the selected tensors**. Strengths remain
+absolute; no RMS-relative mode is introduced by these integrity changes.
+
+Memory needs include a native-dtype backup of all selected tensors, CPU FP32
+random noise for the largest selected tensor, native-device noise/replacement
+temporaries, and bounded diagnostic chunks. The API warns if its estimated
+CUDA backup/workspace exceeds free memory; this is not a full generation/KV
+cache budget or a guarantee against OOM. The notebook mechanics probe also
+keeps its own independent comparison clones until that cell releases them.
+
 For the local Llama runtime used by Phase 2, obtain the already-loaded model
 through the same local checkpoint path as `observe.py`:
 
@@ -309,10 +331,19 @@ override, but it is unsuitable for an interactive allocation: use the paired
 runner below for a full model-wide grid so the results have durable output and
 completion markers.
 
-For a larger study, choose settings on a small exploration panel, then verify
-the selected settings on separate held-out examples. This is hyperparameter
-selection rather than model-training cross-validation: a one-query sweep can
-show sensitivity for that query but cannot establish general improvement.
+For a larger study, keep three disjoint sample-ID lists:
+
+1. **Exploration:** compare settings on a small panel of successes and failures.
+2. **Validation:** test shortlisted settings on different queries; finalize the
+   layer/target/method/strength/seed policy here.
+3. **Held-out reporting:** freeze that policy, then evaluate untouched queries.
+   Do not tune settings after looking at these results; if you do, those queries
+   become exploration data and a fresh held-out panel is needed.
+
+Record all three lists and the chosen settings before the reporting run;
+manually check that the lists do not overlap. The current tools do not enforce
+dataset splits. This is hyperparameter selection rather than model-training
+cross-validation: a one-query sweep cannot establish general improvement.
 
 The small CPU model is only a fast explanation of targeting and restoration.
 Configuration-only mode reads model configuration (and, when supplied, local
@@ -343,7 +374,11 @@ marker, and weights must restore exactly after every intervention.
 Unlike the earlier routing-only prototype, this runner executes predicted MCP
 tools through the same baseline evaluator path. Use a small, deliberate saved
 sample panel first. The evaluator retains its existing per-sample isolation
-for stateful retail tools; this runner does not write model weights.
+for stateful retail tools; additionally, each condition now executes in a
+fresh MCP server session, including non-retail tools. A registry change between
+sessions fails the run. Fresh processes reset process-local state, **not**
+shared external files/databases/services; such tools require separately reset
+fixtures before a causal comparison. This runner does not write model weights.
 
 ```bash
 python -m research.phase2.gpt_oss_intervention_eval \
@@ -359,6 +394,129 @@ descriptions change the Harmony prompt. Use comma-separated `--layers`,
 `--seeds`, and `--sample-ids` for a bounded experiment. Omit `--sample-ids`
 and use `--example-limit` only when saved-run order is intentional. It never
 writes model weights.
+
+### Integrity fields and interpreting results
+
+- Hardened runs use `phase2_gpt_oss_attention_intervention_eval_v2`, because
+  fresh condition sessions change the experiment protocol (not scoring).
+  Existing v1 outputs and queued jobs remain untouched. V2 reporting requires
+  the companion combiner update on `research/phase2-paired-results-hardening`;
+  the original combiner accepts v1 only. The updated combiner supports either
+  version in a report but rejects mixed v1/v2 inputs and incompatible hardened
+  fingerprints/runtime settings. Do not silently pool v1/v2 experiments.
+- Durable runs stream SHA-256 hashes of the local `.safetensors` files,
+  `config.json` and `TIKTOKEN_ENCODINGS_BASE/o200k_base.tiktoken` once before
+  loading. Set that environment variable to the local Harmony asset directory.
+  Missing inputs fail native-loader runs. Hashing reads the entire checkpoint
+  and can add substantial cold-storage startup time; budget for it in Slurm.
+  File signatures are checked again after loading and before completion.
+- `run_config.json` includes the file manifest/fingerprint, source run ID,
+  current Git commit/dirty status, Python/package/PyTorch/CUDA versions, GPU
+  names/driver versions, model dtypes, generation settings and deterministic/TF32 flags.
+  Driver information is explicitly `unavailable` if it cannot be read, rather
+  than guessed from the CUDA runtime version.
+  A fingerprint of the repository's evaluator/model/server/Phase 2 Python code
+  also distinguishes different local edits sharing the same Git commit.
+  Recorded settings are not a promise of bitwise deterministic GPU inference.
+  The native loader rejects changed cached inputs or a switch to another
+  checkpoint/tokenizer; restart the kernel/process when switching those.
+- Pairs and conditions are explicitly labelled as intervention experiments,
+  not ordinary baseline records. `registry_exact_match` remains mandatory by
+  default; scoring and the baseline reporting protocol are unchanged.
+- Each pair's `saved_control_comparison` compares available saved raw output,
+  parsed tool, arguments and parser status against the newly generated control.
+  A mismatch is labelled `differs_new_control_baseline`. Missing historical
+  fingerprints yield `source_checkpoint_equivalence: unverifiable`; even
+  matching outputs/fingerprints do not prove identical historical runtime.
+  Notebook helpers verify the native loaded model/tokenizer binding and carry
+  its checkpoint fingerprint into each pair. The first comparison hashes the
+  full checkpoint once; subsequent comparisons reuse the cached identity with
+  file-signature and complete file-set checks. Arbitrary caller-supplied models
+  remain `caller_supplied_unverified`. This is not a digest of all live model
+  tensors: do not train or edit the model outside the intervention API.
+- `intervention_verification.perturbation` and the notebook show effective
+  tensor changes and explicit no-ops alongside exact restoration. No-op pairs
+  are counted separately in the summary and must not be treated as nonzero
+  perturbation evidence.
+- `summary.json` includes all four tool-choice transitions, tool changes,
+  repairs and damage by layer/seed. Output categories are mutually exclusive:
+  malformed output, valid no-call, valid wrong-tool call, valid correct-tool
+  call. Final-outcome scoring stays separate and unchanged.
+- Repeated controls are compared for output/argument/execution/outcome drift.
+  `unique_control_examples` counts sample IDs once, while `paired_observations`
+  includes layer/seed repetitions. If `control_drift_sample_ids` is nonempty,
+  investigate before attributing differences to the intervention. A tiny panel
+  with only one control per query labels repeatability `not_tested`, not stable.
+  Per-sample observation counts identify which queries actually had repeats.
+  Such a panel is a diagnostic, not a population-level effect estimate. Larger studies need
+  sample-level uncertainty analysis and separate exploration/held-out panels;
+  seeds are not independent benchmark questions.
+
+The runner calls narrow public adapters in `evaluation.evaluate` and
+`models.routers.gpt_oss_local_router`; those delegate to the existing native
+prompt, generation, parser, registry and evaluator implementations. They do
+not introduce a second scoring pipeline.
+
+Focused CPU/mock validation in the project environment (no weights/GPU needed):
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 python -m unittest \
+  tests.test_phase2_intervention tests.test_phase2_experiment_integrity \
+  tests.test_phase2_gpt_oss_intervention_eval tests.test_gpt_oss_cache_integrity \
+  tests.test_phase2_intervention_notebook tests.test_phase2_paired_sweep \
+  tests.test_evaluate_metrics tests.test_minimal_scorecard tests.test_gpt_oss_api
+python -m unittest tests.test_evaluation_tool_catalog
+python -m compileall analysis benchmark evaluation mcp_server models research tests
+git diff --check
+```
+
+These checks do not replace a real GPU smoke run or report a GitHub CI result.
+
+### GPU review smoke check (manual; no new notebook)
+
+Use the hardened worktree, a live interactive allocation, the registered
+project kernel and your ignored `.env` paths. Load GPT-OSS once as usual. First
+use the existing sweep cell for a repeated **unchanged/sham** check:
+
+```python
+RUN_PAIRED_SAMPLE_COMPARISON = False
+RUN_REAL_INTERVENTION_PROBE = False
+RUN_PAIRED_SWEEP = True
+SWEEP_SAMPLE_IDS = ('math_v1_calculator_easy_001',)
+SWEEP_LAYERS = (0,)
+SWEEP_TARGETS = ('qkv',)
+SWEEP_METHODS = ('noise',)
+SWEEP_STRENGTHS = (0.0,)  # Deliberate no-op probe, not a perturbation finding.
+SWEEP_SEEDS = (1234, 5678, 9012)
+SWEEP_MAX_INTERVENTIONS = 3
+SWEEP_ALLOW_LARGE = False
+SWEEP_SHOW_RAW_OUTPUTS = True
+```
+
+Run the settings cell, then the existing sweep cell. Expect three no-op pairs,
+zero changed values, exact restoration, a populated checkpoint fingerprint,
+and `control_repeatability_status: stable_repeats` with no drift IDs. Check raw
+outputs across both conditions, not just the scores. The control should
+reproduce the saved calculator success; inspect any saved-output mismatch.
+
+Then change **only** `SWEEP_STRENGTHS = (0.01,)`, rerun settings and sweep, and
+verify nonzero changed-value counts/norms and exact restoration for all three
+pairs. Do **not** reload the model. The intervention need not cause a wrong
+answer for this safety check to pass. If controls drift, a fingerprint is
+unavailable or restoration fails, investigate before drawing causal conclusions.
+This check must actually run on a GPU before we claim GPU validation of v2.
+
+The display-only cell immediately after the sweep shows per-tensor changed
+values, original RMS, effective change RMS, relative change and restoration
+from the latest `sweep_records`. It does not generate, reload or modify weights;
+measurements describe changes made inside the earlier context, not the current
+restored tensors. Before any sweep it prints a harmless notice. The ratio is
+the effective delta norm divided by the original norm, not a new noise-scaling
+mode. Rerunning a sweep replaces `sweep_records`; export records outside the
+repository before comparing another configuration or closing the kernel.
+Interactive exports are evidence, not batch `RUN_COMPLETE` folders for the
+completed-output combiner. Once evidence is preserved, restore portable
+defaults and clear notebook outputs before committing.
 
 ### Minimal GPT-OSS starter panel
 

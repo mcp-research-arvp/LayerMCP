@@ -1407,6 +1407,52 @@ def _tool_pool_metadata(
     }
 
 
+def open_evaluation_session(server_path: Path = SERVER_PATH):
+    """Open a fresh initialized MCP server session for an evaluation condition."""
+    return _run_server_session(server_path)
+
+
+@dataclass(frozen=True)
+class EvaluationToolCatalog:
+    """Ordered live tools and their canonical baseline registry identity."""
+
+    names: tuple[str, ...]
+    schemas: dict[str, dict[str, Any]]
+    descriptions: dict[str, str]
+    metadata: dict[str, Any]
+
+
+async def load_tool_catalog(session: Any) -> EvaluationToolCatalog:
+    """Read a live MCP catalogue without generating predictions or scoring."""
+    tools = list((await session.list_tools()).tools)
+    names = tuple(tool.name for tool in tools)
+    if len(set(names)) != len(names):
+        raise ValueError("Live MCP catalogue contains duplicate tool names")
+    schemas = {tool.name: _tool_schema(tool) for tool in tools}
+    descriptions = {tool.name: str(getattr(tool, "description", "") or "") for tool in tools}
+    return EvaluationToolCatalog(
+        names, schemas, descriptions, _tool_pool_metadata(list(names), schemas, descriptions),
+    )
+
+
+def query_with_context(query: str, prompt_context: str) -> str:
+    """Use the baseline evaluator's prompt-context rendering unchanged."""
+    return _query_with_context(query, prompt_context)
+
+
+def tool_schema(tool: Any) -> dict[str, Any]:
+    """Read an MCP tool schema using the baseline evaluator's interpretation."""
+    return _tool_schema(tool)
+
+
+def tool_pool_metadata(
+    live_tools: list[str], tool_schemas: dict[str, dict[str, Any]],
+    tool_descriptions: dict[str, str],
+) -> dict[str, Any]:
+    """Return the canonical registry identity; no separate Phase 2 hashing rules."""
+    return _tool_pool_metadata(live_tools, tool_schemas, tool_descriptions)
+
+
 def _benchmark_mode_counts(records: list[dict[str, Any]]) -> dict[str, int]:
     counts = Counter(
         record.get("benchmark_mode", DEFAULT_BENCHMARK_MODE)

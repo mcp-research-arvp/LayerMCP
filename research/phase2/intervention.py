@@ -22,7 +22,10 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 import math
 from numbers import Real
+import threading
 from typing import Any, Literal
+import warnings
+from weakref import WeakKeyDictionary, WeakSet
 
 import torch
 from torch import nn
@@ -36,6 +39,11 @@ SUPPORTED_METHODS = frozenset({"noise", "replace"})
 SUPPORTED_ATTENTION_TARGETS = frozenset(
     {"attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"}
 )
+
+# Tokens, not contexts, avoid keeping models alive through the weak registry.
+_MODEL_OWNERS: WeakKeyDictionary = WeakKeyDictionary()
+_UNSAFE_MODELS: WeakSet = WeakSet()
+_OWNERS_LOCK = threading.Lock()
 
 
 class AttentionInterventionError(ValueError):
@@ -296,6 +304,71 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         self._changed_parameter_names: tuple[str, ...] = ()
         self._restored_exactly: bool | None = None
         self._active = False
+        self._entered = False
+        self._owner_token = object()
+        self._perturbation: dict[str, Any] = {"status": "not_entered"}
+
+    @property
+    def perturbation(self) -> dict[str, Any]:
+        """JSON-safe measurements of actual changes after native-dtype rounding."""
+        import copy
+        return copy.deepcopy(self._perturbation)
+
+    def _claim(self) -> None:
+        with _OWNERS_LOCK:
+            if self._entered:
+                raise AttentionInterventionError("An intervention context cannot be entered twice concurrently.")
+            if isinstance(self.model, nn.Module):
+                if self.model in _UNSAFE_MODELS:
+                    raise AttentionInterventionError("Previous restoration failed on this model; reload a fresh model before continuing.")
+                if self.model in _MODEL_OWNERS:
+                    raise AttentionInterventionError("Another intervention/control context is active on this model.")
+                _MODEL_OWNERS[self.model] = self._owner_token
+            self._entered = True
+
+    def _release(self) -> None:
+        self._saved.clear()
+        with _OWNERS_LOCK:
+            if isinstance(self.model, nn.Module) and _MODEL_OWNERS.get(self.model) is self._owner_token:
+                del _MODEL_OWNERS[self.model]
+            self._entered = False
+
+    def _measure(self) -> None:
+        tensors = []
+        for item in self._saved:
+            changed = 0
+            original_sq = delta_sq = 0.0
+            # Bound diagnostic workspace rather than cloning entire tensors to FP64.
+            for original, actual in zip(
+                item.value.reshape(-1).split(262144),
+                item.parameter.detach().reshape(-1).split(262144),
+            ):
+                changed += int(torch.count_nonzero(original != actual).item())
+                original_float = original.to(dtype=torch.float64)
+                delta = actual.to(dtype=torch.float64) - original_float
+                original_sq += float(torch.sum(original_float.square()).item())
+                delta_sq += float(torch.sum(delta.square()).item())
+            if not math.isfinite(original_sq) or not math.isfinite(delta_sq):
+                raise AttentionInterventionError("Non-finite weights/perturbation cannot be accepted as a valid intervention.")
+            tensors.append({
+                "name": item.name, "elements": item.value.numel(),
+                "changed_elements": changed,
+                "original_l2": math.sqrt(original_sq),
+                "effective_delta_l2": math.sqrt(delta_sq),
+                "original_rms": math.sqrt(original_sq / item.value.numel()) if item.value.numel() else None,
+                "effective_delta_rms": math.sqrt(delta_sq / item.value.numel()) if item.value.numel() else None,
+                "relative_delta_l2": math.sqrt(delta_sq / original_sq) if original_sq else None,
+            })
+        self._changed_parameter_names = tuple(row["name"] for row in tensors if row["changed_elements"])
+        changed = sum(row["changed_elements"] for row in tensors)
+        self._perturbation = {
+            "status": "changed" if changed else "no_op",
+            "strength_mode": "absolute", "changed_elements": changed,
+            "total_elements": sum(row["elements"] for row in tensors),
+            "changed_parameter_count": len(self._changed_parameter_names),
+            "backup_bytes": sum(item.value.numel() * item.value.element_size() for item in self._saved),
+            "tensors": tensors,
+        }
 
     @property
     def changed_parameter_names(self) -> tuple[str, ...]:
@@ -308,33 +381,54 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         return self._restored_exactly
 
     def _restore(self) -> None:
-        with torch.no_grad():
-            for item in self._saved:
-                item.parameter.copy_(item.value)
-        self._restored_exactly = all(
-            torch.equal(item.parameter, item.value) for item in self._saved
-        )
-        self._active = False
+        try:
+            with torch.no_grad():
+                for item in self._saved:
+                    item.parameter.copy_(item.value)
+            self._restored_exactly = all(
+                torch.equal(item.parameter, item.value) for item in self._saved
+            )
+            if not self._restored_exactly:
+                raise AttentionInterventionError("Selected attention weights did not restore exactly.")
+        except BaseException:
+            self._restored_exactly = False
+            with _OWNERS_LOCK:
+                _UNSAFE_MODELS.add(self.model)
+            raise
+        finally:
+            self._active = False
 
     def __enter__(self) -> "AttentionParameterIntervention":
+        self._claim()
+        self._changed_parameter_names = ()
+        self._restored_exactly = None
         if not self.enabled:
+            self._perturbation = {"status": "disabled", "changed_elements": 0, "tensors": []}
             return self
-
-        _validate_model_is_not_quantized(self.model)
-        module = attention_module_for_layer(self.model, self.layer_index)
-        available_targets = available_attention_targets(self.model, self.layer_index)
-        if self.target not in available_targets:
-            available = ", ".join(available_targets)
-            raise AttentionInterventionError(
-                f"Attention target {self.target!r} is not available at layer {self.layer_index}. "
-                f"Available targets: {available}."
-            )
-        self._saved = _snapshots(module, self.target)
-        _ensure_parameters_are_attention_local(self.model, module, self._saved)
-        generator = torch.Generator(device="cpu")
-        generator.manual_seed(self.seed)
-
         try:
+            _validate_model_is_not_quantized(self.model)
+            module = attention_module_for_layer(self.model, self.layer_index)
+            available_targets = available_attention_targets(self.model, self.layer_index)
+            if self.target not in available_targets:
+                raise AttentionInterventionError(
+                    f"Attention target {self.target!r} is not available at layer {self.layer_index}. "
+                    f"Available targets: {', '.join(available_targets)}."
+                )
+            selected_names = _parameter_names_for_target(module, self.target)
+            selected = [p for name, p in module.named_parameters() if name in selected_names]
+            for device in {p.device for p in selected if p.device.type == "cuda"}:
+                parameters = [p for p in selected if p.device == device]
+                backup = sum(p.numel() * p.element_size() for p in parameters)
+                workspace = max((p.numel() * p.element_size() * 3 for p in parameters), default=0)
+                free, _ = torch.cuda.mem_get_info(device)
+                diagnostic_workspace = 4 * 8 * min(262144, max((p.numel() for p in parameters), default=0))
+                if backup + workspace + diagnostic_workspace > free:
+                    warnings.warn("Selected attention backup and perturbation workspace may exceed free GPU memory.", RuntimeWarning)
+            self._saved = _snapshots(module, self.target)
+            _ensure_parameters_are_attention_local(self.model, module, self._saved)
+            generator = torch.Generator(device="cpu")
+            generator.manual_seed(self.seed)
+            self._active = True
             with torch.no_grad():
                 for item in self._saved:
                     noise = torch.randn(
@@ -348,21 +442,22 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
                     else:
                         replacement = noise * self.strength
                     item.parameter.copy_(replacement)
-            self._changed_parameter_names = tuple(
-                item.name
-                for item in self._saved
-                if not torch.equal(item.parameter, item.value)
-            )
-            self._active = True
-        except Exception:
-            self._restore()
-            self._saved.clear()
+                self._measure()
+        except BaseException:
+            try:
+                if self._active:
+                    self._restore()
+            finally:
+                self._release()
             raise
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
-        if self._active:
-            self._restore()
+        try:
+            if self._active:
+                self._restore()
+        finally:
+            self._release()
         return None
 
 

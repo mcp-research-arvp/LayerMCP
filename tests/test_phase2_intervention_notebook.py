@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import importlib.util
+import ast
+import contextlib
+import io
 from pathlib import Path
 import unittest
 
@@ -15,6 +18,61 @@ NOTEBOOK = (
 
 
 class Phase2InterventionNotebookTests(unittest.TestCase):
+    def test_notebook_has_portable_defaults_and_no_saved_outputs(self) -> None:
+        notebook = json.loads(NOTEBOOK.read_text())
+        code_cells = [cell for cell in notebook['cells'] if cell['cell_type'] == 'code']
+        for cell in code_cells:
+            self.assertEqual(cell['outputs'], [])
+            self.assertIsNone(cell['execution_count'])
+        settings = next(''.join(cell['source']) for cell in code_cells
+                        if ''.join(cell['source']).startswith('# Edit this cell'))
+        expected = {
+            'MODEL_CHOICE': 'tiny_cpu', 'LOAD_CHECKPOINT': False,
+            'ATTENTION_TARGET': 'attention_all', 'RUN_REAL_INTERVENTION_PROBE': False,
+            'RUN_PAIRED_SAMPLE_COMPARISON': False, 'RUN_PAIRED_SWEEP': False,
+            'SWEEP_SEEDS': (1234,), 'SWEEP_MAX_INTERVENTIONS': 24,
+            'SWEEP_SHOW_RAW_OUTPUTS': False,
+        }
+        actual = {statement.targets[0].id: ast.literal_eval(statement.value)
+                  for statement in ast.parse(settings).body
+                  if isinstance(statement, ast.Assign)
+                  and isinstance(statement.targets[0], ast.Name)
+                  and statement.targets[0].id in expected}
+        self.assertEqual(actual, expected)
+        self.assertNotIn('phase2-review-smoke-evidence', NOTEBOOK.read_text())
+
+    def test_measurement_display_is_safe_before_any_sweep(self) -> None:
+        notebook = json.loads(NOTEBOOK.read_text())
+        source = next(''.join(cell['source']) for cell in notebook['cells']
+                      if ''.join(cell['source']).startswith('# Display measurements already collected'))
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exec(source, {})
+        self.assertIn('No sweep records in this kernel yet', output.getvalue())
+
+    def test_measurement_display_reads_existing_records_without_generation(self) -> None:
+        notebook = json.loads(NOTEBOOK.read_text())
+        source = next(''.join(cell['source']) for cell in notebook['cells']
+                      if ''.join(cell['source']).startswith('# Display measurements already collected'))
+        displays = []
+        namespace = {
+            'sweep_records': [{'sample_id': 'example', 'layer_index': 0, 'target': 'qkv',
+                'method': 'noise', 'strength': 0.01, 'seed': 7, 'intervention_verification': {
+                'restored_exactly': True,
+                'perturbation': {'tensors': [{'name': 'qkv.weight', 'changed_elements': 2,
+                    'original_rms': 0.0, 'effective_delta_rms': 0.01,
+                    'relative_delta_l2': None}]},
+            }}],
+            'print_table': lambda title, rows: displays.append((title, rows)),
+        }
+        exec(source, namespace)
+        self.assertEqual(displays, [('Measured weight changes', [{
+            'sample_id': 'example', 'layer': 0, 'target': 'qkv', 'method': 'noise', 'strength': 0.01,
+            'seed': 7, 'tensor': 'qkv.weight', 'changed_values': 2,
+            'original_RMS': 0.0, 'change_RMS': 0.01, 'change/original': None,
+            'restored': True,
+        }])])
+
     def test_notebook_is_valid_and_uses_the_public_api(self) -> None:
         notebook = json.loads(NOTEBOOK.read_text())
         self.assertEqual(notebook["nbformat"], 4)
@@ -36,6 +94,11 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertIn("RUN_PAIRED_SWEEP = False", source)
         self.assertIn("plan_paired_sweep", source)
         self.assertIn("SWEEP_MAX_INTERVENTIONS", source)
+        self.assertIn("'actual_perturbation': active_probe.perturbation", source)
+        self.assertIn("'changed_values': verification['perturbation']['changed_elements']", source)
+        self.assertIn("paired_diagnostics(sweep_records)", source)
+        self.assertIn("print('Loaded input provenance:'", source)
+        self.assertIn("'checkpoint_fingerprint', 'model_binding', 'source_checkpoint_equivalence'", source)
         self.assertIn("REPO_ROOT", source)
         for choice in (
             "llama31_config_only",

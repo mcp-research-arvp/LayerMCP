@@ -14,6 +14,7 @@ from torch import nn
 from evaluation.evaluate import _tool_pool_metadata
 from research.phase2.gpt_oss_intervention_eval import (
     EvaluationConfig,
+    RUN_KIND,
     evaluate_one_saved_example,
     run_evaluation,
 )
@@ -160,6 +161,10 @@ def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Pa
                 "prompt_template": "harmony_structured_context_sql_v2",
                 "reasoning_mode": "reasoning",
                 "reasoning_effort": "low",
+                "raw_model_output": VALID_CALL,
+                "selected_tool": "calculator",
+                "selected_args": {"expression": "2+2"},
+                "parse_status": "ok",
                 **catalog.metadata,
             }
         )
@@ -168,6 +173,14 @@ def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Pa
 
 
 class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
+    def test_invalid_strength_rejected_when_constructing_config(self):
+        for value in (-1, float("nan"), float("inf")):
+            with self.assertRaisesRegex(ValueError, "finite non-negative"):
+                EvaluationConfig(layers=(0,), seeds=(1,), method="noise", strength=value, example_limit=1)
+
+    def test_fresh_condition_protocol_is_distinct_from_legacy_v1(self):
+        self.assertEqual(RUN_KIND, "phase2_gpt_oss_attention_intervention_eval_v2")
+
     def _run(
         self,
         directory: Path,
@@ -230,6 +243,12 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertEqual(summary["conditions"]["intervention"]["no_call_outcomes"], 2)
             self.assertEqual(summary["conditions"]["control"]["execution_successes"], 2)
             self.assertEqual(summary["conditions"]["control"]["final_outcome_accuracy"], 1.0)
+            self.assertEqual(summary["paired_diagnostics"]["damage"], 2)
+            self.assertEqual(summary["paired_diagnostics"]["unique_control_examples"], 2)
+            self.assertEqual(summary["saved_control_comparison_counts"]["matches"], 2)
+            self.assertEqual(records[0]["source_checkpoint_equivalence"], "unverifiable")
+            self.assertEqual(records[0]["control"]["condition"], "control")
+            self.assertGreater(records[0]["intervention_verification"]["perturbation"]["changed_elements"], 0)
 
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)
@@ -348,6 +367,69 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
 
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)
+
+    def test_nonretail_conditions_use_fresh_servers(self):
+        """A mutable mock calculator starts clean for every condition."""
+        class AlwaysValidGenerator(MockGenerator):
+            def generate_text(self, **kwargs):
+                return SimpleNamespace(text=VALID_CALL)
+        catalog = _catalog()
+        counts = []
+        @asynccontextmanager
+        async def fresh_session():
+            async with _session_for_catalog(catalog) as session:
+                count = 0
+                async def call_tool(name, arguments):
+                    nonlocal count
+                    count += 1
+                    counts.append(count)
+                    return SimpleNamespace(structuredContent={"result": 4}, content=[], isError=False)
+                session.call_tool = call_tool
+                yield session
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            run_evaluation(
+                source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "output",
+                config=EvaluationConfig(layers=(0, 1), seeds=(1, 2), method="noise", strength=0, example_limit=1),
+                generator_loader=lambda _: AlwaysValidGenerator(TinyGptOssModel()),
+                session_factory=fresh_session,
+            )
+            summary = json.loads((root / "output/summary.json").read_text())
+            self.assertEqual(summary["no_op_interventions"], 4)
+            self.assertEqual(summary["paired_diagnostics"]["unique_control_examples"], 1)
+            self.assertEqual(summary["paired_diagnostics"]["control_drift_sample_ids"], [])
+        self.assertEqual(counts, [1] * 8)
+
+    def test_condition_registry_drift_fails_instead_of_marking_complete(self):
+        catalog = _catalog()
+        opens = 0
+        @asynccontextmanager
+        async def drifting_session():
+            nonlocal opens
+            opens += 1
+            async with _session_for_catalog(catalog) as session:
+                if opens > 1:
+                    async def list_changed_tools():
+                        return SimpleNamespace(tools=[SimpleNamespace(name="calculator", inputSchema={}, description="changed")])
+                    session.list_tools = list_changed_tools
+                yield session
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            with self.assertRaisesRegex(ValueError, "registry drifted"):
+                run_evaluation(
+                    source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "output",
+                    config=EvaluationConfig(layers=(0,), seeds=(1,), method="noise", strength=.1, example_limit=1),
+                    generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                    session_factory=drifting_session,
+                )
+            self.assertFalse((root / "output/RUN_COMPLETE").exists())
+            self.assertTrue((root / "output/RUN_FAILED.json").exists())
 
 
 if __name__ == "__main__":

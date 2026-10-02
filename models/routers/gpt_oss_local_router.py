@@ -207,6 +207,53 @@ def _generate_prediction(
     )
 
 
+def load_generator(checkpoint_path: str | None = None):
+    """Load/reuse the native GPT-OSS generator for a supplied local checkpoint."""
+    generator = _load_generator(checkpoint_path)
+    resolved_checkpoint = str(resolve_checkpoint_path(checkpoint_path).expanduser().resolve())
+    if generator.checkpoint_path != resolved_checkpoint:
+        raise RuntimeError("Cached GPT-OSS checkpoint selection changed; restart the process/kernel.")
+    validate_generator_inputs(generator)
+    return generator
+
+
+def validate_generator_inputs(generator: Any) -> None:
+    """Validate a native generator's cache binding and complete current input set."""
+    from models.architectures.gpt_oss_pytorch.inference import TokenGenerator, checkpoint_input_signatures
+
+    if not isinstance(generator, TokenGenerator):
+        raise TypeError("Only a native GPT-OSS TokenGenerator has verifiable loader provenance")
+    if generator.model is not TokenGenerator._model or generator.tokenizer is not TokenGenerator._tokenizer:
+        raise RuntimeError("GPT-OSS generator no longer refers to its native cached model/tokenizer")
+    if generator.checkpoint_path != TokenGenerator._checkpoint_path:
+        raise RuntimeError("Cached GPT-OSS checkpoint selection changed; restart the process/kernel.")
+    asset_root = os.environ.get("TIKTOKEN_ENCODINGS_BASE")
+    resolved_asset_root = str(Path(asset_root).expanduser().resolve()) if asset_root else None
+    if generator.tokenizer_asset_root != resolved_asset_root:
+        raise RuntimeError("Cached Harmony tokenizer assets changed; restart the process/kernel.")
+    current = checkpoint_input_signatures(generator.checkpoint_path, resolved_asset_root)
+    if current != generator.checkpoint_file_signatures:
+        raise RuntimeError("Cached GPT-OSS input files changed; restart the process/kernel.")
+
+
+def build_native_tools(
+    tool_catalog: Sequence[str], schemas: Mapping[str, Any], descriptions: Mapping[str, str],
+) -> list[dict[str, Any]]:
+    """Build the same native tool prompt definitions used by baseline routing."""
+    return _build_native_tools(tool_catalog, schemas, descriptions)
+
+
+def generate_prediction(
+    generator: Any, prompt_query: str, tool_catalog: Sequence[str],
+    native_tools: list[dict[str, Any]], tool_schemas: Mapping[str, Any],
+    reasoning_effort: str,
+) -> ToolCallPrediction:
+    """Render, greedily generate and parse through the baseline Harmony path."""
+    return _generate_prediction(
+        generator, prompt_query, tool_catalog, native_tools, tool_schemas, reasoning_effort,
+    )
+
+
 def choose_tool_call(
     query: str,
     available_tools: Sequence[str],

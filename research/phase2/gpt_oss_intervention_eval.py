@@ -10,8 +10,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import json
+import math
+from numbers import Real
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable, Literal, Sequence
 
@@ -19,10 +21,10 @@ from evaluation.evaluate import (
     SERVER_PATH,
     BenchmarkSample,
     RoutedToolCall,
-    _query_with_context,
-    _run_server_session,
-    _tool_pool_metadata,
-    _tool_schema,
+    query_with_context,
+    open_evaluation_session,
+    load_tool_catalog,
+    EvaluationToolCatalog as ToolCatalog,
     evaluate_single_step_prediction,
 )
 from models.routers import gpt_oss_local_router as gpt_oss_router
@@ -34,11 +36,16 @@ from research.phase2.intervention import (
     available_attention_targets,
     temporary_attention_intervention,
 )
-from research.phase2.replay import ToolCatalog
+from research.phase2.experiment_integrity import (
+    checkpoint_identity, verify_identity_inputs, runtime_identity,
+    compare_saved_control, paired_diagnostics, native_generator_identity,
+)
 
 
 InterventionMethod = Literal["noise", "replace"]
-RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v1"
+# Fresh condition sessions/provenance are a new protocol, not retroactive
+# certification of v1 runs. Old strict combiners must reject it until upgraded.
+RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v2"
 
 
 @dataclass(frozen=True)
@@ -51,6 +58,13 @@ class EvaluationConfig:
     target: AttentionTarget = "attention_all"
     sample_ids: tuple[str, ...] | None = None
     require_registry_match: bool = True
+
+    def __post_init__(self) -> None:
+        # Reject invalid strengths before checkpoint hashing or GPU loading.
+        if isinstance(self.strength, bool) or not isinstance(self.strength, Real):
+            raise TypeError("strength must be a finite non-negative number")
+        if not math.isfinite(float(self.strength)) or self.strength < 0:
+            raise ValueError("strength must be a finite non-negative number")
 
 
 @dataclass(frozen=True)
@@ -69,6 +83,7 @@ class SavedGptOssExample:
     benchmark_mode: str
     tool_names: tuple[str, ...]
     registry_metadata: dict[str, Any]
+    saved_prediction: dict[str, Any] = field(default_factory=dict)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -162,6 +177,9 @@ def _saved_example(record: dict[str, Any], source: Path, line_number: int) -> Sa
                 "tool_registry_fingerprint_version",
             )
         },
+        saved_prediction={key: record[key] for key in (
+            "raw_model_output", "selected_tool", "selected_args", "parse_status",
+        ) if key in record},
     )
 
 
@@ -250,22 +268,6 @@ def _routed_tool_call(prediction: ToolCallPrediction) -> RoutedToolCall:
     )
 
 
-async def _load_catalog_from_session(session: Any) -> ToolCatalog:
-    listed_tools = list((await session.list_tools()).tools)
-    names = tuple(tool.name for tool in listed_tools)
-    schemas = {tool.name: _tool_schema(tool) for tool in listed_tools}
-    descriptions = {
-        tool.name: str(getattr(tool, "description", "") or "")
-        for tool in listed_tools
-    }
-    return ToolCatalog(
-        names=names,
-        schemas=schemas,
-        descriptions=descriptions,
-        metadata=_tool_pool_metadata(list(names), schemas, descriptions),
-    )
-
-
 def _condition_record(record: dict[str, Any]) -> dict[str, Any]:
     """Preserve concise paired-run aliases beside the canonical evaluator record."""
     condition = dict(record)
@@ -291,12 +293,12 @@ def _predict(
     missing_tools = sorted(set(example.tool_names) - set(catalog.names))
     if missing_tools:
         raise ValueError(f"Live registry is missing saved prompt tools: {missing_tools}")
-    native_tools = gpt_oss_router._build_native_tools(
+    native_tools = gpt_oss_router.build_native_tools(
         example.tool_names,
         catalog.schemas,
         catalog.descriptions,
     )
-    query = _query_with_context(example.query, example.prompt_context)
+    query = query_with_context(example.query, example.prompt_context)
     with temporary_attention_intervention(
         generator.model,
         layer_index,
@@ -306,7 +308,7 @@ def _predict(
         seed=seed,
         enabled=enabled,
     ) as intervention:
-        prediction = gpt_oss_router._generate_prediction(
+        prediction = gpt_oss_router.generate_prediction(
             generator,
             query,
             example.tool_names,
@@ -318,6 +320,7 @@ def _predict(
         "enabled": enabled,
         "changed_attention_parameter_names": list(intervention.changed_parameter_names),
         "restored_exactly": intervention.restored_exactly,
+        "perturbation": intervention.perturbation,
     }
     if enabled and not intervention.restored_exactly:
         raise RuntimeError(f"Attention weights did not restore exactly: {verification}")
@@ -330,10 +333,42 @@ async def paired_records(
     catalog: ToolCatalog,
     config: EvaluationConfig,
     session: Any,
+    *,
+    session_factory: Callable[[], Any] | None = None,
+    provenance: dict[str, Any] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield one complete unchanged/intervention pair per example, layer, and seed."""
     if not examples:
         raise ValueError("at least one saved example is required")
+    if (
+        not config.layers or not config.seeds
+        or len(set(config.layers)) != len(config.layers)
+        or len(set(config.seeds)) != len(config.seeds)
+    ):
+        raise ValueError("layers and seeds must be non-empty and distinct")
+    open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
+    provenance = provenance or {"checkpoint_fingerprint": None, "model_binding": "caller_supplied_unverified"}
+
+    async def evaluate_condition(
+        example: SavedGptOssExample, prediction: ToolCallPrediction,
+    ) -> dict[str, Any]:
+        # A new server for EACH condition, including non-retail tools. The
+        # canonical evaluator still owns execution and scoring unchanged.
+        async with open_session() as condition_session:
+            condition_catalog = await load_tool_catalog(condition_session)
+            if condition_catalog.metadata != catalog.metadata:
+                raise ValueError("Tool registry drifted between evaluation conditions")
+            result = await evaluate_single_step_prediction(
+                sample=_benchmark_sample(example),
+                benchmark_path=Path(example.benchmark_path),
+                router=gpt_oss_router, prediction=_routed_tool_call(prediction),
+                session=condition_session, server_path=SERVER_PATH,
+                live_tools=list(catalog.names), tool_schemas=catalog.schemas,
+                tool_descriptions=catalog.descriptions, call_predicted_tools=True,
+                reasoning_mode="reasoning", reasoning_effort="low",
+            )
+            return _condition_record(result.record)
+
     valid_layers = available_attention_layers(generator.model)
     invalid_layers = sorted(set(config.layers) - set(valid_layers))
     if invalid_layers:
@@ -382,37 +417,14 @@ async def paired_records(
                     strength=config.strength,
                     seed=seed,
                 )
-                sample = _benchmark_sample(example)
-                control_evaluation = await evaluate_single_step_prediction(
-                    sample=sample,
-                    benchmark_path=Path(example.benchmark_path),
-                    router=gpt_oss_router,
-                    prediction=_routed_tool_call(control),
-                    session=session,
-                    server_path=SERVER_PATH,
-                    live_tools=list(catalog.names),
-                    tool_schemas=catalog.schemas,
-                    tool_descriptions=catalog.descriptions,
-                    call_predicted_tools=True,
-                    reasoning_mode="reasoning",
-                    reasoning_effort="low",
-                )
-                intervention_evaluation = await evaluate_single_step_prediction(
-                    sample=sample,
-                    benchmark_path=Path(example.benchmark_path),
-                    router=gpt_oss_router,
-                    prediction=_routed_tool_call(intervention),
-                    session=session,
-                    server_path=SERVER_PATH,
-                    live_tools=list(catalog.names),
-                    tool_schemas=catalog.schemas,
-                    tool_descriptions=catalog.descriptions,
-                    call_predicted_tools=True,
-                    reasoning_mode="reasoning",
-                    reasoning_effort="low",
-                )
+                control_record = await evaluate_condition(example, control)
+                intervention_record = await evaluate_condition(example, intervention)
+                for name, record in (("control", control_record), ("intervention", intervention_record)):
+                    record.update({"experiment_kind": RUN_KIND, "condition": name})
                 yield {
                     "kind": RUN_KIND,
+                    "experiment_kind": RUN_KIND,
+                    **provenance,
                     "sample_id": example.sample_id,
                     "layer_index": layer_index,
                     "seed": seed,
@@ -420,8 +432,11 @@ async def paired_records(
                     "target": config.target,
                     "strength": config.strength,
                     "registry_exact_match": registry_exact_match,
-                    "control": _condition_record(control_evaluation.record),
-                    "intervention": _condition_record(intervention_evaluation.record),
+                    "strength_mode": "absolute",
+                    "condition_isolation": "fresh_mcp_server_per_condition",
+                    "control": control_record,
+                    "intervention": intervention_record,
+                    "saved_control_comparison": compare_saved_control(example.saved_prediction, control_record),
                     "control_verification": control_verification,
                     "intervention_verification": intervention_verification,
                 }
@@ -447,7 +462,7 @@ async def evaluate_one_saved_example_async(
     baseline evaluator path, and returns one complete pair without creating an
     output directory.  It is intended for a notebook inspection, not a sweep.
     """
-    _, examples = load_saved_gpt_oss_examples(
+    metadata, examples = load_saved_gpt_oss_examples(
         source_run_dir,
         example_limit=1,
         sample_ids=(sample_id,),
@@ -462,9 +477,10 @@ async def evaluate_one_saved_example_async(
         sample_ids=(sample_id,),
         require_registry_match=require_registry_match,
     )
-    open_session = session_factory or (lambda: _run_server_session(SERVER_PATH))
+    identity = native_generator_identity(generator)
+    open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
     async with open_session() as session:
-        catalog = await _load_catalog_from_session(session)
+        catalog = await load_tool_catalog(session)
         records = [
             record
             async for record in paired_records(
@@ -473,10 +489,22 @@ async def evaluate_one_saved_example_async(
                 catalog,
                 config,
                 session,
+                session_factory=open_session,
+                provenance={
+                    "source_run_id": source_run_dir.resolve().name,
+                    "checkpoint_fingerprint": identity["fingerprint"],
+                    "model_binding": "native_loaded_inputs" if identity["status"] == "complete" else "caller_supplied_unverified",
+                    "source_checkpoint_equivalence": (
+                        "matches" if metadata["checkpoint_fingerprint"] == identity["fingerprint"] else "differs"
+                    ) if metadata.get("checkpoint_fingerprint") and identity["fingerprint"] else "unverifiable",
+                    "runtime": runtime_identity(generator.model),
+                },
             )
         ]
     if len(records) != 1:  # Defensive guard if paired-record iteration changes.
         raise RuntimeError(f"Expected exactly one paired record, got {len(records)}")
+    if identity["status"] == "complete":
+        verify_identity_inputs(identity)
     return records[0]
 
 
@@ -534,7 +562,24 @@ def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
                 else None
             ),
         }
-    return {"paired_record_count": len(records), "conditions": conditions}
+    grouped: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for record in records:
+        grouped.setdefault((record["layer_index"], record["seed"]), []).append(record)
+    return {
+        "paired_record_count": len(records), "conditions": conditions,
+        "paired_diagnostics": paired_diagnostics(records),
+        "by_layer_seed": [
+            {"layer_index": layer, "seed": seed, **paired_diagnostics(pairs)}
+            for (layer, seed), pairs in sorted(grouped.items())
+        ],
+        "saved_control_comparison_counts": {
+            status: sum(row["saved_control_comparison"]["status"] == status for row in records)
+            for status in ("matches", "differs_new_control_baseline", "unavailable")
+        },
+        "no_op_interventions": sum(
+            row["intervention_verification"]["perturbation"]["status"] == "no_op" for row in records
+        ),
+    }
 
 
 async def run_evaluation_async(
@@ -543,12 +588,16 @@ async def run_evaluation_async(
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
-    generator_loader: Callable[[str], Any] = gpt_oss_router._load_generator,
+    generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
     """Run and persist a paired full evaluation; only ``RUN_COMPLETE`` marks success."""
-    if not config.layers or not config.seeds:
-        raise ValueError("layers and seeds must both be non-empty")
+    if (
+        not config.layers or not config.seeds
+        or len(set(config.layers)) != len(config.layers)
+        or len(set(config.seeds)) != len(config.seeds)
+    ):
+        raise ValueError("layers and seeds must both be non-empty and distinct")
     target = _safe_output_directory(output_dir)
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
@@ -556,7 +605,25 @@ async def run_evaluation_async(
     metadata, examples = load_saved_gpt_oss_examples(
         source_run_dir, config.example_limit, config.sample_ids
     )
+    if generator_loader is gpt_oss_router.load_generator:
+        print("Fingerprinting checkpoint/config/Harmony files (full content read; cold storage may be slow)...", flush=True)
+    identity = checkpoint_identity(checkpoint)
+    if generator_loader is gpt_oss_router.load_generator and identity["status"] != "complete":
+        raise ValueError("Checkpoint provenance requires weights, config.json and a local Harmony asset via TIKTOKEN_ENCODINGS_BASE")
     generator = generator_loader(str(checkpoint))
+    verify_identity_inputs(identity)
+    if generator_loader is gpt_oss_router.load_generator:
+        native_generator_identity(generator, identity)
+    source_fingerprint = metadata.get("checkpoint_fingerprint")
+    provenance = {
+        "source_run_id": source_run_dir.resolve().name,
+        "checkpoint_fingerprint": identity["fingerprint"],
+        "model_binding": "native_loader" if generator_loader is gpt_oss_router.load_generator else "injected_loader_unverified",
+        "source_checkpoint_equivalence": (
+            "matches" if source_fingerprint == identity["fingerprint"] else "differs"
+        ) if source_fingerprint and identity["fingerprint"] else "unverifiable",
+        "runtime": runtime_identity(generator.model),
+    }
 
     target.mkdir(parents=True)
     in_progress = target / "RUN_IN_PROGRESS"
@@ -565,6 +632,11 @@ async def run_evaluation_async(
         json.dumps(
             {
                 "kind": RUN_KIND,
+                "experiment_kind": RUN_KIND,
+                **provenance,
+                "checkpoint_identity": identity,
+                "condition_isolation": "fresh_mcp_server_per_condition",
+                "strength_mode": "absolute",
                 "source_run_directory": str(source_run_dir.expanduser().resolve()),
                 "checkpoint_path": str(checkpoint),
                 "config": asdict(config),
@@ -585,9 +657,9 @@ async def run_evaluation_async(
     )
     records: list[dict[str, Any]] = []
     try:
-        open_session = session_factory or (lambda: _run_server_session(SERVER_PATH))
+        open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
         async with open_session() as session:
-            catalog = await _load_catalog_from_session(session)
+            catalog = await load_tool_catalog(session)
             with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
                 async for record in paired_records(
                     generator,
@@ -595,10 +667,13 @@ async def run_evaluation_async(
                     catalog,
                     config,
                     session,
+                    session_factory=open_session,
+                    provenance=provenance,
                 ):
                     handle.write(json.dumps(record, sort_keys=True) + "\n")
                     handle.flush()
                     records.append(record)
+        verify_identity_inputs(identity)
         (target / "summary.json").write_text(
             json.dumps(_summary(records), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -630,7 +705,7 @@ def run_evaluation(
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
-    generator_loader: Callable[[str], Any] = gpt_oss_router._load_generator,
+    generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
     """Synchronous CLI wrapper around :func:`run_evaluation_async`."""

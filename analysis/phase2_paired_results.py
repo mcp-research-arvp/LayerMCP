@@ -8,6 +8,7 @@ import hashlib
 from itertools import product
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -15,6 +16,8 @@ from analysis.benchmark_inventory import infer_benchmark_class
 
 
 RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v1"
+HARDENED_RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v2"
+SUPPORTED_RUN_KINDS = (RUN_KIND, HARDENED_RUN_KIND)
 SUMMARY_KIND = "phase2_gpt_oss_paired_results_summary_v1"
 METRICS = (
     "tool_selection_correct", "argument_match_correct",
@@ -97,6 +100,73 @@ def _bucket(condition: dict[str, Any]) -> str:
     return "correct_tool_calls" if condition["tool_selection_correct"] else "valid_wrong_tool_calls"
 
 
+def _hardened_provenance(manifest: dict[str, Any], path: Path) -> dict[str, Any]:
+    """Validate saved v2 identities offline; never reopen checkpoint weights."""
+    identity = manifest.get("checkpoint_identity", {})
+    _require(isinstance(identity, dict) and identity.get("status") == "complete",
+             f"{path}: incomplete hardened checkpoint identity")
+    _require(identity.get("checkpoint_directory") == manifest.get("checkpoint_path"),
+             f"{path}: hardened identity points at a different checkpoint")
+    files = identity.get("manifest")
+    _require(isinstance(files, dict) and set(files) == {"weights", "config", "tokenizer"},
+             f"{path}: missing hardened file manifest")
+    for category, entries in files.items():
+        _require(isinstance(entries, list) and bool(entries), f"{path}: missing {category} identity")
+        names = []
+        for entry in entries:
+            _require(isinstance(entry, dict) and isinstance(entry.get("name"), str), f"{path}: invalid {category} manifest")
+            names.append(entry["name"])
+            _require(type(entry.get("bytes")) is int and entry["bytes"] >= 0 and
+                     isinstance(entry.get("sha256"), str) and
+                     re.fullmatch(r"sha256:[0-9a-f]{64}", entry["sha256"]) is not None,
+                     f"{path}: invalid {category} file hash/size")
+        _require(len(set(names)) == len(names), f"{path}: duplicate manifest files")
+    fingerprint = "sha256:" + hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+    _require(identity.get("fingerprint") == fingerprint and manifest.get("checkpoint_fingerprint") == fingerprint,
+             f"{path}: hardened fingerprint disagrees with saved file manifest")
+    _require(manifest.get("experiment_kind") == HARDENED_RUN_KIND and
+             manifest.get("condition_isolation") == "fresh_mcp_server_per_condition" and
+             manifest.get("strength_mode") == "absolute", f"{path}: invalid hardened protocol labels")
+    _require(manifest.get("model_binding") == "native_loader", f"{path}: unverified hardened model binding")
+    _require(manifest.get("source_run_id") == Path(manifest.get("source_run_directory", "")).name,
+             f"{path}: inconsistent source run ID")
+    runtime = manifest.get("runtime")
+    _require(isinstance(runtime, dict) and isinstance(runtime.get("git_commit"), str) and
+             re.fullmatch(r"[0-9a-f]{40}", runtime["git_commit"]) is not None,
+             f"{path}: missing current runtime commit")
+    for field in ("tracked_worktree_dirty", "python", "torch", "cuda_runtime", "packages",
+                  "devices", "dtypes", "gpu_names", "gpu_driver", "deterministic_algorithms",
+                  "cudnn_deterministic", "cudnn_benchmark", "matmul_allow_tf32", "generation", "runtime_code_fingerprint"):
+        _require(field in runtime, f"{path}: missing runtime setting {field}")
+    _require(isinstance(runtime["runtime_code_fingerprint"], str) and
+             re.fullmatch(r"sha256:[0-9a-f]{64}", runtime["runtime_code_fingerprint"]),
+             f"{path}: invalid runtime code fingerprint")
+    return {key: manifest.get(key) for key in (
+        "experiment_kind", "source_run_id", "checkpoint_fingerprint", "model_binding",
+        "source_checkpoint_equivalence", "condition_isolation", "strength_mode", "runtime",
+    )}
+
+
+def _hardened_pair(record: dict[str, Any], provenance: dict[str, Any], key: tuple) -> None:
+    _require(_select(record, provenance) == provenance, f"{key}: hardened record provenance differs from manifest")
+    for name in ("control", "intervention"):
+        condition = record.get(name, {})
+        _require(isinstance(condition, dict) and condition.get("condition") == name and condition.get("experiment_kind") == HARDENED_RUN_KIND,
+                 f"{key}: missing hardened condition labels")
+    control_verification = record.get("control_verification", {})
+    verification = record.get("intervention_verification", {})
+    _require(isinstance(control_verification, dict) and isinstance(verification, dict), f"{key}: missing verification")
+    control = control_verification.get("perturbation", {})
+    _require(isinstance(control, dict) and control.get("status") == "disabled" and control.get("changed_elements") == 0,
+             f"{key}: missing disabled-control diagnostics")
+    diagnostic = verification.get("perturbation", {})
+    _require(isinstance(diagnostic, dict), f"{key}: missing actual perturbation diagnostics")
+    status, changed = diagnostic.get("status"), diagnostic.get("changed_elements")
+    _require(status in ("changed", "no_op") and type(changed) is int and changed >= 0 and
+             (status == "changed") == (changed > 0) and diagnostic.get("strength_mode") == "absolute",
+             f"{key}: inconsistent actual/no-op perturbation diagnostics")
+
+
 def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
     """Validate completed shards and return a compact, provenance-preserving summary.
 
@@ -119,7 +189,8 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
         record_bytes = (path / "paired_records.jsonl").read_bytes()
         manifest = json.loads(config_bytes)
         _require(isinstance(manifest, dict), f"{path}: run configuration must be an object")
-        _require(manifest.get("kind") == RUN_KIND, f"{path}: unsupported run kind")
+        run_kind = manifest.get("kind")
+        _require(run_kind in SUPPORTED_RUN_KINDS, f"{path}: unsupported run kind")
         _require(manifest.get("call_predicted_tools") is True, f"{path}: not a full tool-execution run")
         config = manifest.get("resolved_config", manifest.get("config", {}))
         _require(isinstance(config, dict), f"{path}: missing concrete configuration")
@@ -141,7 +212,7 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
         _require(manifest.get("example_count") == len(samples), f"{path}: example_count mismatch")
         metadata = manifest.get("source_run_metadata", {})
         _require(isinstance(metadata, dict), f"{path}: invalid source metadata")
-        current = {"sample_ids": samples, **_select(config, ("target", "method", "strength")),
+        current = {"experiment_kind": run_kind, "sample_ids": samples, **_select(config, ("target", "method", "strength")),
                    "source_run_metadata": _select(metadata, PROVENANCE_KEYS)}
         for key in ("checkpoint_path", "source_run_directory"):
             value = manifest.get(key)
@@ -149,6 +220,9 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
             current[key] = str(Path(value).resolve())
         for field in ("tool_registry_fingerprint", "tool_registry_fingerprint_version", "tool_pool", "tool_count"):
             _require(bool(metadata.get(field)), f"{path}: missing source registry metadata {field}")
+        hardened = _hardened_provenance(manifest, path) if run_kind == HARDENED_RUN_KIND else None
+        if hardened is not None:
+            current["hardened_provenance"] = hardened
         if compatibility is None:
             compatibility = current
         else:
@@ -156,13 +230,15 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
         local_keys = set()
         for record in records:
             sample_id = record["sample_id"]
-            _require(record.get("kind") == RUN_KIND, f"{path}: unsupported record kind")
+            _require(record.get("kind") == run_kind, f"{path}: unsupported record kind")
             _require(all(record.get(key) == config[key] for key in ("target", "method", "strength")),
                      f"{sample_id}: record settings differ from run configuration")
             layer, seed = record.get("layer_index"), record.get("seed")
             _require(type(layer) is int and type(seed) is int and layer in layers and seed in seeds,
                      f"{sample_id}: undeclared layer/seed")
             key = (layer, seed, sample_id)
+            if hardened is not None:
+                _hardened_pair(record, hardened, key)
             _require(key not in seen, f"Duplicate layer–seed–sample pair: {key}")
             seen.add(key)
             local_keys.add(key)
@@ -202,6 +278,8 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
         row = {"layer_index": layer, "seed": seed, "benchmark_classification": classification,
                "benchmark_mode": mode, "sample_count": len(records),
                "tool_choice_changes": 0, "tool_choice_repairs": 0, "tool_choice_damage": 0,
+               "correct_correct": 0, "correct_wrong": 0, "wrong_correct": 0, "wrong_wrong": 0,
+               "no_op_interventions": 0,
                "final_outcome_paired_scored": 0, "final_outcome_repairs": 0, "final_outcome_damage": 0}
         for condition in ("control", "intervention"):
             for category in ("invalid_outputs", "valid_no_call_outputs", "valid_wrong_tool_calls", "correct_tool_calls",
@@ -212,6 +290,9 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
             row[f"{condition}_final_outcome_scored"] = 0
         for record in records:
             control, intervention = record["control"], record["intervention"]
+            transition = f"{'correct' if control['tool_selection_correct'] else 'wrong'}_{'correct' if intervention['tool_selection_correct'] else 'wrong'}"
+            row[transition] += 1
+            row["no_op_interventions"] += record.get("intervention_verification", {}).get("perturbation", {}).get("status") == "no_op"
             row["tool_choice_changes"] += control["selected_tool"] != intervention["selected_tool"]
             row["tool_choice_repairs"] += not control["tool_selection_correct"] and intervention["tool_selection_correct"]
             row["tool_choice_damage"] += control["tool_selection_correct"] and not intervention["tool_selection_correct"]
@@ -232,6 +313,7 @@ def combine_completed_runs(run_dirs: Iterable[Path | str]) -> dict[str, Any]:
         row["tool_choice_damage_rate"] = row["tool_choice_damage"] / successes if successes else None
         rows.append(row)
     return {"kind": SUMMARY_KIND, "compatibility": compatibility, "input_runs": inputs,
+            "provenance_status": "hardened_file_and_runtime_identity" if compatibility["experiment_kind"] == HARDENED_RUN_KIND else "legacy_path_based_unverified_identity",
             "unique_sample_count": len(controls), "paired_observation_count": len(seen),
             "unique_controls": [{"sample_id": sample_id, **_select(controls[sample_id], METRICS)}
                                 for sample_id in sorted(controls)],

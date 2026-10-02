@@ -424,6 +424,17 @@ provenance. Layers and seeds may differ. A different strength or sample panel
 belongs in a separate report. Old full-evaluation folders using only `config`
 are supported; routing-only prototype records are not.
 
+This updated combiner also accepts hardened
+`phase2_gpt_oss_attention_intervention_eval_v2` folders. It rejects mixed v1/v2
+inputs. V2 folders must carry complete checkpoint/config/tokenizer manifests
+whose hashes agree with the saved fingerprint, native-loader binding, fresh
+condition-session labels, actual/no-op perturbation diagnostics and compatible
+current runtime metadata (including code commit, GPU/driver and deterministic
+settings). Every record must agree with its folder's provenance. These are
+offline checks of saved artifacts, **not** a rehash of checkpoint files or
+proof of an undocumented historical baseline's identity. Legacy v1 reports
+remain supported and explicitly labelled `legacy_path_based_unverified_identity`.
+
 The command rejects duplicate layer–seed–sample pairs, missing/false exact
 intervention restoration, changed sample definitions and differing repeated
 controls. Compare raw controls separately if this last check fails; do not
@@ -441,6 +452,10 @@ separate. Important columns:
 - `tool_choice_changes`: selected tool changed (including changes to/from no call).
 - `tool_choice_repairs`: control chose incorrectly, intervention chose correctly.
 - `tool_choice_damage`: control chose correctly, intervention chose incorrectly.
+- `correct_correct`, `correct_wrong`, `wrong_correct`, `wrong_wrong`: all four
+  mutually exclusive paired tool-choice transitions.
+- `no_op_interventions`: explicitly unchanged hardened interventions; these
+  must not be interpreted as evidence of a nonzero perturbation effect.
 - Repair/damage rates use eligible control failures/successes respectively;
   an empty denominator is `null`.
 - Per-condition `invalid_outputs`, `valid_no_call_outputs`,

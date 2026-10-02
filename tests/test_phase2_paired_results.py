@@ -2,12 +2,13 @@
 
 from copy import deepcopy
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
 
 from analysis.phase2_paired_results import (
-    RUN_KIND, combine_completed_runs, main, save_summary,
+    RUN_KIND, HARDENED_RUN_KIND, combine_completed_runs, main, save_summary,
 )
 
 
@@ -42,6 +43,89 @@ def pair(layer, seed, sample_id):
 
 
 class PairedResultsTests(unittest.TestCase):
+    def make_hardened(self, path):
+        manifest, records = self.read(path)
+        files = {category: [{"name": filename, "bytes": 1, "sha256": "sha256:" + "a" * 64}]
+                 for category, filename in (("weights", "model.safetensors"), ("config", "config.json"), ("tokenizer", "o200k_base.tiktoken"))}
+        fingerprint = "sha256:" + hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+        runtime = {"git_commit": "b" * 40, "tracked_worktree_dirty": False, "python": "3.11.5", "torch": "2.x",
+                   "cuda_runtime": "12.x", "packages": {}, "devices": ["cuda:0"], "dtypes": ["torch.bfloat16"],
+                   "gpu_names": {"cuda:0": "H100"}, "gpu_driver": {"status": "recorded", "versions": ["570.1"]},
+                   "deterministic_algorithms": False, "cudnn_deterministic": False,
+                   "cudnn_benchmark": False, "matmul_allow_tf32": False, "generation": {"temperature": 0.0},
+                   "runtime_code_fingerprint": "sha256:" + "b" * 64}
+        provenance = {"experiment_kind": HARDENED_RUN_KIND, "source_run_id": "source", "checkpoint_fingerprint": fingerprint,
+                      "model_binding": "native_loader", "source_checkpoint_equivalence": "unverifiable",
+                      "condition_isolation": "fresh_mcp_server_per_condition", "strength_mode": "absolute", "runtime": runtime}
+        manifest.update(kind=HARDENED_RUN_KIND, **provenance,
+                        checkpoint_identity={"status": "complete", "fingerprint": fingerprint, "manifest": files,
+                                             "checkpoint_directory": manifest["checkpoint_path"]})
+        for record in records:
+            record.update(kind=HARDENED_RUN_KIND, **provenance)
+            for name in ("control", "intervention"):
+                record[name].update(condition=name, experiment_kind=HARDENED_RUN_KIND)
+            record["control_verification"]["perturbation"] = {"status": "disabled", "changed_elements": 0}
+            record["intervention_verification"]["perturbation"] = {"status": "changed", "changed_elements": 3, "strength_mode": "absolute"}
+        self.store(path, manifest, records)
+        return path
+
+    def test_hardened_shards_combine_but_legacy_protocol_cannot_mix(self):
+        first = self.make_hardened(self.write_run("first"))
+        second = self.make_hardened(self.write_run("second", layers=(12,)))
+        result = combine_completed_runs([first, second])
+        self.assertEqual(result["unique_sample_count"], 2)
+        self.assertEqual(result["provenance_status"], "hardened_file_and_runtime_identity")
+        self.assertEqual(result["rows"][0]["correct_wrong"], 1)
+        self.assertEqual(result["rows"][0]["wrong_correct"], 1)
+        legacy = self.write_run("legacy", layers=(23,))
+        for inputs in ([first, legacy], [legacy, first]):
+            with self.assertRaisesRegex(ValueError, "incompatible"):
+                combine_completed_runs(inputs)
+
+    def test_hardened_fingerprint_and_runtime_drift_rejected(self):
+        first = self.make_hardened(self.write_run("first"))
+        second = self.make_hardened(self.write_run("second", layers=(12,)))
+        manifest, records = self.read(second)
+        for change in ("file_hash", "runtime", "fingerprint"):
+            changed = deepcopy(manifest)
+            if change == "file_hash":
+                changed["checkpoint_identity"]["manifest"]["weights"][0]["sha256"] = "sha256:" + "c" * 64
+            elif change == "runtime":
+                changed["runtime"]["torch"] = "other"
+            else:
+                changed["checkpoint_fingerprint"] = "sha256:" + "d" * 64
+            self.store(second, changed, records)
+            with self.assertRaises(ValueError):
+                combine_completed_runs([first, second])
+
+    def test_hardened_record_binding_and_noop_diagnostics_checked(self):
+        path = self.make_hardened(self.write_run())
+        manifest, records = self.read(path)
+        for field, value in (("checkpoint_fingerprint", "other"), ("condition_isolation", "shared_session")):
+            changed = deepcopy(records)
+            changed[0][field] = value
+            self.store(path, manifest, changed)
+            with self.assertRaisesRegex(ValueError, "provenance differs"):
+                combine_completed_runs([path])
+        changed = deepcopy(records)
+        changed[0]["intervention_verification"]["perturbation"]["status"] = "no_op"
+        self.store(path, manifest, changed)
+        with self.assertRaisesRegex(ValueError, "no-op perturbation"):
+            combine_completed_runs([path])
+        changed[0]["intervention_verification"]["perturbation"]["changed_elements"] = 0
+        self.store(path, manifest, changed)
+        self.assertEqual(combine_completed_runs([path])["rows"][0]["no_op_interventions"], 1)
+
+    def test_hardened_unverified_binding_and_missing_runtime_are_rejected(self):
+        path = self.make_hardened(self.write_run())
+        manifest, records = self.read(path)
+        for field in ("model_binding", "runtime"):
+            changed = deepcopy(manifest)
+            changed[field] = "unverified" if field == "model_binding" else {}
+            self.store(path, changed, records)
+            with self.assertRaises(ValueError):
+                combine_completed_runs([path])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="paired-smoke-parent-")
         self.addCleanup(self.temp.cleanup)

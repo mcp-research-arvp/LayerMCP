@@ -161,7 +161,22 @@ def compare_saved_control(saved: dict[str, Any], current: dict[str, Any]) -> dic
 
 def paired_diagnostics(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
     """Keep paired transitions and output validity separate from task scoring."""
-    transitions = Counter({key: 0 for key in ("correct_correct", "correct_wrong", "wrong_correct", "wrong_wrong")})
+    metrics = {
+        "tool_choice": "tool_choice_correct",
+        "argument_match": "argument_match_correct",
+        "execution_success": "execution_success",
+        "final_outcome": "final_outcome_correct",
+    }
+    metric_transitions = {
+        name: {
+            "transitions": {key: 0 for key in (
+                "correct_correct", "correct_wrong", "wrong_correct", "wrong_wrong",
+            )},
+            "scored_pairs": 0,
+            "unscored_pairs": 0,
+        }
+        for name in metrics
+    }
     buckets = {condition: Counter({key: 0 for key in (
         "invalid_output", "valid_no_call", "valid_wrong_tool", "valid_correct_tool",
     )}) for condition in ("control", "intervention")}
@@ -170,7 +185,16 @@ def paired_diagnostics(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
     changes = 0
     for pair in records:
         a, b = pair["control"], pair["intervention"]
-        transitions[f"{'correct' if a['tool_choice_correct'] else 'wrong'}_{'correct' if b['tool_choice_correct'] else 'wrong'}"] += 1
+        for name, field in metrics.items():
+            diagnostic = metric_transitions[name]
+            control_value, intervention_value = a.get(field), b.get(field)
+            # In particular, a missing final-outcome score is not a failure.
+            if control_value is None or intervention_value is None:
+                diagnostic["unscored_pairs"] += 1
+                continue
+            transition = f"{'correct' if control_value else 'wrong'}_{'correct' if intervention_value else 'wrong'}"
+            diagnostic["transitions"][transition] += 1
+            diagnostic["scored_pairs"] += 1
         changes += a["chosen_tool"] != b["chosen_tool"]
         for name, outcome in (("control", a), ("intervention", b)):
             bucket = ("invalid_output" if outcome["invalid_output"] else
@@ -185,8 +209,10 @@ def paired_diagnostics(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
         controls.setdefault(pair["sample_id"], set()).add(json.dumps(identity, sort_keys=True))
         control_counts[pair["sample_id"]] += 1
     drift = sorted(key for key, value in controls.items() if len(value) > 1)
+    transitions = metric_transitions["tool_choice"]["transitions"]
     return {
         "tool_choice_transitions": dict(transitions),
+        "metric_transitions": metric_transitions,
         "repairs": transitions["wrong_correct"], "damage": transitions["correct_wrong"],
         "tool_choice_changes": changes,
         "output_categories": {key: dict(value) for key, value in buckets.items()},

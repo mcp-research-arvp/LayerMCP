@@ -89,6 +89,9 @@ class ExperimentIntegrityTests(unittest.TestCase):
         self.assertEqual(result["tool_choice_transitions"], {"correct_correct": 1, "correct_wrong": 1, "wrong_correct": 1, "wrong_wrong": 2})
         self.assertEqual(result["unique_control_examples"], 3)
         self.assertEqual(result["paired_observations"], 5)
+        for metric in ("argument_match", "execution_success", "final_outcome"):
+            self.assertEqual(result["metric_transitions"][metric]["scored_pairs"], 0)
+            self.assertEqual(result["metric_transitions"][metric]["unscored_pairs"], 5)
         self.assertEqual(result["control_drift_sample_ids"], ["b"])
         self.assertEqual(result["control_repeatability_status"], "drift_detected")
         self.assertEqual(result["control_observation_counts"], {"a": 2, "b": 2, "c": 1})
@@ -104,6 +107,58 @@ class ExperimentIntegrityTests(unittest.TestCase):
         self.assertEqual(identity["devices"], ["cpu"])
         self.assertIn("deterministic_algorithms", identity)
         self.assertEqual(identity["generation"]["temperature"], 0.0)
+
+    def test_each_metric_has_independent_paired_transitions(self):
+        def outcome(tool, args, execution, final):
+            return {"tool_choice_correct": tool, "argument_match_correct": args,
+                    "execution_success": execution, "final_outcome_correct": final,
+                    "chosen_tool": "calculator", "invalid_output": False,
+                    "no_call_outcome": False}
+        control = outcome(True, False, True, True)
+        intervention = outcome(True, True, False, False)
+        pairs = [{"sample_id": "a", "control": control, "intervention": intervention}]
+        result = paired_diagnostics(pairs)
+        expected = {"tool_choice": "correct_correct", "argument_match": "wrong_correct",
+                    "execution_success": "correct_wrong", "final_outcome": "correct_wrong"}
+        for metric, transition in expected.items():
+            self.assertEqual(result["metric_transitions"][metric], {
+                "transitions": {key: int(key == transition) for key in (
+                    "correct_correct", "correct_wrong", "wrong_correct", "wrong_wrong",
+                )},
+                "scored_pairs": 1, "unscored_pairs": 0,
+            })
+        self.assertEqual(result["repairs"], 0)
+        self.assertEqual(result["damage"], 0)
+
+    def test_all_four_transitions_and_unscored_outcomes_are_counted_separately(self):
+        pairs = []
+        values = ((True, True), (True, False), (False, True), (False, False),
+                  (None, True), (False, None), (None, None))
+        for index, (control, intervention) in enumerate(values):
+            def outcome(value):
+                return {"tool_choice_correct": True, "argument_match_correct": value,
+                        "execution_success": value, "final_outcome_correct": value,
+                        "chosen_tool": "calculator", "invalid_output": False,
+                        "no_call_outcome": False}
+            pairs.append({"sample_id": str(index), "control": outcome(control),
+                          "intervention": outcome(intervention)})
+        result = paired_diagnostics(pairs)
+        for metric in ("argument_match", "execution_success", "final_outcome"):
+            self.assertEqual(result["metric_transitions"][metric], {
+                "transitions": {"correct_correct": 1, "correct_wrong": 1,
+                                "wrong_correct": 1, "wrong_wrong": 1},
+                "scored_pairs": 4, "unscored_pairs": 3,
+            })
+        self.assertEqual(result["metric_transitions"]["tool_choice"]["scored_pairs"], 7)
+        self.assertEqual(result["unique_control_examples"], 7)
+        self.assertEqual(result["paired_observations"], 7)
+
+    def test_empty_diagnostics_have_zero_transitions_and_denominators(self):
+        result = paired_diagnostics([])
+        for metric in result["metric_transitions"].values():
+            self.assertEqual(sum(metric["transitions"].values()), 0)
+            self.assertEqual(metric["scored_pairs"], 0)
+            self.assertEqual(metric["unscored_pairs"], 0)
 
 
 if __name__ == "__main__":

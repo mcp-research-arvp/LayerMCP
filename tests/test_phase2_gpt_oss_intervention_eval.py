@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import torch
 from torch import nn
@@ -245,6 +246,15 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertEqual(summary["conditions"]["control"]["final_outcome_accuracy"], 1.0)
             self.assertEqual(summary["paired_diagnostics"]["damage"], 2)
             self.assertEqual(summary["paired_diagnostics"]["unique_control_examples"], 2)
+            for diagnostics in (
+                summary["paired_diagnostics"], summary["by_layer_seed"][0],
+            ):
+                for metric in ("tool_choice", "argument_match", "execution_success", "final_outcome"):
+                    self.assertEqual(diagnostics["metric_transitions"][metric], {
+                        "transitions": {"correct_correct": 0, "correct_wrong": 2,
+                                        "wrong_correct": 0, "wrong_wrong": 0},
+                        "scored_pairs": 2, "unscored_pairs": 0,
+                    })
             self.assertEqual(summary["saved_control_comparison_counts"]["matches"], 2)
             self.assertEqual(records[0]["source_checkpoint_equivalence"], "unverifiable")
             self.assertEqual(records[0]["control"]["condition"], "control")
@@ -363,10 +373,83 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertTrue((output / "RUN_IN_PROGRESS").is_file())
             failure = json.loads((output / "RUN_FAILED.json").read_text(encoding="utf-8"))
             self.assertEqual(failure["completed_pair_count"], 1)
+            self.assertEqual(failure["failure_stage"], "evaluation")
             self.assertFalse((output / "summary.json").exists())
 
         for name, parameter in model.named_parameters():
             self.assertTrue(torch.equal(parameter, before[name]), name)
+
+    def test_setup_inspection_and_serialization_failures_write_failure_artifacts(self):
+        module = "research.phase2.gpt_oss_intervention_eval"
+        cases = (
+            ("available_attention_layers", {"side_effect": RuntimeError("layer inspection failed")}, RuntimeError),
+            ("available_attention_targets", {"side_effect": RuntimeError("target inspection failed")}, RuntimeError),
+            ("asdict", {"return_value": {"not_json_serializable": {1}}}, TypeError),
+            ("available_attention_layers", {"side_effect": KeyboardInterrupt("setup interrupted")}, KeyboardInterrupt),
+        )
+        for function, arguments, error_type in cases:
+            with self.subTest(function=function, error=error_type.__name__), TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch(f"{module}.{function}", **arguments), self.assertRaises(error_type) as raised:
+                    self._run(root, MockGenerator(TinyGptOssModel()), ["one"])
+                output = root / "output"
+                failure = json.loads((output / "RUN_FAILED.json").read_text())
+                self.assertEqual(failure["kind"], RUN_KIND)
+                self.assertEqual(failure["error_type"], error_type.__name__)
+                self.assertEqual(failure["error"], str(raised.exception))
+                self.assertEqual(failure["failure_stage"], "setup")
+                self.assertEqual(failure["completed_pair_count"], 0)
+                self.assertTrue((output / "RUN_IN_PROGRESS").exists())
+                self.assertFalse((output / "RUN_COMPLETE").exists())
+                self.assertFalse((output / "paired_records.jsonl").exists())
+
+    def test_setup_io_failures_write_failure_artifacts_when_filesystem_allows(self):
+        original_write_text = Path.write_text
+        for failed_filename in ("RUN_IN_PROGRESS", "run_config.json"):
+            with self.subTest(filename=failed_filename), TemporaryDirectory() as directory:
+                root = Path(directory)
+                def fail_selected_write(path, *args, **kwargs):
+                    if path.name == failed_filename:
+                        raise OSError(f"cannot write {failed_filename}")
+                    return original_write_text(path, *args, **kwargs)
+                with patch.object(Path, "write_text", new=fail_selected_write):
+                    with self.assertRaisesRegex(OSError, f"cannot write {failed_filename}"):
+                        self._run(root, MockGenerator(TinyGptOssModel()), ["one"])
+                output = root / "output"
+                failure = json.loads((output / "RUN_FAILED.json").read_text())
+                self.assertEqual(failure["error_type"], "OSError")
+                self.assertEqual(failure["failure_stage"], "setup")
+                self.assertEqual(failure["completed_pair_count"], 0)
+                self.assertFalse((output / "RUN_COMPLETE").exists())
+
+    def test_failure_artifact_io_error_does_not_mask_original_error(self):
+        original_write_text = Path.write_text
+        def fail_output_write(path, *args, **kwargs):
+            if path.name in {"run_config.json", "RUN_FAILED.json"}:
+                raise OSError(f"cannot write {path.name}")
+            return original_write_text(path, *args, **kwargs)
+        with TemporaryDirectory() as directory, patch.object(Path, "write_text", new=fail_output_write):
+            root = Path(directory)
+            with self.assertRaisesRegex(OSError, "cannot write run_config.json") as raised:
+                self._run(root, MockGenerator(TinyGptOssModel()), ["one"])
+            self.assertIsInstance(raised.exception.__cause__, OSError)
+            self.assertEqual(str(raised.exception.__cause__), "cannot write RUN_FAILED.json")
+            self.assertFalse((root / "output/RUN_COMPLETE").exists())
+
+    def test_completion_failure_records_completed_pairs_without_success_marker(self):
+        original_write_text = Path.write_text
+        def fail_summary_write(path, *args, **kwargs):
+            if path.name == "summary.json":
+                raise OSError("summary write failed")
+            return original_write_text(path, *args, **kwargs)
+        with TemporaryDirectory() as directory, patch.object(Path, "write_text", new=fail_summary_write):
+            root = Path(directory)
+            with self.assertRaisesRegex(OSError, "summary write failed"):
+                self._run(root, MockGenerator(TinyGptOssModel()), ["one"])
+            failure = json.loads((root / "output/RUN_FAILED.json").read_text())
+            self.assertEqual(failure["failure_stage"], "completion")
+            self.assertEqual(failure["completed_pair_count"], 1)
+            self.assertFalse((root / "output/RUN_COMPLETE").exists())
 
     def test_nonretail_conditions_use_fresh_servers(self):
         """A mutable mock calculator starts clean for every condition."""

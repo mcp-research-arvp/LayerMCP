@@ -438,8 +438,26 @@ writes model weights.
   tensor changes and explicit no-ops alongside exact restoration. No-op pairs
   are counted separately in the summary and must not be treated as nonzero
   perturbation evidence.
+- After creating a fresh output directory, setup (including the in-progress
+  marker, layer/target inspection and config serialization/writing), evaluation
+  and completion are covered by the failure handler. `RUN_FAILED.json` records
+  `failure_stage`, the error and the number of fully completed pairs.
+  Only `RUN_COMPLETE` marks success. Failure reporting is best-effort if the
+  filesystem itself cannot write; that reporting error is attached to the
+  original exception rather than hiding it. Abrupt process termination
+  (for example, SIGKILL) cannot guarantee a failure artifact.
 - `summary.json` includes all four tool-choice transitions, tool changes,
-  repairs and damage by layer/seed. Output categories are mutually exclusive:
+  repairs and damage by layer/seed. `paired_diagnostics.metric_transitions`
+  also reports transitions for `argument_match`, `execution_success` and
+  `final_outcome`, both overall and in each `by_layer_seed` row. Each metric
+  has `correct_correct`, `correct_wrong`, `wrong_correct`, `wrong_wrong`,
+  `scored_pairs` and `unscored_pairs` (the four counters are under `transitions`).
+  A pair is excluded from that metric's transition counts if either score is
+  missing/null; an unscored final outcome is not counted as incorrect.
+  For execution, "correct" means execution succeeded, not task success;
+  exact argument match remains a diagnostic, not semantic argument validation.
+  Existing `repairs`/`damage` continue to refer only to tool-choice correctness.
+  Output categories are mutually exclusive:
   malformed output, valid no-call, valid wrong-tool call, valid correct-tool
   call. Final-outcome scoring stays separate and unchanged.
 - Repeated controls are compared for output/argument/execution/outcome drift.

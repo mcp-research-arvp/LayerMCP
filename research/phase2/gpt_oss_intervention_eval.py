@@ -627,36 +627,38 @@ async def run_evaluation_async(
 
     target.mkdir(parents=True)
     in_progress = target / "RUN_IN_PROGRESS"
-    in_progress.write_text("\n", encoding="utf-8")
-    (target / "run_config.json").write_text(
-        json.dumps(
-            {
-                "kind": RUN_KIND,
-                "experiment_kind": RUN_KIND,
-                **provenance,
-                "checkpoint_identity": identity,
-                "condition_isolation": "fresh_mcp_server_per_condition",
-                "strength_mode": "absolute",
-                "source_run_directory": str(source_run_dir.expanduser().resolve()),
-                "checkpoint_path": str(checkpoint),
-                "config": asdict(config),
-                "source_run_metadata": metadata,
-                "example_count": len(examples),
-                "call_predicted_tools": True,
-                "valid_layer_indices": list(available_attention_layers(generator.model)),
-                "available_attention_targets": {
-                    str(layer_index): list(available_attention_targets(generator.model, layer_index))
-                    for layer_index in available_attention_layers(generator.model)
-                },
-            },
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
     records: list[dict[str, Any]] = []
+    failure_stage = "setup"
     try:
+        in_progress.write_text("\n", encoding="utf-8")
+        (target / "run_config.json").write_text(
+            json.dumps(
+                {
+                    "kind": RUN_KIND,
+                    "experiment_kind": RUN_KIND,
+                    **provenance,
+                    "checkpoint_identity": identity,
+                    "condition_isolation": "fresh_mcp_server_per_condition",
+                    "strength_mode": "absolute",
+                    "source_run_directory": str(source_run_dir.expanduser().resolve()),
+                    "checkpoint_path": str(checkpoint),
+                    "config": asdict(config),
+                    "source_run_metadata": metadata,
+                    "example_count": len(examples),
+                    "call_predicted_tools": True,
+                    "valid_layer_indices": list(available_attention_layers(generator.model)),
+                    "available_attention_targets": {
+                        str(layer_index): list(available_attention_targets(generator.model, layer_index))
+                        for layer_index in available_attention_layers(generator.model)
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        failure_stage = "evaluation"
         open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
         async with open_session() as session:
             catalog = await load_tool_catalog(session)
@@ -673,6 +675,7 @@ async def run_evaluation_async(
                     handle.write(json.dumps(record, sort_keys=True) + "\n")
                     handle.flush()
                     records.append(record)
+        failure_stage = "completion"
         verify_identity_inputs(identity)
         (target / "summary.json").write_text(
             json.dumps(_summary(records), indent=2, sort_keys=True) + "\n",
@@ -681,20 +684,26 @@ async def run_evaluation_async(
         in_progress.unlink()
         (target / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
     except BaseException as error:
-        (target / "RUN_FAILED.json").write_text(
-            json.dumps(
-                {
-                    "kind": RUN_KIND,
-                    "error_type": type(error).__name__,
-                    "error": str(error),
-                    "completed_pair_count": len(records),
-                },
-                indent=2,
-                sort_keys=True,
+        try:
+            (target / "RUN_FAILED.json").write_text(
+                json.dumps(
+                    {
+                        "kind": RUN_KIND,
+                        "error_type": type(error).__name__,
+                        "error": str(error),
+                        "failure_stage": failure_stage,
+                        "completed_pair_count": len(records),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
             )
-            + "\n",
-            encoding="utf-8",
-        )
+        except Exception as artifact_error:
+            # An unwritable filesystem cannot guarantee a durable report.
+            # Preserve the original failure and chain the reporting failure.
+            raise error from artifact_error
         raise
     return target
 

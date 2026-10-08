@@ -1,0 +1,489 @@
+"""Temporary, in-memory attention-parameter interventions.
+
+The API is deliberately structural rather than based on a model-name allowlist.
+It supports the layer layouts implemented in this repository and the matching
+Hugging Face decoder layout:
+
+* ``model.layers[index].self_attn``;
+* ``model.model.layers[index].self_attn`` (or ``.linear_attn`` for the local
+  Qwen hybrid implementation); and
+* ``model.block[index].attn`` for the local GPT-OSS implementation.
+
+Only registered floating-point parameters below the selected attention module
+are changed.  Parameters are copied back in-place on exit, including when the
+body of the ``with`` statement raises.  This module never serializes a model or
+writes a checkpoint.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from contextlib import AbstractContextManager
+from dataclasses import dataclass
+import math
+from numbers import Real
+import threading
+from typing import Any, Literal
+import warnings
+from weakref import WeakKeyDictionary, WeakSet
+
+import torch
+from torch import nn
+
+
+InterventionMethod = Literal["noise", "replace"]
+AttentionTarget = Literal[
+    "attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"
+]
+SUPPORTED_METHODS = frozenset({"noise", "replace"})
+SUPPORTED_ATTENTION_TARGETS = frozenset(
+    {"attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"}
+)
+
+# Tokens, not contexts, avoid keeping models alive through the weak registry.
+_MODEL_OWNERS: WeakKeyDictionary = WeakKeyDictionary()
+_UNSAFE_MODELS: WeakSet = WeakSet()
+_OWNERS_LOCK = threading.Lock()
+
+
+class AttentionInterventionError(ValueError):
+    """Raised when a model cannot be safely targeted by this intervention."""
+
+
+@dataclass(frozen=True)
+class _ParameterSnapshot:
+    name: str
+    parameter: nn.Parameter
+    value: torch.Tensor
+
+
+def _layer_stack(model: Any) -> tuple[Sequence[nn.Module], str]:
+    """Return one explicitly supported decoder-layer container.
+
+    The order is intentional: local Qwen and Hugging Face CausalLM wrappers
+    use ``model.model.layers``; local Llama/Phi/Gemma use ``model.layers``;
+    and the local GPT-OSS model uses ``model.block``.
+    """
+    candidates = (
+        (getattr(model, "layers", None), "model.layers"),
+        (getattr(getattr(model, "model", None), "layers", None), "model.model.layers"),
+        (getattr(model, "block", None), "model.block"),
+    )
+    for layers, path in candidates:
+        if isinstance(layers, (nn.ModuleList, list, tuple)):
+            if not layers:
+                raise AttentionInterventionError(f"{path} is empty; it has no valid layer indices.")
+            if not all(isinstance(layer, nn.Module) for layer in layers):
+                raise AttentionInterventionError(
+                    f"{path} must contain torch.nn.Module decoder layers."
+                )
+            return layers, path
+    raise AttentionInterventionError(
+        "Unsupported model structure: expected one of model.layers, "
+        "model.model.layers, or model.block to be a non-empty ModuleList."
+    )
+
+
+def _attention_module(layer: nn.Module, layer_path: str) -> tuple[nn.Module, str] | None:
+    matches = [
+        (name, getattr(layer, name, None))
+        for name in ("self_attn", "linear_attn", "attn")
+        if isinstance(getattr(layer, name, None), nn.Module)
+    ]
+    if len(matches) == 1:
+        name, module = matches[0]
+        return module, f"{layer_path}.{name}"
+    if len(matches) > 1:
+        names = ", ".join(name for name, _ in matches)
+        raise AttentionInterventionError(
+            f"Unsupported ambiguous attention structure at {layer_path}: found {names}."
+        )
+    return None
+
+
+def _validate_layer_index(layer_index: int) -> None:
+    if isinstance(layer_index, bool) or not isinstance(layer_index, int):
+        raise TypeError("layer_index must be an integer.")
+
+
+def available_attention_layers(model: Any) -> tuple[int, ...]:
+    """Return layer indices whose attention module is safely identifiable.
+
+    The result is discovered from ``model``; no architecture-specific layer
+    count is assumed.  A model with a recognized stack but no recognized
+    attention module fails instead of guessing from parameter names.
+    """
+    layers, stack_path = _layer_stack(model)
+    available = tuple(
+        index
+        for index, layer in enumerate(layers)
+        if _attention_module(layer, f"{stack_path}[{index}]") is not None
+    )
+    if not available:
+        raise AttentionInterventionError(
+            f"No identifiable attention modules found in {stack_path}. Expected exactly one "
+            "of self_attn, linear_attn, or attn per target layer."
+        )
+    return available
+
+
+def attention_module_for_layer(model: Any, layer_index: int) -> nn.Module:
+    """Return the selected layer's supported attention module.
+
+    This public resolver is useful for inspection and makes the targeting rule
+    testable without applying an intervention.
+    """
+    _validate_layer_index(layer_index)
+    layers, stack_path = _layer_stack(model)
+    available = available_attention_layers(model)
+    if layer_index not in available:
+        valid = ", ".join(str(index) for index in available)
+        raise AttentionInterventionError(
+            f"Layer index {layer_index} has no supported attention module. "
+            f"Valid layer indices for this model: {valid}."
+        )
+    result = _attention_module(layers[layer_index], f"{stack_path}[{layer_index}]")
+    if result is None:  # Defensive: available_attention_layers already checked this.
+        raise AssertionError("available attention layer unexpectedly lacked an attention module")
+    return result[0]
+
+
+def _validate_model_is_not_quantized(model: Any) -> None:
+    if getattr(model, "is_loaded_in_4bit", False) or getattr(model, "is_loaded_in_8bit", False):
+        raise AttentionInterventionError(
+            "Quantized models are not supported: this API requires safely writable "
+            "floating-point attention parameters. Load without 4-bit or 8-bit quantization."
+        )
+
+
+def _parameter_names_for_target(module: nn.Module, target: AttentionTarget) -> tuple[str, ...]:
+    """Return registered parameter names belonging to one safely named projection.
+
+    A projection target is available only when the attention module exposes it
+    as its own registered child/module path (for example ``q_proj.weight``).
+    Fused ``qkv`` weights are intentionally offered only as ``qkv``: slicing a
+    fused parameter would require architecture-specific layout assumptions.
+    """
+    all_names = tuple(name for name, _ in module.named_parameters(recurse=True))
+    if target == "attention_all":
+        return all_names
+    prefix = f"{target}."
+    return tuple(name for name in all_names if name.startswith(prefix))
+
+
+def available_attention_targets(model: Any, layer_index: int) -> tuple[AttentionTarget, ...]:
+    """Discover safe attention target groups for one selected layer.
+
+    ``attention_all`` is always available for a supported attention module.
+    Individual projection targets are returned only when that projection is a
+    separately registered parameter group.  This prevents pretending that a
+    fused QKV tensor can be safely split without architecture-specific tests.
+    """
+    module = attention_module_for_layer(model, layer_index)
+    targets: list[AttentionTarget] = ["attention_all"]
+    for target in ("q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"):
+        if _parameter_names_for_target(module, target):
+            targets.append(target)
+    return tuple(targets)
+
+
+def _snapshots(module: nn.Module, target: AttentionTarget) -> list[_ParameterSnapshot]:
+    snapshots: list[_ParameterSnapshot] = []
+    selected_names = set(_parameter_names_for_target(module, target))
+    for name, parameter in module.named_parameters(recurse=True):
+        if name not in selected_names:
+            continue
+        if not parameter.is_floating_point():
+            raise AttentionInterventionError(
+                f"Attention parameter {name!r} has dtype {parameter.dtype}; only floating-point "
+                "parameters can be safely perturbed."
+            )
+        snapshots.append(
+            _ParameterSnapshot(name=name, parameter=parameter, value=parameter.detach().clone())
+        )
+    if not snapshots:
+        raise AttentionInterventionError(
+            f"Attention target {target!r} has no registered parameters to intervene on."
+        )
+    return snapshots
+
+
+def _all_modules(module: nn.Module, path: str = "model") -> list[tuple[str, nn.Module]]:
+    """Return module paths without deduplicating aliases.
+
+    ``named_modules`` normally deduplicates module instances.  Keeping aliases
+    here lets us reject an attention module that is reused elsewhere in the
+    model, because changing it would no longer be a one-layer intervention.
+    """
+    result = [(path, module)]
+    for name, child in module._modules.items():
+        if child is not None:
+            result.extend(_all_modules(child, f"{path}.{name}"))
+    return result
+
+
+def _ensure_parameters_are_attention_local(
+    model: Any,
+    attention_module: nn.Module,
+    snapshots: list[_ParameterSnapshot],
+) -> None:
+    """Reject tied parameters that would also change an MLP or another layer."""
+    if not isinstance(model, nn.Module):
+        raise AttentionInterventionError("The supplied model must be a torch.nn.Module.")
+    target_parameter_ids = {id(item.parameter) for item in snapshots}
+    attention_descendants = {id(module) for _, module in _all_modules(attention_module)}
+    model_modules = _all_modules(model)
+    attention_paths = [path for path, module in model_modules if module is attention_module]
+    if len(attention_paths) != 1:
+        raise AttentionInterventionError(
+            "Unsupported shared attention module: it appears at multiple model paths "
+            f"({', '.join(attention_paths)}). A one-layer intervention would affect more than one layer."
+        )
+    for path, module in model_modules:
+        if id(module) in attention_descendants:
+            continue
+        for parameter_name, parameter in module._parameters.items():
+            if parameter is not None and id(parameter) in target_parameter_ids:
+                raise AttentionInterventionError(
+                    "Unsupported tied attention parameter: "
+                    f"{path}.{parameter_name} is shared outside the selected attention module. "
+                    "A one-layer attention-only intervention would also change another component."
+                )
+
+
+class AttentionParameterIntervention(AbstractContextManager["AttentionParameterIntervention"]):
+    """A one-layer, reversible attention-parameter intervention.
+
+    ``noise`` replaces each value ``p`` with ``p + strength * z`` and
+    ``replace`` replaces it with ``strength * z``, where every ``z`` is sampled
+    independently from the standard normal distribution using a CPU generator
+    seeded with ``seed``.  Sampling on CPU gives the same pseudorandom stream
+    for CPU and CUDA model parameters; generated values are then cast and copied
+    to each parameter's original device and dtype.  Shapes are unchanged.
+    """
+
+    def __init__(
+        self,
+        model: Any,
+        layer_index: int,
+        *,
+        method: InterventionMethod = "noise",
+        target: AttentionTarget = "attention_all",
+        seed: int = 0,
+        strength: float = 0.01,
+        enabled: bool = True,
+    ) -> None:
+        _validate_layer_index(layer_index)
+        if method not in SUPPORTED_METHODS:
+            supported = ", ".join(sorted(SUPPORTED_METHODS))
+            raise ValueError(f"Unsupported intervention method {method!r}. Expected one of: {supported}.")
+        if not isinstance(target, str):
+            raise TypeError("target must be a string.")
+        if target not in SUPPORTED_ATTENTION_TARGETS:
+            supported_targets = ", ".join(sorted(SUPPORTED_ATTENTION_TARGETS))
+            raise ValueError(
+                f"Unsupported attention target {target!r}. Expected one of: {supported_targets}."
+            )
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise TypeError("seed must be an integer.")
+        if isinstance(strength, bool) or not isinstance(strength, Real):
+            raise TypeError("strength must be a finite non-negative number.")
+        if not math.isfinite(float(strength)) or strength < 0:
+            raise ValueError("strength must be a finite non-negative number.")
+        if not isinstance(enabled, bool):
+            raise TypeError("enabled must be a boolean.")
+
+        self.model = model
+        self.layer_index = layer_index
+        self.method = method
+        self.target = target
+        self.seed = seed
+        self.strength = float(strength)
+        self.enabled = enabled
+        self._saved: list[_ParameterSnapshot] = []
+        self._changed_parameter_names: tuple[str, ...] = ()
+        self._restored_exactly: bool | None = None
+        self._active = False
+        self._entered = False
+        self._owner_token = object()
+        self._perturbation: dict[str, Any] = {"status": "not_entered"}
+
+    @property
+    def perturbation(self) -> dict[str, Any]:
+        """JSON-safe measurements of actual changes after native-dtype rounding."""
+        import copy
+        return copy.deepcopy(self._perturbation)
+
+    def _claim(self) -> None:
+        with _OWNERS_LOCK:
+            if self._entered:
+                raise AttentionInterventionError("An intervention context cannot be entered twice concurrently.")
+            if isinstance(self.model, nn.Module):
+                if self.model in _UNSAFE_MODELS:
+                    raise AttentionInterventionError("Previous restoration failed on this model; reload a fresh model before continuing.")
+                if self.model in _MODEL_OWNERS:
+                    raise AttentionInterventionError("Another intervention/control context is active on this model.")
+                _MODEL_OWNERS[self.model] = self._owner_token
+            self._entered = True
+
+    def _release(self) -> None:
+        self._saved.clear()
+        with _OWNERS_LOCK:
+            if isinstance(self.model, nn.Module) and _MODEL_OWNERS.get(self.model) is self._owner_token:
+                del _MODEL_OWNERS[self.model]
+            self._entered = False
+
+    def _measure(self) -> None:
+        tensors = []
+        for item in self._saved:
+            changed = 0
+            original_sq = delta_sq = 0.0
+            # Bound diagnostic workspace rather than cloning entire tensors to FP64.
+            for original, actual in zip(
+                item.value.reshape(-1).split(262144),
+                item.parameter.detach().reshape(-1).split(262144),
+            ):
+                changed += int(torch.count_nonzero(original != actual).item())
+                original_float = original.to(dtype=torch.float64)
+                delta = actual.to(dtype=torch.float64) - original_float
+                original_sq += float(torch.sum(original_float.square()).item())
+                delta_sq += float(torch.sum(delta.square()).item())
+            if not math.isfinite(original_sq) or not math.isfinite(delta_sq):
+                raise AttentionInterventionError("Non-finite weights/perturbation cannot be accepted as a valid intervention.")
+            tensors.append({
+                "name": item.name, "elements": item.value.numel(),
+                "changed_elements": changed,
+                "original_l2": math.sqrt(original_sq),
+                "effective_delta_l2": math.sqrt(delta_sq),
+                "original_rms": math.sqrt(original_sq / item.value.numel()) if item.value.numel() else None,
+                "effective_delta_rms": math.sqrt(delta_sq / item.value.numel()) if item.value.numel() else None,
+                "relative_delta_l2": math.sqrt(delta_sq / original_sq) if original_sq else None,
+            })
+        self._changed_parameter_names = tuple(row["name"] for row in tensors if row["changed_elements"])
+        changed = sum(row["changed_elements"] for row in tensors)
+        self._perturbation = {
+            "status": "changed" if changed else "no_op",
+            "strength_mode": "absolute", "changed_elements": changed,
+            "total_elements": sum(row["elements"] for row in tensors),
+            "changed_parameter_count": len(self._changed_parameter_names),
+            "backup_bytes": sum(item.value.numel() * item.value.element_size() for item in self._saved),
+            "tensors": tensors,
+        }
+
+    @property
+    def changed_parameter_names(self) -> tuple[str, ...]:
+        """Names relative to the selected attention module whose values changed."""
+        return self._changed_parameter_names
+
+    @property
+    def restored_exactly(self) -> bool | None:
+        """Whether saved values matched after exit; ``None`` before restoration."""
+        return self._restored_exactly
+
+    def _restore(self) -> None:
+        try:
+            with torch.no_grad():
+                for item in self._saved:
+                    item.parameter.copy_(item.value)
+            self._restored_exactly = all(
+                torch.equal(item.parameter, item.value) for item in self._saved
+            )
+            if not self._restored_exactly:
+                raise AttentionInterventionError("Selected attention weights did not restore exactly.")
+        except BaseException:
+            self._restored_exactly = False
+            with _OWNERS_LOCK:
+                _UNSAFE_MODELS.add(self.model)
+            raise
+        finally:
+            self._active = False
+
+    def __enter__(self) -> "AttentionParameterIntervention":
+        self._claim()
+        self._changed_parameter_names = ()
+        self._restored_exactly = None
+        if not self.enabled:
+            self._perturbation = {"status": "disabled", "changed_elements": 0, "tensors": []}
+            return self
+        try:
+            _validate_model_is_not_quantized(self.model)
+            module = attention_module_for_layer(self.model, self.layer_index)
+            available_targets = available_attention_targets(self.model, self.layer_index)
+            if self.target not in available_targets:
+                raise AttentionInterventionError(
+                    f"Attention target {self.target!r} is not available at layer {self.layer_index}. "
+                    f"Available targets: {', '.join(available_targets)}."
+                )
+            selected_names = _parameter_names_for_target(module, self.target)
+            selected = [p for name, p in module.named_parameters() if name in selected_names]
+            for device in {p.device for p in selected if p.device.type == "cuda"}:
+                parameters = [p for p in selected if p.device == device]
+                backup = sum(p.numel() * p.element_size() for p in parameters)
+                workspace = max((p.numel() * p.element_size() * 3 for p in parameters), default=0)
+                free, _ = torch.cuda.mem_get_info(device)
+                diagnostic_workspace = 4 * 8 * min(262144, max((p.numel() for p in parameters), default=0))
+                if backup + workspace + diagnostic_workspace > free:
+                    warnings.warn("Selected attention backup and perturbation workspace may exceed free GPU memory.", RuntimeWarning)
+            self._saved = _snapshots(module, self.target)
+            _ensure_parameters_are_attention_local(self.model, module, self._saved)
+            generator = torch.Generator(device="cpu")
+            generator.manual_seed(self.seed)
+            self._active = True
+            with torch.no_grad():
+                for item in self._saved:
+                    noise = torch.randn(
+                        item.value.shape,
+                        generator=generator,
+                        device="cpu",
+                        dtype=torch.float32,
+                    ).to(device=item.parameter.device, dtype=item.parameter.dtype)
+                    if self.method == "noise":
+                        replacement = item.value + noise * self.strength
+                    else:
+                        replacement = noise * self.strength
+                    item.parameter.copy_(replacement)
+                self._measure()
+        except BaseException:
+            try:
+                if self._active:
+                    self._restore()
+            finally:
+                self._release()
+            raise
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        try:
+            if self._active:
+                self._restore()
+        finally:
+            self._release()
+        return None
+
+
+def temporary_attention_intervention(
+    model: Any,
+    layer_index: int,
+    *,
+    method: InterventionMethod = "noise",
+    target: AttentionTarget = "attention_all",
+    seed: int = 0,
+    strength: float = 0.01,
+    enabled: bool = True,
+) -> AttentionParameterIntervention:
+    """Create a context manager that temporarily changes one attention module.
+
+    The returned context manager changes no model values until it is entered.
+    Set ``enabled=False`` for a true no-op: it does not inspect or mutate the
+    model, which allows a caller to run the exact same evaluation code for a
+    baseline condition.
+    """
+    return AttentionParameterIntervention(
+        model,
+        layer_index,
+        method=method,
+        target=target,
+        seed=seed,
+        strength=strength,
+        enabled=enabled,
+    )

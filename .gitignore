@@ -4,6 +4,8 @@ __pycache__/
 
 .venv/
 venv/
+.env
+.ipynb_checkpoints/
 
 .pytest_cache/
 .mypy_cache/

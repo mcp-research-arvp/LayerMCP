@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
 
 from tqdm import tqdm
 
@@ -1783,6 +1783,9 @@ async def _evaluate_multistep_with_server(
     reasoning_mode: str = "direct",
     reasoning_effort: str | None = None,
     output_dir: Path | None = None,
+    route_query: Callable[
+        ..., tuple[str | None, dict[str, Any], str, str, str | None, str | None]
+    ] | None = None,
 ) -> None:
     from models.routers.registry import load_router
 
@@ -1853,7 +1856,7 @@ async def _evaluate_multistep_with_server(
                         parse_status,
                         attempted_tool,
                         parse_diagnostic,
-                    ) = _route_query(
+                    ) = (route_query or _route_query)(
                         router,
                         query,
                         live_tools,

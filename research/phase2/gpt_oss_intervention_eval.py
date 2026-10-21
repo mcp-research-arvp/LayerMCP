@@ -26,6 +26,7 @@ from evaluation.evaluate import (
     load_tool_catalog,
     EvaluationToolCatalog as ToolCatalog,
     evaluate_single_step_prediction,
+    load_benchmark,
 )
 from models.routers import gpt_oss_local_router as gpt_oss_router
 from models.routers.structured_tool_call import ToolCallPrediction
@@ -54,12 +55,14 @@ class EvaluationConfig:
     seeds: tuple[int, ...]
     method: InterventionMethod
     strength: float
-    example_limit: int
+    example_limit: int | None
     target: AttentionTarget = "attention_all"
     sample_ids: tuple[str, ...] | None = None
     require_registry_match: bool = True
 
     def __post_init__(self) -> None:
+        if self.example_limit is not None and self.example_limit <= 0:
+            raise ValueError("example_limit must be positive")
         # Reject invalid strengths before checkpoint hashing or GPU loading.
         if isinstance(self.strength, bool) or not isinstance(self.strength, Real):
             raise TypeError("strength must be a finite non-negative number")
@@ -84,6 +87,7 @@ class SavedGptOssExample:
     tool_names: tuple[str, ...]
     registry_metadata: dict[str, Any]
     saved_prediction: dict[str, Any] = field(default_factory=dict)
+    benchmark_sample: BenchmarkSample | None = None
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -239,6 +243,8 @@ def _registry_exact_match(example: SavedGptOssExample, catalog: ToolCatalog) -> 
 
 def _benchmark_sample(example: SavedGptOssExample) -> BenchmarkSample:
     """Adapt a saved GPT-OSS baseline row to the canonical evaluator input."""
+    if example.benchmark_sample is not None:
+        return example.benchmark_sample
     return BenchmarkSample(
         id=example.sample_id,
         domain=example.domain,
@@ -254,6 +260,45 @@ def _benchmark_sample(example: SavedGptOssExample) -> BenchmarkSample:
         prompt_context=example.prompt_context,
         benchmark_mode=example.benchmark_mode,
     )
+
+
+def load_direct_benchmark_examples(
+    paths: Sequence[Path], catalog: ToolCatalog,
+) -> tuple[SavedGptOssExample, ...]:
+    """Use the canonical evaluator's benchmark parser, not historical outputs."""
+    if not paths:
+        raise ValueError("at least one benchmark path is required")
+    examples: list[SavedGptOssExample] = []
+    seen: set[str] = set()
+    for raw_path in paths:
+        path = raw_path.expanduser().resolve(strict=True)
+        samples = load_benchmark(path)
+        if not samples:
+            raise ValueError(f"Benchmark has no runnable samples: {path}")
+        for sample in samples:
+            if sample.expected_steps or sample.task_type == "multi_step_tool_routing":
+                raise ValueError(f"Multi-step sample {sample.id} requires the multi-step runner: {path}")
+            if sample.id in seen:
+                raise ValueError(f"Duplicate sample ID across direct benchmarks: {sample.id}")
+            seen.add(sample.id)
+            examples.append(SavedGptOssExample(
+                sample_id=sample.id,
+                benchmark_path=str(raw_path),
+                domain=sample.domain,
+                task_type=sample.task_type,
+                difficulty=sample.difficulty,
+                source=sample.source,
+                query=sample.query,
+                prompt_context=sample.prompt_context,
+                expected_tool=sample.expected_tool,
+                expected_args=sample.expected_args,
+                expected_answer=sample.expected_answer,
+                benchmark_mode=sample.benchmark_mode,
+                tool_names=tuple(catalog.names),
+                registry_metadata=dict(catalog.metadata),
+                benchmark_sample=sample,
+            ))
+    return tuple(examples)
 
 
 def _routed_tool_call(prediction: ToolCallPrediction) -> RoutedToolCall:
@@ -276,6 +321,18 @@ def _condition_record(record: dict[str, Any]) -> dict[str, Any]:
     condition["invalid_output"] = condition["parse_status"] != "ok"
     condition["no_call_outcome"] = condition["selected_tool"] is None
     return condition
+
+
+def _evidence_category(source: str) -> str:
+    """Label provenance from each row, never from the checkout path."""
+    normalized = source.casefold()
+    if "replay" in normalized or "offline" in normalized:
+        return "replay_offline"
+    if normalized.startswith("controlled_"):
+        return "controlled"
+    if normalized.startswith("public_"):
+        return "public_source_derived"
+    return "unclassified"
 
 
 def _predict(
@@ -426,6 +483,10 @@ async def paired_records(
                     "experiment_kind": RUN_KIND,
                     **provenance,
                     "sample_id": example.sample_id,
+                    "benchmark_path": example.benchmark_path,
+                    "source": example.source,
+                    "evidence_category": _evidence_category(example.source),
+                    "benchmark_mode": example.benchmark_mode,
                     "layer_index": layer_index,
                     "seed": seed,
                     "method": config.method,
@@ -536,7 +597,7 @@ def _safe_output_directory(path: Path) -> Path:
     return target
 
 
-def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
+def _condition_summary(records: Sequence[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     conditions: dict[str, dict[str, Any]] = {}
     for condition in ("control", "intervention"):
         outcomes = [record[condition] for record in records]
@@ -562,11 +623,32 @@ def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
                 else None
             ),
         }
+    return conditions
+
+
+def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    conditions = _condition_summary(records)
     grouped: dict[tuple[int, int], list[dict[str, Any]]] = {}
     for record in records:
         grouped.setdefault((record["layer_index"], record["seed"]), []).append(record)
+    grouped_categories: dict[str, list[dict[str, Any]]] = {}
+    grouped_benchmarks: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        grouped_categories.setdefault(record.get("evidence_category", "unclassified"), []).append(record)
+        grouped_benchmarks.setdefault(record.get("benchmark_path", "unknown"), []).append(record)
     return {
         "paired_record_count": len(records), "conditions": conditions,
+        "aggregation_note": "Overall totals mix provenance categories; compare by_evidence_category and by_benchmark separately.",
+        "by_evidence_category": [
+            {"category": category, "paired_record_count": len(pairs),
+             "conditions": _condition_summary(pairs), "paired_diagnostics": paired_diagnostics(pairs)}
+            for category, pairs in sorted(grouped_categories.items())
+        ],
+        "by_benchmark": [
+            {"benchmark_path": path, "paired_record_count": len(pairs),
+             "conditions": _condition_summary(pairs), "paired_diagnostics": paired_diagnostics(pairs)}
+            for path, pairs in sorted(grouped_benchmarks.items())
+        ],
         "paired_diagnostics": paired_diagnostics(records),
         "by_layer_seed": [
             {"layer_index": layer, "seed": seed, **paired_diagnostics(pairs)}
@@ -584,7 +666,8 @@ def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
 
 async def run_evaluation_async(
     *,
-    source_run_dir: Path,
+    source_run_dir: Path | None = None,
+    benchmark_paths: Sequence[Path] | None = None,
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
@@ -598,13 +681,20 @@ async def run_evaluation_async(
         or len(set(config.seeds)) != len(config.seeds)
     ):
         raise ValueError("layers and seeds must both be non-empty and distinct")
+    if (source_run_dir is None) == (benchmark_paths is None):
+        raise ValueError("select exactly one of source_run_dir or benchmark_paths")
     target = _safe_output_directory(output_dir)
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
         raise FileNotFoundError(f"GPT-OSS checkpoint does not exist: {checkpoint}")
-    metadata, examples = load_saved_gpt_oss_examples(
-        source_run_dir, config.example_limit, config.sample_ids
-    )
+    if source_run_dir is not None:
+        metadata, saved_examples = load_saved_gpt_oss_examples(
+            source_run_dir, config.example_limit or 2, config.sample_ids
+        )
+    else:
+        if config.sample_ids is not None:
+            raise ValueError("sample IDs are supported only with a saved source run")
+        metadata, saved_examples = None, None
     if generator_loader is gpt_oss_router.load_generator:
         print("Fingerprinting checkpoint/config/Harmony files (full content read; cold storage may be slow)...", flush=True)
     identity = checkpoint_identity(checkpoint)
@@ -614,16 +704,18 @@ async def run_evaluation_async(
     verify_identity_inputs(identity)
     if generator_loader is gpt_oss_router.load_generator:
         native_generator_identity(generator, identity)
-    source_fingerprint = metadata.get("checkpoint_fingerprint")
+    source_fingerprint = metadata.get("checkpoint_fingerprint") if metadata else None
     provenance = {
-        "source_run_id": source_run_dir.resolve().name,
+        "input_kind": "saved_source_run" if source_run_dir is not None else "benchmark_files",
         "checkpoint_fingerprint": identity["fingerprint"],
         "model_binding": "native_loader" if generator_loader is gpt_oss_router.load_generator else "injected_loader_unverified",
-        "source_checkpoint_equivalence": (
-            "matches" if source_fingerprint == identity["fingerprint"] else "differs"
-        ) if source_fingerprint and identity["fingerprint"] else "unverifiable",
         "runtime": runtime_identity(generator.model),
     }
+    if source_run_dir is not None:
+        provenance["source_run_id"] = source_run_dir.resolve().name
+        provenance["source_checkpoint_equivalence"] = (
+            "matches" if source_fingerprint == identity["fingerprint"] else "differs"
+        ) if source_fingerprint and identity["fingerprint"] else "unverifiable"
 
     target.mkdir(parents=True)
     in_progress = target / "RUN_IN_PROGRESS"
@@ -631,37 +723,46 @@ async def run_evaluation_async(
     failure_stage = "setup"
     try:
         in_progress.write_text("\n", encoding="utf-8")
-        (target / "run_config.json").write_text(
-            json.dumps(
-                {
-                    "kind": RUN_KIND,
-                    "experiment_kind": RUN_KIND,
-                    **provenance,
-                    "checkpoint_identity": identity,
-                    "condition_isolation": "fresh_mcp_server_per_condition",
-                    "strength_mode": "absolute",
-                    "source_run_directory": str(source_run_dir.expanduser().resolve()),
-                    "checkpoint_path": str(checkpoint),
-                    "config": asdict(config),
-                    "source_run_metadata": metadata,
-                    "example_count": len(examples),
-                    "call_predicted_tools": True,
-                    "valid_layer_indices": list(available_attention_layers(generator.model)),
-                    "available_attention_targets": {
-                        str(layer_index): list(available_attention_targets(generator.model, layer_index))
-                        for layer_index in available_attention_layers(generator.model)
-                    },
-                },
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        failure_stage = "evaluation"
         open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
         async with open_session() as session:
             catalog = await load_tool_catalog(session)
+            examples = saved_examples if saved_examples is not None else load_direct_benchmark_examples(
+                benchmark_paths or (), catalog
+            )
+            if benchmark_paths is not None and config.example_limit is not None:
+                examples = examples[:config.example_limit]
+            input_config = (
+                {"source_run_directory": str(source_run_dir.expanduser().resolve()), "source_run_metadata": metadata}
+                if source_run_dir is not None else
+                {"benchmark_paths": [str(path.expanduser().resolve()) for path in benchmark_paths or ()]}
+            )
+            (target / "run_config.json").write_text(
+                json.dumps(
+                    {
+                        "kind": RUN_KIND,
+                        "experiment_kind": RUN_KIND,
+                        **provenance,
+                        "checkpoint_identity": identity,
+                        "condition_isolation": "fresh_mcp_server_per_condition",
+                        "strength_mode": "absolute",
+                        **input_config,
+                        "checkpoint_path": str(checkpoint),
+                        "config": asdict(config),
+                        "example_count": len(examples),
+                        "call_predicted_tools": True,
+                        "valid_layer_indices": list(available_attention_layers(generator.model)),
+                        "available_attention_targets": {
+                            str(layer_index): list(available_attention_targets(generator.model, layer_index))
+                            for layer_index in available_attention_layers(generator.model)
+                        },
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            failure_stage = "evaluation"
             with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
                 async for record in paired_records(
                     generator,
@@ -710,7 +811,8 @@ async def run_evaluation_async(
 
 def run_evaluation(
     *,
-    source_run_dir: Path,
+    source_run_dir: Path | None = None,
+    benchmark_paths: Sequence[Path] | None = None,
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
@@ -721,6 +823,7 @@ def run_evaluation(
     return asyncio.run(
         run_evaluation_async(
             source_run_dir=source_run_dir,
+            benchmark_paths=benchmark_paths,
             checkpoint_dir=checkpoint_dir,
             output_dir=output_dir,
             config=config,
@@ -751,7 +854,9 @@ def _parse_csv_sample_ids(value: str) -> tuple[str, ...]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run paired GPT-OSS attention-intervention routing evaluations.")
-    parser.add_argument("--source-run-dir", type=Path, required=True)
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--source-run-dir", type=Path)
+    input_group.add_argument("--benchmarks", nargs="+", type=Path, help="Direct benchmark JSON files (all rows by default)")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--layers", required=True, help="Comma-separated GPT-OSS layer indices, e.g. 0,12")
@@ -759,11 +864,11 @@ def main() -> None:
     parser.add_argument("--method", choices=("noise", "replace"), default="noise")
     parser.add_argument("--target", choices=sorted(SUPPORTED_ATTENTION_TARGETS), default="attention_all")
     parser.add_argument("--strength", type=float, default=0.01)
-    parser.add_argument("--example-limit", type=int, default=2)
+    parser.add_argument("--example-limit", type=int, help="Optional row limit (saved-run default: 2; direct default: all)")
     parser.add_argument("--sample-ids", type=_parse_csv_sample_ids)
     parser.add_argument("--allow-registry-mismatch", action="store_true")
     args = parser.parse_args()
-    if args.example_limit <= 0:
+    if args.example_limit is not None and args.example_limit <= 0:
         parser.error("--example-limit must be positive")
     if args.strength < 0:
         parser.error("--strength must be non-negative")
@@ -779,6 +884,7 @@ def main() -> None:
     )
     destination = run_evaluation(
         source_run_dir=args.source_run_dir,
+        benchmark_paths=args.benchmarks,
         checkpoint_dir=args.checkpoint,
         output_dir=args.output_dir,
         config=config,

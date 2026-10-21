@@ -362,7 +362,7 @@ accuracy evaluation and does not write model weights.
 ## Paired GPT-OSS full evaluation
 
 `research.phase2.gpt_oss_intervention_eval` runs an unchanged control and one
-attention intervention for each selected saved GPT-OSS example, layer, and
+attention intervention for each selected direct benchmark or saved GPT-OSS example, layer, and
 seed. It reuses the local GPT-OSS Harmony generation/parser and the baseline
 evaluator's tool execution, argument scoring, and final-outcome scoring. Its
 `paired_records.jsonl` records both conditions' raw output and parser state,
@@ -389,6 +389,26 @@ python -m research.phase2.gpt_oss_intervention_eval \
   --sample-ids math_v1_calculator_easy_001,math_v1_convert_units_easy_001
 ```
 
+For a full direct benchmark run (the Phase 2 Slurm single-step job uses all
+Phase 1 primary benchmark paths), use `--benchmarks` instead of
+`--source-run-dir`; all rows are evaluated unless `--example-limit` is set:
+
+```bash
+python -m research.phase2.gpt_oss_intervention_eval \
+  --benchmarks benchmark/math/math_controlled.json benchmark/math/math_public.json \
+  --checkpoint /path/to/local_gpt_oss_checkpoint \
+  --output-dir /path/to/fresh_output \
+  --layers 0 --target qkv --seeds 1234 --method noise --strength 0.01
+```
+
+Direct mode has no historical output to compare, so
+`saved_control_comparison.status` is `unavailable`. Both conditions use the
+same live registry, while the canonical evaluator parses and scores the
+benchmark fields. `summary.json` keeps per-benchmark and per-provenance-category
+results alongside labelled mixed totals; do not pool controlled and
+public/source-derived outcomes when making claims. The saved-run mode remains
+useful for notebook comparisons.
+
 The runner requires an exact live-registry match by default, since changed tool
 descriptions change the Harmony prompt. Use comma-separated `--layers`,
 `--seeds`, and `--sample-ids` for a bounded experiment. Omit `--sample-ids`
@@ -410,7 +430,8 @@ writes model weights.
   Missing inputs fail native-loader runs. Hashing reads the entire checkpoint
   and can add substantial cold-storage startup time; budget for it in Slurm.
   File signatures are checked again after loading and before completion.
-- `run_config.json` includes the file manifest/fingerprint, source run ID,
+- `run_config.json` includes the file manifest/fingerprint, the input kind and
+  either the benchmark paths or saved source run ID,
   current Git commit/dirty status, Python/package/PyTorch/CUDA versions, GPU
   names/driver versions, model dtypes, generation settings and deterministic/TF32 flags.
   Driver information is explicitly `unavailable` if it cannot be read, rather

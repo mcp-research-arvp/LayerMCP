@@ -27,17 +27,21 @@ the login node from any directory after the short test below has completed:
 /home/pg5/pg5_projects/LayerMCP/scripts/slurm/submit_phase2.sh both
 ```
 
-Use `single` for the complete saved single-step run alone, or `multi` for all
+Use `single` for the complete Phase 1 primary single-step benchmarks, or `multi` for all
 eight active multi-step groups alone. `both` is the default and submits nine
-jobs: one single-step job and eight multi-step jobs. The single-step job counts
-every row in the saved run's artifact index at job start; it does not rely on a
-fixed count of 1,896. Every multi-step group has its own job and runs all its
+jobs: one single-step job and eight multi-step jobs. Like Phase 1, the single-step
+job reads the 13 primary benchmark JSON files directly through the canonical
+evaluator loader; it does not use an older saved run. Every multi-step group has its own job and runs all its
 workflows. `--primary-only` omits the optional controlled math multi-step
 group, leaving seven multi-step jobs. The script defaults to layer 0, `qkv`,
 `noise`, strength `0.01`, and seed `1234`; these can be changed with
 `--layer`, `--target`, `--method`, `--strength`, and `--seed`.
 
-The source run path is required only for `single` and `both`. A full job uses
+Use `--domains math,finance` or `--single-datasets math_public,finance_finqa_test_single`
+to restrict the single-step job. These selectors use the same IDs as Phase 1.
+`LAYERMCP_GPT_OSS_SOURCE_RUN` is no longer needed for `submit_phase2.sh`;
+the saved-run CLI remains available for notebook and historical comparisons.
+A full job uses
 the same control and intervention pairing as the short test. Keep replay,
 public/source-derived, and controlled results separate in reporting.
 

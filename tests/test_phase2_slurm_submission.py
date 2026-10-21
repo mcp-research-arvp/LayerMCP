@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import json
 import shlex
 import subprocess
 from tempfile import TemporaryDirectory
@@ -29,18 +28,6 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         tokenizer.mkdir()
         self.tokenizer = tokenizer
         (tokenizer / "o200k_base.tiktoken").write_bytes(b"asset")
-        source = self.root / "saved_run"
-        source.mkdir()
-        self.source = source
-        (source / "RUN_COMPLETE").write_text("done\n", encoding="utf-8")
-        (source / "run_metadata.json").write_text("{}\n", encoding="utf-8")
-        (source / "artifact_index.jsonl").write_text(
-            json.dumps({"samples_path": "samples.jsonl"}) + "\n", encoding="utf-8"
-        )
-        (source / "samples.jsonl").write_text(
-            "".join(json.dumps({"sample_id": f"sample-{index}"}) + "\n" for index in range(3)),
-            encoding="utf-8",
-        )
         self.env_file = self.root / "test.env"
         self.env_file.write_text(
             "\n".join(
@@ -48,7 +35,6 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                 for name, value in (
                     ("LAYERMCP_REPO_ROOT", ROOT),
                     ("LAYERMCP_GPT_OSS_CHECKPOINT", checkpoint),
-                    ("LAYERMCP_GPT_OSS_SOURCE_RUN", source),
                     ("TIKTOKEN_ENCODINGS_BASE", tokenizer),
                 )
             ) + "\n",
@@ -98,13 +84,21 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("Would submit 7 job(s)", result.stdout)
         self.assertNotIn("DATASET_GROUP=math_controlled", result.stdout)
 
-    def test_multi_mode_does_not_require_saved_single_step_run(self) -> None:
-        (self.source / "RUN_COMPLETE").unlink()
+    def test_no_mode_requires_saved_single_step_run(self) -> None:
         multi = self.run_submitter("multi", "--dry-run")
         self.assertEqual(multi.returncode, 0, multi.stderr)
         single = self.run_submitter("single", "--dry-run")
-        self.assertEqual(single.returncode, 2)
-        self.assertIn("missing RUN_COMPLETE", single.stderr)
+        self.assertEqual(single.returncode, 0, single.stderr)
+        self.assertNotIn("LAYERMCP_GPT_OSS_SOURCE_RUN", single.stdout)
+
+    def test_single_step_dataset_selection_uses_phase1_ids(self) -> None:
+        result = self.run_submitter(
+            "single", "--domains", "math", "--single-datasets", "finance_finqa_test_single", "--dry-run"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("benchmark/math/math_controlled.json", result.stdout)
+        self.assertIn("benchmark/finance/finance_finqa_test_single.json", result.stdout)
+        self.assertNotIn("benchmark/coding/coding_controlled.json", result.stdout)
 
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
@@ -131,13 +125,12 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(self.submit_log.exists())
 
-    def test_single_step_launcher_counts_source_rows_at_job_start(self) -> None:
+    def test_single_step_launcher_uses_direct_primary_benchmarks(self) -> None:
         environment = self.environment.copy()
         environment.update({
             "SLURM_JOB_ID": "24000001",
             "LAYERMCP_REPO_ROOT": str(ROOT),
             "LAYERMCP_GPT_OSS_CHECKPOINT": str(self.checkpoint),
-            "LAYERMCP_GPT_OSS_SOURCE_RUN": str(self.source),
             "TIKTOKEN_ENCODINGS_BASE": str(self.tokenizer),
             "PHASE2_PYTHON_LOG": str(self.root / "python_args.txt"),
         })
@@ -153,8 +146,12 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
             cwd=ROOT, env=environment, capture_output=True, text=True, check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Evaluating 3 saved single-step examples", result.stdout)
-        self.assertIn("--example-limit 3", (self.root / "python_args.txt").read_text())
+        self.assertIn("Evaluating 13 direct single-step benchmark files", result.stdout)
+        arguments = (self.root / "python_args.txt").read_text()
+        self.assertIn("--benchmarks", arguments)
+        self.assertIn("benchmark/math/math_controlled.json", arguments)
+        self.assertIn("benchmark/finance/finance_finqa_test_single.json", arguments)
+        self.assertNotIn("--source-run-dir", arguments)
 
     def test_launchers_and_submitter_have_valid_shell_syntax(self) -> None:
         for script in (SUBMITTER, SINGLE_LAUNCHER, MULTI_LAUNCHER):

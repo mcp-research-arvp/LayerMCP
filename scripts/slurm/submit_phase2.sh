@@ -13,12 +13,14 @@ usage() {
 Usage: scripts/slurm/submit_phase2.sh [both|single|multi] [OPTIONS]
 
 Modes (default: both):
-  both       One full saved single-step job plus all active multi-step groups.
-  single     One full saved single-step job only.
+  both       One full direct-benchmark single-step job plus all active multi-step groups.
+  single     One full direct-benchmark single-step job only.
   multi      One full job per active multi-step group only.
 
 Options:
   --primary-only       Exclude the optional math_controlled multi-step group.
+  --domains IDS        Select single-step domains: math, enterprise, coding, finance.
+  --single-datasets IDS  Select comma-separated Phase 1 single-step dataset IDs.
   --layer INDEX        Attention layer (default: 0).
   --target TARGET      Attention target (default: qkv).
   --method METHOD      noise or replace (default: noise).
@@ -51,11 +53,13 @@ target_override=""
 method_override=""
 strength_override=""
 seed_override=""
+selected_domains=""
+single_datasets=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--seed|--env-file)
+    --layer|--target|--method|--strength|--seed|--env-file|--domains|--single-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -67,6 +71,8 @@ while [[ $# -gt 0 ]]; do
         --strength) strength_override="$2" ;;
         --seed) seed_override="$2" ;;
         --env-file) env_file="$2" ;;
+        --domains) selected_domains="$2" ;;
+        --single-datasets) single_datasets="$2" ;;
       esac
       shift
       ;;
@@ -77,6 +83,10 @@ while [[ $# -gt 0 ]]; do
 done
 if [[ "$mode" == single && "$primary_only" == 1 ]]; then
   echo "--primary-only applies only to multi-step groups" >&2
+  exit 2
+fi
+if [[ "$mode" == multi && ( -n "$selected_domains" || -n "$single_datasets" ) ]]; then
+  echo "--domains and --single-datasets require single-step submission" >&2
   exit 2
 fi
 if [[ ! -f "$env_file" ]]; then
@@ -102,17 +112,12 @@ for required_file in \
     exit 2
   fi
 done
-if [[ "$mode" != multi ]]; then
-  : "${LAYERMCP_GPT_OSS_SOURCE_RUN:?Set LAYERMCP_GPT_OSS_SOURCE_RUN in the environment file}"
-  for required_file in RUN_COMPLETE artifact_index.jsonl run_metadata.json; do
-    if [[ ! -f "$LAYERMCP_GPT_OSS_SOURCE_RUN/$required_file" ]]; then
-      echo "Saved single-step source run is missing $required_file" >&2
-      exit 2
-    fi
-  done
-  export LAYERMCP_GPT_OSS_SOURCE_RUN
-fi
 export LAYERMCP_REPO_ROOT LAYERMCP_GPT_OSS_CHECKPOINT TIKTOKEN_ENCODINGS_BASE
+if [[ "$mode" != multi ]]; then
+  source "$SCRIPT_DIR/submit_common.sh"
+  DATASET_SELECTION="$(resolve_single_dataset_selection "$selected_domains" "$single_datasets" primary)"
+  export DATASET_SELECTION
+fi
 
 LAYER_INDEX="${layer_override:-${LAYER_INDEX:-0}}"
 ATTENTION_TARGET="${target_override:-${ATTENTION_TARGET:-qkv}}"
@@ -167,7 +172,7 @@ submit_job() {
 if [[ "$mode" != multi ]]; then
   submit_job \
     "p2-single-l${LAYER_INDEX}-${ATTENTION_TARGET}" \
-    "$common_exports,LAYERMCP_GPT_OSS_SOURCE_RUN" \
+    "$common_exports,DATASET_SELECTION=${DATASET_SELECTION}" \
     "$SINGLE_LAUNCHER"
 fi
 

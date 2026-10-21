@@ -174,6 +174,45 @@ def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Pa
 
 
 class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
+    def test_direct_benchmark_runs_all_rows_without_saved_source(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            benchmark = root / "benchmark.json"
+            benchmark.write_text(json.dumps([
+                {
+                    "id": f"direct-{index}", "domain": "math", "task_type": "single_tool_routing",
+                    "query": f"calculate {index}", "expected_tool": "calculator",
+                    "expected_args": {"expression": "2+2"}, "expected_answer": {"result": 4},
+                    "source": "controlled_test", "benchmark_mode": "grounded_tool_execution",
+                }
+                for index in range(3)
+            ]), encoding="utf-8")
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            catalog = _catalog()
+            output = run_evaluation(
+                benchmark_paths=(benchmark,), checkpoint_dir=checkpoint,
+                output_dir=root / "output",
+                config=EvaluationConfig(
+                    layers=(0,), seeds=(17,), method="noise", strength=0.25,
+                    example_limit=None,
+                ),
+                generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            self.assertTrue((output / "RUN_COMPLETE").is_file())
+            records = [json.loads(line) for line in (output / "paired_records.jsonl").read_text().splitlines()]
+            self.assertEqual([record["sample_id"] for record in records], ["direct-0", "direct-1", "direct-2"])
+            self.assertTrue(all(record["saved_control_comparison"]["status"] == "unavailable" for record in records))
+            configuration = json.loads((output / "run_config.json").read_text())
+            self.assertEqual(configuration["example_count"], 3)
+            self.assertEqual(configuration["input_kind"], "benchmark_files")
+            self.assertNotIn("source_run_directory", configuration)
+            summary = json.loads((output / "summary.json").read_text())
+            self.assertEqual(summary["by_evidence_category"][0]["category"], "controlled")
+            self.assertEqual(summary["by_evidence_category"][0]["paired_record_count"], 3)
+            self.assertEqual(summary["by_benchmark"][0]["paired_record_count"], 3)
+
     def test_invalid_strength_rejected_when_constructing_config(self):
         for value in (-1, float("nan"), float("inf")):
             with self.assertRaisesRegex(ValueError, "finite non-negative"):

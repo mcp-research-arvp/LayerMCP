@@ -31,6 +31,7 @@ Options:
   -h, --help           Show this help.
 
 The script loads .env, validates its paths, and exports the selected settings.
+LAYERMCP_VENV defaults to $LAYERMCP_REPO_ROOT/.venv; external paths are supported.
 Run it from any directory. Each multi-step dataset group gets its own job.
 EOF
 }
@@ -103,6 +104,8 @@ if [[ ! -d "$LAYERMCP_REPO_ROOT" || "$(cd "$LAYERMCP_REPO_ROOT" && pwd -P)" != "
   echo "LAYERMCP_REPO_ROOT must identify this checkout: $REPO_ROOT" >&2
   exit 2
 fi
+source "$SCRIPT_DIR/phase2_environment.sh"
+validate_phase2_environment
 for required_file in \
   "$LAYERMCP_GPT_OSS_CHECKPOINT/config.json" \
   "$LAYERMCP_GPT_OSS_CHECKPOINT/model.safetensors" \
@@ -147,7 +150,7 @@ if (( ! dry_run )) && ! command -v sbatch >/dev/null 2>&1; then
   exit 2
 fi
 
-common_exports="ALL,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,SEED=$SEED"
+common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,SEED=$SEED"
 submitted=0
 submit_job() {
   local label="$1"

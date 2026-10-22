@@ -20,7 +20,9 @@ set -euo pipefail
 
 cd "$LAYERMCP_REPO_ROOT"
 module load StdEnv/2023 python/3.11
-source "$LAYERMCP_REPO_ROOT/.venv/bin/activate"
+source "$LAYERMCP_REPO_ROOT/scripts/slurm/phase2_environment.sh"
+validate_phase2_environment
+source "$LAYERMCP_VENV/bin/activate"
 
 LAYER_INDEX="${LAYER_INDEX:-0}"
 ATTENTION_TARGET="${ATTENTION_TARGET:-qkv}"

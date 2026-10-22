@@ -27,6 +27,12 @@ the login node from any directory after the short test below has completed:
 /home/pg5/pg5_projects/LayerMCP/scripts/slurm/submit_phase2.sh both
 ```
 
+Set `LAYERMCP_VENV` in `.env` to use an external virtual environment. The
+default is `$LAYERMCP_REPO_ROOT/.venv`; relative paths resolve from the checkout.
+The submitter checks for a readable `bin/activate` and an executable, working
+`bin/python` before submitting any jobs, including in dry-run mode. Both
+launchers use the same setting and repeat the check on the compute node.
+
 Use `single` for the complete Phase 1 primary single-step benchmarks, or `multi` for all
 eight active multi-step groups alone. `both` is the default and submits nine
 jobs: one single-step job and eight multi-step jobs. Like Phase 1, the single-step
@@ -41,6 +47,14 @@ Use `--domains math,finance` or `--single-datasets math_public,finance_finqa_tes
 to restrict the single-step job. These selectors use the same IDs as Phase 1.
 `LAYERMCP_GPT_OSS_SOURCE_RUN` is no longer needed for `submit_phase2.sh`;
 the saved-run CLI remains available for notebook and historical comparisons.
+Direct single-step runs save SHA-256 content hashes in `run_config.json` under
+`benchmark_sha256`, alongside `selected_sample_manifest` with ordered sample
+IDs and counts per benchmark, including files with zero selected rows after a
+limit. Benchmark contents are checked after loading and before completion;
+changed or missing inputs fail the run without `RUN_COMPLETE`. Per-row evidence
+categories use the standard scorecard's classification rules, including
+`diagnostic/adapted` for `public_adapted` sources.
+
 A full job uses
 the same control and intervention pairing as the short test. Keep replay,
 public/source-derived, and controlled results separate in reporting.

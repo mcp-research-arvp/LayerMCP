@@ -11,11 +11,14 @@ import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
+import hashlib
 import json
 import math
 from numbers import Real
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable, Literal, Sequence
+
+from analysis.benchmark_inventory import infer_benchmark_class
 
 from evaluation.evaluate import (
     SERVER_PATH,
@@ -323,16 +326,37 @@ def _condition_record(record: dict[str, Any]) -> dict[str, Any]:
     return condition
 
 
-def _evidence_category(source: str) -> str:
-    """Label provenance from each row, never from the checkout path."""
-    normalized = source.casefold()
-    if "replay" in normalized or "offline" in normalized:
-        return "replay_offline"
-    if normalized.startswith("controlled_"):
-        return "controlled"
-    if normalized.startswith("public_"):
-        return "public_source_derived"
-    return "unclassified"
+def _evidence_category(example: SavedGptOssExample) -> str:
+    """Use the standard reporter's classifier on one canonical sample at a time."""
+    return infer_benchmark_class(Path(example.benchmark_path), [asdict(_benchmark_sample(example))])
+
+
+def _benchmark_hashes(paths: Sequence[Path]) -> dict[str, str]:
+    return {
+        str(path.expanduser().resolve(strict=True)): hashlib.sha256(path.expanduser().read_bytes()).hexdigest()
+        for path in paths
+    }
+
+
+def _selected_sample_manifest(
+    paths: Sequence[Path], examples: Sequence[SavedGptOssExample],
+) -> list[dict[str, Any]]:
+    selected: dict[str, list[str]] = {
+        str(path.expanduser().resolve()): [] for path in paths
+    }
+    for example in examples:
+        selected[str(Path(example.benchmark_path).expanduser().resolve())].append(example.sample_id)
+    return [
+        {"benchmark_path": path, "selected_sample_ids": ids, "selected_sample_count": len(ids)}
+        for path, ids in selected.items()
+    ]
+
+
+def _verify_benchmark_inputs(expected: dict[str, str]) -> None:
+    for filename, digest in expected.items():
+        path = Path(filename)
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise RuntimeError(f"Benchmark input changed during evaluation: {filename}")
 
 
 def _predict(
@@ -485,7 +509,7 @@ async def paired_records(
                     "sample_id": example.sample_id,
                     "benchmark_path": example.benchmark_path,
                     "source": example.source,
-                    "evidence_category": _evidence_category(example.source),
+                    "evidence_category": _evidence_category(example),
                     "benchmark_mode": example.benchmark_mode,
                     "layer_index": layer_index,
                     "seed": seed,
@@ -684,6 +708,9 @@ async def run_evaluation_async(
     if (source_run_dir is None) == (benchmark_paths is None):
         raise ValueError("select exactly one of source_run_dir or benchmark_paths")
     target = _safe_output_directory(output_dir)
+    if benchmark_paths is not None:
+        benchmark_paths = tuple(path.expanduser().resolve(strict=True) for path in benchmark_paths)
+    benchmark_hashes = _benchmark_hashes(benchmark_paths) if benchmark_paths is not None else {}
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
         raise FileNotFoundError(f"GPT-OSS checkpoint does not exist: {checkpoint}")
@@ -731,10 +758,15 @@ async def run_evaluation_async(
             )
             if benchmark_paths is not None and config.example_limit is not None:
                 examples = examples[:config.example_limit]
+            _verify_benchmark_inputs(benchmark_hashes)
             input_config = (
                 {"source_run_directory": str(source_run_dir.expanduser().resolve()), "source_run_metadata": metadata}
                 if source_run_dir is not None else
-                {"benchmark_paths": [str(path.expanduser().resolve()) for path in benchmark_paths or ()]}
+                {
+                    "benchmark_paths": [str(path.expanduser().resolve()) for path in benchmark_paths or ()],
+                    "benchmark_sha256": benchmark_hashes,
+                    "selected_sample_manifest": _selected_sample_manifest(benchmark_paths or (), examples),
+                }
             )
             (target / "run_config.json").write_text(
                 json.dumps(
@@ -777,6 +809,7 @@ async def run_evaluation_async(
                     handle.flush()
                     records.append(record)
         failure_stage = "completion"
+        _verify_benchmark_inputs(benchmark_hashes)
         verify_identity_inputs(identity)
         (target / "summary.json").write_text(
             json.dumps(_summary(records), indent=2, sort_keys=True) + "\n",

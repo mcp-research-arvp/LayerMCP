@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shlex
 import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -28,6 +29,10 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         tokenizer.mkdir()
         self.tokenizer = tokenizer
         (tokenizer / "o200k_base.tiktoken").write_bytes(b"asset")
+        self.venv = self.root / "external environment"
+        (self.venv / "bin").mkdir(parents=True)
+        (self.venv / "bin" / "activate").write_text("# test environment\n")
+        (self.venv / "bin" / "python").symlink_to(sys.executable)
         self.env_file = self.root / "test.env"
         self.env_file.write_text(
             "\n".join(
@@ -36,6 +41,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                     ("LAYERMCP_REPO_ROOT", ROOT),
                     ("LAYERMCP_GPT_OSS_CHECKPOINT", checkpoint),
                     ("TIKTOKEN_ENCODINGS_BASE", tokenizer),
+                    ("LAYERMCP_VENV", self.venv),
                 )
             ) + "\n",
             encoding="utf-8",
@@ -129,6 +135,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         environment = self.environment.copy()
         environment.update({
             "SLURM_JOB_ID": "24000001",
+            "LAYERMCP_VENV": str(self.venv),
             "LAYERMCP_REPO_ROOT": str(ROOT),
             "LAYERMCP_GPT_OSS_CHECKPOINT": str(self.checkpoint),
             "TIKTOKEN_ENCODINGS_BASE": str(self.tokenizer),
@@ -137,7 +144,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         command = (
             'module() { :; }; '
             'python() { '
-            'if [[ "$1" == "-" ]]; then "$LAYERMCP_REPO_ROOT/.venv/bin/python" "$@"; '
+            'if [[ "$1" == "-" ]]; then "$LAYERMCP_VENV/bin/python" "$@"; '
             'else printf "%s\\n" "$*" > "$PHASE2_PYTHON_LOG"; fi; '
             '}; export -f module python; bash "$1"'
         )
@@ -153,8 +160,47 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("benchmark/finance/finance_finqa_test_single.json", arguments)
         self.assertNotIn("--source-run-dir", arguments)
 
+    def test_missing_environment_fails_before_submission(self):
+        for missing in ("activate", "python"):
+            with self.subTest(missing=missing):
+                path = self.venv / "bin" / missing
+                path.rename(path.with_suffix(".saved"))
+                result = self.run_submitter("both")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Invalid LAYERMCP_VENV", result.stderr)
+                self.assertFalse(self.submit_log.exists())
+                path.with_suffix(".saved").rename(path)
+
+    def test_multistep_launcher_uses_external_environment(self):
+        environment = self.environment | {
+            "SLURM_JOB_ID": "24000002", "LAYERMCP_REPO_ROOT": str(ROOT),
+            "LAYERMCP_VENV": str(self.venv),
+            "LAYERMCP_GPT_OSS_CHECKPOINT": str(self.checkpoint),
+            "TIKTOKEN_ENCODINGS_BASE": str(self.tokenizer),
+            "DATASET_GROUP": "math_controlled", "RUN_KIND": "short_test",
+        }
+        result = subprocess.run(
+            ["bash", "-c", 'module() { :; }; python() { printf "%s\\n" "$*"; }; '
+             'export -f module python; bash "$1"', "bash", str(MULTI_LAUNCHER)],
+            env=environment, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--workflow-limit 2", result.stdout)
+
+    def test_default_environment_is_checkout_local(self):
+        helper = ROOT / "scripts/slurm/phase2_environment.sh"
+        environment = self.environment.copy()
+        environment.pop("LAYERMCP_VENV", None)
+        environment["LAYERMCP_REPO_ROOT"] = str(self.root)
+        result = subprocess.run(
+            ["bash", "-c", 'source "$1"; validate_phase2_environment', "bash", str(helper)],
+            env=environment, capture_output=True, text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(str(self.root / ".venv"), result.stderr)
+
     def test_launchers_and_submitter_have_valid_shell_syntax(self) -> None:
-        for script in (SUBMITTER, SINGLE_LAUNCHER, MULTI_LAUNCHER):
+        for script in (SUBMITTER, SINGLE_LAUNCHER, MULTI_LAUNCHER, ROOT / "scripts/slurm/phase2_environment.sh"):
             result = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
 

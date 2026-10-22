@@ -36,6 +36,7 @@ scripts/slurm/*
 !scripts/slurm/run_multi_step.sbatch
 !scripts/slurm/run_phase2_multistep.sbatch
 !scripts/slurm/run_phase2_single_step.sbatch
+!scripts/slurm/phase2_environment.sh
 !scripts/slurm/submit_phase2.sh
 !scripts/slurm/submit_common.sh
 !scripts/slurm/submit_all.sh

@@ -32,10 +32,12 @@ from torch import nn
 
 
 InterventionMethod = Literal["noise", "replace"]
+StrengthMode = Literal["absolute", "tensor_rms"]
 AttentionTarget = Literal[
     "attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"
 ]
 SUPPORTED_METHODS = frozenset({"noise", "replace"})
+SUPPORTED_STRENGTH_MODES = frozenset({"absolute", "tensor_rms"})
 SUPPORTED_ATTENTION_TARGETS = frozenset(
     {"attention_all", "q_proj", "k_proj", "v_proj", "o_proj", "qkv", "out"}
 )
@@ -254,8 +256,10 @@ def _ensure_parameters_are_attention_local(
 class AttentionParameterIntervention(AbstractContextManager["AttentionParameterIntervention"]):
     """A one-layer, reversible attention-parameter intervention.
 
-    ``noise`` replaces each value ``p`` with ``p + strength * z`` and
-    ``replace`` replaces it with ``strength * z``, where every ``z`` is sampled
+    Absolute ``noise`` replaces each value ``p`` with ``p + strength * z`` and
+    ``replace`` replaces it with ``strength * z``.  ``tensor_rms`` noise uses
+    ``p + strength * RMS(p) * z`` independently for each selected tensor.
+    Every ``z`` is sampled
     independently from the standard normal distribution using a CPU generator
     seeded with ``seed``.  Sampling on CPU gives the same pseudorandom stream
     for CPU and CUDA model parameters; generated values are then cast and copied
@@ -271,6 +275,7 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         target: AttentionTarget = "attention_all",
         seed: int = 0,
         strength: float = 0.01,
+        strength_mode: StrengthMode = "absolute",
         enabled: bool = True,
     ) -> None:
         _validate_layer_index(layer_index)
@@ -290,6 +295,10 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
             raise TypeError("strength must be a finite non-negative number.")
         if not math.isfinite(float(strength)) or strength < 0:
             raise ValueError("strength must be a finite non-negative number.")
+        if strength_mode not in SUPPORTED_STRENGTH_MODES:
+            raise ValueError("strength_mode must be 'absolute' or 'tensor_rms'.")
+        if strength_mode == "tensor_rms" and method != "noise":
+            raise ValueError("tensor_rms strength mode is currently defined only for noise interventions.")
         if not isinstance(enabled, bool):
             raise TypeError("enabled must be a boolean.")
 
@@ -299,6 +308,7 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         self.target = target
         self.seed = seed
         self.strength = float(strength)
+        self.strength_mode = strength_mode
         self.enabled = enabled
         self._saved: list[_ParameterSnapshot] = []
         self._changed_parameter_names: tuple[str, ...] = ()
@@ -333,7 +343,7 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
                 del _MODEL_OWNERS[self.model]
             self._entered = False
 
-    def _measure(self) -> None:
+    def _measure(self, requested_scales: dict[str, float]) -> None:
         tensors = []
         for item in self._saved:
             changed = 0
@@ -358,12 +368,14 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
                 "original_rms": math.sqrt(original_sq / item.value.numel()) if item.value.numel() else None,
                 "effective_delta_rms": math.sqrt(delta_sq / item.value.numel()) if item.value.numel() else None,
                 "relative_delta_l2": math.sqrt(delta_sq / original_sq) if original_sq else None,
+                "requested_noise_scale": requested_scales[item.name],
             })
         self._changed_parameter_names = tuple(row["name"] for row in tensors if row["changed_elements"])
         changed = sum(row["changed_elements"] for row in tensors)
         self._perturbation = {
             "status": "changed" if changed else "no_op",
-            "strength_mode": "absolute", "changed_elements": changed,
+            "strength_mode": self.strength_mode, "requested_strength": self.strength,
+            "changed_elements": changed,
             "total_elements": sum(row["elements"] for row in tensors),
             "changed_parameter_count": len(self._changed_parameter_names),
             "backup_bytes": sum(item.value.numel() * item.value.element_size() for item in self._saved),
@@ -403,7 +415,10 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
         self._changed_parameter_names = ()
         self._restored_exactly = None
         if not self.enabled:
-            self._perturbation = {"status": "disabled", "changed_elements": 0, "tensors": []}
+            self._perturbation = {
+                "status": "disabled", "strength_mode": self.strength_mode,
+                "requested_strength": self.strength, "changed_elements": 0, "tensors": [],
+            }
             return self
         try:
             _validate_model_is_not_quantized(self.model)
@@ -429,6 +444,7 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
             generator = torch.Generator(device="cpu")
             generator.manual_seed(self.seed)
             self._active = True
+            requested_scales: dict[str, float] = {}
             with torch.no_grad():
                 for item in self._saved:
                     noise = torch.randn(
@@ -437,12 +453,15 @@ class AttentionParameterIntervention(AbstractContextManager["AttentionParameterI
                         device="cpu",
                         dtype=torch.float32,
                     ).to(device=item.parameter.device, dtype=item.parameter.dtype)
+                    original_rms = float(torch.sqrt(torch.mean(item.value.to(torch.float32).square())).item())
+                    scale = self.strength if self.strength_mode == "absolute" else self.strength * original_rms
+                    requested_scales[item.name] = scale
                     if self.method == "noise":
-                        replacement = item.value + noise * self.strength
+                        replacement = item.value + noise * scale
                     else:
-                        replacement = noise * self.strength
+                        replacement = noise * scale
                     item.parameter.copy_(replacement)
-                self._measure()
+                self._measure(requested_scales)
         except BaseException:
             try:
                 if self._active:
@@ -469,6 +488,7 @@ def temporary_attention_intervention(
     target: AttentionTarget = "attention_all",
     seed: int = 0,
     strength: float = 0.01,
+    strength_mode: StrengthMode = "absolute",
     enabled: bool = True,
 ) -> AttentionParameterIntervention:
     """Create a context manager that temporarily changes one attention module.
@@ -485,5 +505,6 @@ def temporary_attention_intervention(
         target=target,
         seed=seed,
         strength=strength,
+        strength_mode=strength_mode,
         enabled=enabled,
     )

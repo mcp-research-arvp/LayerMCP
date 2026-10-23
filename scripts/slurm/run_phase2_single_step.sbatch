@@ -3,11 +3,6 @@
 # Submit through scripts/slurm/submit_phase2.sh so the required paths and
 # intervention settings are validated and exported.
 #SBATCH --job-name=gpt-oss-phase2-single
-#SBATCH --account=def-yousefne_gpu
-#SBATCH --gres=gpu:h100:1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
-#SBATCH --time=24:00:00
 #SBATCH --output=slurm-%x-%j.out
 #SBATCH --error=slurm-%x-%j.err
 
@@ -19,7 +14,10 @@ set -euo pipefail
 : "${TIKTOKEN_ENCODINGS_BASE:?Set TIKTOKEN_ENCODINGS_BASE}"
 
 cd "$LAYERMCP_REPO_ROOT"
-module load StdEnv/2023 python/3.11
+if [[ -n "${LAYERMCP_MODULES:-}" ]]; then
+  # Intentional word splitting: module names are configured as a whitespace-separated list.
+  module load $LAYERMCP_MODULES
+fi
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/phase2_environment.sh"
 validate_phase2_environment
 source "$LAYERMCP_VENV/bin/activate"
@@ -28,7 +26,9 @@ LAYER_INDEX="${LAYER_INDEX:-0}"
 ATTENTION_TARGET="${ATTENTION_TARGET:-qkv}"
 METHOD="${METHOD:-noise}"
 STRENGTH="${STRENGTH:-0.01}"
+STRENGTH_MODE="${STRENGTH_MODE:-absolute}"
 SEED="${SEED:-1234}"
+PLAN_MANIFEST="${PLAN_MANIFEST:-}"
 
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/submit_common.sh"
 BENCHMARKS=()
@@ -48,9 +48,9 @@ else
 fi
 [[ "${#BENCHMARKS[@]}" -gt 0 ]] || { echo "No single-step benchmarks selected" >&2; exit 2; }
 
-RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_single_step_full_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH}_seed${SEED}"
+RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_single_step_full_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seed${SEED}"
 echo "Evaluating ${#BENCHMARKS[@]} direct single-step benchmark files in paired conditions"
-python -m research.phase2.gpt_oss_intervention_eval \
+command=(python -m research.phase2.gpt_oss_intervention_eval \
   --benchmarks "${BENCHMARKS[@]}" \
   --checkpoint "$LAYERMCP_GPT_OSS_CHECKPOINT" \
   --output-dir "$RUN_DIR" \
@@ -58,4 +58,9 @@ python -m research.phase2.gpt_oss_intervention_eval \
   --target "$ATTENTION_TARGET" \
   --method "$METHOD" \
   --strength "$STRENGTH" \
-  --seeds "$SEED"
+  --strength-mode "$STRENGTH_MODE" \
+  --seeds "$SEED")
+if [[ -n "$PLAN_MANIFEST" ]]; then
+  command+=(--plan-manifest "$PLAN_MANIFEST")
+fi
+"${command[@]}"

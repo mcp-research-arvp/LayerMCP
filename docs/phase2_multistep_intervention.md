@@ -23,8 +23,8 @@ additional diagnostics; execution success is not a task-success metric.
 the login node from any directory after the short test below has completed:
 
 ```bash
-/home/pg5/pg5_projects/LayerMCP/scripts/slurm/submit_phase2.sh both --dry-run
-/home/pg5/pg5_projects/LayerMCP/scripts/slurm/submit_phase2.sh both
+scripts/slurm/submit_phase2.sh both --dry-run
+scripts/slurm/submit_phase2.sh both
 ```
 
 Set `LAYERMCP_VENV` in `.env` to use an external virtual environment. The
@@ -32,6 +32,10 @@ default is `$LAYERMCP_REPO_ROOT/.venv`; relative paths resolve from the checkout
 The submitter checks for a readable `bin/activate` and an executable, working
 `bin/python` before submitting any jobs, including in dry-run mode. Both
 launchers use the same setting and repeat the check on the compute node.
+Optional `LAYERMCP_MODULES` and `LAYERMCP_SLURM_ACCOUNT`, `_PARTITION`,
+`_GRES`, `_CPUS_PER_TASK`, `_MEM`, and `_TIME` values in `.env` provide
+site-specific deployment settings; no account, GPU type, module stack, or
+resource request is hard-coded by these Phase 2 launchers.
 
 Use `single` for the complete Phase 1 primary single-step benchmarks, or `multi` for all
 eight active multi-step groups alone. `both` is the default and submits nine
@@ -42,6 +46,8 @@ workflows. `--primary-only` omits the optional controlled math multi-step
 group, leaving seven multi-step jobs. The script defaults to layer 0, `qkv`,
 `noise`, strength `0.01`, and seed `1234`; these can be changed with
 `--layer`, `--target`, `--method`, `--strength`, and `--seed`.
+`--strength-mode tensor_rms` and `--plan-manifest` apply only to direct
+single-step jobs; multi-step intervention remains absolute-strength.
 
 Use `--domains math,finance` or `--single-datasets math_public,finance_finqa_test_single`
 to restrict the single-step job. These selectors use the same IDs as Phase 1.

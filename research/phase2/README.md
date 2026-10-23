@@ -79,6 +79,9 @@ sets every selected parameter `p` to
 seeded standard-normal tensor with the same shape.  Generated values are cast
 back to the parameter's original device and dtype.  The original tensors are
 copied back exactly when the context exits, including after an exception.
+The explicit `tensor_rms` noise mode instead uses `p + strength * RMS(p) * z`
+for each selected parameter tensor. It is intentionally unavailable for
+`replace`, whose relative semantics have not been specified.
 
 Contexts cannot be nested/re-entered or used concurrently on the **same model**,
 even for different layers or a disabled control. They fail before mutation;
@@ -93,7 +96,8 @@ the original/effective-delta RMS and L2 norms and their ratio **after dtype
 rounding**. A zero original norm has a `null` ratio. Noise that rounds away is
 explicitly `no_op`, not evidence of a perturbation. `noise, strength=0` is a
 no-op; **`replace, strength=0` zeros the selected tensors**. Strengths remain
-absolute; no RMS-relative mode is introduced by these integrity changes.
+absolute by default; every result explicitly records its strength mode and
+per-tensor requested/actual change measurements.
 
 Memory needs include a native-dtype backup of all selected tensors, CPU FP32
 random noise for the largest selected tensor, native-device noise/replacement
@@ -401,6 +405,25 @@ python -m research.phase2.gpt_oss_intervention_eval \
   --layers 0 --target qkv --seeds 1234 --method noise --strength 0.01
 ```
 
+For a complete selected-domain screen, first freeze the discovered layers and
+the exact direct-input sample panel. This loads the local model to inspect its
+architecture but does not generate, open MCP, or create an evaluation output:
+
+```bash
+python -m research.phase2.gpt_oss_intervention_eval \
+  --benchmarks benchmark/finance/finance_finqa_test_single.json \
+  --checkpoint /path/to/local_gpt_oss_checkpoint \
+  --layers all --target qkv --method noise --strength-mode tensor_rms --strength 0.01 \
+  --seeds 1234,5678 --plan-only --plan-output /path/to/finance-qkv-plan.json
+```
+
+Submit one direct single-step chunk per selected layer with the same frozen
+plan, for example `submit_phase2.sh single --domains finance --layer 0
+--strength-mode tensor_rms --plan-manifest /path/to/finance-qkv-plan.json`.
+The plan is an input artifact: a chunk rejects incompatible samples, seeds,
+target, method, strength mode, or strength. Multi-step jobs do **not** yet
+support relative strength or frozen per-layer screen plans.
+
 Direct mode has no historical output to compare, so
 `saved_control_comparison.status` is `unavailable`. Both conditions use the
 same live registry, while the canonical evaluator parses and scores the
@@ -417,20 +440,22 @@ writes model weights.
 
 ### Integrity fields and interpreting results
 
-- Hardened runs use `phase2_gpt_oss_attention_intervention_eval_v2`, because
+- Linked, direct-screen runs use `phase2_gpt_oss_attention_intervention_eval_v3`, because
   fresh condition sessions change the experiment protocol (not scoring).
-  Existing v1 outputs and queued jobs remain untouched. V2 reporting requires
-  the companion combiner update on `research/phase2-paired-results-hardening`;
-  the original combiner accepts v1 only. The updated combiner supports either
-  version in a report but rejects mixed v1/v2 inputs and incompatible hardened
-  fingerprints/runtime settings. Do not silently pool v1/v2 experiments.
+  Existing v1/v2 outputs and queued jobs remain untouched. Do not silently
+  pool protocol versions. The paired-results combiner accepts only compatible
+  chunks and can validate their union against the frozen plan.
 - Durable runs stream SHA-256 hashes of the local `.safetensors` files,
   `config.json` and `TIKTOKEN_ENCODINGS_BASE/o200k_base.tiktoken` once before
   loading. Set that environment variable to the local Harmony asset directory.
   Missing inputs fail native-loader runs. Hashing reads the entire checkpoint
   and can add substantial cold-storage startup time; budget for it in Slurm.
   File signatures are checked again after loading and before completion.
-- `run_config.json` includes the file manifest/fingerprint, the input kind and
+- `run_manifest.json` is the readable, machine-readable root record. It links
+  `run_config.json`, `screen_plan.json`, `run_status.json`, registry metadata,
+  checkpoint/runtime identity, requested and actual Slurm facts, and lifecycle
+  timestamps. Each paired record carries its run-manifest ID and SHA-256.
+  `run_config.json` includes the file manifest/fingerprint, the input kind and
   either the benchmark paths or saved source run ID,
   current Git commit/dirty status, Python/package/PyTorch/CUDA versions, GPU
   names/driver versions, model dtypes, generation settings and deterministic/TF32 flags.
@@ -495,6 +520,26 @@ The runner calls narrow public adapters in `evaluation.evaluate` and
 `models.routers.gpt_oss_local_router`; those delegate to the existing native
 prompt, generation, parser, registry and evaluator implementations. They do
 not introduce a second scoring pipeline.
+
+### Combine completed screen chunks
+
+`analysis.phase2_paired_results` is CPU-only: it reads saved artifacts and
+never reloads a model or rescoring pipeline. Give it every completed per-layer
+chunk plus the frozen plan used to submit them:
+
+```bash
+python -m analysis.phase2_paired_results \
+  --run-dir /path/to/layer0 \
+  --run-dir /path/to/layer1 \
+  --expected-plan /path/to/finance-qkv-plan.json \
+  --output /path/to/new-finance-layer-report.json
+```
+
+It rejects incomplete lifecycle markers, incompatible checkpoint/runtime/input
+provenance, changed controls, missing restoration, duplicate pairs, and any
+missing or extra layer × seed × sample cell relative to the plan. Its report
+separates malformed, valid no-call, valid wrong-tool, and correct-tool output
+categories; repeated controls are not independent benchmark examples.
 
 Focused CPU/mock validation in the project environment (no weights/GPU needed):
 

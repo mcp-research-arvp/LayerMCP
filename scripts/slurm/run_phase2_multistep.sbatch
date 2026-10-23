@@ -3,11 +3,6 @@
 # RUN_KIND=short_test|full. Set LAYER_INDEX, ATTENTION_TARGET, METHOD, STRENGTH,
 # and SEED to change the intervention. Short tests use WORKFLOW_LIMIT (default 2).
 #SBATCH --job-name=gpt-oss-phase2-multistep
-#SBATCH --account=def-yousefne_gpu
-#SBATCH --gres=gpu:h100:1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
-#SBATCH --time=24:00:00
 #SBATCH --output=slurm-%x-%j.out
 #SBATCH --error=slurm-%x-%j.err
 
@@ -25,7 +20,10 @@ set -euo pipefail
 }
 
 cd "$LAYERMCP_REPO_ROOT"
-module load StdEnv/2023 python/3.11
+if [[ -n "${LAYERMCP_MODULES:-}" ]]; then
+  # Intentional word splitting: module names are configured as a whitespace-separated list.
+  module load $LAYERMCP_MODULES
+fi
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/phase2_environment.sh"
 validate_phase2_environment
 source "$LAYERMCP_VENV/bin/activate"

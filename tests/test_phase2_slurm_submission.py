@@ -119,6 +119,19 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertEqual(sum("run_phase2_multistep.sbatch" in call for call in calls), 8)
         self.assertTrue(all("RUN_KIND=full" in call for call in calls[1:]))
 
+    def test_single_step_can_link_a_relative_strength_plan_but_multi_step_cannot(self) -> None:
+        plan = self.root / "screen-plan.json"
+        plan.write_text('{"kind": "phase2_layer_screen_plan_v1"}\n', encoding="utf-8")
+        result = self.run_submitter(
+            "single", "--strength-mode", "tensor_rms", "--plan-manifest", str(plan), "--dry-run"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("STRENGTH_MODE=tensor_rms", result.stdout)
+        self.assertIn("PLAN_MANIFEST=", result.stdout)
+        rejected = self.run_submitter("multi", "--strength-mode", "tensor_rms", "--dry-run")
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn("only to direct single-step", rejected.stderr)
+
     def test_invalid_settings_fail_before_submission(self) -> None:
         for arguments in (
             ("unknown",),

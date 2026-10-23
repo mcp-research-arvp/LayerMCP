@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,6 +19,9 @@ from research.phase2.gpt_oss_intervention_eval import (
     RUN_KIND,
     evaluate_one_saved_example,
     run_evaluation,
+    load_direct_benchmark_examples,
+    _evidence_category,
+    _selected_sample_manifest,
 )
 from research.phase2.replay import ToolCatalog
 
@@ -174,6 +178,124 @@ def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Pa
 
 
 class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
+    def test_direct_benchmark_runs_all_rows_without_saved_source(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            benchmark = root / "benchmark.json"
+            benchmark.write_text(json.dumps([
+                {
+                    "id": f"direct-{index}", "domain": "math", "task_type": "single_tool_routing",
+                    "query": f"calculate {index}", "expected_tool": "calculator",
+                    "expected_args": {"expression": "2+2"}, "expected_answer": {"result": 4},
+                    "source": "controlled_synthetic", "benchmark_mode": "grounded_tool_execution",
+                }
+                for index in range(3)
+            ]), encoding="utf-8")
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            catalog = _catalog()
+            output = run_evaluation(
+                benchmark_paths=(benchmark,), checkpoint_dir=checkpoint,
+                output_dir=root / "output",
+                config=EvaluationConfig(
+                    layers=(0,), seeds=(17,), method="noise", strength=0.25,
+                    example_limit=None,
+                ),
+                generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            self.assertTrue((output / "RUN_COMPLETE").is_file())
+            records = [json.loads(line) for line in (output / "paired_records.jsonl").read_text().splitlines()]
+            self.assertEqual([record["sample_id"] for record in records], ["direct-0", "direct-1", "direct-2"])
+            self.assertTrue(all(record["saved_control_comparison"]["status"] == "unavailable" for record in records))
+            configuration = json.loads((output / "run_config.json").read_text())
+            self.assertEqual(configuration["benchmark_sha256"], {
+                str(benchmark): hashlib.sha256(benchmark.read_bytes()).hexdigest(),
+            })
+            self.assertEqual(configuration["selected_sample_manifest"], [{
+                "benchmark_path": str(benchmark), "selected_sample_count": 3,
+                "selected_sample_ids": ["direct-0", "direct-1", "direct-2"],
+            }])
+            self.assertEqual(configuration["example_count"], 3)
+            self.assertEqual(configuration["input_kind"], "benchmark_files")
+            self.assertNotIn("source_run_directory", configuration)
+            summary = json.loads((output / "summary.json").read_text())
+            self.assertEqual(summary["by_evidence_category"][0]["category"], "controlled")
+            self.assertEqual(summary["by_evidence_category"][0]["paired_record_count"], 3)
+            self.assertEqual(summary["by_benchmark"][0]["paired_record_count"], 3)
+
+    def test_enterprise_adapted_classification_matches_standard_reporter(self):
+        from analysis.benchmark_inventory import infer_benchmark_class
+        path = Path(__file__).resolve().parents[1] / "benchmark/enterprise/enterprise_tau2_single_step.json"
+        examples = load_direct_benchmark_examples((path,), _catalog())
+        self.assertEqual(len(examples), 293)
+        expected = infer_benchmark_class(path, json.loads(path.read_text()))
+        self.assertEqual(expected, "diagnostic/adapted")
+        self.assertEqual({_evidence_category(example) for example in examples}, {expected})
+
+    def test_manifest_includes_unselected_benchmarks(self):
+        with TemporaryDirectory() as temporary:
+            first, second = Path(temporary) / "first.json", Path(temporary) / "second.json"
+            example = SimpleNamespace(sample_id="selected", benchmark_path=str(first))
+            self.assertEqual(_selected_sample_manifest((first, second), (example,)), [
+                {"benchmark_path": str(first), "selected_sample_ids": ["selected"], "selected_sample_count": 1},
+                {"benchmark_path": str(second), "selected_sample_ids": [], "selected_sample_count": 0},
+            ])
+
+    def test_direct_manifest_tracks_selection_and_rejects_changed_inputs(self):
+        for mutation in (None, "generation", "deleted", "loading"):
+            with self.subTest(mutation=mutation), TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                benchmark = root / "mixed.json"
+                benchmark.write_text(json.dumps([
+                    {"id": str(index), "domain": "math", "task_type": "single_tool_routing",
+                     "query": "calculate", "expected_tool": "calculator",
+                     "expected_args": {"expression": "2+2"},
+                     "source": source}
+                    for index, source in enumerate(("controlled_synthetic", "public_adapted", "public_derived"))
+                ]))
+                original_hash = hashlib.sha256(benchmark.read_bytes()).hexdigest()
+                checkpoint = root / "checkpoint"
+                checkpoint.mkdir()
+                generator = MockGenerator(TinyGptOssModel())
+                original_generate = generator.generate_text
+                def generate(**kwargs):
+                    if mutation == "generation":
+                        benchmark.write_text("[]")
+                    elif mutation == "deleted":
+                        benchmark.unlink(missing_ok=True)
+                    return original_generate(**kwargs)
+                generator.generate_text = generate
+                def loader(_):
+                    if mutation == "loading":
+                        benchmark.write_text(benchmark.read_text() + " ")
+                    return generator
+                def run():
+                    return run_evaluation(
+                        benchmark_paths=(benchmark,), checkpoint_dir=checkpoint, output_dir=root / "output",
+                        config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise",
+                                                strength=0.25, example_limit=2),
+                        generator_loader=loader, session_factory=lambda: _session_for_catalog(_catalog()),
+                    )
+                if mutation:
+                    with self.assertRaisesRegex(RuntimeError, "Benchmark input changed"):
+                        run()
+                    self.assertFalse((root / "output/RUN_COMPLETE").exists())
+                    self.assertTrue((root / "output/RUN_FAILED.json").exists())
+                else:
+                    run()
+                if mutation != "loading":
+                    configuration = json.loads((root / "output/run_config.json").read_text())
+                    self.assertEqual(configuration["benchmark_sha256"][str(benchmark)], original_hash)
+                    manifest = configuration["selected_sample_manifest"][0]
+                    self.assertEqual(manifest["selected_sample_ids"], ["0", "1"])
+                    self.assertEqual(manifest["selected_sample_count"], 2)
+                if mutation is None:
+                    summary = json.loads((root / "output/summary.json").read_text())
+                    self.assertEqual({row["category"]: row["paired_record_count"]
+                                      for row in summary["by_evidence_category"]},
+                                     {"controlled": 1, "diagnostic/adapted": 1})
+
     def test_invalid_strength_rejected_when_constructing_config(self):
         for value in (-1, float("nan"), float("inf")):
             with self.assertRaisesRegex(ValueError, "finite non-negative"):

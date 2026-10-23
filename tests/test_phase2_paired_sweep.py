@@ -80,6 +80,22 @@ class PairedSweepPlanTests(unittest.TestCase):
                 max_interventions=5,
             )
 
+    def test_tensor_rms_is_explicit_and_rejects_replacement(self) -> None:
+        settings = plan_paired_sweep(
+            sample_ids=("sample",), layers=(0,), targets=("qkv",), methods=("noise",),
+            strength_mode="tensor_rms", strengths=(0.01,), seeds=(1,),
+            available_layers=self.available_layers, available_targets_by_layer=self.available_targets,
+            max_interventions=5,
+        )
+        self.assertEqual(settings[0].strength_mode, "tensor_rms")
+        with self.assertRaisesRegex(PairedSweepPlanError, "only for noise"):
+            plan_paired_sweep(
+                sample_ids=("sample",), layers=(0,), targets=("qkv",), methods=("replace",),
+                strength_mode="tensor_rms", strengths=(0.01,), seeds=(1,),
+                available_layers=self.available_layers, available_targets_by_layer=self.available_targets,
+                max_interventions=5,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

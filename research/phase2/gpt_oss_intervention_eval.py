@@ -726,6 +726,7 @@ async def evaluate_one_saved_example_async(
     method: InterventionMethod,
     target: AttentionTarget,
     strength: float,
+    strength_mode: StrengthMode = "absolute",
     session_factory: Callable[[], Any] | None = None,
     require_registry_match: bool = True,
 ) -> dict[str, Any]:
@@ -746,6 +747,7 @@ async def evaluate_one_saved_example_async(
         seeds=(seed,),
         method=method,
         strength=strength,
+        strength_mode=strength_mode,
         example_limit=1,
         target=target,
         sample_ids=(sample_id,),

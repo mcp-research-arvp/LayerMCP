@@ -180,7 +180,7 @@ settings are deliberately small and explicit:
 | `LAYER_INDEX` | An ID printed by the inspector | Chooses the one decoder layer to alter. Never assume a layer count from another model. |
 | `ATTENTION_TARGET` | A target printed by the inspector | Chooses all attention parameters or a safe component such as `qkv`, `out`, `q_proj`, or `o_proj`. Targets vary by model family. |
 | `INTERVENTION_METHOD` | `noise` or `replace` | `noise` adds seeded noise to the selected tensors; `replace` temporarily replaces them with seeded noise. |
-| `INTERVENTION_STRENGTH` | A non-negative number | Sets the absolute scale in `p + strength * z` for noise, or `strength * z` for replacement. It is not normalized to the parameter scale and should be calibrated experimentally. |
+| `INTERVENTION_STRENGTH_MODE` / `INTERVENTION_STRENGTH` | `absolute` or `tensor_rms`, and a non-negative number | `absolute` uses `p + strength * z` for noise; `tensor_rms` uses `p + strength * RMS(p) * z` independently per selected tensor. Replacement is absolute-only. |
 | `INTERVENTION_SEED` | An integer | Makes the temporary random perturbation reproducible. |
 | `RUN_ZERO_STRENGTH_ACCEPTANCE_PROBE` | `True` or `False` | Checks whether the loaded target passes the API's safety/quantization checks without changing its values. |
 | `RUN_REAL_INTERVENTION_PROBE` | `True` or `False` | A mechanics-only check: verifies selected tensors change in the enabled context and restore exactly afterward. It does not generate or score a benchmark answer. |
@@ -188,7 +188,7 @@ settings are deliberately small and explicit:
 | `PAIRED_SAMPLE_ID` / `PAIRED_SOURCE_RUN_DIR` | A saved example ID and compatible run | Selects the one saved GPT-OSS reasoning-low example to compare. The run directory normally comes from ignored `.env`. |
 | `RUN_PAIRED_SWEEP` | `True` or `False` | Runs a bounded grid of the same control/intervention comparison for GPT-OSS. It is disabled by default. |
 | `SWEEP_SAMPLE_IDS`, `SWEEP_LAYERS`, `SWEEP_TARGETS` | Explicit tuples, or literal `"all"` for layers/targets | Selects saved examples and targets. `"all"` expands only to layers and attention targets the loaded model actually exposes. |
-| `SWEEP_METHODS`, `SWEEP_STRENGTHS`, `SWEEP_SEEDS` | Explicit tuples | Selects the noise/replacement methods, absolute strengths, and reproducible perturbation seeds to compare. |
+| `SWEEP_METHODS`, `SWEEP_STRENGTH_MODE`, `SWEEP_STRENGTHS`, `SWEEP_SEEDS` | Explicit tuples, one mode | Selects methods, one absolute/RMS-relative noise scale, strengths, and reproducible seeds. `tensor_rms` requires a noise-only sweep. |
 | `SWEEP_MAX_INTERVENTIONS` / `SWEEP_ALLOW_LARGE` | A positive pair limit / explicit override | Stops an accidental large interactive grid before it generates. The default maximum is 24 complete control/intervention pairs. |
 
 The two probe flags answer different questions. Use the real-intervention probe

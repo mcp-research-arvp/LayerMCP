@@ -29,6 +29,7 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         expected = {
             'MODEL_CHOICE': 'tiny_cpu', 'LOAD_CHECKPOINT': False,
             'ATTENTION_TARGET': 'attention_all', 'RUN_REAL_INTERVENTION_PROBE': False,
+            'INTERVENTION_STRENGTH_MODE': 'absolute', 'SWEEP_STRENGTH_MODE': 'absolute',
             'RUN_PAIRED_SAMPLE_COMPARISON': False, 'RUN_PAIRED_SWEEP': False,
             'SWEEP_SEEDS': (1234,), 'SWEEP_MAX_INTERVENTIONS': 24,
             'SWEEP_SHOW_RAW_OUTPUTS': False,
@@ -92,6 +93,8 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertIn("PAIRED_SAMPLE_ID", source)
         self.assertIn("evaluate_one_saved_example", source)
         self.assertIn("RUN_PAIRED_SWEEP = False", source)
+        self.assertIn("INTERVENTION_STRENGTH_MODE = 'absolute'", source)
+        self.assertIn("SWEEP_STRENGTH_MODE = 'absolute'", source)
         self.assertIn("plan_paired_sweep", source)
         self.assertIn("SWEEP_MAX_INTERVENTIONS", source)
         self.assertIn("'actual_perturbation': active_probe.perturbation", source)

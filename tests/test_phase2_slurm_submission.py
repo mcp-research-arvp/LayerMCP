@@ -132,6 +132,15 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertNotEqual(rejected.returncode, 0)
         self.assertIn("only to direct single-step", rejected.stderr)
 
+    def test_single_step_can_submit_all_frozen_plan_seeds_in_one_chunk(self) -> None:
+        result = self.run_submitter("single", "--seeds", "1234,5678", "--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("SEEDS=1234\\,5678", result.stdout)
+        self.assertIn("seeds=1234,5678", result.stdout)
+        duplicate = self.run_submitter("single", "--seeds", "1234,1234", "--dry-run")
+        self.assertNotEqual(duplicate.returncode, 0)
+        self.assertIn("duplicate seed", duplicate.stderr)
+
     def test_invalid_settings_fail_before_submission(self) -> None:
         for arguments in (
             ("unknown",),

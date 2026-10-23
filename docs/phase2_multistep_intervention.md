@@ -45,7 +45,8 @@ evaluator loader; it does not use an older saved run. Every multi-step group has
 workflows. `--primary-only` omits the optional controlled math multi-step
 group, leaving seven multi-step jobs. The script defaults to layer 0, `qkv`,
 `noise`, strength `0.01`, and seed `1234`; these can be changed with
-`--layer`, `--target`, `--method`, `--strength`, and `--seed`.
+`--layer`, `--target`, `--method`, `--strength`, `--seed`, or (for a direct
+single-step screen chunk) comma-separated `--seeds`.
 `--strength-mode tensor_rms` and `--plan-manifest` apply only to direct
 single-step jobs; multi-step intervention remains absolute-strength.
 

@@ -418,8 +418,10 @@ python -m research.phase2.gpt_oss_intervention_eval \
 ```
 
 Submit one direct single-step chunk per selected layer with the same frozen
-plan, for example `submit_phase2.sh single --domains finance --layer 0
---strength-mode tensor_rms --plan-manifest /path/to/finance-qkv-plan.json`.
+plan, for example `submit_phase2.sh single --single-datasets finance_finqa_test_single
+--layer 0 --seeds 1234,5678 --strength-mode tensor_rms
+--plan-manifest /path/to/finance-qkv-plan.json`. The dataset selection and all
+seeds must exactly match the frozen plan.
 The plan is an input artifact: a chunk rejects incompatible samples, seeds,
 target, method, strength mode, or strength. Multi-step jobs do **not** yet
 support relative strength or frozen per-layer screen plans.

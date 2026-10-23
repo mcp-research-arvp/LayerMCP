@@ -26,7 +26,8 @@ Options:
   --method METHOD      noise or replace (default: noise).
   --strength NUMBER    Finite non-negative strength (default: 0.01).
   --strength-mode MODE absolute or tensor_rms (default: absolute; tensor_rms uses noise only).
-  --seed INTEGER       Intervention seed (default: 1234).
+  --seed INTEGER       One intervention seed (default: 1234).
+  --seeds IDS          Comma-separated intervention seeds for one screen chunk.
   --plan-manifest PATH Frozen screen-plan JSON to link and validate this chunk.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
@@ -58,6 +59,7 @@ target_override=""
 method_override=""
 strength_override=""
 seed_override=""
+seeds_override=""
 strength_mode_override=""
 plan_manifest=""
 selected_domains=""
@@ -66,7 +68,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--strength-mode|--seed|--plan-manifest|--env-file|--domains|--single-datasets)
+    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--plan-manifest|--env-file|--domains|--single-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -78,6 +80,7 @@ while [[ $# -gt 0 ]]; do
         --strength) strength_override="$2" ;;
         --strength-mode) strength_mode_override="$2" ;;
         --seed) seed_override="$2" ;;
+        --seeds) seeds_override="$2" ;;
         --plan-manifest) plan_manifest="$2" ;;
         --env-file) env_file="$2" ;;
         --domains) selected_domains="$2" ;;
@@ -137,9 +140,18 @@ ATTENTION_TARGET="${target_override:-${ATTENTION_TARGET:-qkv}}"
 METHOD="${method_override:-${METHOD:-noise}}"
 STRENGTH="${strength_override:-${STRENGTH:-0.01}}"
 SEED="${seed_override:-${SEED:-1234}}"
+SEEDS="${seeds_override:-${SEEDS:-$SEED}}"
 STRENGTH_MODE="${strength_mode_override:-${STRENGTH_MODE:-absolute}}"
 [[ "$LAYER_INDEX" =~ ^[0-9]+$ ]] || { echo "--layer must be a non-negative integer" >&2; exit 2; }
 [[ "$SEED" =~ ^-?[0-9]+$ ]] || { echo "--seed must be an integer" >&2; exit 2; }
+[[ "$SEEDS" =~ ^-?[0-9]+(,-?[0-9]+)*$ ]] || { echo "--seeds must be a comma-separated list of integers" >&2; exit 2; }
+IFS=',' read -r -a seed_values <<< "$SEEDS"
+(( ${#seed_values[@]} > 0 )) || { echo "--seeds must not be empty" >&2; exit 2; }
+declare -A seen_seeds=()
+for seed_value in "${seed_values[@]}"; do
+  [[ -z "${seen_seeds[$seed_value]:-}" ]] || { echo "--seeds contains duplicate seed: $seed_value" >&2; exit 2; }
+  seen_seeds[$seed_value]=1
+done
 case "$ATTENTION_TARGET" in
   attention_all|q_proj|k_proj|v_proj|o_proj|qkv|out) ;;
   *) echo "Unsupported attention target: $ATTENTION_TARGET" >&2; exit 2 ;;
@@ -168,7 +180,7 @@ fi
   echo "--strength must be a finite non-negative number" >&2
   exit 2
 }
-export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED
+export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS
 if [[ -n "$plan_manifest" ]]; then
   PLAN_MANIFEST="$(cd "$(dirname "$plan_manifest")" && pwd -P)/$(basename "$plan_manifest")"
   export PLAN_MANIFEST
@@ -181,7 +193,7 @@ if (( ! dry_run )) && ! command -v sbatch >/dev/null 2>&1; then
   exit 2
 fi
 
-common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED"
+common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED,SEEDS=$SEEDS"
 if [[ -n "${PLAN_MANIFEST:-}" ]]; then common_exports+=",PLAN_MANIFEST=$PLAN_MANIFEST"; fi
 scheduler_args=()
 [[ -z "${LAYERMCP_SLURM_ACCOUNT:-}" ]] || scheduler_args+=("--account=$LAYERMCP_SLURM_ACCOUNT")
@@ -240,8 +252,8 @@ if [[ "$mode" != single ]]; then
 fi
 
 if (( dry_run )); then
-  printf 'Would submit %d job(s): mode=%s, layer=%s, target=%s, method=%s, strength-mode=%s, strength=%s, seed=%s\n' \
-    "$submitted" "$mode" "$LAYER_INDEX" "$ATTENTION_TARGET" "$METHOD" "$STRENGTH_MODE" "$STRENGTH" "$SEED"
+  printf 'Would submit %d job(s): mode=%s, layer=%s, target=%s, method=%s, strength-mode=%s, strength=%s, seeds=%s\n' \
+    "$submitted" "$mode" "$LAYER_INDEX" "$ATTENTION_TARGET" "$METHOD" "$STRENGTH_MODE" "$STRENGTH" "$SEEDS"
 else
   printf 'Submitted %d job(s).\n' "$submitted"
 fi

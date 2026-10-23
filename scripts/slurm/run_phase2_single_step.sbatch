@@ -28,6 +28,7 @@ METHOD="${METHOD:-noise}"
 STRENGTH="${STRENGTH:-0.01}"
 STRENGTH_MODE="${STRENGTH_MODE:-absolute}"
 SEED="${SEED:-1234}"
+SEEDS="${SEEDS:-$SEED}"
 PLAN_MANIFEST="${PLAN_MANIFEST:-}"
 
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/submit_common.sh"
@@ -48,7 +49,7 @@ else
 fi
 [[ "${#BENCHMARKS[@]}" -gt 0 ]] || { echo "No single-step benchmarks selected" >&2; exit 2; }
 
-RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_single_step_full_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seed${SEED}"
+RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_single_step_full_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seeds${SEEDS//,/-}"
 echo "Evaluating ${#BENCHMARKS[@]} direct single-step benchmark files in paired conditions"
 command=(python -m research.phase2.gpt_oss_intervention_eval \
   --benchmarks "${BENCHMARKS[@]}" \
@@ -59,7 +60,7 @@ command=(python -m research.phase2.gpt_oss_intervention_eval \
   --method "$METHOD" \
   --strength "$STRENGTH" \
   --strength-mode "$STRENGTH_MODE" \
-  --seeds "$SEED")
+  --seeds "$SEEDS")
 if [[ -n "$PLAN_MANIFEST" ]]; then
   command+=(--plan-manifest "$PLAN_MANIFEST")
 fi

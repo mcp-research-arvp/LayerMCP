@@ -56,6 +56,10 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         )
         fake_sbatch.chmod(0o750)
         self.environment = os.environ.copy()
+        # Launcher fixtures must not inherit deployment-only module settings
+        # from the machine running the tests. Individual tests supply the
+        # environment variables they intentionally exercise.
+        self.environment.pop("LAYERMCP_MODULES", None)
         self.environment["PATH"] = f"{fake_bin}{os.pathsep}{self.environment.get('PATH', '')}"
         self.environment["SUBMIT_LOG"] = str(self.submit_log)
         self.environment["WORKFLOW_LIMIT"] = "2"

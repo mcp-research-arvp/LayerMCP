@@ -27,6 +27,7 @@ fi
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/phase2_environment.sh"
 validate_phase2_environment
 source "$LAYERMCP_VENV/bin/activate"
+validate_phase2_harmony_runtime
 
 LAYER_INDEX="${LAYER_INDEX:-0}"
 ATTENTION_TARGET="${ATTENTION_TARGET:-qkv}"

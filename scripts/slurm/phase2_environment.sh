@@ -9,3 +9,14 @@ validate_phase2_environment() {
   "$LAYERMCP_VENV/bin/python" --version >/dev/null || return 2
   export LAYERMCP_VENV
 }
+
+validate_phase2_harmony_runtime() {
+  : "${TIKTOKEN_ENCODINGS_BASE:?Set TIKTOKEN_ENCODINGS_BASE}"
+  local tokenizer_asset="$TIKTOKEN_ENCODINGS_BASE/o200k_base.tiktoken"
+  [[ -s "$tokenizer_asset" ]] || {
+    echo "Missing local Harmony tokenizer asset: $tokenizer_asset" >&2
+    return 2
+  }
+  export TIKTOKEN_ENCODINGS_BASE
+  python -c 'from openai_harmony import HarmonyEncodingName, load_harmony_encoding; print(load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS).name)'
+}

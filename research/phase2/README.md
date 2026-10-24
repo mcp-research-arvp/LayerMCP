@@ -422,6 +422,26 @@ plan, for example `submit_phase2.sh single --single-datasets finance_finqa_test_
 --layer 0 --seeds 1234,5678 --strength-mode tensor_rms
 --plan-manifest /path/to/finance-qkv-plan.json`. The dataset selection and all
 seeds must exactly match the frozen plan.
+
+For a native-GPU functional check of the complete artifact path, the portable
+submitter can create a two-example plan, run its one-layer chunk, combine it,
+and verify completion/integrity inside one allocation. This checks mechanics,
+not whether `0.01` is an experimentally justified strength. Run this from the
+repository root, after configuring its ignored `.env` deployment settings:
+
+```bash
+scripts/slurm/submit_phase2.sh single \
+  --single-datasets finance_upstream_inspired \
+  --layer 0 --example-limit 2 --target qkv --method noise \
+  --strength-mode tensor_rms --strength 0.01 --seeds 1234 \
+  --screen-plan-output results/plans/finance-upstream-two-example-layer0.json \
+  --combined-output results/reports/finance-upstream-two-example-layer0.json
+```
+
+Before model loading, both GPT-OSS launchers confirm the configured local
+`TIKTOKEN_ENCODINGS_BASE/o200k_base.tiktoken` asset and call
+`load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)`. The same exported
+path is used by the evaluator and included in the checkpoint/tokenizer identity.
 The plan is an input artifact: a chunk rejects incompatible samples, seeds,
 target, method, strength mode, or strength. Multi-step jobs do **not** yet
 support relative strength or frozen per-layer screen plans.

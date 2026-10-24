@@ -28,7 +28,10 @@ Options:
   --strength-mode MODE absolute or tensor_rms (default: absolute; tensor_rms uses noise only).
   --seed INTEGER       One intervention seed (default: 1234).
   --seeds IDS          Comma-separated intervention seeds for one screen chunk.
+  --example-limit N    Evaluate the first N rows of the selected direct dataset(s).
   --plan-manifest PATH Frozen screen-plan JSON to link and validate this chunk.
+  --screen-plan-output PATH  Create this frozen plan inside the single-step job.
+  --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
   -h, --help           Show this help.
@@ -62,13 +65,16 @@ seed_override=""
 seeds_override=""
 strength_mode_override=""
 plan_manifest=""
+screen_plan_output=""
+combined_output=""
+example_limit_override=""
 selected_domains=""
 single_datasets=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--plan-manifest|--env-file|--domains|--single-datasets)
+    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--plan-manifest|--screen-plan-output|--combined-output|--env-file|--domains|--single-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -81,7 +87,10 @@ while [[ $# -gt 0 ]]; do
         --strength-mode) strength_mode_override="$2" ;;
         --seed) seed_override="$2" ;;
         --seeds) seeds_override="$2" ;;
+        --example-limit) example_limit_override="$2" ;;
         --plan-manifest) plan_manifest="$2" ;;
+        --screen-plan-output) screen_plan_output="$2" ;;
+        --combined-output) combined_output="$2" ;;
         --env-file) env_file="$2" ;;
         --domains) selected_domains="$2" ;;
         --single-datasets) single_datasets="$2" ;;
@@ -142,9 +151,11 @@ STRENGTH="${strength_override:-${STRENGTH:-0.01}}"
 SEED="${seed_override:-${SEED:-1234}}"
 SEEDS="${seeds_override:-${SEEDS:-$SEED}}"
 STRENGTH_MODE="${strength_mode_override:-${STRENGTH_MODE:-absolute}}"
+EXAMPLE_LIMIT="${example_limit_override:-${EXAMPLE_LIMIT:-}}"
 [[ "$LAYER_INDEX" =~ ^[0-9]+$ ]] || { echo "--layer must be a non-negative integer" >&2; exit 2; }
 [[ "$SEED" =~ ^-?[0-9]+$ ]] || { echo "--seed must be an integer" >&2; exit 2; }
 [[ "$SEEDS" =~ ^-?[0-9]+(,-?[0-9]+)*$ ]] || { echo "--seeds must be a comma-separated list of integers" >&2; exit 2; }
+[[ -z "$EXAMPLE_LIMIT" || "$EXAMPLE_LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo "--example-limit must be a positive integer" >&2; exit 2; }
 IFS=',' read -r -a seed_values <<< "$SEEDS"
 (( ${#seed_values[@]} > 0 )) || { echo "--seeds must not be empty" >&2; exit 2; }
 declare -A seen_seeds=()
@@ -172,18 +183,41 @@ if [[ -n "$plan_manifest" && ! -f "$plan_manifest" ]]; then
   echo "Plan manifest does not exist: $plan_manifest" >&2
   exit 2
 fi
-if [[ "$mode" != single && ( "$STRENGTH_MODE" != absolute || -n "$plan_manifest" ) ]]; then
+if [[ "$mode" != single && ( "$STRENGTH_MODE" != absolute || -n "$plan_manifest" || -n "$EXAMPLE_LIMIT" || -n "$screen_plan_output" || -n "$combined_output" ) ]]; then
   echo "Relative-strength and frozen layer-screen plans currently apply only to direct single-step Phase 2 jobs" >&2
   exit 2
+fi
+if [[ -n "$screen_plan_output" || -n "$combined_output" ]]; then
+  if [[ "$mode" != single || -z "$screen_plan_output" || -z "$combined_output" ]]; then
+    echo "--screen-plan-output and --combined-output must be supplied together for a direct single-step job" >&2
+    exit 2
+  fi
+  if [[ -n "$plan_manifest" ]]; then
+    echo "Use either --plan-manifest or --screen-plan-output, not both" >&2
+    exit 2
+  fi
+  [[ ! -e "$screen_plan_output" ]] || { echo "Screen plan output already exists: $screen_plan_output" >&2; exit 2; }
+  [[ ! -e "$combined_output" ]] || { echo "Combined output already exists: $combined_output" >&2; exit 2; }
 fi
 [[ "$STRENGTH" =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$ ]] || {
   echo "--strength must be a finite non-negative number" >&2
   exit 2
 }
-export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS
+export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS EXAMPLE_LIMIT
 if [[ -n "$plan_manifest" ]]; then
   PLAN_MANIFEST="$(cd "$(dirname "$plan_manifest")" && pwd -P)/$(basename "$plan_manifest")"
   export PLAN_MANIFEST
+fi
+if [[ -n "$screen_plan_output" ]]; then
+  case "$screen_plan_output" in
+    /*) SCREEN_PLAN_OUTPUT="$screen_plan_output" ;;
+    *) SCREEN_PLAN_OUTPUT="$PWD/$screen_plan_output" ;;
+  esac
+  case "$combined_output" in
+    /*) COMBINED_OUTPUT="$combined_output" ;;
+    *) COMBINED_OUTPUT="$PWD/$combined_output" ;;
+  esac
+  export SCREEN_PLAN_OUTPUT COMBINED_OUTPUT
 fi
 export RUN_KIND=full
 unset WORKFLOW_LIMIT
@@ -194,7 +228,9 @@ if (( ! dry_run )) && ! command -v sbatch >/dev/null 2>&1; then
 fi
 
 common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED,SEEDS=$SEEDS"
+[[ -z "$EXAMPLE_LIMIT" ]] || common_exports+=",EXAMPLE_LIMIT=$EXAMPLE_LIMIT"
 if [[ -n "${PLAN_MANIFEST:-}" ]]; then common_exports+=",PLAN_MANIFEST=$PLAN_MANIFEST"; fi
+if [[ -n "${SCREEN_PLAN_OUTPUT:-}" ]]; then common_exports+=",SCREEN_PLAN_OUTPUT=$SCREEN_PLAN_OUTPUT,COMBINED_OUTPUT=$COMBINED_OUTPUT"; fi
 scheduler_args=()
 [[ -z "${LAYERMCP_SLURM_ACCOUNT:-}" ]] || scheduler_args+=("--account=$LAYERMCP_SLURM_ACCOUNT")
 [[ -z "${LAYERMCP_SLURM_PARTITION:-}" ]] || scheduler_args+=("--partition=$LAYERMCP_SLURM_PARTITION")
@@ -252,8 +288,8 @@ if [[ "$mode" != single ]]; then
 fi
 
 if (( dry_run )); then
-  printf 'Would submit %d job(s): mode=%s, layer=%s, target=%s, method=%s, strength-mode=%s, strength=%s, seeds=%s\n' \
-    "$submitted" "$mode" "$LAYER_INDEX" "$ATTENTION_TARGET" "$METHOD" "$STRENGTH_MODE" "$STRENGTH" "$SEEDS"
+  printf 'Would submit %d job(s): mode=%s, layer=%s, target=%s, method=%s, strength-mode=%s, strength=%s, seeds=%s, examples=%s\n' \
+    "$submitted" "$mode" "$LAYER_INDEX" "$ATTENTION_TARGET" "$METHOD" "$STRENGTH_MODE" "$STRENGTH" "$SEEDS" "${EXAMPLE_LIMIT:-all}"
 else
   printf 'Submitted %d job(s).\n' "$submitted"
 fi

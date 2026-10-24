@@ -141,6 +141,40 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertNotEqual(duplicate.returncode, 0)
         self.assertIn("duplicate seed", duplicate.stderr)
 
+    def test_screen_validation_exports_a_two_example_single_step_plan_and_report(self) -> None:
+        plan = self.root / "plans" / "finance-plan.json"
+        report = self.root / "reports" / "finance-report.json"
+        result = self.run_submitter(
+            "single", "--single-datasets", "finance_upstream_inspired",
+            "--layer", "0", "--example-limit", "2", "--target", "qkv",
+            "--method", "noise", "--strength-mode", "tensor_rms", "--strength", "0.01",
+            "--seeds", "1234", "--screen-plan-output", str(plan),
+            "--combined-output", str(report), "--dry-run",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("EXAMPLE_LIMIT=2", result.stdout)
+        self.assertIn("SCREEN_PLAN_OUTPUT=", result.stdout)
+        self.assertIn("COMBINED_OUTPUT=", result.stdout)
+        self.assertIn("benchmark/finance/finance_upstream_inspired.json", result.stdout)
+        self.assertIn("examples=2", result.stdout)
+        self.assertFalse(plan.parent.exists())
+        self.assertFalse(report.parent.exists())
+
+    def test_screen_validation_options_require_direct_single_step_pairing(self) -> None:
+        plan = self.root / "plan.json"
+        report = self.root / "report.json"
+        missing_report = self.run_submitter(
+            "single", "--screen-plan-output", str(plan), "--dry-run",
+        )
+        self.assertNotEqual(missing_report.returncode, 0)
+        self.assertIn("must be supplied together", missing_report.stderr)
+        multi = self.run_submitter("multi", "--example-limit", "2", "--dry-run")
+        self.assertNotEqual(multi.returncode, 0)
+        self.assertIn("only to direct single-step", multi.stderr)
+        invalid = self.run_submitter("single", "--example-limit", "0", "--dry-run")
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn("positive integer", invalid.stderr)
+
     def test_invalid_settings_fail_before_submission(self) -> None:
         for arguments in (
             ("unknown",),
@@ -167,7 +201,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
             'module() { :; }; '
             'python() { '
             'if [[ "$1" == "-" ]]; then "$LAYERMCP_VENV/bin/python" "$@"; '
-            'else printf "%s\\n" "$*" > "$PHASE2_PYTHON_LOG"; fi; '
+            'else printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; fi; '
             '}; export -f module python; bash "$1"'
         )
         result = subprocess.run(
@@ -176,11 +210,39 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Evaluating 13 direct single-step benchmark files", result.stdout)
-        arguments = (self.root / "python_args.txt").read_text()
+        commands = (self.root / "python_args.txt").read_text().splitlines()
+        self.assertIn("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)", commands[0])
+        arguments = commands[-1]
         self.assertIn("--benchmarks", arguments)
         self.assertIn("benchmark/math/math_controlled.json", arguments)
         self.assertIn("benchmark/finance/finance_finqa_test_single.json", arguments)
+        helper = ROOT / "scripts" / "slurm" / "phase2_environment.sh"
+        self.assertIn("from openai_harmony import HarmonyEncodingName, load_harmony_encoding", helper.read_text())
         self.assertNotIn("--source-run-dir", arguments)
+        self.assertNotIn("--example-limit", arguments)
+
+    def test_single_step_launcher_forwards_example_limit(self) -> None:
+        environment = self.environment.copy()
+        environment.update({
+            "SLURM_JOB_ID": "24000003", "LAYERMCP_VENV": str(self.venv),
+            "LAYERMCP_REPO_ROOT": str(ROOT), "LAYERMCP_GPT_OSS_CHECKPOINT": str(self.checkpoint),
+            "TIKTOKEN_ENCODINGS_BASE": str(self.tokenizer), "EXAMPLE_LIMIT": "2",
+            "PHASE2_PYTHON_LOG": str(self.root / "limited_python_args.txt"),
+        })
+        command = (
+            'module() { :; }; '
+            'python() { printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; }; '
+            'export -f module python; bash "$1"'
+        )
+        result = subprocess.run(
+            ["bash", "-c", command, "bash", str(SINGLE_LAUNCHER)],
+            cwd=ROOT, env=environment, capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = (self.root / "limited_python_args.txt").read_text().splitlines()
+        self.assertIn("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)", commands[0])
+        arguments = commands[-1]
+        self.assertIn("--example-limit 2", arguments)
 
     def test_missing_environment_fails_before_submission(self):
         for missing in ("activate", "python"):

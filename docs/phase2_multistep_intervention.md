@@ -85,8 +85,19 @@ from whole-workflow outcomes. It rejects incomplete plans, duplicate
 layer/seed/workflow records, incompatible provenance, changed controls, and
 interventions without exact restoration.
 
+List valid identifiers without loading an environment or submitting a job:
+
+```bash
+scripts/slurm/submit_phase2.sh --list-datasets single
+scripts/slurm/submit_phase2.sh --list-datasets multi
+```
+
 Use `--domains math,finance` or `--single-datasets math_public,finance_finqa_test_single`
-to restrict the single-step job. These selectors use the same IDs as Phase 1.
+to restrict the single-step job. Use `--multi-datasets finance_convfinqa,finance_finqa`
+to submit exactly those multi-step groups. `--domains` applies to every active workflow
+type in `both` mode, while the explicit single- and multi-step selectors remain separate;
+the command rejects a selector for a workflow type that is not being submitted. These IDs
+use the same catalog as Phase 1 and are recorded by the evaluator in the run artifact.
 `LAYERMCP_GPT_OSS_SOURCE_RUN` is no longer needed for `submit_phase2.sh`;
 the saved-run CLI remains available for notebook and historical comparisons.
 Direct single-step runs save SHA-256 content hashes in `run_config.json` under

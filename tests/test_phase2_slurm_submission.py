@@ -110,6 +110,38 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("benchmark/finance/finance_finqa_test_single.json", result.stdout)
         self.assertNotIn("benchmark/coding/coding_controlled.json", result.stdout)
 
+    def test_lists_supported_dataset_ids_without_environment_or_submission(self) -> None:
+        for workflow, expected_id in (
+            ("single", "finance_upstream_inspired"),
+            ("multi", "finance_convfinqa"),
+        ):
+            with self.subTest(workflow=workflow):
+                result = subprocess.run(
+                    ["bash", str(SUBMITTER), "--list-datasets", workflow],
+                    cwd=self.root, env=self.environment,
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(expected_id, result.stdout)
+                self.assertFalse(self.submit_log.exists())
+
+    def test_multi_step_dataset_selection_is_exact(self) -> None:
+        result = self.run_submitter(
+            "multi", "--multi-datasets", "finance_convfinqa,finance_finqa", "--dry-run"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = [line for line in result.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(commands), 2)
+        self.assertTrue(all("run_phase2_multistep.sbatch" in line for line in commands))
+        self.assertIn("DATASET_GROUP=finance_convfinqa", result.stdout)
+        self.assertIn("DATASET_GROUP=finance_finqa", result.stdout)
+        self.assertNotIn("DATASET_GROUP=finance_finretrieval_replay", result.stdout)
+
+    def test_cross_workflow_dataset_selector_is_rejected(self) -> None:
+        result = self.run_submitter("single", "--multi-datasets", "finance_finqa", "--dry-run")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("requires multi-step", result.stderr)
+
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
             "both", "--layer", "2", "--target", "qkv", "--strength", "0.02", "--seed", "42"

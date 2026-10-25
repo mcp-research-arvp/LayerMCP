@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,9 +13,12 @@ import torch
 from torch import nn
 
 from models.routers import gpt_oss_local_router as router
+from analysis.phase2_multistep_paired_results import combine_completed_runs
 from research.phase2.gpt_oss_multistep_intervention_eval import (
     MultistepConfig,
     _paired_results,
+    _write_plan,
+    plan_evaluation,
     run_evaluation,
 )
 
@@ -85,11 +89,11 @@ def write_benchmark(path: Path) -> None:
 
 
 class MultistepInterventionTests(unittest.TestCase):
-    def _run(self, root: Path, generator: FakeGenerator) -> Path:
+    def _run(self, root: Path, generator: FakeGenerator, *, config: MultistepConfig | None = None) -> Path:
         benchmark = root / "benchmark.json"
         write_benchmark(benchmark)
         checkpoint = root / "checkpoint"
-        checkpoint.mkdir()
+        checkpoint.mkdir(exist_ok=True)
         with (
             patch.dict("research.phase2.gpt_oss_multistep_intervention_eval.DATASET_GROUPS", {"test": benchmark}, clear=True),
             patch("evaluation.evaluate._run_server_session", fake_server),
@@ -98,7 +102,10 @@ class MultistepInterventionTests(unittest.TestCase):
             return run_evaluation(
                 dataset_group="test", checkpoint_dir=checkpoint,
                 output_dir=root / "output",
-                config=MultistepConfig(layer=0, target="qkv", method="noise", strength=0.25, seed=17),
+                config=config or MultistepConfig(
+                    layer=0, target="qkv", method="noise", strength=0.25, seed=17,
+                    strength_mode="tensor_rms",
+                ),
                 generator_loader=lambda _: generator,
             )
 
@@ -122,6 +129,16 @@ class MultistepInterventionTests(unittest.TestCase):
             self.assertEqual(len(pairs), 1)
             self.assertEqual([step["routed_query_changed"] for step in pairs[0]["steps"]], [False, True])
             self.assertTrue(all(step["intervention_verification"]["restored_exactly"] for step in pairs[0]["steps"]))
+            self.assertTrue(all(step["intervention_verification"]["perturbation"]["strength_mode"] == "tensor_rms"
+                                for step in pairs[0]["steps"]))
+            self.assertEqual(pairs[0]["strength_mode"], "tensor_rms")
+            manifest = json.loads((output / "run_manifest.json").read_text())
+            status = json.loads((output / "run_status.json").read_text())
+            self.assertEqual(status["status"], "completed")
+            self.assertIn("started_at", manifest)
+            self.assertIn("actual", manifest["job_details"])
+            self.assertIn("requested", manifest["job_details"])
+            self.assertIn("completed_at", status)
             self.assertEqual([active for active, _ in generator.prompts], [False, False, True, True])
             config = json.loads((output / "run_config.json").read_text())
             self.assertEqual(config["raw_benchmark_mode_counts"], {"<absent>": 1})
@@ -138,6 +155,9 @@ class MultistepInterventionTests(unittest.TestCase):
                 self._run(root, FakeGenerator(model, fail_intervention=True))
             self.assertTrue((root / "output" / "RUN_FAILED.json").is_file())
             self.assertFalse((root / "output" / "RUN_COMPLETE").exists())
+            failed = json.loads((root / "output" / "RUN_FAILED.json").read_text())
+            self.assertEqual(len(failed["intervention_generation_checks"]), 1)
+            self.assertTrue(failed["intervention_generation_checks"][0]["restored_exactly"])
         self.assertTrue(torch.equal(model.block[0].attn.qkv.weight, original))
 
     def test_rejects_mismatched_pairs_and_invalid_configuration(self):
@@ -146,6 +166,46 @@ class MultistepInterventionTests(unittest.TestCase):
         for strength in (-1.0, float("nan"), float("inf")):
             with self.assertRaisesRegex(ValueError, "finite non-negative"):
                 MultistepConfig(0, "qkv", "noise", strength, 17)
+
+    def test_plan_freezes_workflows_and_combiner_checks_its_grid(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            benchmark = root / "benchmark.json"
+            write_benchmark(benchmark)
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            model = TinyModel()
+            with patch.dict("research.phase2.gpt_oss_multistep_intervention_eval.DATASET_GROUPS", {"test": benchmark}, clear=True):
+                plan = plan_evaluation(
+                    dataset_group="test", checkpoint_dir=checkpoint, layer_request=(0,), seeds=(17,),
+                    target="qkv", method="noise", strength=0.25, strength_mode="tensor_rms",
+                    generator_loader=lambda _: FakeGenerator(model),
+                )
+                plan_path = root / "plan.json"
+                _write_plan(plan_path, plan)
+            output = self._run(
+                root,
+                FakeGenerator(model),
+                config=MultistepConfig(
+                    layer=0, target="qkv", method="noise", strength=0.25, seed=17,
+                    strength_mode="tensor_rms", plan_manifest=plan_path,
+                ),
+            )
+            run_manifest = json.loads((output / "run_manifest.json").read_text())
+            self.assertEqual(
+                run_manifest["parent_plan"]["sha256"],
+                "sha256:" + hashlib.sha256(plan_path.read_bytes()).hexdigest(),
+            )
+            summary = combine_completed_runs([output], expected_plan=plan_path)
+            self.assertEqual(summary["paired_observation_count"], 1)
+            self.assertEqual(summary["rows"][0]["step_count"], 2)
+            with self.assertRaisesRegex(ValueError, "duplicate"):
+                combine_completed_runs([output, output])
+            incomplete = {**plan, "screen_plan": {**plan["screen_plan"], "seeds": [17, 18]}}
+            incomplete_path = root / "incomplete-plan.json"
+            _write_plan(incomplete_path, incomplete)
+            with self.assertRaisesRegex(ValueError, "expected layer"):
+                combine_completed_runs([output], expected_plan=incomplete_path)
 
 
 if __name__ == "__main__":

@@ -183,8 +183,12 @@ if [[ -n "$plan_manifest" && ! -f "$plan_manifest" ]]; then
   echo "Plan manifest does not exist: $plan_manifest" >&2
   exit 2
 fi
-if [[ "$mode" != single && ( "$STRENGTH_MODE" != absolute || -n "$plan_manifest" || -n "$EXAMPLE_LIMIT" || -n "$screen_plan_output" || -n "$combined_output" ) ]]; then
-  echo "Relative-strength and frozen layer-screen plans currently apply only to direct single-step Phase 2 jobs" >&2
+if [[ "$mode" == both && -n "$plan_manifest" ]]; then
+  echo "--plan-manifest is workflow-specific; use single or multi, not both" >&2
+  exit 2
+fi
+if [[ "$mode" != single && ( -n "$EXAMPLE_LIMIT" || -n "$screen_plan_output" || -n "$combined_output" ) ]]; then
+  echo "--example-limit, --screen-plan-output, and --combined-output currently apply only to direct single-step Phase 2 jobs" >&2
   exit 2
 fi
 if [[ -n "$screen_plan_output" || -n "$combined_output" ]]; then

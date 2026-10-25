@@ -11,12 +11,15 @@ import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 import hashlib
 import json
 import math
 from numbers import Real
+import os
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable, Literal, Sequence
+import uuid
 
 from analysis.benchmark_inventory import infer_benchmark_class
 
@@ -35,11 +38,14 @@ from models.routers import gpt_oss_local_router as gpt_oss_router
 from models.routers.structured_tool_call import ToolCallPrediction
 from research.phase2.intervention import (
     AttentionTarget,
+    StrengthMode,
     SUPPORTED_ATTENTION_TARGETS,
+    SUPPORTED_STRENGTH_MODES,
     available_attention_layers,
     available_attention_targets,
     temporary_attention_intervention,
 )
+from research.phase2.layer_screen import LayerRequest, LayerScreenPlan, LayerScreenPlanError, plan_layer_screen
 from research.phase2.experiment_integrity import (
     checkpoint_identity, verify_identity_inputs, runtime_identity,
     compare_saved_control, paired_diagnostics, native_generator_identity,
@@ -49,16 +55,19 @@ from research.phase2.experiment_integrity import (
 InterventionMethod = Literal["noise", "replace"]
 # Fresh condition sessions/provenance are a new protocol, not retroactive
 # certification of v1 runs. Old strict combiners must reject it until upgraded.
-RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v2"
+RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v3"
+RUN_MANIFEST_KIND = "phase2_paired_run_manifest_v1"
+SCREEN_PLAN_KIND = "phase2_layer_screen_plan_v1"
 
 
 @dataclass(frozen=True)
 class EvaluationConfig:
-    layers: tuple[int, ...]
+    layers: LayerRequest
     seeds: tuple[int, ...]
     method: InterventionMethod
     strength: float
     example_limit: int | None
+    strength_mode: StrengthMode = "absolute"
     target: AttentionTarget = "attention_all"
     sample_ids: tuple[str, ...] | None = None
     require_registry_match: bool = True
@@ -71,6 +80,10 @@ class EvaluationConfig:
             raise TypeError("strength must be a finite non-negative number")
         if not math.isfinite(float(self.strength)) or self.strength < 0:
             raise ValueError("strength must be a finite non-negative number")
+        if self.strength_mode not in SUPPORTED_STRENGTH_MODES:
+            raise ValueError("strength_mode must be 'absolute' or 'tensor_rms'")
+        if self.strength_mode == "tensor_rms" and self.method != "noise":
+            raise ValueError("tensor_rms strength mode is currently defined only for noise interventions")
 
 
 @dataclass(frozen=True)
@@ -359,6 +372,182 @@ def _verify_benchmark_inputs(expected: dict[str, str]) -> None:
             raise RuntimeError(f"Benchmark input changed during evaluation: {filename}")
 
 
+def _direct_plan_selection(
+    paths: Sequence[Path], example_limit: int | None,
+) -> tuple[tuple[str, ...], list[dict[str, Any]]]:
+    """Resolve the exact direct-input sample order without opening an MCP session."""
+    selected: list[str] = []
+    by_path: dict[str, list[str]] = {
+        str(path.expanduser().resolve(strict=True)): [] for path in paths
+    }
+    seen: set[str] = set()
+    for raw_path in paths:
+        path = raw_path.expanduser().resolve(strict=True)
+        samples = load_benchmark(path)
+        if not samples:
+            raise ValueError(f"Benchmark has no runnable samples: {path}")
+        for sample in samples:
+            if sample.expected_steps or sample.task_type == "multi_step_tool_routing":
+                raise ValueError(f"Multi-step sample {sample.id} requires the multi-step runner: {path}")
+            if sample.id in seen:
+                raise ValueError(f"Duplicate sample ID across direct benchmarks: {sample.id}")
+            seen.add(sample.id)
+            if example_limit is None or len(selected) < example_limit:
+                selected.append(sample.id)
+                by_path[str(path)].append(sample.id)
+    if not selected:
+        raise ValueError("Direct benchmark selection produced no samples")
+    return tuple(selected), [
+        {"benchmark_path": path, "selected_sample_ids": sample_ids, "selected_sample_count": len(sample_ids)}
+        for path, sample_ids in by_path.items()
+    ]
+
+
+def _canonical_json_bytes(payload: dict[str, Any]) -> bytes:
+    return (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _sha256_bytes(payload: bytes) -> str:
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _job_details() -> dict[str, Any]:
+    """Record scheduler facts if present; absent values are explicitly portable."""
+    keys = (
+        "SLURM_JOB_ID", "SLURM_JOB_NAME", "SLURM_JOB_ACCOUNT", "SLURM_JOB_PARTITION",
+        "SLURM_JOB_NODELIST", "SLURM_CPUS_PER_TASK", "SLURM_MEM_PER_NODE",
+        "SLURM_TIMELIMIT", "SLURM_JOB_GPUS", "SLURM_SUBMIT_DIR",
+    )
+    return {
+        "actual": {key.lower(): os.environ.get(key) for key in keys},
+        "requested": {
+            key: os.environ.get(key) for key in (
+                "LAYERMCP_SLURM_ACCOUNT", "LAYERMCP_SLURM_PARTITION", "LAYERMCP_SLURM_GRES",
+                "LAYERMCP_SLURM_CPUS_PER_TASK", "LAYERMCP_SLURM_MEM", "LAYERMCP_SLURM_TIME",
+            )
+        },
+    }
+
+
+def _resolve_screen_config(
+    generator: Any,
+    sample_ids: Sequence[str],
+    config: EvaluationConfig,
+) -> tuple[EvaluationConfig, LayerScreenPlan]:
+    available_layers = available_attention_layers(generator.model)
+    targets = {
+        layer: available_attention_targets(generator.model, layer)
+        for layer in available_layers
+    }
+    try:
+        plan = plan_layer_screen(
+            layer_request=config.layers,
+            available_layers=available_layers,
+            available_targets_by_layer=targets,
+            sample_ids=sample_ids,
+            seeds=config.seeds,
+            target=config.target,
+            method=config.method,
+            strength_mode=config.strength_mode,
+            strength=config.strength,
+        )
+    except LayerScreenPlanError as error:
+        raise ValueError(str(error)) from error
+    return EvaluationConfig(
+        layers=plan.selected_layers, seeds=config.seeds, method=config.method,
+        strength=config.strength, example_limit=config.example_limit,
+        strength_mode=config.strength_mode, target=config.target,
+        sample_ids=config.sample_ids, require_registry_match=config.require_registry_match,
+    ), plan
+
+
+def plan_evaluation(
+    *,
+    source_run_dir: Path | None = None,
+    benchmark_paths: Sequence[Path] | None = None,
+    checkpoint_dir: Path,
+    config: EvaluationConfig,
+    generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
+) -> dict[str, Any]:
+    """Discover layers and freeze a plan without generation or MCP execution."""
+    if (source_run_dir is None) == (benchmark_paths is None):
+        raise ValueError("select exactly one of source_run_dir or benchmark_paths")
+    checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
+    if source_run_dir is not None:
+        if config.example_limit is None:
+            raise ValueError("saved source runs require an explicit example limit")
+        metadata, examples = load_saved_gpt_oss_examples(source_run_dir, config.example_limit, config.sample_ids)
+        input_identity: dict[str, Any] = {
+            "input_kind": "saved_source_run", "source_run_directory": str(source_run_dir.expanduser().resolve()),
+            "source_run_metadata": metadata,
+        }
+        sample_ids = tuple(example.sample_id for example in examples)
+    else:
+        paths = tuple(path.expanduser().resolve(strict=True) for path in benchmark_paths or ())
+        sample_ids, selected_manifest = _direct_plan_selection(paths, config.example_limit)
+        input_identity = {
+            "input_kind": "benchmark_files", "benchmark_paths": [str(path) for path in paths],
+            "benchmark_sha256": _benchmark_hashes(paths), "selected_sample_manifest": selected_manifest,
+        }
+    generator = generator_loader(str(checkpoint))
+    resolved, screen_plan = _resolve_screen_config(generator, sample_ids, config)
+    return {
+        "kind": SCREEN_PLAN_KIND,
+        "created_at": _utc_now(),
+        "checkpoint_path": str(checkpoint),
+        **input_identity,
+        "requested_config": asdict(config), "resolved_config": asdict(resolved),
+        "screen_plan": screen_plan.as_dict(),
+        "valid_layer_indices": list(available_attention_layers(generator.model)),
+        "available_attention_targets": {
+            str(layer): list(available_attention_targets(generator.model, layer))
+            for layer in available_attention_layers(generator.model)
+        },
+    }
+
+
+def write_plan_manifest(path: Path, plan: dict[str, Any]) -> str:
+    """Write a new frozen plan and return the SHA-256 recorded by job chunks."""
+    destination = path.expanduser().resolve()
+    if destination.exists():
+        raise FileExistsError(f"Refusing to overwrite plan manifest: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    content = _canonical_json_bytes(plan)
+    destination.write_bytes(content)
+    return _sha256_bytes(content)
+
+
+def _parent_plan_reference(
+    path: Path | None, plan: LayerScreenPlan, input_identity: dict[str, Any],
+) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    content = path.expanduser().resolve(strict=True).read_bytes()
+    parent = json.loads(content)
+    if parent.get("kind") != SCREEN_PLAN_KIND:
+        raise ValueError(f"{path}: not a {SCREEN_PLAN_KIND} manifest")
+    expected = parent.get("screen_plan", {})
+    for field, actual in (("sample_ids", list(plan.sample_ids)), ("seeds", list(plan.seeds)),
+                          ("target", plan.target), ("method", plan.method),
+                          ("strength_mode", plan.strength_mode), ("strength", plan.strength)):
+        if expected.get(field) != actual:
+            raise ValueError(f"{path}: frozen plan {field} differs from this chunk")
+    expected_layers = expected.get("selected_layers")
+    if not isinstance(expected_layers, list) or not set(plan.selected_layers).issubset(set(expected_layers)):
+        raise ValueError(f"{path}: chunk layers are not contained in the frozen plan")
+    if parent.get("input_kind") != input_identity.get("input_kind"):
+        raise ValueError(f"{path}: frozen plan input kind differs from this chunk")
+    if input_identity.get("input_kind") == "benchmark_files":
+        for field in ("benchmark_sha256", "selected_sample_manifest"):
+            if parent.get(field) != input_identity.get(field):
+                raise ValueError(f"{path}: frozen plan {field} differs from this chunk")
+    return {"path": str(path.expanduser().resolve()), "sha256": _sha256_bytes(content)}
+
+
 def _predict(
     generator: Any,
     example: SavedGptOssExample,
@@ -369,6 +558,7 @@ def _predict(
     method: InterventionMethod,
     target: AttentionTarget,
     strength: float,
+    strength_mode: StrengthMode,
     seed: int,
 ) -> tuple[ToolCallPrediction, dict[str, Any]]:
     missing_tools = sorted(set(example.tool_names) - set(catalog.names))
@@ -386,6 +576,7 @@ def _predict(
         method=method,
         target=target,
         strength=strength,
+        strength_mode=strength_mode,
         seed=seed,
         enabled=enabled,
     ) as intervention:
@@ -421,11 +612,7 @@ async def paired_records(
     """Yield one complete unchanged/intervention pair per example, layer, and seed."""
     if not examples:
         raise ValueError("at least one saved example is required")
-    if (
-        not config.layers or not config.seeds
-        or len(set(config.layers)) != len(config.layers)
-        or len(set(config.seeds)) != len(config.seeds)
-    ):
+    if not isinstance(config.layers, tuple) or not config.layers or not config.seeds:
         raise ValueError("layers and seeds must be non-empty and distinct")
     open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
     provenance = provenance or {"checkpoint_fingerprint": None, "model_binding": "caller_supplied_unverified"}
@@ -485,6 +672,7 @@ async def paired_records(
                     method=config.method,
                     target=config.target,
                     strength=config.strength,
+                    strength_mode=config.strength_mode,
                     seed=seed,
                 )
                 intervention, intervention_verification = _predict(
@@ -496,6 +684,7 @@ async def paired_records(
                     method=config.method,
                     target=config.target,
                     strength=config.strength,
+                    strength_mode=config.strength_mode,
                     seed=seed,
                 )
                 control_record = await evaluate_condition(example, control)
@@ -516,8 +705,8 @@ async def paired_records(
                     "method": config.method,
                     "target": config.target,
                     "strength": config.strength,
+                    "strength_mode": config.strength_mode,
                     "registry_exact_match": registry_exact_match,
-                    "strength_mode": "absolute",
                     "condition_isolation": "fresh_mcp_server_per_condition",
                     "control": control_record,
                     "intervention": intervention_record,
@@ -537,6 +726,7 @@ async def evaluate_one_saved_example_async(
     method: InterventionMethod,
     target: AttentionTarget,
     strength: float,
+    strength_mode: StrengthMode = "absolute",
     session_factory: Callable[[], Any] | None = None,
     require_registry_match: bool = True,
 ) -> dict[str, Any]:
@@ -557,6 +747,7 @@ async def evaluate_one_saved_example_async(
         seeds=(seed,),
         method=method,
         strength=strength,
+        strength_mode=strength_mode,
         example_limit=1,
         target=target,
         sample_ids=(sample_id,),
@@ -695,16 +886,11 @@ async def run_evaluation_async(
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
+    plan_manifest: Path | None = None,
     generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
     """Run and persist a paired full evaluation; only ``RUN_COMPLETE`` marks success."""
-    if (
-        not config.layers or not config.seeds
-        or len(set(config.layers)) != len(config.layers)
-        or len(set(config.seeds)) != len(config.seeds)
-    ):
-        raise ValueError("layers and seeds must both be non-empty and distinct")
     if (source_run_dir is None) == (benchmark_paths is None):
         raise ValueError("select exactly one of source_run_dir or benchmark_paths")
     target = _safe_output_directory(output_dir)
@@ -715,13 +901,21 @@ async def run_evaluation_async(
     if not checkpoint.is_dir():
         raise FileNotFoundError(f"GPT-OSS checkpoint does not exist: {checkpoint}")
     if source_run_dir is not None:
+        if config.example_limit is None:
+            raise ValueError("saved source runs require an explicit example limit")
         metadata, saved_examples = load_saved_gpt_oss_examples(
-            source_run_dir, config.example_limit or 2, config.sample_ids
+            source_run_dir, config.example_limit, config.sample_ids
         )
+        selected_ids = tuple(example.sample_id for example in saved_examples)
+        direct_selection = None
+        plan_input_identity = {"input_kind": "saved_source_run", "source_run_directory": str(source_run_dir.expanduser().resolve())}
     else:
         if config.sample_ids is not None:
             raise ValueError("sample IDs are supported only with a saved source run")
         metadata, saved_examples = None, None
+        selected_ids, direct_selection = _direct_plan_selection(benchmark_paths or (), config.example_limit)
+        plan_input_identity = {"input_kind": "benchmark_files", "benchmark_sha256": benchmark_hashes,
+                               "selected_sample_manifest": direct_selection}
     if generator_loader is gpt_oss_router.load_generator:
         print("Fingerprinting checkpoint/config/Harmony files (full content read; cold storage may be slow)...", flush=True)
     identity = checkpoint_identity(checkpoint)
@@ -749,15 +943,21 @@ async def run_evaluation_async(
     records: list[dict[str, Any]] = []
     failure_stage = "setup"
     try:
-        in_progress.write_text("\n", encoding="utf-8")
+        run_id = str(uuid.uuid4())
+        started_at = _utc_now()
+        in_progress.write_text(json.dumps({"run_id": run_id, "started_at": started_at}) + "\n", encoding="utf-8")
+        resolved_config, screen_plan = _resolve_screen_config(generator, selected_ids, config)
+        parent_plan = _parent_plan_reference(plan_manifest, screen_plan, plan_input_identity)
         open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
         async with open_session() as session:
             catalog = await load_tool_catalog(session)
             examples = saved_examples if saved_examples is not None else load_direct_benchmark_examples(
                 benchmark_paths or (), catalog
             )
-            if benchmark_paths is not None and config.example_limit is not None:
-                examples = examples[:config.example_limit]
+            if benchmark_paths is not None and resolved_config.example_limit is not None:
+                examples = examples[:resolved_config.example_limit]
+            if tuple(example.sample_id for example in examples) != selected_ids:
+                raise RuntimeError("Direct sample selection changed after plan resolution")
             _verify_benchmark_inputs(benchmark_hashes)
             input_config = (
                 {"source_run_directory": str(source_run_dir.expanduser().resolve()), "source_run_metadata": metadata}
@@ -765,45 +965,49 @@ async def run_evaluation_async(
                 {
                     "benchmark_paths": [str(path.expanduser().resolve()) for path in benchmark_paths or ()],
                     "benchmark_sha256": benchmark_hashes,
-                    "selected_sample_manifest": _selected_sample_manifest(benchmark_paths or (), examples),
+                    "selected_sample_manifest": direct_selection or _selected_sample_manifest(benchmark_paths or (), examples),
                 }
             )
-            (target / "run_config.json").write_text(
-                json.dumps(
-                    {
-                        "kind": RUN_KIND,
-                        "experiment_kind": RUN_KIND,
-                        **provenance,
-                        "checkpoint_identity": identity,
-                        "condition_isolation": "fresh_mcp_server_per_condition",
-                        "strength_mode": "absolute",
-                        **input_config,
-                        "checkpoint_path": str(checkpoint),
-                        "config": asdict(config),
-                        "example_count": len(examples),
-                        "call_predicted_tools": True,
-                        "valid_layer_indices": list(available_attention_layers(generator.model)),
-                        "available_attention_targets": {
-                            str(layer_index): list(available_attention_targets(generator.model, layer_index))
-                            for layer_index in available_attention_layers(generator.model)
-                        },
-                    },
-                    indent=2,
-                    sort_keys=True,
-                )
-                + "\n",
-                encoding="utf-8",
-            )
+            run_config = {
+                "kind": RUN_KIND, "experiment_kind": RUN_KIND, "run_id": run_id, **provenance,
+                "checkpoint_identity": identity, "condition_isolation": "fresh_mcp_server_per_condition",
+                "strength_mode": resolved_config.strength_mode, **input_config,
+                "checkpoint_path": str(checkpoint), "requested_config": asdict(config),
+                "resolved_config": asdict(resolved_config), "config": asdict(resolved_config),
+                "screen_plan": screen_plan.as_dict(), "parent_plan": parent_plan,
+                "example_count": len(examples), "call_predicted_tools": True,
+                "valid_layer_indices": list(available_attention_layers(generator.model),),
+                "available_attention_targets": {
+                    str(layer_index): list(available_attention_targets(generator.model, layer_index))
+                    for layer_index in available_attention_layers(generator.model)
+                },
+            }
+            (target / "run_config.json").write_text(_canonical_json_bytes(run_config).decode("utf-8"), encoding="utf-8")
+            screen_payload = {"kind": SCREEN_PLAN_KIND, "screen_plan": screen_plan.as_dict(),
+                              "parent_plan": parent_plan, **input_config}
+            (target / "screen_plan.json").write_bytes(_canonical_json_bytes(screen_payload))
+            manifest = {
+                **run_config, "manifest_kind": RUN_MANIFEST_KIND, "run_id": run_id,
+                "started_at": started_at, "job_details": _job_details(),
+                "tool_registry": {"metadata": catalog.metadata, "names": list(catalog.names)},
+                "lifecycle_status_file": "run_status.json",
+            }
+            manifest_bytes = _canonical_json_bytes(manifest)
+            (target / "run_manifest.json").write_bytes(manifest_bytes)
+            manifest_reference = {"run_id": run_id, "filename": "run_manifest.json", "sha256": _sha256_bytes(manifest_bytes)}
+            (target / "run_status.json").write_bytes(_canonical_json_bytes({
+                "run_id": run_id, "status": "running", "started_at": started_at,
+            }))
             failure_stage = "evaluation"
             with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
                 async for record in paired_records(
                     generator,
                     examples,
                     catalog,
-                    config,
+                    resolved_config,
                     session,
                     session_factory=open_session,
-                    provenance=provenance,
+                    provenance={**provenance, "run_manifest": manifest_reference},
                 ):
                     handle.write(json.dumps(record, sort_keys=True) + "\n")
                     handle.flush()
@@ -815,6 +1019,10 @@ async def run_evaluation_async(
             json.dumps(_summary(records), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        (target / "run_status.json").write_bytes(_canonical_json_bytes({
+            "run_id": run_id, "status": "completed", "started_at": started_at,
+            "completed_at": _utc_now(), "paired_record_count": len(records),
+        }))
         in_progress.unlink()
         (target / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
     except BaseException as error:
@@ -822,11 +1030,12 @@ async def run_evaluation_async(
             (target / "RUN_FAILED.json").write_text(
                 json.dumps(
                     {
-                        "kind": RUN_KIND,
+                        "kind": RUN_KIND, "run_id": locals().get("run_id"),
                         "error_type": type(error).__name__,
                         "error": str(error),
                         "failure_stage": failure_stage,
                         "completed_pair_count": len(records),
+                        "failed_at": _utc_now(),
                     },
                     indent=2,
                     sort_keys=True,
@@ -834,6 +1043,10 @@ async def run_evaluation_async(
                 + "\n",
                 encoding="utf-8",
             )
+            (target / "run_status.json").write_bytes(_canonical_json_bytes({
+                "run_id": locals().get("run_id"), "status": "failed", "failed_at": _utc_now(),
+                "failure_stage": failure_stage, "completed_pair_count": len(records),
+            }))
         except Exception as artifact_error:
             # An unwritable filesystem cannot guarantee a durable report.
             # Preserve the original failure and chain the reporting failure.
@@ -849,6 +1062,7 @@ def run_evaluation(
     checkpoint_dir: Path,
     output_dir: Path,
     config: EvaluationConfig,
+    plan_manifest: Path | None = None,
     generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
@@ -860,6 +1074,7 @@ def run_evaluation(
             checkpoint_dir=checkpoint_dir,
             output_dir=output_dir,
             config=config,
+            plan_manifest=plan_manifest,
             generator_loader=generator_loader,
             session_factory=session_factory,
         )
@@ -874,6 +1089,13 @@ def _parse_csv_ints(value: str, option: str) -> tuple[int, ...]:
     if not parsed or len(set(parsed)) != len(parsed):
         raise argparse.ArgumentTypeError(f"{option} must be a non-empty list of distinct integers")
     return parsed
+
+
+def _parse_layer_request(value: str) -> LayerRequest:
+    normalized = value.strip().lower()
+    if normalized in {"all", "representative"}:
+        return normalized
+    return _parse_csv_ints(value, "--layers")
 
 
 def _parse_csv_sample_ids(value: str) -> tuple[str, ...]:
@@ -891,36 +1113,57 @@ def main() -> None:
     input_group.add_argument("--source-run-dir", type=Path)
     input_group.add_argument("--benchmarks", nargs="+", type=Path, help="Direct benchmark JSON files (all rows by default)")
     parser.add_argument("--checkpoint", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--layers", required=True, help="Comma-separated GPT-OSS layer indices, e.g. 0,12")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--layers", required=True, type=_parse_layer_request,
+                        help="Comma-separated IDs, or model-discovered 'representative'/'all'.")
     parser.add_argument("--seeds", default="1234", help="Comma-separated intervention seeds")
     parser.add_argument("--method", choices=("noise", "replace"), default="noise")
     parser.add_argument("--target", choices=sorted(SUPPORTED_ATTENTION_TARGETS), default="attention_all")
     parser.add_argument("--strength", type=float, default=0.01)
+    parser.add_argument("--strength-mode", choices=sorted(SUPPORTED_STRENGTH_MODES), default="absolute")
     parser.add_argument("--example-limit", type=int, help="Optional row limit (saved-run default: 2; direct default: all)")
     parser.add_argument("--sample-ids", type=_parse_csv_sample_ids)
     parser.add_argument("--allow-registry-mismatch", action="store_true")
+    parser.add_argument("--plan-only", action="store_true", help="Discover layers and print a frozen screen plan without generation.")
+    parser.add_argument("--plan-output", type=Path, help="New JSON path to save a plan-only manifest.")
+    parser.add_argument("--plan-manifest", type=Path, help="Frozen parent plan that this output chunk must match.")
     args = parser.parse_args()
     if args.example_limit is not None and args.example_limit <= 0:
         parser.error("--example-limit must be positive")
     if args.strength < 0:
         parser.error("--strength must be non-negative")
+    if not args.plan_only and args.output_dir is None:
+        parser.error("--output-dir is required unless --plan-only is used")
+    if args.plan_only and args.plan_manifest is not None:
+        parser.error("--plan-manifest applies to an evaluation chunk, not --plan-only")
     config = EvaluationConfig(
-        layers=_parse_csv_ints(args.layers, "--layers"),
+        layers=args.layers,
         seeds=_parse_csv_ints(args.seeds, "--seeds"),
         method=args.method,
         strength=args.strength,
+        strength_mode=args.strength_mode,
         example_limit=len(args.sample_ids) if args.sample_ids is not None else args.example_limit,
         target=args.target,
         sample_ids=args.sample_ids,
         require_registry_match=not args.allow_registry_mismatch,
     )
+    if args.plan_only:
+        plan = plan_evaluation(
+            source_run_dir=args.source_run_dir, benchmark_paths=args.benchmarks,
+            checkpoint_dir=args.checkpoint, config=config,
+        )
+        if args.plan_output is not None:
+            digest = write_plan_manifest(args.plan_output, plan)
+            plan["plan_manifest"] = {"path": str(args.plan_output.expanduser().resolve()), "sha256": digest}
+        print(json.dumps(plan, indent=2, sort_keys=True))
+        return
     destination = run_evaluation(
         source_run_dir=args.source_run_dir,
         benchmark_paths=args.benchmarks,
         checkpoint_dir=args.checkpoint,
         output_dir=args.output_dir,
         config=config,
+        plan_manifest=args.plan_manifest,
     )
     print(destination)
 

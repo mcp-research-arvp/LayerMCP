@@ -322,6 +322,29 @@ class Phase2AttentionInterventionTests(unittest.TestCase):
             for name, parameter in model.layers[0].self_attn.named_parameters():
                 torch.testing.assert_close(parameter, expected_replace[name])
 
+    def test_tensor_rms_noise_scales_each_selected_tensor_and_records_it(self) -> None:
+        model = TinyLlamaLayout()
+        original = _parameter_values(model)
+        strength = 0.2
+        generator = torch.Generator(device="cpu").manual_seed(29)
+        expected: dict[str, torch.Tensor] = {}
+        for name, parameter in model.layers[0].self_attn.named_parameters():
+            base = original[f"layers.0.self_attn.{name}"]
+            rms = torch.sqrt(torch.mean(base.to(torch.float32).square()))
+            expected[name] = base + torch.randn(parameter.shape, generator=generator) * strength * rms
+        with temporary_attention_intervention(
+            model, 0, method="noise", seed=29, strength=strength, strength_mode="tensor_rms"
+        ) as intervention:
+            for name, parameter in model.layers[0].self_attn.named_parameters():
+                torch.testing.assert_close(parameter, expected[name])
+            diagnostic = intervention.perturbation
+            self.assertEqual(diagnostic["strength_mode"], "tensor_rms")
+            self.assertEqual(diagnostic["requested_strength"], strength)
+            self.assertTrue(all(row["requested_noise_scale"] >= 0 for row in diagnostic["tensors"]))
+        self.assertTrue(intervention.restored_exactly)
+        with self.assertRaisesRegex(ValueError, "only for noise"):
+            temporary_attention_intervention(model, 0, method="replace", strength_mode="tensor_rms")
+
     def test_seeded_interventions_are_reproducible(self) -> None:
         original = _parameter_values(self.model)
         same_seed: dict[str, torch.Tensor]

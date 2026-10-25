@@ -25,13 +25,21 @@ Options:
   --target TARGET      Attention target (default: qkv).
   --method METHOD      noise or replace (default: noise).
   --strength NUMBER    Finite non-negative strength (default: 0.01).
-  --seed INTEGER       Intervention seed (default: 1234).
+  --strength-mode MODE absolute or tensor_rms (default: absolute; tensor_rms uses noise only).
+  --seed INTEGER       One intervention seed (default: 1234).
+  --seeds IDS          Comma-separated intervention seeds for one screen chunk.
+  --example-limit N    Evaluate the first N rows of the selected direct dataset(s).
+  --plan-manifest PATH Frozen screen-plan JSON to link and validate this chunk.
+  --screen-plan-output PATH  Create this frozen plan inside the single-step job.
+  --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
   -h, --help           Show this help.
 
 The script loads .env, validates its paths, and exports the selected settings.
 LAYERMCP_VENV defaults to $LAYERMCP_REPO_ROOT/.venv; external paths are supported.
+Set optional LAYERMCP_SLURM_* and LAYERMCP_MODULES values in the environment
+file for site-specific account/resources/module setup. No site values are hard-coded.
 Run it from any directory. Each multi-step dataset group gets its own job.
 EOF
 }
@@ -54,13 +62,19 @@ target_override=""
 method_override=""
 strength_override=""
 seed_override=""
+seeds_override=""
+strength_mode_override=""
+plan_manifest=""
+screen_plan_output=""
+combined_output=""
+example_limit_override=""
 selected_domains=""
 single_datasets=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--seed|--env-file|--domains|--single-datasets)
+    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--plan-manifest|--screen-plan-output|--combined-output|--env-file|--domains|--single-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -70,7 +84,13 @@ while [[ $# -gt 0 ]]; do
         --target) target_override="$2" ;;
         --method) method_override="$2" ;;
         --strength) strength_override="$2" ;;
+        --strength-mode) strength_mode_override="$2" ;;
         --seed) seed_override="$2" ;;
+        --seeds) seeds_override="$2" ;;
+        --example-limit) example_limit_override="$2" ;;
+        --plan-manifest) plan_manifest="$2" ;;
+        --screen-plan-output) screen_plan_output="$2" ;;
+        --combined-output) combined_output="$2" ;;
         --env-file) env_file="$2" ;;
         --domains) selected_domains="$2" ;;
         --single-datasets) single_datasets="$2" ;;
@@ -116,6 +136,8 @@ for required_file in \
   fi
 done
 export LAYERMCP_REPO_ROOT LAYERMCP_GPT_OSS_CHECKPOINT TIKTOKEN_ENCODINGS_BASE
+export LAYERMCP_MODULES LAYERMCP_SLURM_ACCOUNT LAYERMCP_SLURM_PARTITION LAYERMCP_SLURM_GRES
+export LAYERMCP_SLURM_CPUS_PER_TASK LAYERMCP_SLURM_MEM LAYERMCP_SLURM_TIME
 if [[ "$mode" != multi ]]; then
   source "$SCRIPT_DIR/submit_common.sh"
   DATASET_SELECTION="$(resolve_single_dataset_selection "$selected_domains" "$single_datasets" primary)"
@@ -127,8 +149,20 @@ ATTENTION_TARGET="${target_override:-${ATTENTION_TARGET:-qkv}}"
 METHOD="${method_override:-${METHOD:-noise}}"
 STRENGTH="${strength_override:-${STRENGTH:-0.01}}"
 SEED="${seed_override:-${SEED:-1234}}"
+SEEDS="${seeds_override:-${SEEDS:-$SEED}}"
+STRENGTH_MODE="${strength_mode_override:-${STRENGTH_MODE:-absolute}}"
+EXAMPLE_LIMIT="${example_limit_override:-${EXAMPLE_LIMIT:-}}"
 [[ "$LAYER_INDEX" =~ ^[0-9]+$ ]] || { echo "--layer must be a non-negative integer" >&2; exit 2; }
 [[ "$SEED" =~ ^-?[0-9]+$ ]] || { echo "--seed must be an integer" >&2; exit 2; }
+[[ "$SEEDS" =~ ^-?[0-9]+(,-?[0-9]+)*$ ]] || { echo "--seeds must be a comma-separated list of integers" >&2; exit 2; }
+[[ -z "$EXAMPLE_LIMIT" || "$EXAMPLE_LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo "--example-limit must be a positive integer" >&2; exit 2; }
+IFS=',' read -r -a seed_values <<< "$SEEDS"
+(( ${#seed_values[@]} > 0 )) || { echo "--seeds must not be empty" >&2; exit 2; }
+declare -A seen_seeds=()
+for seed_value in "${seed_values[@]}"; do
+  [[ -z "${seen_seeds[$seed_value]:-}" ]] || { echo "--seeds contains duplicate seed: $seed_value" >&2; exit 2; }
+  seen_seeds[$seed_value]=1
+done
 case "$ATTENTION_TARGET" in
   attention_all|q_proj|k_proj|v_proj|o_proj|qkv|out) ;;
   *) echo "Unsupported attention target: $ATTENTION_TARGET" >&2; exit 2 ;;
@@ -137,11 +171,54 @@ case "$METHOD" in
   noise|replace) ;;
   *) echo "Unsupported intervention method: $METHOD" >&2; exit 2 ;;
 esac
+case "$STRENGTH_MODE" in
+  absolute|tensor_rms) ;;
+  *) echo "Unsupported strength mode: $STRENGTH_MODE" >&2; exit 2 ;;
+esac
+if [[ "$STRENGTH_MODE" == tensor_rms && "$METHOD" != noise ]]; then
+  echo "tensor_rms strength mode is defined only for noise interventions" >&2
+  exit 2
+fi
+if [[ -n "$plan_manifest" && ! -f "$plan_manifest" ]]; then
+  echo "Plan manifest does not exist: $plan_manifest" >&2
+  exit 2
+fi
+if [[ "$mode" != single && ( "$STRENGTH_MODE" != absolute || -n "$plan_manifest" || -n "$EXAMPLE_LIMIT" || -n "$screen_plan_output" || -n "$combined_output" ) ]]; then
+  echo "Relative-strength and frozen layer-screen plans currently apply only to direct single-step Phase 2 jobs" >&2
+  exit 2
+fi
+if [[ -n "$screen_plan_output" || -n "$combined_output" ]]; then
+  if [[ "$mode" != single || -z "$screen_plan_output" || -z "$combined_output" ]]; then
+    echo "--screen-plan-output and --combined-output must be supplied together for a direct single-step job" >&2
+    exit 2
+  fi
+  if [[ -n "$plan_manifest" ]]; then
+    echo "Use either --plan-manifest or --screen-plan-output, not both" >&2
+    exit 2
+  fi
+  [[ ! -e "$screen_plan_output" ]] || { echo "Screen plan output already exists: $screen_plan_output" >&2; exit 2; }
+  [[ ! -e "$combined_output" ]] || { echo "Combined output already exists: $combined_output" >&2; exit 2; }
+fi
 [[ "$STRENGTH" =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$ ]] || {
   echo "--strength must be a finite non-negative number" >&2
   exit 2
 }
-export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH SEED
+export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS EXAMPLE_LIMIT
+if [[ -n "$plan_manifest" ]]; then
+  PLAN_MANIFEST="$(cd "$(dirname "$plan_manifest")" && pwd -P)/$(basename "$plan_manifest")"
+  export PLAN_MANIFEST
+fi
+if [[ -n "$screen_plan_output" ]]; then
+  case "$screen_plan_output" in
+    /*) SCREEN_PLAN_OUTPUT="$screen_plan_output" ;;
+    *) SCREEN_PLAN_OUTPUT="$PWD/$screen_plan_output" ;;
+  esac
+  case "$combined_output" in
+    /*) COMBINED_OUTPUT="$combined_output" ;;
+    *) COMBINED_OUTPUT="$PWD/$combined_output" ;;
+  esac
+  export SCREEN_PLAN_OUTPUT COMBINED_OUTPUT
+fi
 export RUN_KIND=full
 unset WORKFLOW_LIMIT
 
@@ -150,13 +227,23 @@ if (( ! dry_run )) && ! command -v sbatch >/dev/null 2>&1; then
   exit 2
 fi
 
-common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,SEED=$SEED"
+common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED,SEEDS=$SEEDS"
+[[ -z "$EXAMPLE_LIMIT" ]] || common_exports+=",EXAMPLE_LIMIT=$EXAMPLE_LIMIT"
+if [[ -n "${PLAN_MANIFEST:-}" ]]; then common_exports+=",PLAN_MANIFEST=$PLAN_MANIFEST"; fi
+if [[ -n "${SCREEN_PLAN_OUTPUT:-}" ]]; then common_exports+=",SCREEN_PLAN_OUTPUT=$SCREEN_PLAN_OUTPUT,COMBINED_OUTPUT=$COMBINED_OUTPUT"; fi
+scheduler_args=()
+[[ -z "${LAYERMCP_SLURM_ACCOUNT:-}" ]] || scheduler_args+=("--account=$LAYERMCP_SLURM_ACCOUNT")
+[[ -z "${LAYERMCP_SLURM_PARTITION:-}" ]] || scheduler_args+=("--partition=$LAYERMCP_SLURM_PARTITION")
+[[ -z "${LAYERMCP_SLURM_GRES:-}" ]] || scheduler_args+=("--gres=$LAYERMCP_SLURM_GRES")
+[[ -z "${LAYERMCP_SLURM_CPUS_PER_TASK:-}" ]] || scheduler_args+=("--cpus-per-task=$LAYERMCP_SLURM_CPUS_PER_TASK")
+[[ -z "${LAYERMCP_SLURM_MEM:-}" ]] || scheduler_args+=("--mem=$LAYERMCP_SLURM_MEM")
+[[ -z "${LAYERMCP_SLURM_TIME:-}" ]] || scheduler_args+=("--time=$LAYERMCP_SLURM_TIME")
 submitted=0
 submit_job() {
   local label="$1"
   local export_spec="$2"
   local launcher="$3"
-  local -a command=(sbatch --parsable --chdir="$REPO_ROOT" --job-name="$label" --export="$export_spec" "$launcher")
+  local -a command=(sbatch --parsable --chdir="$REPO_ROOT" "${scheduler_args[@]}" --job-name="$label" --export="$export_spec" "$launcher")
   if (( dry_run )); then
     printf '%q ' "${command[@]}"
     printf '\n'
@@ -201,8 +288,8 @@ if [[ "$mode" != single ]]; then
 fi
 
 if (( dry_run )); then
-  printf 'Would submit %d job(s): mode=%s, layer=%s, target=%s, method=%s, strength=%s, seed=%s\n' \
-    "$submitted" "$mode" "$LAYER_INDEX" "$ATTENTION_TARGET" "$METHOD" "$STRENGTH" "$SEED"
+  printf 'Would submit %d job(s): mode=%s, layer=%s, target=%s, method=%s, strength-mode=%s, strength=%s, seeds=%s, examples=%s\n' \
+    "$submitted" "$mode" "$LAYER_INDEX" "$ATTENTION_TARGET" "$METHOD" "$STRENGTH_MODE" "$STRENGTH" "$SEEDS" "${EXAMPLE_LIMIT:-all}"
 else
   printf 'Submitted %d job(s).\n' "$submitted"
 fi

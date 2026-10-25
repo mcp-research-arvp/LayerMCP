@@ -18,7 +18,9 @@ from research.phase2.gpt_oss_intervention_eval import (
     EvaluationConfig,
     RUN_KIND,
     evaluate_one_saved_example,
+    plan_evaluation,
     run_evaluation,
+    write_plan_manifest,
     load_direct_benchmark_examples,
     _evidence_category,
     _selected_sample_manifest,
@@ -178,6 +180,60 @@ def _write_saved_run(root: Path, catalog: ToolCatalog, queries: list[str]) -> Pa
 
 
 class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
+    def test_direct_plan_discovers_layers_and_freezes_selected_dataset(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            benchmark = root / "benchmark.json"
+            benchmark.write_text(json.dumps([
+                {"id": f"row-{index}", "domain": "math", "task_type": "single_tool_routing",
+                 "query": "calculate", "expected_tool": "calculator", "expected_args": {"expression": "2+2"},
+                 "expected_answer": {"result": 4}, "source": "controlled_synthetic"}
+                for index in range(2)
+            ]), encoding="utf-8")
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            plan = plan_evaluation(
+                benchmark_paths=(benchmark,), checkpoint_dir=checkpoint,
+                config=EvaluationConfig(layers="all", seeds=(1, 2), method="noise", strength=0.01,
+                                        strength_mode="tensor_rms", example_limit=None, target="attention_all"),
+                generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+            )
+            self.assertEqual(plan["screen_plan"]["selected_layers"], (0, 1))
+            self.assertEqual(plan["screen_plan"]["total_pair_count"], 8)
+            self.assertEqual(plan["selected_sample_manifest"][0]["selected_sample_ids"], ["row-0", "row-1"])
+            path = root / "plan.json"
+            self.assertTrue(write_plan_manifest(path, plan).startswith("sha256:"))
+            self.assertTrue(path.is_file())
+
+    def test_direct_chunk_links_its_frozen_parent_plan(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            benchmark = root / "benchmark.json"
+            benchmark.write_text(json.dumps([{
+                "id": "only", "domain": "math", "task_type": "single_tool_routing",
+                "query": "calculate", "expected_tool": "calculator", "expected_args": {"expression": "2+2"},
+                "expected_answer": {"result": 4}, "source": "controlled_synthetic",
+            }]), encoding="utf-8")
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            all_config = EvaluationConfig(layers="all", seeds=(17,), method="noise", strength=0.01,
+                                          strength_mode="tensor_rms", example_limit=None, target="attention_all")
+            plan = plan_evaluation(benchmark_paths=(benchmark,), checkpoint_dir=checkpoint, config=all_config,
+                                   generator_loader=lambda _: MockGenerator(TinyGptOssModel()))
+            plan_path = root / "plan.json"
+            plan_hash = write_plan_manifest(plan_path, plan)
+            catalog = _catalog()
+            output = run_evaluation(
+                benchmark_paths=(benchmark,), checkpoint_dir=checkpoint, output_dir=root / "layer0",
+                config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=0.01,
+                                        strength_mode="tensor_rms", example_limit=None, target="attention_all"),
+                plan_manifest=plan_path, generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            config = json.loads((output / "run_config.json").read_text())
+            self.assertEqual(config["parent_plan"]["sha256"], plan_hash)
+            self.assertEqual(config["screen_plan"]["selected_layers"], [0])
+
     def test_direct_benchmark_runs_all_rows_without_saved_source(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -205,6 +261,9 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
                 session_factory=lambda: _session_for_catalog(catalog),
             )
             self.assertTrue((output / "RUN_COMPLETE").is_file())
+            self.assertTrue((output / "run_manifest.json").is_file())
+            self.assertTrue((output / "screen_plan.json").is_file())
+            self.assertEqual(json.loads((output / "run_status.json").read_text())["status"], "completed")
             records = [json.loads(line) for line in (output / "paired_records.jsonl").read_text().splitlines()]
             self.assertEqual([record["sample_id"] for record in records], ["direct-0", "direct-1", "direct-2"])
             self.assertTrue(all(record["saved_control_comparison"]["status"] == "unavailable" for record in records))
@@ -219,6 +278,10 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertEqual(configuration["example_count"], 3)
             self.assertEqual(configuration["input_kind"], "benchmark_files")
             self.assertNotIn("source_run_directory", configuration)
+            manifest = json.loads((output / "run_manifest.json").read_text())
+            self.assertEqual(manifest["run_id"], configuration["run_id"])
+            self.assertEqual(manifest["tool_registry"]["metadata"], catalog.metadata)
+            self.assertTrue(all(record["run_manifest"]["run_id"] == manifest["run_id"] for record in records))
             summary = json.loads((output / "summary.json").read_text())
             self.assertEqual(summary["by_evidence_category"][0]["category"], "controlled")
             self.assertEqual(summary["by_evidence_category"][0]["paired_record_count"], 3)
@@ -302,7 +365,7 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
                 EvaluationConfig(layers=(0,), seeds=(1,), method="noise", strength=value, example_limit=1)
 
     def test_fresh_condition_protocol_is_distinct_from_legacy_v1(self):
-        self.assertEqual(RUN_KIND, "phase2_gpt_oss_attention_intervention_eval_v2")
+        self.assertEqual(RUN_KIND, "phase2_gpt_oss_attention_intervention_eval_v3")
 
     def _run(
         self,

@@ -13,7 +13,11 @@ from dataclasses import dataclass
 import math
 from numbers import Real
 
-from research.phase2.intervention import SUPPORTED_ATTENTION_TARGETS, SUPPORTED_METHODS
+from research.phase2.intervention import (
+    SUPPORTED_ATTENTION_TARGETS,
+    SUPPORTED_METHODS,
+    SUPPORTED_STRENGTH_MODES,
+)
 
 
 ALL_AVAILABLE = "all"
@@ -31,6 +35,7 @@ class PairedSweepSetting:
     layer_index: int
     target: str
     method: str
+    strength_mode: str
     strength: float
     seed: int
 
@@ -61,6 +66,7 @@ def plan_paired_sweep(
     available_layers: Sequence[int],
     available_targets_by_layer: Mapping[int, Sequence[str]],
     max_interventions: int,
+    strength_mode: str = "absolute",
     allow_large: bool = False,
 ) -> tuple[PairedSweepSetting, ...]:
     """Validate and expand a user-selected paired sweep.
@@ -115,6 +121,12 @@ def plan_paired_sweep(
         raise PairedSweepPlanError(
             f"methods contains unsupported names {unknown_methods}; supported: {sorted(SUPPORTED_METHODS)}."
         )
+    if strength_mode not in SUPPORTED_STRENGTH_MODES:
+        raise PairedSweepPlanError(
+            f"strength_mode must be one of {sorted(SUPPORTED_STRENGTH_MODES)}."
+        )
+    if strength_mode == "tensor_rms" and any(method != "noise" for method in normalized_methods):
+        raise PairedSweepPlanError("tensor_rms strength mode is defined only for noise interventions.")
 
     raw_strengths = _sequence_or_all(strengths, name="strengths")
     if raw_strengths == ALL_AVAILABLE:
@@ -159,6 +171,7 @@ def plan_paired_sweep(
                                     layer_index=layer_index,
                                     target=target,
                                     method=method,
+                                    strength_mode=strength_mode,
                                     strength=strength,
                                     seed=seed,
                                 )

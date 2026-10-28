@@ -47,8 +47,43 @@ group, leaving seven multi-step jobs. The script defaults to layer 0, `qkv`,
 `noise`, strength `0.01`, and seed `1234`; these can be changed with
 `--layer`, `--target`, `--method`, `--strength`, `--seed`, or (for a direct
 single-step screen chunk) comma-separated `--seeds`.
-`--strength-mode tensor_rms` and `--plan-manifest` apply only to direct
-single-step jobs; multi-step intervention remains absolute-strength.
+Multi-step jobs support both `--strength-mode absolute` and
+`--strength-mode tensor_rms` for `noise`. RMS-relative noise scales each
+selected parameter tensor independently by its original RMS. A multi-step
+chunk can also link `--plan-manifest` to a frozen workflow/layer/seed grid;
+use `single` or `multi`, not `both`, with a plan because plans are workflow
+specific.
+
+Create a plan without generation, then submit one layer/seed chunk per job:
+
+```bash
+python -m research.phase2.gpt_oss_multistep_intervention_eval \
+  --dataset-group finance_finqa --checkpoint "$LAYERMCP_GPT_OSS_CHECKPOINT" \
+  --plan-only --plan-output results/plans/finance-finqa.json \
+  --layers representative --seeds 1234,5678 --target qkv \
+  --method noise --strength-mode tensor_rms --strength 0.01
+
+set -a; source .env; set +a
+sbatch --account="$LAYERMCP_SLURM_ACCOUNT" --gres="$LAYERMCP_SLURM_GRES" \
+  --cpus-per-task="$LAYERMCP_SLURM_CPUS_PER_TASK" --mem="$LAYERMCP_SLURM_MEM" \
+  --time="$LAYERMCP_SLURM_TIME" \
+  --export="ALL,RUN_KIND=full,DATASET_GROUP=finance_finqa,LAYER_INDEX=0,ATTENTION_TARGET=qkv,METHOD=noise,STRENGTH_MODE=tensor_rms,STRENGTH=0.01,SEED=1234,PLAN_MANIFEST=$PWD/results/plans/finance-finqa.json" \
+  scripts/slurm/run_phase2_multistep.sbatch
+```
+
+After all planned chunks complete, combine only matching multi-step artifacts:
+
+```bash
+python -m analysis.phase2_multistep_paired_results \
+  --run-dir /path/to/completed-layer-seed-chunk \
+  --expected-plan results/plans/finance-finqa.json \
+  --output results/reports/finance-finqa.json
+```
+
+The multi-step report keeps per-step tool/argument/execution outcomes separate
+from whole-workflow outcomes. It rejects incomplete plans, duplicate
+layer/seed/workflow records, incompatible provenance, changed controls, and
+interventions without exact restoration.
 
 Use `--domains math,finance` or `--single-datasets math_public,finance_finqa_test_single`
 to restrict the single-step job. These selectors use the same IDs as Phase 1.

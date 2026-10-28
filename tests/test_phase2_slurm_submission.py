@@ -123,7 +123,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertEqual(sum("run_phase2_multistep.sbatch" in call for call in calls), 8)
         self.assertTrue(all("RUN_KIND=full" in call for call in calls[1:]))
 
-    def test_single_step_can_link_a_relative_strength_plan_but_multi_step_cannot(self) -> None:
+    def test_single_step_and_multi_step_forward_relative_strength(self) -> None:
         plan = self.root / "screen-plan.json"
         plan.write_text('{"kind": "phase2_layer_screen_plan_v1"}\n', encoding="utf-8")
         result = self.run_submitter(
@@ -132,9 +132,12 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("STRENGTH_MODE=tensor_rms", result.stdout)
         self.assertIn("PLAN_MANIFEST=", result.stdout)
-        rejected = self.run_submitter("multi", "--strength-mode", "tensor_rms", "--dry-run")
-        self.assertNotEqual(rejected.returncode, 0)
-        self.assertIn("only to direct single-step", rejected.stderr)
+        multi = self.run_submitter("multi", "--strength-mode", "tensor_rms", "--dry-run")
+        self.assertEqual(multi.returncode, 0, multi.stderr)
+        self.assertIn("STRENGTH_MODE=tensor_rms", multi.stdout)
+        both = self.run_submitter("both", "--plan-manifest", str(plan), "--dry-run")
+        self.assertNotEqual(both.returncode, 0)
+        self.assertIn("workflow-specific", both.stderr)
 
     def test_single_step_can_submit_all_frozen_plan_seeds_in_one_chunk(self) -> None:
         result = self.run_submitter("single", "--seeds", "1234,5678", "--dry-run")
@@ -266,6 +269,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
             "LAYERMCP_GPT_OSS_CHECKPOINT": str(self.checkpoint),
             "TIKTOKEN_ENCODINGS_BASE": str(self.tokenizer),
             "DATASET_GROUP": "math_controlled", "RUN_KIND": "short_test",
+            "STRENGTH_MODE": "tensor_rms", "PLAN_MANIFEST": str(self.root / "plan.json"),
         }
         result = subprocess.run(
             ["bash", "-c", 'module() { :; }; python() { printf "%s\\n" "$*"; }; '
@@ -274,6 +278,8 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--workflow-limit 2", result.stdout)
+        self.assertIn("--strength-mode tensor_rms", result.stdout)
+        self.assertIn(f"--plan-manifest {self.root / 'plan.json'}", result.stdout)
 
     def test_default_environment_is_checkout_local(self):
         helper = ROOT / "scripts/slurm/phase2_environment.sh"

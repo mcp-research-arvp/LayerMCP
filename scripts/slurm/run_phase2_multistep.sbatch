@@ -1,7 +1,9 @@
 #!/bin/bash
 # Submit from the repository root after sourcing .env. Required: DATASET_GROUP,
 # RUN_KIND=short_test|full. Set LAYER_INDEX, ATTENTION_TARGET, METHOD, STRENGTH,
-# and SEED to change the intervention. Short tests use WORKFLOW_LIMIT (default 2).
+# SEED, and STRENGTH_MODE to change the intervention. Short tests use
+# WORKFLOW_LIMIT (default 2). PLAN_MANIFEST optionally binds this chunk to a
+# frozen multi-step layer/seed plan.
 #SBATCH --job-name=gpt-oss-phase2-multistep
 #SBATCH --output=slurm-%x-%j.out
 #SBATCH --error=slurm-%x-%j.err
@@ -33,6 +35,7 @@ LAYER_INDEX="${LAYER_INDEX:-0}"
 ATTENTION_TARGET="${ATTENTION_TARGET:-qkv}"
 METHOD="${METHOD:-noise}"
 STRENGTH="${STRENGTH:-0.01}"
+STRENGTH_MODE="${STRENGTH_MODE:-absolute}"
 SEED="${SEED:-1234}"
 LIMIT_ARGS=()
 if [[ "$RUN_KIND" == short_test ]]; then
@@ -42,7 +45,11 @@ elif [[ -n "${WORKFLOW_LIMIT:-}" ]]; then
   exit 2
 fi
 
-RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_multistep_${RUN_KIND}_${DATASET_GROUP}_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH}_seed${SEED}"
+PLAN_ARGS=()
+if [[ -n "${PLAN_MANIFEST:-}" ]]; then
+  PLAN_ARGS=(--plan-manifest "$PLAN_MANIFEST")
+fi
+RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_multistep_${RUN_KIND}_${DATASET_GROUP}_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seed${SEED}"
 python -m research.phase2.gpt_oss_multistep_intervention_eval \
   --dataset-group "$DATASET_GROUP" \
   --checkpoint "$LAYERMCP_GPT_OSS_CHECKPOINT" \
@@ -51,5 +58,7 @@ python -m research.phase2.gpt_oss_multistep_intervention_eval \
   --target "$ATTENTION_TARGET" \
   --method "$METHOD" \
   --strength "$STRENGTH" \
+  --strength-mode "$STRENGTH_MODE" \
   --seed "$SEED" \
+  "${PLAN_ARGS[@]}" \
   "${LIMIT_ARGS[@]}"

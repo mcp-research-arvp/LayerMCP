@@ -13,14 +13,18 @@ usage() {
 Usage: scripts/slurm/submit_phase2.sh [both|single|multi] [OPTIONS]
 
 Modes (default: both):
-  both       One full direct-benchmark single-step job plus all active multi-step groups.
+  both       One full direct-benchmark single-step job plus selected multi-step groups.
   single     One full direct-benchmark single-step job only.
-  multi      One full job per active multi-step group only.
+  multi      One full job per selected multi-step group only.
 
 Options:
   --primary-only       Exclude the optional math_controlled multi-step group.
-  --domains IDS        Select single-step domains: math, enterprise, coding, finance.
+  --domains IDS        Legacy shortcut: select domains for every workflow type in the chosen mode.
+  --single-domains IDS Select domains only for direct single-step datasets.
+  --multi-domains IDS  Select domains only for multi-step dataset groups.
   --single-datasets IDS  Select comma-separated Phase 1 single-step dataset IDs.
+  --multi-datasets IDS Select comma-separated multi-step dataset-group IDs.
+  --list-datasets TYPE Print supported dataset IDs for single or multi, then exit.
   --layer INDEX        Attention layer (default: 0).
   --target TARGET      Attention target (default: qkv).
   --method METHOD      noise or replace (default: noise).
@@ -69,12 +73,16 @@ screen_plan_output=""
 combined_output=""
 example_limit_override=""
 selected_domains=""
+single_domains=""
+multi_domains=""
 single_datasets=""
+multi_datasets=""
+list_datasets=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--plan-manifest|--screen-plan-output|--combined-output|--env-file|--domains|--single-datasets)
+    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--plan-manifest|--screen-plan-output|--combined-output|--env-file|--domains|--single-domains|--multi-domains|--single-datasets|--multi-datasets|--list-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -93,7 +101,11 @@ while [[ $# -gt 0 ]]; do
         --combined-output) combined_output="$2" ;;
         --env-file) env_file="$2" ;;
         --domains) selected_domains="$2" ;;
+        --single-domains) single_domains="$2" ;;
+        --multi-domains) multi_domains="$2" ;;
         --single-datasets) single_datasets="$2" ;;
+        --multi-datasets) multi_datasets="$2" ;;
+        --list-datasets) list_datasets="$2" ;;
       esac
       shift
       ;;
@@ -102,12 +114,49 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+if [[ -n "$list_datasets" ]]; then
+  source "$SCRIPT_DIR/submit_common.sh"
+  case "$list_datasets" in
+    single)
+      printf 'single-step dataset ID\tdomain\tpath\n'
+      for dataset_id in "${SINGLE_STEP_DATASET_IDS[@]}"; do
+        printf '%s\t%s\t%s\n' "$dataset_id" "${SINGLE_STEP_DATASET_DOMAINS[$dataset_id]}" "${SINGLE_STEP_DATASETS[$dataset_id]}"
+      done
+      ;;
+    multi)
+      printf 'multi-step dataset ID\tdomain\n'
+      for dataset_id in "${MULTI_STEP_DATASET_IDS[@]}"; do
+        printf '%s\t%s\n' "$dataset_id" "${MULTI_STEP_DATASET_DOMAINS[$dataset_id]}"
+      done
+      ;;
+    *)
+      echo "--list-datasets must be 'single' or 'multi'" >&2
+      exit 2
+      ;;
+  esac
+  exit 0
+fi
 if [[ "$mode" == single && "$primary_only" == 1 ]]; then
   echo "--primary-only applies only to multi-step groups" >&2
   exit 2
 fi
-if [[ "$mode" == multi && ( -n "$selected_domains" || -n "$single_datasets" ) ]]; then
-  echo "--domains and --single-datasets require single-step submission" >&2
+if [[ -n "$selected_domains" && ( -n "$single_domains" || -n "$multi_domains" ) ]]; then
+  echo "Use --domains or workflow-specific domain selectors, not both" >&2
+  exit 2
+fi
+if [[ -n "$selected_domains" ]]; then
+  case "$mode" in
+    single) single_domains="$selected_domains" ;;
+    multi) multi_domains="$selected_domains" ;;
+    both) single_domains="$selected_domains"; multi_domains="$selected_domains" ;;
+  esac
+fi
+if [[ "$mode" == multi && ( -n "$single_domains" || -n "$single_datasets" ) ]]; then
+  echo "--single-domains and --single-datasets require single-step submission" >&2
+  exit 2
+fi
+if [[ "$mode" == single && ( -n "$multi_domains" || -n "$multi_datasets" ) ]]; then
+  echo "--multi-domains and --multi-datasets require multi-step submission" >&2
   exit 2
 fi
 if [[ ! -f "$env_file" ]]; then
@@ -138,10 +187,13 @@ done
 export LAYERMCP_REPO_ROOT LAYERMCP_GPT_OSS_CHECKPOINT TIKTOKEN_ENCODINGS_BASE
 export LAYERMCP_MODULES LAYERMCP_SLURM_ACCOUNT LAYERMCP_SLURM_PARTITION LAYERMCP_SLURM_GRES
 export LAYERMCP_SLURM_CPUS_PER_TASK LAYERMCP_SLURM_MEM LAYERMCP_SLURM_TIME
+source "$SCRIPT_DIR/submit_common.sh"
 if [[ "$mode" != multi ]]; then
-  source "$SCRIPT_DIR/submit_common.sh"
-  DATASET_SELECTION="$(resolve_single_dataset_selection "$selected_domains" "$single_datasets" primary)"
+  DATASET_SELECTION="$(resolve_single_dataset_selection "$single_domains" "$single_datasets" primary)"
   export DATASET_SELECTION
+fi
+if [[ "$mode" != single ]]; then
+  MULTI_DATASET_SELECTION="$(resolve_multi_dataset_selection "$multi_domains" "$multi_datasets")"
 fi
 
 LAYER_INDEX="${layer_override:-${LAYER_INDEX:-0}}"
@@ -271,17 +323,21 @@ if [[ "$mode" != multi ]]; then
 fi
 
 if [[ "$mode" != single ]]; then
-  groups=(
-    coding_sweagent
-    coding_nebius_replay
-    enterprise_tau2
-    finance_convfinqa
-    finance_finqa
-    finance_finretrieval_replay
-    math_public_mathqa
-  )
-  if (( ! primary_only )); then
-    groups+=(math_controlled)
+  if [[ "$MULTI_DATASET_SELECTION" == all ]]; then
+    groups=("${PRIMARY_MULTI_STEP_GROUPS[@]}")
+    if (( ! primary_only )); then
+      groups+=(math_controlled)
+    fi
+  else
+    IFS=':' read -r -a groups <<< "$MULTI_DATASET_SELECTION"
+    if (( primary_only )); then
+      for group in "${groups[@]}"; do
+        if [[ "$group" == math_controlled ]]; then
+          echo "--primary-only cannot be combined with explicit multi-step dataset math_controlled" >&2
+          exit 2
+        fi
+      done
+    fi
   fi
   for group in "${groups[@]}"; do
     submit_job \

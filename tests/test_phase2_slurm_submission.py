@@ -110,6 +110,72 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("benchmark/finance/finance_finqa_test_single.json", result.stdout)
         self.assertNotIn("benchmark/coding/coding_controlled.json", result.stdout)
 
+    def test_lists_supported_dataset_ids_without_environment_or_submission(self) -> None:
+        for workflow, expected_id in (
+            ("single", "finance_upstream_inspired"),
+            ("multi", "finance_convfinqa"),
+        ):
+            with self.subTest(workflow=workflow):
+                result = subprocess.run(
+                    ["bash", str(SUBMITTER), "--list-datasets", workflow],
+                    cwd=self.root, env=self.environment,
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(expected_id, result.stdout)
+                self.assertFalse(self.submit_log.exists())
+
+    def test_multi_step_dataset_selection_is_exact(self) -> None:
+        result = self.run_submitter(
+            "multi", "--multi-datasets", "finance_convfinqa,finance_finqa", "--dry-run"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = [line for line in result.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(commands), 2)
+        self.assertTrue(all("run_phase2_multistep.sbatch" in line for line in commands))
+        self.assertIn("DATASET_GROUP=finance_convfinqa", result.stdout)
+        self.assertIn("DATASET_GROUP=finance_finqa", result.stdout)
+        self.assertNotIn("DATASET_GROUP=finance_finretrieval_replay", result.stdout)
+
+    def test_domain_selectors_expand_only_the_requested_workflow_catalog(self) -> None:
+        multi = self.run_submitter("multi", "--multi-domains", "finance", "--dry-run")
+        self.assertEqual(multi.returncode, 0, multi.stderr)
+        multi_commands = [line for line in multi.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(multi_commands), 3)
+        self.assertIn("DATASET_GROUP=finance_convfinqa", multi.stdout)
+        self.assertIn("DATASET_GROUP=finance_finqa", multi.stdout)
+        self.assertIn("DATASET_GROUP=finance_finretrieval_replay", multi.stdout)
+        self.assertNotIn("DATASET_GROUP=coding_sweagent", multi.stdout)
+
+        both = self.run_submitter(
+            "both", "--single-domains", "finance", "--multi-domains", "math", "--dry-run",
+        )
+        self.assertEqual(both.returncode, 0, both.stderr)
+        commands = [line for line in both.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(commands), 3)
+        self.assertIn("benchmark/finance/finance_upstream_inspired.json", both.stdout)
+        self.assertNotIn("benchmark/coding/coding_controlled.json", both.stdout)
+        self.assertIn("DATASET_GROUP=math_public_mathqa", both.stdout)
+        self.assertIn("DATASET_GROUP=math_controlled", both.stdout)
+
+    def test_legacy_domains_is_mode_aware_and_conflicting_selectors_are_rejected(self) -> None:
+        multi = self.run_submitter("multi", "--domains", "finance", "--dry-run")
+        self.assertEqual(multi.returncode, 0, multi.stderr)
+        self.assertIn("Would submit 3 job(s)", multi.stdout)
+        mixed = self.run_submitter(
+            "both", "--domains", "finance", "--single-domains", "math", "--dry-run",
+        )
+        self.assertNotEqual(mixed.returncode, 0)
+        self.assertIn("not both", mixed.stderr)
+        invalid = self.run_submitter("single", "--multi-domains", "finance", "--dry-run")
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn("require multi-step", invalid.stderr)
+
+    def test_cross_workflow_dataset_selector_is_rejected(self) -> None:
+        result = self.run_submitter("single", "--multi-datasets", "finance_finqa", "--dry-run")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("require multi-step", result.stderr)
+
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
             "both", "--layer", "2", "--target", "qkv", "--strength", "0.02", "--seed", "42"

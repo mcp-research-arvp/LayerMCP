@@ -233,7 +233,7 @@ resolve_multi_dataset_selection() {
   for id in "${parsed_datasets[@]}"; do requested_datasets[$id]=1; done
 
   for id in "${MULTI_STEP_DATASET_IDS[@]}"; do
-    if [[ -n "${requested_datasets[$id]:-}" || ( -n "${requested_domains[${MULTI_STEP_DATASET_DOMAINS[$id]}]:-}" && "$id" != math_controlled ) ]]; then
+    if [[ -n "${requested_datasets[$id]:-}" || -n "${requested_domains[${MULTI_STEP_DATASET_DOMAINS[$id]}]:-}" ]]; then
       selection+="${selection:+:}$id"
     fi
   done

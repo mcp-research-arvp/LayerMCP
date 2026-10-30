@@ -1,5 +1,5 @@
 #!/bin/bash
-# Submit full paired GPT-OSS attention-intervention evaluations.
+# Submit GPT-OSS paired, canonical-control, or intervention-only evaluations.
 
 set -euo pipefail
 
@@ -33,9 +33,12 @@ Options:
   --seed INTEGER       One intervention seed (default: 1234).
   --seeds IDS          Comma-separated intervention seeds for one screen chunk.
   --example-limit N    Evaluate the first N rows of the selected direct dataset(s).
+  --workflow-limit N   Evaluate the first N selected multi-step workflows (validation only).
   --plan-manifest PATH Frozen screen-plan JSON to link and validate this chunk.
   --screen-plan-output PATH  Create this frozen plan inside the single-step job.
   --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
+  --execution-mode MODE      paired (default), reference, or intervention-only.
+  --control-reference PATH   Completed canonical control for intervention-only jobs.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
   -h, --help           Show this help.
@@ -71,7 +74,10 @@ strength_mode_override=""
 plan_manifest=""
 screen_plan_output=""
 combined_output=""
+execution_mode="paired"
+control_reference=""
 example_limit_override=""
+workflow_limit_override=""
 selected_domains=""
 single_domains=""
 multi_domains=""
@@ -82,7 +88,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--plan-manifest|--screen-plan-output|--combined-output|--env-file|--domains|--single-domains|--multi-domains|--single-datasets|--multi-datasets|--list-datasets)
+    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--workflow-limit|--plan-manifest|--screen-plan-output|--combined-output|--execution-mode|--control-reference|--env-file|--domains|--single-domains|--multi-domains|--single-datasets|--multi-datasets|--list-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -96,9 +102,12 @@ while [[ $# -gt 0 ]]; do
         --seed) seed_override="$2" ;;
         --seeds) seeds_override="$2" ;;
         --example-limit) example_limit_override="$2" ;;
+        --workflow-limit) workflow_limit_override="$2" ;;
         --plan-manifest) plan_manifest="$2" ;;
         --screen-plan-output) screen_plan_output="$2" ;;
         --combined-output) combined_output="$2" ;;
+        --execution-mode) execution_mode="${2//-/_}" ;;
+        --control-reference) control_reference="$2" ;;
         --env-file) env_file="$2" ;;
         --domains) selected_domains="$2" ;;
         --single-domains) single_domains="$2" ;;
@@ -204,10 +213,15 @@ SEED="${seed_override:-${SEED:-1234}}"
 SEEDS="${seeds_override:-${SEEDS:-$SEED}}"
 STRENGTH_MODE="${strength_mode_override:-${STRENGTH_MODE:-absolute}}"
 EXAMPLE_LIMIT="${example_limit_override:-${EXAMPLE_LIMIT:-}}"
+WORKFLOW_LIMIT="${workflow_limit_override:-}"
 [[ "$LAYER_INDEX" =~ ^[0-9]+$ ]] || { echo "--layer must be a non-negative integer" >&2; exit 2; }
 [[ "$SEED" =~ ^-?[0-9]+$ ]] || { echo "--seed must be an integer" >&2; exit 2; }
 [[ "$SEEDS" =~ ^-?[0-9]+(,-?[0-9]+)*$ ]] || { echo "--seeds must be a comma-separated list of integers" >&2; exit 2; }
 [[ -z "$EXAMPLE_LIMIT" || "$EXAMPLE_LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo "--example-limit must be a positive integer" >&2; exit 2; }
+[[ -z "$WORKFLOW_LIMIT" || "$WORKFLOW_LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo "--workflow-limit must be a positive integer" >&2; exit 2; }
+if [[ "$mode" == single && -n "$WORKFLOW_LIMIT" ]]; then
+  echo "--workflow-limit applies only to multi-step submission" >&2; exit 2
+fi
 IFS=',' read -r -a seed_values <<< "$SEEDS"
 (( ${#seed_values[@]} > 0 )) || { echo "--seeds must not be empty" >&2; exit 2; }
 declare -A seen_seeds=()
@@ -227,6 +241,22 @@ case "$STRENGTH_MODE" in
   absolute|tensor_rms) ;;
   *) echo "Unsupported strength mode: $STRENGTH_MODE" >&2; exit 2 ;;
 esac
+case "$execution_mode" in
+  paired|reference|intervention_only) ;;
+  *) echo "--execution-mode must be paired, reference, or intervention-only" >&2; exit 2 ;;
+esac
+if [[ "$execution_mode" == intervention_only && -z "$control_reference" ]]; then
+  echo "--control-reference is required with --execution-mode intervention-only" >&2
+  exit 2
+fi
+if [[ "$execution_mode" != intervention_only && -n "$control_reference" ]]; then
+  echo "--control-reference applies only to intervention-only execution" >&2
+  exit 2
+fi
+if [[ -n "$control_reference" && ! -d "$control_reference" ]]; then
+  echo "Control reference directory does not exist: $control_reference" >&2
+  exit 2
+fi
 if [[ "$STRENGTH_MODE" == tensor_rms && "$METHOD" != noise ]]; then
   echo "tensor_rms strength mode is defined only for noise interventions" >&2
   exit 2
@@ -259,7 +289,13 @@ fi
   echo "--strength must be a finite non-negative number" >&2
   exit 2
 }
-export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS EXAMPLE_LIMIT
+export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS EXAMPLE_LIMIT WORKFLOW_LIMIT execution_mode
+EXECUTION_MODE="$execution_mode"
+export EXECUTION_MODE
+if [[ -n "$control_reference" ]]; then
+  CONTROL_REFERENCE="$(cd "$control_reference" && pwd -P)"
+  export CONTROL_REFERENCE
+fi
 if [[ -n "$plan_manifest" ]]; then
   PLAN_MANIFEST="$(cd "$(dirname "$plan_manifest")" && pwd -P)/$(basename "$plan_manifest")"
   export PLAN_MANIFEST
@@ -275,16 +311,22 @@ if [[ -n "$screen_plan_output" ]]; then
   esac
   export SCREEN_PLAN_OUTPUT COMBINED_OUTPUT
 fi
-export RUN_KIND=full
-unset WORKFLOW_LIMIT
+if [[ -n "$WORKFLOW_LIMIT" ]]; then
+  export RUN_KIND=short_test
+else
+  export RUN_KIND=full
+  unset WORKFLOW_LIMIT
+fi
 
 if (( ! dry_run )) && ! command -v sbatch >/dev/null 2>&1; then
   echo "sbatch is unavailable; run this on a Slurm login node" >&2
   exit 2
 fi
 
-common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED,SEEDS=$SEEDS"
+common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED,SEEDS=$SEEDS,EXECUTION_MODE=$EXECUTION_MODE"
+[[ -z "${CONTROL_REFERENCE:-}" ]] || common_exports+=",CONTROL_REFERENCE=$CONTROL_REFERENCE"
 [[ -z "$EXAMPLE_LIMIT" ]] || common_exports+=",EXAMPLE_LIMIT=$EXAMPLE_LIMIT"
+[[ -z "${WORKFLOW_LIMIT:-}" ]] || common_exports+=",WORKFLOW_LIMIT=$WORKFLOW_LIMIT"
 if [[ -n "${PLAN_MANIFEST:-}" ]]; then common_exports+=",PLAN_MANIFEST=$PLAN_MANIFEST"; fi
 if [[ -n "${SCREEN_PLAN_OUTPUT:-}" ]]; then common_exports+=",SCREEN_PLAN_OUTPUT=$SCREEN_PLAN_OUTPUT,COMBINED_OUTPUT=$COMBINED_OUTPUT"; fi
 scheduler_args=()
@@ -342,7 +384,7 @@ if [[ "$mode" != single ]]; then
   for group in "${groups[@]}"; do
     submit_job \
       "p2-multi-${group}" \
-      "$common_exports,RUN_KIND=full,DATASET_GROUP=$group" \
+      "$common_exports,RUN_KIND=$RUN_KIND,DATASET_GROUP=$group" \
       "$MULTI_LAUNCHER"
   done
 fi

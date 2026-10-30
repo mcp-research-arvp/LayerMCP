@@ -14,6 +14,7 @@ from itertools import product
 import json
 from pathlib import Path
 from typing import Any, Iterable
+from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference
 
 
 RUN_KIND = "phase2_gpt_oss_multistep_attention_intervention_v2"
@@ -214,14 +215,114 @@ def save_summary(summary: dict[str, Any], output: Path) -> None:
         handle.write("\n")
 
 
+def combine_linked_reference_runs(
+    run_dirs: Iterable[Path | str], *, control_reference: Path, expected_plan: Path | None = None,
+) -> dict[str, Any]:
+    """Combine intervention-only multi-step chunks against one canonical rollout."""
+    reference_dir = control_reference.expanduser().resolve(strict=True)
+    reference_manifest = _read_json(reference_dir / REFERENCE_MANIFEST)
+    _require(reference_manifest.get("kind") == REFERENCE_KIND and reference_manifest.get("workflow_type") == "multi_step",
+             f"{reference_dir}: unsupported canonical multi-step reference")
+    compatibility = reference_manifest.get("compatibility")
+    _require(isinstance(compatibility, dict), f"{reference_dir}: missing reference compatibility")
+    reference, indexed = load_reference(reference_dir, workflow_type="multi_step", compatibility=compatibility,
+                                        expected_ids=reference_manifest.get("selected_ids", []))
+    expected, expected_reference = _plan_grid(expected_plan)
+    paths = [Path(path).expanduser().resolve() for path in run_dirs]
+    _require(bool(paths), "at least one intervention-only run directory is required")
+    seen: set[tuple[int, int, str]] = set()
+    by_layer_seed: dict[tuple[int, int], list[dict[str, Any]]] = defaultdict(list)
+    inputs = []
+    for path in paths:
+        _require((path / "RUN_COMPLETE").is_file() and not (path / "RUN_FAILED.json").exists(), f"{path}: incomplete intervention run")
+        config = _read_json(path / "run_config.json")
+        manifest_bytes = (path / "run_manifest.json").read_bytes()
+        manifest = json.loads(manifest_bytes)
+        status = _read_json(path / "run_status.json")
+        _require(config.get("execution_mode") == "intervention_only" and
+                 manifest.get("manifest_kind") == "phase2_multistep_intervention_only_run_manifest_v1" and
+                 status.get("status") == "completed", f"{path}: not a completed intervention-only run")
+        _require(manifest.get("control_reference") == reference, f"{path}: linked to another control reference")
+        actual = {"workflow_type": "multi_step", "experiment_kind": config.get("kind"),
+                  "checkpoint_fingerprint": config.get("checkpoint_identity", {}).get("fingerprint"),
+                  "dataset_group": config.get("dataset_group"), "benchmark_sha256": config.get("benchmark_sha256"),
+                  "selected_workflow_ids": config.get("selected_workflow_ids"),
+                  "evaluation": manifest.get("evaluation"), "runtime": config.get("runtime"),
+                  "tool_registry": manifest.get("tool_registry"), "generation": manifest.get("generation")}
+        _require(actual == compatibility, f"{path}: incompatible model/dataset/generation/scoring protocol")
+        run_config = config.get("config", {})
+        layer, seed = run_config.get("layer"), run_config.get("seed")
+        _require(type(layer) is int and type(seed) is int, f"{path}: invalid layer/seed")
+        records = _read_records(path / "paired_records.jsonl")
+        local = set()
+        for pair in records:
+            sample_id = pair.get("sample_id")
+            key = (layer, seed, sample_id)
+            _require(pair.get("control_reference") == reference and sample_id in indexed, f"{path}: unlinked workflow record")
+            _require(key not in seen, f"duplicate layer–seed–workflow pair: {key}")
+            control = indexed[sample_id]["control"]
+            intervention = pair.get("intervention")
+            _require(isinstance(intervention, dict), f"{key}: missing intervention workflow")
+            materialized_steps = []
+            control_steps = control.get("steps", [])
+            for left, right in zip(control_steps, pair.get("steps", []), strict=True):
+                _require((left.get("step_id"), left.get("step_index")) == (right.get("step_id"), right.get("step_index")),
+                         f"{key}: changed step identity")
+                _check_step(key, {"control_verification": {"enabled": False, "changed_attention_parameter_names": []},
+                                  "intervention_verification": right.get("intervention_verification", {})})
+                materialized_steps.append({**right, "control": {name: left.get(name) for name in (
+                    "selected_tool", "selected_args", "parse_status", "tool_selection_correct", "argument_match_correct", "execution_success", "final_outcome_correct")}})
+            materialized = {**pair, "control": {name: control.get(name) for name in (
+                "all_tools_correct", "all_arguments_correct", "all_steps_correct", "final_step_outcome_correct", "final_program_execution_correct")},
+                "steps": materialized_steps}
+            seen.add(key); local.add(key); by_layer_seed[(layer, seed)].append(materialized)
+        _require(local == {(layer, seed, sample) for sample in indexed}, f"{path}: incomplete layer–seed workflow chunk")
+        inputs.append({"directory": str(path), "intervention_record_count": len(records),
+                       "run_manifest_sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()})
+    if expected is not None:
+        _require(seen == expected, "completed chunks do not match the frozen expected layer–seed–workflow grid")
+    rows = []
+    for (layer, seed), pairs in sorted(by_layer_seed.items()):
+        steps = [step for pair in pairs for step in pair["steps"]]
+        row = {"layer_index": layer, "seed": seed, "workflow_count": len(pairs), "step_count": len(steps),
+               "step_metrics": {}, "workflow_metrics": {}}
+        for condition in ("control", "intervention"):
+            row["step_metrics"][condition] = {
+                "tool_selection": _counts(step[condition].get("tool_selection_correct") for step in steps),
+                "argument_match": _counts(step[condition].get("argument_match_correct") for step in steps),
+                "execution_success": _counts(step[condition].get("execution_success") for step in steps),
+                "final_outcome": _counts(step[condition].get("final_outcome_correct") for step in steps),
+                "invalid_outputs": sum(step[condition].get("parse_status") != "ok" for step in steps),
+                "no_call_outputs": sum(step[condition].get("selected_tool") is None for step in steps),
+            }
+            row["workflow_metrics"][condition] = {
+                "all_steps_correct": _counts(pair[condition].get("all_steps_correct") for pair in pairs),
+                "final_step_outcome": _counts(pair[condition].get("final_step_outcome_correct") for pair in pairs),
+                "final_program_execution": _counts(pair[condition].get("final_program_execution_correct") for pair in pairs),
+            }
+        row["step_metrics"]["tool_selection_repairs"] = sum(not step["control"].get("tool_selection_correct") and step["intervention"].get("tool_selection_correct") for step in steps)
+        row["step_metrics"]["tool_selection_damage"] = sum(step["control"].get("tool_selection_correct") and not step["intervention"].get("tool_selection_correct") for step in steps)
+        row["workflow_metrics"]["all_steps_repairs"] = sum(not pair["control"].get("all_steps_correct") and pair["intervention"].get("all_steps_correct") for pair in pairs)
+        row["workflow_metrics"]["all_steps_damage"] = sum(pair["control"].get("all_steps_correct") and not pair["intervention"].get("all_steps_correct") for pair in pairs)
+        rows.append(row)
+    return {"kind": SUMMARY_KIND, "execution_mode": "intervention_only", "control_reference": reference,
+            "compatibility": compatibility, "expected_plan": expected_reference, "input_runs": inputs,
+            "unique_workflow_count": len(indexed), "unique_control_count": len(indexed),
+            "paired_observation_count": len(seen), "rows": rows}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-dir", action="append", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--expected-plan", type=Path)
+    parser.add_argument("--control-reference", type=Path)
     args = parser.parse_args(argv)
     try:
-        summary = combine_completed_runs(args.run_dir, expected_plan=args.expected_plan)
+        summary = (combine_linked_reference_runs(args.run_dir, control_reference=args.control_reference,
+                                                 expected_plan=args.expected_plan)
+                   if args.control_reference is not None else
+                   combine_completed_runs(args.run_dir, expected_plan=args.expected_plan))
         save_summary(summary, args.output)
     except (ValueError, OSError, KeyError, TypeError) as error:
         parser.exit(2, f"Cannot combine multi-step paired results: {error}\n")

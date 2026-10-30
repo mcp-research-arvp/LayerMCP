@@ -563,6 +563,52 @@ missing or extra layer × seed × sample cell relative to the plan. Its report
 separates malformed, valid no-call, valid wrong-tool, and correct-tool output
 categories; repeated controls are not independent benchmark examples.
 
+### Reuse one canonical performance control
+
+`paired` remains the default diagnostic mode.  For a full layer screen, first
+create one completed reference, then submit intervention-only chunks linked to
+that exact reference.  The reference is comparison evidence only: a multi-step
+intervention still starts with isolated tool state and develops its own
+predicted-call history.
+
+```bash
+# One unchanged evaluation for the selected direct dataset(s).
+scripts/slurm/submit_phase2.sh single \
+  --single-domains finance --execution-mode reference
+
+# One layer/seed chunk; no unchanged model generation is repeated.
+scripts/slurm/submit_phase2.sh single \
+  --single-domains finance --layer 12 --target qkv --method noise \
+  --strength-mode tensor_rms --strength 0.01 --seeds 1234,5678,9012 \
+  --execution-mode intervention-only \
+  --control-reference /portable/path/to/reference-run/canonical_control
+```
+
+For a small multi-step validation, add `--workflow-limit 2` to a `multi`
+submission; omitting it preserves the full selected workflow set.
+
+The same `--execution-mode` and `--control-reference` options work with
+`multi`; each selected multi-step group needs a reference for that exact group.
+References require `RUN_COMPLETE`, one control record for every frozen selected
+ID, content hashes, matching checkpoint/input/generation/tool-registry/scoring
+identity, and a compatible runtime/protocol record. The combiner reads shared
+controls once:
+
+```bash
+python -m analysis.phase2_paired_results \
+  --control-reference /portable/path/to/reference-run/canonical_control \
+  --run-dir /portable/path/to/layer12-seed1234 \
+  --expected-plan /portable/path/to/plan.json \
+  --output /portable/path/to/report.json
+```
+
+To assess an existing artifact without changing it, use
+`python -m analysis.phase2_control_reference inspect --candidate RUN_DIR`.
+Only a complete current hardened paired artifact can be registered into a new
+reference directory; older baselines or legacy multi-step artifacts with
+missing manifest fields are reported as unverified rather than upgraded by
+assumption.
+
 Focused CPU/mock validation in the project environment (no weights/GPU needed):
 
 ```bash

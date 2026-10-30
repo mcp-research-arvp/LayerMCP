@@ -13,7 +13,7 @@ import torch
 from torch import nn
 
 from models.routers import gpt_oss_local_router as router
-from analysis.phase2_multistep_paired_results import combine_completed_runs
+from analysis.phase2_multistep_paired_results import combine_completed_runs, combine_linked_reference_runs
 from research.phase2.gpt_oss_multistep_intervention_eval import (
     MultistepConfig,
     _paired_results,
@@ -89,7 +89,8 @@ def write_benchmark(path: Path) -> None:
 
 
 class MultistepInterventionTests(unittest.TestCase):
-    def _run(self, root: Path, generator: FakeGenerator, *, config: MultistepConfig | None = None) -> Path:
+    def _run(self, root: Path, generator: FakeGenerator, *, config: MultistepConfig | None = None,
+             execution_mode: str = "paired", control_reference: Path | None = None, output_name: str = "output") -> Path:
         benchmark = root / "benchmark.json"
         write_benchmark(benchmark)
         checkpoint = root / "checkpoint"
@@ -101,12 +102,13 @@ class MultistepInterventionTests(unittest.TestCase):
         ):
             return run_evaluation(
                 dataset_group="test", checkpoint_dir=checkpoint,
-                output_dir=root / "output",
+                output_dir=root / output_name,
                 config=config or MultistepConfig(
                     layer=0, target="qkv", method="noise", strength=0.25, seed=17,
                     strength_mode="tensor_rms",
                 ),
                 generator_loader=lambda _: generator,
+                execution_mode=execution_mode, control_reference=control_reference,
             )
 
     def test_paired_rollouts_use_separate_predicted_histories_and_restore(self):
@@ -159,6 +161,22 @@ class MultistepInterventionTests(unittest.TestCase):
             self.assertEqual(len(failed["intervention_generation_checks"]), 1)
             self.assertTrue(failed["intervention_generation_checks"][0]["restored_exactly"])
         self.assertTrue(torch.equal(model.block[0].attn.qkv.weight, original))
+
+    def test_intervention_only_uses_a_canonical_control_without_control_rollout(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = MultistepConfig(0, "qkv", "noise", 0.25, 17, strength_mode="tensor_rms")
+            reference_run = self._run(root, FakeGenerator(TinyModel()), config=config,
+                                      execution_mode="reference", output_name="reference-run")
+            linked = self._run(root, FakeGenerator(TinyModel()), config=config,
+                               execution_mode="intervention_only", control_reference=reference_run / "canonical_control",
+                               output_name="intervention-run")
+            records = [json.loads(line) for line in (linked / "paired_records.jsonl").read_text().splitlines()]
+            self.assertEqual(len(records), 1)
+            self.assertNotIn("control", records[0])
+            self.assertTrue((linked / "RUN_COMPLETE").is_file())
+            combined = combine_linked_reference_runs([linked], control_reference=reference_run / "canonical_control")
+            self.assertEqual(combined["unique_control_count"], 1)
 
     def test_rejects_mismatched_pairs_and_invalid_configuration(self):
         with self.assertRaisesRegex(ValueError, "counts differ"):

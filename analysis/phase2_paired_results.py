@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from analysis.benchmark_inventory import infer_benchmark_class
+from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference
 
 
 RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v1"
@@ -397,6 +398,113 @@ def combine_completed_runs(run_dirs: Iterable[Path | str], *, expected_plan: Pat
             "rows": rows}
 
 
+def combine_linked_reference_runs(
+    run_dirs: Iterable[Path | str], *, control_reference: Path, expected_plan: Path | None = None,
+) -> dict[str, Any]:
+    """Combine intervention-only chunks with one independently stored control.
+
+    This intentionally materializes controls only in memory for comparison. The
+    output counts the reference controls once, not once for each layer/seed.
+    """
+    reference_dir = control_reference.expanduser().resolve(strict=True)
+    reference_manifest = json.loads((reference_dir / REFERENCE_MANIFEST).read_text(encoding="utf-8"))
+    _require(reference_manifest.get("kind") == REFERENCE_KIND and reference_manifest.get("workflow_type") == "single_step",
+             f"{reference_dir}: unsupported canonical control reference")
+    reference_compatibility = reference_manifest.get("compatibility")
+    _require(isinstance(reference_compatibility, dict), f"{reference_dir}: missing reference compatibility")
+    reference, controls = load_reference(reference_dir, workflow_type="single_step", compatibility=reference_compatibility,
+                                         expected_ids=reference_manifest.get("selected_ids", []))
+    paths = [Path(path).expanduser().resolve() for path in run_dirs]
+    _require(bool(paths), "At least one intervention-only run directory is required")
+    expected_keys, expected_plan_reference = _expected_grid(expected_plan)
+    seen: set[tuple[int, int, str]] = set()
+    groups: dict[tuple[int, int, str, str], list[dict[str, Any]]] = defaultdict(list)
+    inputs = []
+    for path in paths:
+        _require((path / "RUN_COMPLETE").is_file() and not (path / "RUN_FAILED.json").exists(), f"{path}: incomplete intervention run")
+        config = json.loads((path / "run_config.json").read_text(encoding="utf-8"))
+        manifest_bytes = (path / "run_manifest.json").read_bytes()
+        manifest = json.loads(manifest_bytes)
+        status = json.loads((path / "run_status.json").read_text(encoding="utf-8"))
+        _require(config.get("execution_mode") == "intervention_only" and
+                 manifest.get("manifest_kind") == "phase2_intervention_only_run_manifest_v1" and
+                 status.get("status") == "completed", f"{path}: not a completed intervention-only run")
+        _require(manifest.get("control_reference") == reference, f"{path}: references a different canonical control")
+        input_keys = ("source_run_directory", "source_run_metadata", "selected_sample_ids") if config.get("input_kind") == "saved_source_run" else (
+            "benchmark_paths", "benchmark_sha256", "selected_sample_manifest", "selected_sample_ids")
+        current_compatibility = {
+            "workflow_type": "single_step", "experiment_kind": config.get("experiment_kind"),
+            "checkpoint_fingerprint": config.get("checkpoint_fingerprint"), "model_binding": config.get("model_binding"),
+            "runtime": config.get("runtime"), "inputs": {key: config.get(key) for key in input_keys},
+            "generation": {"reasoning_mode": "reasoning", "reasoning_effort": "low"},
+            "evaluation": {"call_predicted_tools": config.get("call_predicted_tools", True),
+                           "condition_isolation": config.get("condition_isolation")},
+            "tool_registry": manifest.get("tool_registry"),
+        }
+        _require(current_compatibility == reference_compatibility, f"{path}: incompatible reference protocol")
+        resolved = config.get("resolved_config", {})
+        layers, seeds = _ids(resolved.get("layers"), "layers"), _ids(resolved.get("seeds"), "seeds")
+        records = [json.loads(line) for line in (path / "paired_records.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        local = set()
+        for record in records:
+            sample_id, layer, seed = record.get("sample_id"), record.get("layer_index"), record.get("seed")
+            key = (layer, seed, sample_id)
+            _require(record.get("execution_mode") == "intervention_only" and record.get("control_reference") == reference,
+                     f"{path}: unlinked intervention record")
+            _require(sample_id in controls and layer in layers and seed in seeds, f"{path}: invalid intervention coverage")
+            _require(key not in seen, f"Duplicate layer–seed–sample pair: {key}")
+            intervention = _condition(record.get("intervention"), sample_id)
+            control = _condition(controls[sample_id].get("control"), sample_id)
+            verification = record.get("intervention_verification", {})
+            _require(verification.get("enabled") is True and verification.get("restored_exactly") is True,
+                     f"{key}: intervention did not restore exactly")
+            _require(record.get("registry_exact_match") is True, f"{key}: registry was not exact")
+            materialized = {**record, "control": control}
+            seen.add(key); local.add(key)
+            groups[(layer, seed, infer_benchmark_class(Path(control.get("benchmark_path", "unknown")), [control]), control.get("benchmark_mode", "unknown"))].append(materialized)
+        _require(local == set(product(layers, seeds, controls)), f"{path}: incomplete layer–seed–sample grid")
+        inputs.append({"directory": str(path), "intervention_record_count": len(records),
+                       "run_manifest_sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()})
+    if expected_keys is not None:
+        _require(seen == expected_keys, "Completed chunks do not match the frozen expected layer–seed–sample grid")
+    rows = []
+    for (layer, seed, classification, mode), records in sorted(groups.items()):
+        row = {"layer_index": layer, "seed": seed, "benchmark_classification": classification, "benchmark_mode": mode,
+               "sample_count": len(records), "tool_choice_changes": 0, "tool_choice_repairs": 0, "tool_choice_damage": 0,
+               "correct_correct": 0, "correct_wrong": 0, "wrong_correct": 0, "wrong_wrong": 0,
+               "no_op_interventions": 0, "final_outcome_paired_scored": 0,
+               "final_outcome_repairs": 0, "final_outcome_damage": 0}
+        for condition in ("control", "intervention"):
+            for metric in METRICS:
+                row[f"{condition}_{metric}"] = 0
+            for category in ("invalid_outputs", "valid_no_call_outputs", "valid_wrong_tool_calls", "correct_tool_calls", "no_call_outputs"):
+                row[f"{condition}_{category}"] = 0
+            row[f"{condition}_final_outcome_scored"] = 0
+        for record in records:
+            control, intervention = record["control"], record["intervention"]
+            transition = f"{'correct' if control['tool_selection_correct'] else 'wrong'}_{'correct' if intervention['tool_selection_correct'] else 'wrong'}"
+            row[transition] += 1
+            row["tool_choice_changes"] += control["selected_tool"] != intervention["selected_tool"]
+            row["tool_choice_repairs"] += not control["tool_selection_correct"] and intervention["tool_selection_correct"]
+            row["tool_choice_damage"] += control["tool_selection_correct"] and not intervention["tool_selection_correct"]
+            row["no_op_interventions"] += record["intervention_verification"]["perturbation"]["status"] == "no_op"
+            if control["final_outcome_correct"] is not None and intervention["final_outcome_correct"] is not None:
+                row["final_outcome_paired_scored"] += 1
+                row["final_outcome_repairs"] += not control["final_outcome_correct"] and intervention["final_outcome_correct"]
+                row["final_outcome_damage"] += control["final_outcome_correct"] and not intervention["final_outcome_correct"]
+            for condition, value in (("control", control), ("intervention", intervention)):
+                row[f"{condition}_{_bucket(value)}"] += 1
+                row[f"{condition}_no_call_outputs"] += value["no_call_outcome"]
+                for metric in METRICS:
+                    row[f"{condition}_{metric}"] += value[metric] is True
+                row[f"{condition}_final_outcome_scored"] += value["final_outcome_correct"] is not None
+        rows.append(row)
+    return {"kind": SUMMARY_KIND, "execution_mode": "intervention_only", "control_reference": reference,
+            "compatibility": reference_compatibility, "input_runs": inputs, "expected_plan": expected_plan_reference,
+            "unique_sample_count": len(controls), "unique_control_count": len(controls),
+            "paired_observation_count": len(seen), "rows": rows}
+
+
 def save_summary(summary: dict[str, Any], output: Path) -> None:
     """Write only a new report outside all input folders; never overwrite artifacts."""
     output = output.expanduser().resolve()
@@ -415,9 +523,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path, help="New JSON report outside input folders")
     parser.add_argument("--expected-plan", type=Path,
                         help="Frozen plan; reject missing or extra layer/seed/sample coverage")
+    parser.add_argument("--control-reference", type=Path,
+                        help="Canonical-control directory required for intervention-only chunks")
     args = parser.parse_args(argv)
     try:
-        summary = combine_completed_runs(args.run_dir, expected_plan=args.expected_plan)
+        summary = (combine_linked_reference_runs(args.run_dir, control_reference=args.control_reference,
+                                                 expected_plan=args.expected_plan)
+                   if args.control_reference is not None else
+                   combine_completed_runs(args.run_dir, expected_plan=args.expected_plan))
         save_summary(summary, args.output)
     except (ValueError, OSError, KeyError, TypeError) as error:
         parser.exit(2, f"Cannot combine paired results: {error}\n")

@@ -26,6 +26,7 @@ from research.phase2.gpt_oss_intervention_eval import (
     _selected_sample_manifest,
 )
 from research.phase2.replay import ToolCatalog
+from analysis.phase2_paired_results import combine_linked_reference_runs
 
 
 VALID_CALL = (
@@ -698,6 +699,59 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
                 )
             self.assertFalse((root / "output/RUN_COMPLETE").exists())
             self.assertTrue((root / "output/RUN_FAILED.json").exists())
+
+    def test_intervention_only_reuses_complete_canonical_control(self):
+        """A linked run stores only interventions; the reference is immutable input."""
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one", "two"])
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            config = EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=2)
+            reference_run = run_evaluation(
+                source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "reference-run", config=config,
+                execution_mode="reference", generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            reference = reference_run / "canonical_control"
+            intervention_run = run_evaluation(
+                source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "intervention-run", config=config,
+                execution_mode="intervention_only", control_reference=reference,
+                generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            records = [json.loads(line) for line in (intervention_run / "paired_records.jsonl").read_text().splitlines()]
+            self.assertEqual(len(records), 2)
+            self.assertTrue(all("control" not in record for record in records))
+            self.assertTrue(all(record["control_reference"]["kind"] == "phase2_canonical_control_reference_v1" for record in records))
+            self.assertTrue((intervention_run / "RUN_COMPLETE").is_file())
+            combined = combine_linked_reference_runs([intervention_run], control_reference=reference)
+            self.assertEqual(combined["unique_control_count"], 2)
+            self.assertEqual(combined["paired_observation_count"], 2)
+
+    def test_intervention_only_rejects_wrong_reference_before_loading_generator(self):
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"; checkpoint.mkdir()
+            config = EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1)
+            reference = run_evaluation(source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "reference", config=config,
+                execution_mode="reference", generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog)) / "canonical_control"
+            called = False
+            def should_not_load(_):
+                nonlocal called
+                called = True
+                return MockGenerator(TinyGptOssModel())
+            other_root = root / "other"; other_root.mkdir()
+            other_source = _write_saved_run(other_root, catalog, ["different input"])
+            with self.assertRaisesRegex(ValueError, "incompatible canonical control field"):
+                run_evaluation(source_run_dir=other_source, checkpoint_dir=checkpoint, output_dir=root / "wrong", config=config,
+                    execution_mode="intervention_only", control_reference=reference,
+                    generator_loader=should_not_load, session_factory=lambda: _session_for_catalog(catalog))
+            self.assertFalse(called)
 
 
 if __name__ == "__main__":

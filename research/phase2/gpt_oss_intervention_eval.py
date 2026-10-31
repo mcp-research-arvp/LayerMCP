@@ -50,6 +50,10 @@ from research.phase2.experiment_integrity import (
     checkpoint_identity, verify_identity_inputs, runtime_identity,
     compare_saved_control, paired_diagnostics, native_generator_identity,
 )
+from research.phase2.control_reference import (
+    REFERENCE_KIND, canonical_bytes as _reference_bytes, load_reference, preflight_reference,
+    sha256_bytes as _reference_sha256, write_reference,
+)
 
 
 InterventionMethod = Literal["noise", "replace"]
@@ -57,6 +61,7 @@ InterventionMethod = Literal["noise", "replace"]
 # certification of v1 runs. Old strict combiners must reject it until upgraded.
 RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v3"
 RUN_MANIFEST_KIND = "phase2_paired_run_manifest_v1"
+INTERVENTION_ONLY_MANIFEST_KIND = "phase2_intervention_only_run_manifest_v1"
 SCREEN_PLAN_KIND = "phase2_layer_screen_plan_v1"
 
 
@@ -879,6 +884,215 @@ def _summary(records: Sequence[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _direct_reference_compatibility(
+    *,
+    provenance: dict[str, Any], input_config: dict[str, Any], catalog: ToolCatalog,
+) -> dict[str, Any]:
+    """Fields that must not change when controls are reused across layers."""
+    return {
+        "workflow_type": "single_step",
+        "experiment_kind": RUN_KIND,
+        "checkpoint_fingerprint": provenance["checkpoint_fingerprint"],
+        "model_binding": provenance["model_binding"],
+        "runtime": provenance["runtime"],
+        "inputs": input_config,
+        "generation": {"reasoning_mode": "reasoning", "reasoning_effort": "low"},
+        "evaluation": {"call_predicted_tools": True, "condition_isolation": "fresh_mcp_server_per_condition"},
+        "tool_registry": {"metadata": catalog.metadata, "names": list(catalog.names)},
+    }
+
+
+async def _run_reference_or_intervention_direct(
+    *,
+    source_run_dir: Path | None,
+    benchmark_paths: Sequence[Path] | None,
+    checkpoint: Path,
+    output_dir: Path,
+    config: EvaluationConfig,
+    plan_manifest: Path | None,
+    generator: Any,
+    identity: dict[str, Any],
+    provenance: dict[str, Any],
+    metadata: dict[str, Any] | None,
+    saved_examples: tuple[SavedGptOssExample, ...] | None,
+    selected_ids: tuple[str, ...],
+    direct_selection: list[dict[str, Any]] | None,
+    benchmark_hashes: dict[str, str],
+    execution_mode: Literal["reference", "intervention_only"],
+    control_reference: Path | None,
+    session_factory: Callable[[], Any] | None,
+) -> Path:
+    """Persist a one-time control or a linked intervention-only direct chunk."""
+    output_dir.mkdir(parents=True)
+    in_progress = output_dir / "RUN_IN_PROGRESS"
+    run_id = str(uuid.uuid4())
+    started_at = _utc_now()
+    records: list[dict[str, Any]] = []
+    failure_stage = "setup"
+    try:
+        in_progress.write_text(json.dumps({"run_id": run_id, "started_at": started_at}) + "\n", encoding="utf-8")
+        resolved_config, screen_plan = _resolve_screen_config(generator, selected_ids, config)
+        parent_plan = _parent_plan_reference(plan_manifest, screen_plan, {
+            "input_kind": "saved_source_run" if source_run_dir is not None else "benchmark_files",
+            "benchmark_sha256": benchmark_hashes,
+            "selected_sample_manifest": direct_selection,
+        })
+        open_session = session_factory or (lambda: open_evaluation_session(SERVER_PATH))
+        async with open_session() as session:
+            catalog = await load_tool_catalog(session)
+            examples = saved_examples if saved_examples is not None else load_direct_benchmark_examples(benchmark_paths or (), catalog)
+            if benchmark_paths is not None and resolved_config.example_limit is not None:
+                examples = examples[:resolved_config.example_limit]
+            if tuple(example.sample_id for example in examples) != selected_ids:
+                raise RuntimeError("Direct sample selection changed after reference preflight")
+            _verify_benchmark_inputs(benchmark_hashes)
+            input_config = (
+                {"source_run_directory": str(source_run_dir.expanduser().resolve()), "source_run_metadata": metadata,
+                 "selected_sample_ids": list(selected_ids)}
+                if source_run_dir is not None else
+                {"benchmark_paths": [str(path.expanduser().resolve()) for path in benchmark_paths or ()],
+                 "benchmark_sha256": benchmark_hashes,
+                 "selected_sample_manifest": direct_selection or _selected_sample_manifest(benchmark_paths or (), examples),
+                 "selected_sample_ids": list(selected_ids)}
+            )
+            compatibility = _direct_reference_compatibility(provenance=provenance, input_config=input_config, catalog=catalog)
+            run_config = {
+                "kind": RUN_KIND, "experiment_kind": RUN_KIND, "run_id": run_id,
+                "execution_mode": execution_mode, **provenance, "checkpoint_identity": identity,
+                "condition_isolation": "fresh_mcp_server_per_condition",
+                "checkpoint_path": str(checkpoint), "requested_config": asdict(config),
+                "resolved_config": asdict(resolved_config), "config": asdict(resolved_config),
+                "screen_plan": screen_plan.as_dict(), "parent_plan": parent_plan,
+                "example_count": len(examples), **input_config,
+            }
+            if execution_mode == "reference":
+                failure_stage = "control"
+                for example in examples:
+                    registry_exact_match = _registry_exact_match(example, catalog)
+                    if config.require_registry_match and not registry_exact_match:
+                        raise ValueError(f"Live registry does not exactly match saved example {example.sample_id}")
+                    # No selected layer is changed.  Use a validated layer only to retain
+                    # the existing disabled-intervention verification record shape.
+                    control, verification = _predict(
+                        generator, example, catalog, layer_index=resolved_config.layers[0], enabled=False,
+                        method=resolved_config.method, target=resolved_config.target,
+                        strength=resolved_config.strength, strength_mode=resolved_config.strength_mode,
+                        seed=resolved_config.seeds[0],
+                    )
+                    async with open_session() as condition_session:
+                        condition_catalog = await load_tool_catalog(condition_session)
+                        if condition_catalog.metadata != catalog.metadata:
+                            raise ValueError("Tool registry drifted during canonical control")
+                        result = await evaluate_single_step_prediction(
+                            sample=_benchmark_sample(example), benchmark_path=Path(example.benchmark_path),
+                            router=gpt_oss_router, prediction=_routed_tool_call(control), session=condition_session,
+                            server_path=SERVER_PATH, live_tools=list(catalog.names), tool_schemas=catalog.schemas,
+                            tool_descriptions=catalog.descriptions, call_predicted_tools=True,
+                            reasoning_mode="reasoning", reasoning_effort="low",
+                        )
+                    control_record = _condition_record(result.record)
+                    control_record.update({"experiment_kind": RUN_KIND, "condition": "control"})
+                    records.append({
+                        "kind": REFERENCE_KIND, "sample_id": example.sample_id,
+                        "benchmark_path": example.benchmark_path, "source": example.source,
+                        "benchmark_mode": example.benchmark_mode, "evidence_category": _evidence_category(example),
+                        "registry_exact_match": registry_exact_match, "control": control_record,
+                        "control_verification": verification,
+                        "saved_control_comparison": compare_saved_control(example.saved_prediction, control_record),
+                    })
+            else:
+                assert control_reference is not None
+                reference, controls = load_reference(
+                    control_reference, workflow_type="single_step", compatibility=compatibility,
+                    expected_ids=[example.sample_id for example in examples],
+                )
+                run_config["control_reference"] = reference
+                failure_stage = "intervention"
+                with (output_dir / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
+                    for layer_index in resolved_config.layers:
+                        for seed in resolved_config.seeds:
+                            for example in examples:
+                                registry_exact_match = _registry_exact_match(example, catalog)
+                                if config.require_registry_match and not registry_exact_match:
+                                    raise ValueError(f"Live registry does not exactly match saved example {example.sample_id}")
+                                prediction, verification = _predict(
+                                    generator, example, catalog, layer_index=layer_index, enabled=True,
+                                    method=resolved_config.method, target=resolved_config.target,
+                                    strength=resolved_config.strength, strength_mode=resolved_config.strength_mode, seed=seed,
+                                )
+                                async with open_session() as condition_session:
+                                    condition_catalog = await load_tool_catalog(condition_session)
+                                    if condition_catalog.metadata != catalog.metadata:
+                                        raise ValueError("Tool registry drifted during intervention")
+                                    result = await evaluate_single_step_prediction(
+                                        sample=_benchmark_sample(example), benchmark_path=Path(example.benchmark_path),
+                                        router=gpt_oss_router, prediction=_routed_tool_call(prediction), session=condition_session,
+                                        server_path=SERVER_PATH, live_tools=list(catalog.names), tool_schemas=catalog.schemas,
+                                        tool_descriptions=catalog.descriptions, call_predicted_tools=True,
+                                        reasoning_mode="reasoning", reasoning_effort="low",
+                                    )
+                                intervention = _condition_record(result.record)
+                                intervention.update({"experiment_kind": RUN_KIND, "condition": "intervention"})
+                                record = {
+                                    "kind": RUN_KIND, "experiment_kind": RUN_KIND, "execution_mode": execution_mode,
+                                    "sample_id": example.sample_id, "benchmark_path": example.benchmark_path,
+                                    "source": example.source, "evidence_category": _evidence_category(example),
+                                    "benchmark_mode": example.benchmark_mode, "layer_index": layer_index, "seed": seed,
+                                    "method": resolved_config.method, "target": resolved_config.target,
+                                    "strength": resolved_config.strength, "strength_mode": resolved_config.strength_mode,
+                                    "registry_exact_match": registry_exact_match, "condition_isolation": "fresh_mcp_server_per_condition",
+                                    "control_reference": reference, "reference_control_id": example.sample_id,
+                                    "intervention": intervention, "intervention_verification": verification,
+                                }
+                                handle.write(json.dumps(record, sort_keys=True) + "\n")
+                                handle.flush()
+                                records.append(record)
+                materialized = [
+                    {**record, "control": controls[record["sample_id"]]["control"],
+                     "saved_control_comparison": controls[record["sample_id"]].get(
+                         "saved_control_comparison", {"status": "unavailable"})}
+                    for record in records
+                ]
+
+            (output_dir / "run_config.json").write_bytes(_canonical_json_bytes(run_config))
+            if execution_mode == "reference":
+                failure_stage = "completion"
+                completed_at = _utc_now()
+                reference = write_reference(
+                    output_dir / "canonical_control", workflow_type="single_step", compatibility=compatibility,
+                    controls=records, metadata={"run_id": run_id, "started_at": started_at, "completed_at": completed_at,
+                                                "job_details": _job_details(), "source_run_manifest": None},
+                )
+                (output_dir / "summary.json").write_text(json.dumps({"kind": REFERENCE_KIND, "execution_mode": "reference",
+                    "reference": reference, "control": _condition_summary([{"control": row["control"], "intervention": row["control"]} for row in records])["control"]}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            else:
+                manifest = {**run_config, "manifest_kind": INTERVENTION_ONLY_MANIFEST_KIND, "started_at": started_at,
+                            "job_details": _job_details(), "tool_registry": compatibility["tool_registry"],
+                            "lifecycle_status_file": "run_status.json"}
+                manifest_bytes = _canonical_json_bytes(manifest)
+                (output_dir / "run_manifest.json").write_bytes(manifest_bytes)
+                manifest_reference = {"run_id": run_id, "filename": "run_manifest.json", "sha256": _sha256_bytes(manifest_bytes)}
+                path = output_dir / "paired_records.jsonl"
+                lines = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+                path.write_text("".join(json.dumps({**line, "run_manifest": manifest_reference}, sort_keys=True) + "\n" for line in lines), encoding="utf-8")
+                (output_dir / "summary.json").write_text(json.dumps(_summary(materialized), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        failure_stage = "completion"
+        _verify_benchmark_inputs(benchmark_hashes)
+        verify_identity_inputs(identity)
+        (output_dir / "run_status.json").write_bytes(_canonical_json_bytes({
+            "run_id": run_id, "status": "completed", "execution_mode": execution_mode,
+            "started_at": started_at, "completed_at": _utc_now(), "record_count": len(records),
+        }))
+        in_progress.unlink()
+        (output_dir / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
+    except BaseException as error:
+        (output_dir / "RUN_FAILED.json").write_text(json.dumps({"kind": RUN_KIND, "run_id": run_id,
+            "execution_mode": execution_mode, "error_type": type(error).__name__, "error": str(error),
+            "failure_stage": failure_stage, "completed_record_count": len(records)}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        raise
+    return output_dir
+
+
 async def run_evaluation_async(
     *,
     source_run_dir: Path | None = None,
@@ -887,10 +1101,12 @@ async def run_evaluation_async(
     output_dir: Path,
     config: EvaluationConfig,
     plan_manifest: Path | None = None,
+    execution_mode: Literal["paired", "reference", "intervention_only"] = "paired",
+    control_reference: Path | None = None,
     generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
-    """Run and persist a paired full evaluation; only ``RUN_COMPLETE`` marks success."""
+    """Run a paired, canonical-control, or intervention-only evaluation."""
     if (source_run_dir is None) == (benchmark_paths is None):
         raise ValueError("select exactly one of source_run_dir or benchmark_paths")
     target = _safe_output_directory(output_dir)
@@ -921,6 +1137,20 @@ async def run_evaluation_async(
     identity = checkpoint_identity(checkpoint)
     if generator_loader is gpt_oss_router.load_generator and identity["status"] != "complete":
         raise ValueError("Checkpoint provenance requires weights, config.json and a local Harmony asset via TIKTOKEN_ENCODINGS_BASE")
+    if execution_mode == "intervention_only":
+        assert control_reference is not None
+        preflight_inputs = (
+            {"source_run_directory": str(source_run_dir.expanduser().resolve()), "source_run_metadata": metadata,
+             "selected_sample_ids": list(selected_ids)}
+            if source_run_dir is not None else
+            {"benchmark_paths": [str(path.expanduser().resolve()) for path in benchmark_paths or ()],
+             "benchmark_sha256": benchmark_hashes, "selected_sample_manifest": direct_selection,
+             "selected_sample_ids": list(selected_ids)}
+        )
+        preflight_reference(control_reference, workflow_type="single_step", expected_ids=selected_ids,
+                            required_compatibility={"workflow_type": "single_step", "experiment_kind": RUN_KIND,
+                                "checkpoint_fingerprint": identity["fingerprint"], "model_binding": "native_loader" if generator_loader is gpt_oss_router.load_generator else "injected_loader_unverified",
+                                "inputs": preflight_inputs})
     generator = generator_loader(str(checkpoint))
     verify_identity_inputs(identity)
     if generator_loader is gpt_oss_router.load_generator:
@@ -937,6 +1167,23 @@ async def run_evaluation_async(
         provenance["source_checkpoint_equivalence"] = (
             "matches" if source_fingerprint == identity["fingerprint"] else "differs"
         ) if source_fingerprint and identity["fingerprint"] else "unverifiable"
+
+    if execution_mode not in {"paired", "reference", "intervention_only"}:
+        raise ValueError("execution_mode must be paired, reference, or intervention_only")
+    if execution_mode == "intervention_only" and control_reference is None:
+        raise ValueError("intervention_only execution requires --control-reference")
+    if execution_mode != "intervention_only" and control_reference is not None:
+        raise ValueError("--control-reference applies only to intervention_only execution")
+    if execution_mode != "paired":
+        return await _run_reference_or_intervention_direct(
+            source_run_dir=source_run_dir, benchmark_paths=benchmark_paths,
+            checkpoint=checkpoint, output_dir=target, config=config,
+            plan_manifest=plan_manifest, generator=generator, identity=identity,
+            provenance=provenance, metadata=metadata, saved_examples=saved_examples,
+            selected_ids=selected_ids, direct_selection=direct_selection,
+            benchmark_hashes=benchmark_hashes, execution_mode=execution_mode,
+            control_reference=control_reference, session_factory=session_factory,
+        )
 
     target.mkdir(parents=True)
     in_progress = target / "RUN_IN_PROGRESS"
@@ -1063,6 +1310,8 @@ def run_evaluation(
     output_dir: Path,
     config: EvaluationConfig,
     plan_manifest: Path | None = None,
+    execution_mode: Literal["paired", "reference", "intervention_only"] = "paired",
+    control_reference: Path | None = None,
     generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
@@ -1075,6 +1324,8 @@ def run_evaluation(
             output_dir=output_dir,
             config=config,
             plan_manifest=plan_manifest,
+            execution_mode=execution_mode,
+            control_reference=control_reference,
             generator_loader=generator_loader,
             session_factory=session_factory,
         )
@@ -1108,13 +1359,13 @@ def _parse_csv_sample_ids(value: str) -> tuple[str, ...]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run paired GPT-OSS attention-intervention routing evaluations.")
+    parser = argparse.ArgumentParser(description="Run GPT-OSS paired, canonical-control, or intervention-only routing evaluations.")
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--source-run-dir", type=Path)
     input_group.add_argument("--benchmarks", nargs="+", type=Path, help="Direct benchmark JSON files (all rows by default)")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path)
-    parser.add_argument("--layers", required=True, type=_parse_layer_request,
+    parser.add_argument("--layers", default="0", type=_parse_layer_request,
                         help="Comma-separated IDs, or model-discovered 'representative'/'all'.")
     parser.add_argument("--seeds", default="1234", help="Comma-separated intervention seeds")
     parser.add_argument("--method", choices=("noise", "replace"), default="noise")
@@ -1127,6 +1378,10 @@ def main() -> None:
     parser.add_argument("--plan-only", action="store_true", help="Discover layers and print a frozen screen plan without generation.")
     parser.add_argument("--plan-output", type=Path, help="New JSON path to save a plan-only manifest.")
     parser.add_argument("--plan-manifest", type=Path, help="Frozen parent plan that this output chunk must match.")
+    parser.add_argument("--execution-mode", choices=("paired", "reference", "intervention-only"), default="paired",
+                        help="paired (default), reference (one unchanged control), or intervention-only (requires --control-reference).")
+    parser.add_argument("--control-reference", type=Path,
+                        help="Completed canonical_control directory used only by intervention-only execution.")
     args = parser.parse_args()
     if args.example_limit is not None and args.example_limit <= 0:
         parser.error("--example-limit must be positive")
@@ -1136,6 +1391,12 @@ def main() -> None:
         parser.error("--output-dir is required unless --plan-only is used")
     if args.plan_only and args.plan_manifest is not None:
         parser.error("--plan-manifest applies to an evaluation chunk, not --plan-only")
+    if args.plan_only and args.execution_mode != "paired":
+        parser.error("--plan-only is independent of control execution; use the default paired mode")
+    if args.execution_mode == "intervention-only" and args.control_reference is None:
+        parser.error("--control-reference is required with --execution-mode intervention-only")
+    if args.execution_mode != "intervention-only" and args.control_reference is not None:
+        parser.error("--control-reference applies only to intervention-only execution")
     config = EvaluationConfig(
         layers=args.layers,
         seeds=_parse_csv_ints(args.seeds, "--seeds"),
@@ -1164,6 +1425,8 @@ def main() -> None:
         output_dir=args.output_dir,
         config=config,
         plan_manifest=args.plan_manifest,
+        execution_mode=args.execution_mode.replace("-", "_"),
+        control_reference=args.control_reference,
     )
     print(destination)
 

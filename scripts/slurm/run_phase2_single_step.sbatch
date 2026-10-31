@@ -34,6 +34,12 @@ PLAN_MANIFEST="${PLAN_MANIFEST:-}"
 EXAMPLE_LIMIT="${EXAMPLE_LIMIT:-}"
 SCREEN_PLAN_OUTPUT="${SCREEN_PLAN_OUTPUT:-}"
 COMBINED_OUTPUT="${COMBINED_OUTPUT:-}"
+EXECUTION_MODE="${EXECUTION_MODE:-paired}"
+CONTROL_REFERENCE="${CONTROL_REFERENCE:-}"
+case "$EXECUTION_MODE" in paired|reference|intervention_only) ;; *) echo "Invalid EXECUTION_MODE" >&2; exit 2 ;; esac
+if [[ "$EXECUTION_MODE" == intervention_only && -z "$CONTROL_REFERENCE" ]]; then
+  echo "CONTROL_REFERENCE is required for intervention-only execution" >&2; exit 2
+fi
 
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/submit_common.sh"
 BENCHMARKS=()
@@ -55,8 +61,8 @@ fi
 
 RUN_SCOPE="full"
 [[ -z "$EXAMPLE_LIMIT" ]] || RUN_SCOPE="limit${EXAMPLE_LIMIT}"
-RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_single_step_${RUN_SCOPE}_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seeds${SEEDS//,/-}"
-echo "Evaluating ${#BENCHMARKS[@]} direct single-step benchmark files in paired conditions"
+RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_single_step_${EXECUTION_MODE}_${RUN_SCOPE}_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seeds${SEEDS//,/-}"
+echo "Evaluating ${#BENCHMARKS[@]} direct single-step benchmark files in $EXECUTION_MODE mode"
 base_command=(python -m research.phase2.gpt_oss_intervention_eval \
   --benchmarks "${BENCHMARKS[@]}" \
   --checkpoint "$LAYERMCP_GPT_OSS_CHECKPOINT" \
@@ -65,11 +71,16 @@ base_command=(python -m research.phase2.gpt_oss_intervention_eval \
   --method "$METHOD" \
   --strength "$STRENGTH" \
   --strength-mode "$STRENGTH_MODE" \
-  --seeds "$SEEDS")
+  --seeds "$SEEDS" \
+  --execution-mode "${EXECUTION_MODE//_/-}")
+if [[ -n "$CONTROL_REFERENCE" ]]; then
+  base_command+=(--control-reference "$CONTROL_REFERENCE")
+fi
 if [[ -n "$EXAMPLE_LIMIT" ]]; then
   base_command+=(--example-limit "$EXAMPLE_LIMIT")
 fi
 if [[ -n "$SCREEN_PLAN_OUTPUT" || -n "$COMBINED_OUTPUT" ]]; then
+  [[ "$EXECUTION_MODE" == paired ]] || { echo "Screen-plan-output validation currently requires paired mode" >&2; exit 2; }
   [[ -n "$SCREEN_PLAN_OUTPUT" && -n "$COMBINED_OUTPUT" && -z "$PLAN_MANIFEST" ]] || {
     echo "Screen validation requires SCREEN_PLAN_OUTPUT and COMBINED_OUTPUT, without PLAN_MANIFEST" >&2
     exit 2
@@ -83,6 +94,7 @@ if [[ -n "$PLAN_MANIFEST" ]]; then
 fi
 "${command[@]}"
 if [[ -n "$COMBINED_OUTPUT" ]]; then
+  [[ "$EXECUTION_MODE" == paired ]] || { echo "Built-in combined-output validation currently requires paired mode" >&2; exit 2; }
   python -m analysis.phase2_paired_results \
     --run-dir "$RUN_DIR" \
     --expected-plan "$PLAN_MANIFEST" \

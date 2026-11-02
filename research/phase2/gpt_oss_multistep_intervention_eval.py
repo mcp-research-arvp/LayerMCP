@@ -24,6 +24,8 @@ from evaluation.evaluate import (
     SERVER_PATH,
     _evaluate_multistep_with_server,
     load_benchmark,
+    load_tool_catalog,
+    open_evaluation_session,
 )
 from models.routers import gpt_oss_local_router as router
 from research.phase2.experiment_integrity import (
@@ -43,7 +45,10 @@ from research.phase2.layer_screen import (
     LayerScreenPlanError,
     plan_layer_screen,
 )
-from research.phase2.control_reference import REFERENCE_KIND, REFERENCE_MANIFEST, load_reference, write_reference
+from research.phase2.control_reference import (
+    REFERENCE_KIND, invalidate_reference, load_reference,
+    preflight_reference, write_reference,
+)
 
 
 RUN_KIND = "phase2_gpt_oss_multistep_attention_intervention_v2"
@@ -314,6 +319,36 @@ async def run_evaluation_async(
     identity = checkpoint_identity(checkpoint)
     if generator_loader is router.load_generator and identity["status"] != "complete":
         raise ValueError("GPT-OSS checkpoint/config/Harmony asset provenance is incomplete")
+    selected_ids = [sample.id for sample in dataset]
+    benchmark_sha256 = hashlib.sha256(benchmark.read_bytes()).hexdigest()
+    parent_plan = (
+        _load_parent_plan(config.plan_manifest, dataset_group=dataset_group, benchmark=benchmark,
+                          sample_ids=selected_ids, config=config)
+        if config.plan_manifest is not None else None
+    )
+    if execution_mode == "intervention_only":
+        assert control_reference is not None
+        # Do every compatibility check available without loading model weights.
+        # The runtime and live registry are checked below, still before rollout.
+        preflight_reference(
+            control_reference,
+            workflow_type="multi_step",
+            expected_ids=selected_ids,
+            required_compatibility={
+                "workflow_type": "multi_step",
+                "experiment_kind": RUN_KIND,
+                "checkpoint_fingerprint": identity["fingerprint"],
+                "dataset_group": dataset_group,
+                "benchmark_sha256": benchmark_sha256,
+                "selected_workflow_ids": selected_ids,
+                "evaluation": {
+                    "protocol": MULTISTEP_EVALUATION_PROTOCOL,
+                    "condition_isolation": "fresh_evaluator_mcp_session_per_condition",
+                    "reasoning_mode": "reasoning",
+                    "reasoning_effort": "low",
+                },
+            },
+        )
     generator = generator_loader(str(checkpoint))
     verify_identity_inputs(identity)
     if generator_loader is router.load_generator:
@@ -322,13 +357,6 @@ async def run_evaluation_async(
         raise ValueError(f"Unavailable attention layer: {config.layer}")
     if config.target not in available_attention_targets(generator.model, config.layer):
         raise ValueError(f"Unavailable attention target {config.target!r} at layer {config.layer}")
-
-    selected_ids = [sample.id for sample in dataset]
-    parent_plan = (
-        _load_parent_plan(config.plan_manifest, dataset_group=dataset_group, benchmark=benchmark,
-                          sample_ids=selected_ids, config=config)
-        if config.plan_manifest is not None else None
-    )
 
     target = output_dir.expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -345,7 +373,7 @@ async def run_evaluation_async(
             "execution_mode": execution_mode,
             "dataset_group": dataset_group,
             "benchmark_path": str(benchmark),
-            "benchmark_sha256": hashlib.sha256(benchmark.read_bytes()).hexdigest(),
+            "benchmark_sha256": benchmark_sha256,
             "selected_workflow_ids": [sample.id for sample in dataset],
             "selected_workflow_count": len(dataset),
             "selected_step_count": sum(len(sample.expected_steps) for sample in dataset),
@@ -400,6 +428,31 @@ async def run_evaluation_async(
             "started_stage": stage,
         }))
         expected_catalog: str | None = None
+        reference: dict[str, Any] | None = None
+        indexed_controls: dict[str, dict[str, Any]] | None = None
+        prepared_reference_compatibility: dict[str, Any] | None = None
+        if execution_mode == "intervention_only":
+            assert control_reference is not None
+            # Check the live registry and runtime before spending an allocation
+            # on intervention rollout.  The reference only supplies outcomes;
+            # each condition still has its own evaluator/tool state.
+            async with open_evaluation_session(SERVER_PATH) as session:
+                catalog = await load_tool_catalog(session)
+            tool_registry = {
+                field: catalog.metadata[field]
+                for field in ("tool_pool", "tool_count", "tool_registry_fingerprint", "tool_registry_fingerprint_version")
+            }
+            prepared_reference_compatibility = {
+                "workflow_type": "multi_step", "experiment_kind": RUN_KIND,
+                "checkpoint_fingerprint": identity["fingerprint"], "dataset_group": dataset_group,
+                "benchmark_sha256": config_record["benchmark_sha256"], "selected_workflow_ids": selected_ids,
+                "evaluation": manifest["evaluation"], "runtime": config_record["runtime"],
+                "tool_registry": tool_registry, "generation": None,
+            }
+            reference, indexed_controls = load_reference(
+                control_reference, workflow_type="multi_step",
+                compatibility=prepared_reference_compatibility, expected_ids=selected_ids,
+            )
 
         def route_for(condition: str):
             def route_query(_router, query, live_tools, schemas, descriptions, reasoning_mode, reasoning_effort):
@@ -464,8 +517,12 @@ async def run_evaluation_async(
             "evaluation": manifest["evaluation"], "runtime": config_record["runtime"],
             "tool_registry": manifest["tool_registry"], "generation": manifest["generation"],
         }
+        if prepared_reference_compatibility is not None:
+            if compatibility != prepared_reference_compatibility:
+                raise ValueError("Live multi-step protocol changed after control-reference preflight")
         if execution_mode == "reference":
             stage = "completion"
+            verify_identity_inputs(identity)
             reference = write_reference(
                 target / "canonical_control", workflow_type="multi_step", compatibility=compatibility,
                 controls=[{"sample_id": row["sample_id"], "control": row} for row in _read_workflows(target / "control" / "samples.jsonl")],
@@ -487,15 +544,7 @@ async def run_evaluation_async(
                 reference = None
             else:
                 assert control_reference is not None
-                # This validates lifecycle, hashes, exact workflow coverage, and all
-                # immutable protocol fields before any comparison is written.
-                reference_manifest = _read_json(control_reference / REFERENCE_MANIFEST)
-                reference, indexed_controls = load_reference(
-                    control_reference, workflow_type="multi_step",
-                    compatibility=reference_manifest.get("compatibility"), expected_ids=selected_ids,
-                )
-                if reference_manifest.get("compatibility") != compatibility:
-                    raise ValueError("Canonical multi-step control is incompatible with this intervention")
+                assert reference is not None and indexed_controls is not None
                 controls = [indexed_controls[sample_id]["control"] for sample_id in selected_ids]
                 control_checks = [{"enabled": False, "changed_attention_parameter_names": [], "restored_exactly": None,
                                    "perturbation": {"status": "disabled", "changed_elements": 0}}
@@ -543,6 +592,14 @@ async def run_evaluation_async(
         }))
         (target / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
     except BaseException as error:
+        if execution_mode == "reference":
+            try:
+                invalidate_reference(
+                    target / "canonical_control",
+                    reason=f"parent run failed during {stage}: {type(error).__name__}",
+                )
+            except OSError:
+                pass
         (target / "RUN_FAILED.json").write_text(json.dumps({
             "kind": RUN_KIND, "failure_stage": stage,
             "run_id": run_id, "error_type": type(error).__name__, "error": str(error),

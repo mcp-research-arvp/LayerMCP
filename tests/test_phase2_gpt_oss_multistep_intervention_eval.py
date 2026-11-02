@@ -90,7 +90,8 @@ def write_benchmark(path: Path) -> None:
 
 class MultistepInterventionTests(unittest.TestCase):
     def _run(self, root: Path, generator: FakeGenerator, *, config: MultistepConfig | None = None,
-             execution_mode: str = "paired", control_reference: Path | None = None, output_name: str = "output") -> Path:
+             execution_mode: str = "paired", control_reference: Path | None = None, output_name: str = "output",
+             generator_loader=None) -> Path:
         benchmark = root / "benchmark.json"
         write_benchmark(benchmark)
         checkpoint = root / "checkpoint"
@@ -107,7 +108,7 @@ class MultistepInterventionTests(unittest.TestCase):
                     layer=0, target="qkv", method="noise", strength=0.25, seed=17,
                     strength_mode="tensor_rms",
                 ),
-                generator_loader=lambda _: generator,
+                generator_loader=generator_loader or (lambda _: generator),
                 execution_mode=execution_mode, control_reference=control_reference,
             )
 
@@ -177,6 +178,83 @@ class MultistepInterventionTests(unittest.TestCase):
             self.assertTrue((linked / "RUN_COMPLETE").is_file())
             combined = combine_linked_reference_runs([linked], control_reference=reference_run / "canonical_control")
             self.assertEqual(combined["unique_control_count"], 1)
+
+    def test_intervention_only_preflights_missing_reference_before_loading_generator(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = MultistepConfig(0, "qkv", "noise", 0.25, 17, strength_mode="tensor_rms")
+            reference = self._run(root, FakeGenerator(TinyModel()), config=config,
+                                  execution_mode="reference", output_name="reference") / "canonical_control"
+            (reference / "RUN_COMPLETE").unlink()
+            called = False
+            def should_not_load(_):
+                nonlocal called
+                called = True
+                return FakeGenerator(TinyModel())
+            with self.assertRaisesRegex(ValueError, "canonical control lacks RUN_COMPLETE"):
+                self._run(root, FakeGenerator(TinyModel()), config=config,
+                          execution_mode="intervention_only", control_reference=reference,
+                          output_name="linked", generator_loader=should_not_load)
+            self.assertFalse(called)
+
+    def test_intervention_only_rejects_live_registry_mismatch_before_rollout(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = MultistepConfig(0, "qkv", "noise", 0.25, 17, strength_mode="tensor_rms")
+            reference = self._run(root, FakeGenerator(TinyModel()), config=config,
+                                  execution_mode="reference", output_name="reference") / "canonical_control"
+            manifest_path = reference / "control_reference_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["compatibility"]["tool_registry"]["tool_count"] = 999
+            manifest_path.write_text(json.dumps(manifest))
+            generator = FakeGenerator(TinyModel())
+            with self.assertRaisesRegex(ValueError, "reference model/input/generation/registry/scoring protocol is incompatible"):
+                self._run(root, generator, config=config,
+                          execution_mode="intervention_only", control_reference=reference,
+                          output_name="linked")
+            self.assertEqual(generator.prompts, [])
+
+    def test_reference_failure_invalidates_child_reference(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            with (
+                patch(
+                    "research.phase2.gpt_oss_multistep_intervention_eval.verify_identity_inputs",
+                    side_effect=[None, RuntimeError("late identity failure")],
+                ),
+                self.assertRaisesRegex(RuntimeError, "late identity failure"),
+            ):
+                self._run(root, FakeGenerator(TinyModel()), execution_mode="reference")
+            reference = root / "output" / "canonical_control"
+            self.assertFalse((reference / "RUN_COMPLETE").exists())
+            self.assertFalse(reference.exists())
+
+    def test_linked_combiner_rejects_tampered_record_and_mixed_strength(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_config = MultistepConfig(0, "qkv", "noise", 0.25, 17, strength_mode="tensor_rms")
+            reference = self._run(root, FakeGenerator(TinyModel()), config=first_config,
+                                  execution_mode="reference", output_name="reference") / "canonical_control"
+            linked = self._run(root, FakeGenerator(TinyModel()), config=first_config,
+                               execution_mode="intervention_only", control_reference=reference,
+                               output_name="linked")
+            records_path = linked / "paired_records.jsonl"
+            record = json.loads(records_path.read_text().strip())
+            record["layer_index"] = 99
+            records_path.write_text(json.dumps(record) + "\n")
+            with self.assertRaisesRegex(ValueError, "record intervention differs"):
+                combine_linked_reference_runs([linked], control_reference=reference)
+
+            clean = self._run(root, FakeGenerator(TinyModel()), config=first_config,
+                              execution_mode="intervention_only", control_reference=reference,
+                              output_name="clean")
+            second = self._run(
+                root, FakeGenerator(TinyModel()),
+                config=MultistepConfig(0, "qkv", "noise", 0.5, 17, strength_mode="tensor_rms"),
+                execution_mode="intervention_only", control_reference=reference, output_name="second",
+            )
+            with self.assertRaisesRegex(ValueError, "incompatible target/method/strength/strength-mode"):
+                combine_linked_reference_runs([clean, second], control_reference=reference)
 
     def test_rejects_mismatched_pairs_and_invalid_configuration(self):
         with self.assertRaisesRegex(ValueError, "counts differ"):

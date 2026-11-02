@@ -51,7 +51,7 @@ from research.phase2.experiment_integrity import (
     compare_saved_control, paired_diagnostics, native_generator_identity,
 )
 from research.phase2.control_reference import (
-    REFERENCE_KIND, canonical_bytes as _reference_bytes, load_reference, preflight_reference,
+    REFERENCE_KIND, canonical_bytes as _reference_bytes, invalidate_reference, load_reference, preflight_reference,
     sha256_bytes as _reference_sha256, write_reference,
 )
 
@@ -1057,6 +1057,11 @@ async def _run_reference_or_intervention_direct(
             (output_dir / "run_config.json").write_bytes(_canonical_json_bytes(run_config))
             if execution_mode == "reference":
                 failure_stage = "completion"
+                # Seal the reference only after the parent input and
+                # checkpoint checks pass.  The exception handler below also
+                # invalidates it if a later parent-run write fails.
+                _verify_benchmark_inputs(benchmark_hashes)
+                verify_identity_inputs(identity)
                 completed_at = _utc_now()
                 reference = write_reference(
                     output_dir / "canonical_control", workflow_type="single_step", compatibility=compatibility,
@@ -1086,6 +1091,16 @@ async def _run_reference_or_intervention_direct(
         in_progress.unlink()
         (output_dir / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
     except BaseException as error:
+        if execution_mode == "reference":
+            try:
+                invalidate_reference(
+                    output_dir / "canonical_control",
+                    reason=f"parent run failed during {failure_stage}: {type(error).__name__}",
+                )
+            except OSError:
+                # Keep the original evaluation failure primary if diagnostic
+                # cleanup itself cannot be written.
+                pass
         (output_dir / "RUN_FAILED.json").write_text(json.dumps({"kind": RUN_KIND, "run_id": run_id,
             "execution_mode": execution_mode, "error_type": type(error).__name__, "error": str(error),
             "failure_stage": failure_stage, "completed_record_count": len(records)}, indent=2, sort_keys=True) + "\n", encoding="utf-8")

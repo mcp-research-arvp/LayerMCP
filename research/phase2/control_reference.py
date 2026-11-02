@@ -77,6 +77,30 @@ def write_reference(
     return reference
 
 
+def invalidate_reference(directory: Path, *, reason: str) -> None:
+    """Make a reference created by a failed parent run permanently unusable.
+
+    A reference is sealed by its completion marker.  If a later parent-run
+    write or integrity check fails, retain the partial evidence for diagnosis
+    but remove that marker and record the failure so it cannot be reused.
+    """
+    completion = directory / "RUN_COMPLETE"
+    try:
+        completion.unlink()
+    except FileNotFoundError:
+        return
+    (directory / "RUN_FAILED.json").write_bytes(canonical_bytes({
+        "kind": REFERENCE_KIND,
+        "status": "failed",
+        "reason": reason,
+    }))
+    (directory / "run_status.json").write_bytes(canonical_bytes({
+        "status": "failed",
+        "execution_mode": "reference",
+        "reason": reason,
+    }))
+
+
 def load_reference(
     directory: Path | str,
     *,

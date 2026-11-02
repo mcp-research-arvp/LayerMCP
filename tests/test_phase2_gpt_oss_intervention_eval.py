@@ -26,6 +26,7 @@ from research.phase2.gpt_oss_intervention_eval import (
     _selected_sample_manifest,
 )
 from research.phase2.replay import ToolCatalog
+from research.phase2.control_reference import write_reference as seal_reference
 from analysis.phase2_paired_results import combine_linked_reference_runs
 
 
@@ -752,6 +753,79 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
                     execution_mode="intervention_only", control_reference=reference,
                     generator_loader=should_not_load, session_factory=lambda: _session_for_catalog(catalog))
             self.assertFalse(called)
+
+    def test_failed_reference_run_never_leaves_a_reusable_completion_marker(self):
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"; checkpoint.mkdir()
+            with (
+                patch(
+                    "research.phase2.gpt_oss_intervention_eval.verify_identity_inputs",
+                    side_effect=[None, RuntimeError("late identity failure")],
+                ),
+                self.assertRaisesRegex(RuntimeError, "late identity failure"),
+            ):
+                run_evaluation(
+                    source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "failed-reference",
+                    config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1),
+                    execution_mode="reference", generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                    session_factory=lambda: _session_for_catalog(catalog),
+                )
+            reference = root / "failed-reference" / "canonical_control"
+            self.assertFalse((reference / "RUN_COMPLETE").exists())
+            self.assertFalse(reference.exists())
+
+    def test_linked_combiner_rejects_mixed_intervention_strengths(self):
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"; checkpoint.mkdir()
+            common = dict(source_run_dir=source, checkpoint_dir=checkpoint,
+                          generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                          session_factory=lambda: _session_for_catalog(catalog))
+            reference = run_evaluation(
+                output_dir=root / "reference",
+                config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1),
+                execution_mode="reference", **common,
+            ) / "canonical_control"
+            first = run_evaluation(
+                output_dir=root / "first",
+                config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1),
+                execution_mode="intervention_only", control_reference=reference, **common,
+            )
+            second = run_evaluation(
+                output_dir=root / "second",
+                config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.2, example_limit=1),
+                execution_mode="intervention_only", control_reference=reference, **common,
+            )
+            with self.assertRaisesRegex(ValueError, "incompatible target/method/strength/strength-mode"):
+                combine_linked_reference_runs([first, second], control_reference=reference)
+
+    def test_parent_failure_after_sealing_invalidates_the_child_reference(self):
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"; checkpoint.mkdir()
+            def seal_then_fail(*args, **kwargs):
+                seal_reference(*args, **kwargs)
+                raise RuntimeError("post-seal parent failure")
+            with (
+                patch("research.phase2.gpt_oss_intervention_eval.write_reference", side_effect=seal_then_fail),
+                self.assertRaisesRegex(RuntimeError, "post-seal parent failure"),
+            ):
+                run_evaluation(
+                    source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "failed-reference",
+                    config=EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1),
+                    execution_mode="reference", generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                    session_factory=lambda: _session_for_catalog(catalog),
+                )
+            reference = root / "failed-reference" / "canonical_control"
+            self.assertFalse((reference / "RUN_COMPLETE").exists())
+            self.assertTrue((reference / "RUN_FAILED.json").is_file())
 
 
 if __name__ == "__main__":

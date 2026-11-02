@@ -419,6 +419,7 @@ def combine_linked_reference_runs(
     expected_keys, expected_plan_reference = _expected_grid(expected_plan)
     seen: set[tuple[int, int, str]] = set()
     groups: dict[tuple[int, int, str, str], list[dict[str, Any]]] = defaultdict(list)
+    intervention_protocol: dict[str, Any] | None = None
     inputs = []
     for path in paths:
         _require((path / "RUN_COMPLETE").is_file() and not (path / "RUN_FAILED.json").exists(), f"{path}: incomplete intervention run")
@@ -444,6 +445,26 @@ def combine_linked_reference_runs(
         _require(current_compatibility == reference_compatibility, f"{path}: incompatible reference protocol")
         resolved = config.get("resolved_config", {})
         layers, seeds = _ids(resolved.get("layers"), "layers"), _ids(resolved.get("seeds"), "seeds")
+        declared_protocol = {
+            field: resolved.get(field)
+            for field in ("target", "method", "strength", "strength_mode")
+        }
+        _require(
+            isinstance(declared_protocol["target"], str) and
+            isinstance(declared_protocol["method"], str) and
+            type(declared_protocol["strength"]) in (int, float) and
+            isinstance(declared_protocol["strength_mode"], str),
+            f"{path}: invalid intervention protocol",
+        )
+        if intervention_protocol is None:
+            intervention_protocol = declared_protocol
+        else:
+            _require(declared_protocol == intervention_protocol,
+                     f"{path}: incompatible target/method/strength/strength-mode")
+        manifest_reference = {
+            "run_id": config.get("run_id"), "filename": "run_manifest.json",
+            "sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest(),
+        }
         records = [json.loads(line) for line in (path / "paired_records.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
         local = set()
         for record in records:
@@ -451,7 +472,16 @@ def combine_linked_reference_runs(
             key = (layer, seed, sample_id)
             _require(record.get("execution_mode") == "intervention_only" and record.get("control_reference") == reference,
                      f"{path}: unlinked intervention record")
+            _require(record.get("kind") == CURRENT_RUN_KIND and record.get("run_manifest") == manifest_reference,
+                     f"{path}: intervention record is not linked to its manifest")
             _require(sample_id in controls and layer in layers and seed in seeds, f"{path}: invalid intervention coverage")
+            _require(
+                record.get("target") == declared_protocol["target"] and
+                record.get("method") == declared_protocol["method"] and
+                record.get("strength") == declared_protocol["strength"] and
+                record.get("strength_mode") == declared_protocol["strength_mode"],
+                f"{key}: intervention record differs from run protocol",
+            )
             _require(key not in seen, f"Duplicate layer–seed–sample pair: {key}")
             intervention = _condition(record.get("intervention"), sample_id)
             control = _condition(controls[sample_id].get("control"), sample_id)
@@ -501,6 +531,7 @@ def combine_linked_reference_runs(
         rows.append(row)
     return {"kind": SUMMARY_KIND, "execution_mode": "intervention_only", "control_reference": reference,
             "compatibility": reference_compatibility, "input_runs": inputs, "expected_plan": expected_plan_reference,
+            "intervention_protocol": intervention_protocol,
             "unique_sample_count": len(controls), "unique_control_count": len(controls),
             "paired_observation_count": len(seen), "rows": rows}
 

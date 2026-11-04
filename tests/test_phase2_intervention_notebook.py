@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import importlib.util
 import ast
+import asyncio
 import contextlib
+import inspect
 import io
 from pathlib import Path
 import unittest
@@ -18,6 +20,19 @@ NOTEBOOK = (
 
 
 class Phase2InterventionNotebookTests(unittest.TestCase):
+    @staticmethod
+    def _execute_notebook_cell(source: str, namespace: dict[str, object]) -> None:
+        """Run a cell as Jupyter would, including a disabled top-level await cell."""
+        code = compile(
+            source,
+            str(NOTEBOOK),
+            "exec",
+            flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+        )
+        result = eval(code, namespace)
+        if inspect.iscoroutine(result):
+            asyncio.run(result)
+
     def test_notebook_has_portable_defaults_and_no_saved_outputs(self) -> None:
         notebook = json.loads(NOTEBOOK.read_text())
         code_cells = [cell for cell in notebook['cells'] if cell['cell_type'] == 'code']
@@ -97,6 +112,8 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         self.assertIn("SWEEP_STRENGTH_MODE = 'absolute'", source)
         self.assertIn("plan_paired_sweep", source)
         self.assertIn("SWEEP_MAX_INTERVENTIONS", source)
+        self.assertIn("len(ATTENTION_OUTPUT_SAMPLE_IDS)", source)
+        self.assertIn("for key in example.registry_metadata", source)
         self.assertIn("'actual_perturbation': active_probe.perturbation", source)
         self.assertIn("'changed_values': verification['perturbation']['changed_elements']", source)
         self.assertIn("paired_diagnostics(sweep_records)", source)
@@ -121,7 +138,7 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         namespace = {"__name__": "__notebook_test__"}
         for cell in notebook["cells"]:
             if cell["cell_type"] == "code":
-                exec("".join(cell["source"]), namespace)
+                self._execute_notebook_cell("".join(cell["source"]), namespace)
         self.assertEqual(
             namespace["results"]["disabled"],
             "no-op; identical output and exact values retained",
@@ -137,7 +154,7 @@ class Phase2InterventionNotebookTests(unittest.TestCase):
         namespace = {"__name__": "__notebook_test__"}
         for cell in notebook["cells"]:
             if cell["cell_type"] == "code":
-                exec("".join(cell["source"]), namespace)
+                self._execute_notebook_cell("".join(cell["source"]), namespace)
 
         views = {
             family: namespace["configuration_view"](family, 0, None)

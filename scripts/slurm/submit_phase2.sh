@@ -37,8 +37,8 @@ Options:
   --plan-manifest PATH Frozen screen-plan JSON to link and validate this chunk.
   --screen-plan-output PATH  Create this frozen plan inside the single-step job.
   --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
-  --execution-mode MODE      paired (default), reference, or intervention-only.
-  --control-reference PATH   Completed canonical control for intervention-only jobs.
+  --execution-mode MODE      paired (default), reference, or intervention-only (single or multi only).
+  --control-reference PATH   Completed canonical control for one intervention-only single or multi job.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
   -h, --help           Show this help.

@@ -253,6 +253,10 @@ if [[ "$execution_mode" != intervention_only && -n "$control_reference" ]]; then
   echo "--control-reference applies only to intervention-only execution" >&2
   exit 2
 fi
+if [[ "$mode" == both && "$execution_mode" == intervention_only ]]; then
+  echo "--execution-mode intervention-only is workflow-specific; use single or multi, not both" >&2
+  exit 2
+fi
 if [[ -n "$control_reference" && ! -d "$control_reference" ]]; then
   echo "Control reference directory does not exist: $control_reference" >&2
   exit 2

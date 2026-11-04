@@ -176,6 +176,18 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("require multi-step", result.stderr)
 
+    def test_intervention_only_both_mode_is_rejected_before_submission(self) -> None:
+        reference = self.root / "control-reference"
+        reference.mkdir()
+        result = self.run_submitter(
+            "both", "--execution-mode", "intervention-only",
+            "--control-reference", str(reference), "--dry-run",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("workflow-specific", result.stderr)
+        self.assertIn("single or multi", result.stderr)
+        self.assertFalse(self.submit_log.exists())
+
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
             "both", "--layer", "2", "--target", "qkv", "--strength", "0.02", "--seed", "42"

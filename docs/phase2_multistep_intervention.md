@@ -70,6 +70,9 @@ tool registry, and scoring protocol. Consequently, do **not** use `both` with
 `--execution-mode intervention-only`: one reference cannot simultaneously
 match a direct single-step job and several distinct multi-step dataset groups.
 Use an explicit `single` or `multi` command for each compatible reference.
+For `multi --execution-mode intervention-only`, select exactly one resolved
+dataset group with `--multi-datasets ID`; the default multi-step selection,
+multiple IDs, and a domain that expands to multiple groups are rejected.
 
 For example, create one unchanged reference for the full direct finance
 selection, then reuse its exact `canonical_control` path for each direct layer

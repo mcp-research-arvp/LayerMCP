@@ -37,7 +37,7 @@ Options:
   --plan-manifest PATH Frozen screen-plan JSON to link and validate this chunk.
   --screen-plan-output PATH  Create this frozen plan inside the single-step job.
   --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
-  --execution-mode MODE      paired (default), reference, or intervention-only (single or multi only).
+  --execution-mode MODE      paired (default), reference, or intervention-only (single or one multi group only).
   --control-reference PATH   Completed canonical control for one intervention-only single or multi job.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
@@ -260,6 +260,17 @@ fi
 if [[ -n "$control_reference" && ! -d "$control_reference" ]]; then
   echo "Control reference directory does not exist: $control_reference" >&2
   exit 2
+fi
+if [[ "$mode" == multi && "$execution_mode" == intervention_only ]]; then
+  if [[ "$MULTI_DATASET_SELECTION" == all ]]; then
+    echo "--execution-mode intervention-only requires exactly one resolved multi-step dataset group" >&2
+    exit 2
+  fi
+  IFS=':' read -r -a intervention_only_groups <<< "$MULTI_DATASET_SELECTION"
+  if (( ${#intervention_only_groups[@]} != 1 )); then
+    echo "--execution-mode intervention-only requires exactly one resolved multi-step dataset group" >&2
+    exit 2
+  fi
 fi
 if [[ "$STRENGTH_MODE" == tensor_rms && "$METHOD" != noise ]]; then
   echo "tensor_rms strength mode is defined only for noise interventions" >&2

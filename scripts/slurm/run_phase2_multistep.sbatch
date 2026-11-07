@@ -37,6 +37,12 @@ METHOD="${METHOD:-noise}"
 STRENGTH="${STRENGTH:-0.01}"
 STRENGTH_MODE="${STRENGTH_MODE:-absolute}"
 SEED="${SEED:-1234}"
+EXECUTION_MODE="${EXECUTION_MODE:-paired}"
+CONTROL_REFERENCE="${CONTROL_REFERENCE:-}"
+case "$EXECUTION_MODE" in paired|reference|intervention_only) ;; *) echo "Invalid EXECUTION_MODE" >&2; exit 2 ;; esac
+if [[ "$EXECUTION_MODE" == intervention_only && -z "$CONTROL_REFERENCE" ]]; then
+  echo "CONTROL_REFERENCE is required for intervention-only execution" >&2; exit 2
+fi
 LIMIT_ARGS=()
 if [[ "$RUN_KIND" == short_test ]]; then
   LIMIT_ARGS=(--workflow-limit "${WORKFLOW_LIMIT:-2}")
@@ -49,8 +55,8 @@ PLAN_ARGS=()
 if [[ -n "${PLAN_MANIFEST:-}" ]]; then
   PLAN_ARGS=(--plan-manifest "$PLAN_MANIFEST")
 fi
-RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_multistep_${RUN_KIND}_${DATASET_GROUP}_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seed${SEED}"
-python -m research.phase2.gpt_oss_multistep_intervention_eval \
+RUN_DIR="results/runs/phase2/${SLURM_JOB_ID}_gpt-oss_multistep_${EXECUTION_MODE}_${RUN_KIND}_${DATASET_GROUP}_layer${LAYER_INDEX}_${ATTENTION_TARGET}_${METHOD}_${STRENGTH_MODE}_${STRENGTH}_seed${SEED}"
+command=(python -m research.phase2.gpt_oss_multistep_intervention_eval \
   --dataset-group "$DATASET_GROUP" \
   --checkpoint "$LAYERMCP_GPT_OSS_CHECKPOINT" \
   --output-dir "$RUN_DIR" \
@@ -60,5 +66,10 @@ python -m research.phase2.gpt_oss_multistep_intervention_eval \
   --strength "$STRENGTH" \
   --strength-mode "$STRENGTH_MODE" \
   --seed "$SEED" \
+  --execution-mode "${EXECUTION_MODE//_/-}" \
   "${PLAN_ARGS[@]}" \
-  "${LIMIT_ARGS[@]}"
+  "${LIMIT_ARGS[@]}")
+if [[ -n "$CONTROL_REFERENCE" ]]; then
+  command+=(--control-reference "$CONTROL_REFERENCE")
+fi
+"${command[@]}"

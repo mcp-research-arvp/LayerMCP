@@ -176,6 +176,45 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("require multi-step", result.stderr)
 
+    def test_intervention_only_both_mode_is_rejected_before_submission(self) -> None:
+        reference = self.root / "control-reference"
+        reference.mkdir()
+        result = self.run_submitter(
+            "both", "--execution-mode", "intervention-only",
+            "--control-reference", str(reference), "--dry-run",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("workflow-specific", result.stderr)
+        self.assertIn("single or multi", result.stderr)
+        self.assertFalse(self.submit_log.exists())
+
+    def test_intervention_only_multi_requires_one_resolved_dataset_group(self) -> None:
+        reference = self.root / "control-reference"
+        reference.mkdir()
+        common = (
+            "--execution-mode", "intervention-only",
+            "--control-reference", str(reference), "--dry-run",
+        )
+        for arguments in (
+            ("multi",),
+            ("multi", "--multi-datasets", "finance_convfinqa,finance_finqa"),
+            ("multi", "--multi-domains", "finance"),
+        ):
+            with self.subTest(arguments=arguments):
+                result = self.run_submitter(*arguments, *common)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("exactly one resolved multi-step dataset group", result.stderr)
+                self.assertFalse(self.submit_log.exists())
+
+        result = self.run_submitter(
+            "multi", "--multi-datasets", "finance_finqa", *common,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        commands = [line for line in result.stdout.splitlines() if line.startswith("sbatch ")]
+        self.assertEqual(len(commands), 1)
+        self.assertIn("DATASET_GROUP=finance_finqa", commands[0])
+        self.assertIn("CONTROL_REFERENCE=", commands[0])
+
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
             "both", "--layer", "2", "--target", "qkv", "--strength", "0.02", "--seed", "42"

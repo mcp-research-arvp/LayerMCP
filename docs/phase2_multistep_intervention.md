@@ -54,6 +54,79 @@ chunk can also link `--plan-manifest` to a frozen workflow/layer/seed grid;
 use `single` or `multi`, not `both`, with a plan because plans are workflow
 specific.
 
+## Reuse one unchanged control across layer interventions
+
+The default `paired` mode remains useful for diagnostics: one job performs an
+unchanged control rollout and its matching altered rollout. For a layer screen,
+use `reference` once to produce a completed unchanged `canonical_control`,
+then use `intervention-only` for every layer/target/strength/seed condition
+that is compatible with that reference. The intervention-only job still uses
+its own model, tool state, and predicted multi-step history; the reference is
+used only for comparison after the altered rollout completes.
+
+A reference is tied to exactly one workflow type and selected input set. It
+also validates model/checkpoint identity, generation and reasoning settings,
+tool registry, and scoring protocol. Consequently, do **not** use `both` with
+`--execution-mode intervention-only`: one reference cannot simultaneously
+match a direct single-step job and several distinct multi-step dataset groups.
+Use an explicit `single` or `multi` command for each compatible reference.
+For `multi --execution-mode intervention-only`, select exactly one resolved
+dataset group with `--multi-datasets ID`; the default multi-step selection,
+multiple IDs, and a domain that expands to multiple groups are rejected.
+
+For example, create one unchanged reference for the full direct finance
+selection, then reuse its exact `canonical_control` path for each direct layer
+intervention:
+
+```bash
+scripts/slurm/submit_phase2.sh single \
+  --single-domains finance \
+  --execution-mode reference
+
+# Set this only after the reference job reports RUN_COMPLETE.
+FINANCE_SINGLE_REFERENCE=/path/to/reference-run/canonical_control
+
+scripts/slurm/submit_phase2.sh single \
+  --single-domains finance \
+  --layer 12 \
+  --target qkv \
+  --method noise \
+  --strength-mode tensor_rms \
+  --strength 0.01 \
+  --seeds 1234 \
+  --execution-mode intervention-only \
+  --control-reference "$FINANCE_SINGLE_REFERENCE"
+```
+
+Likewise, create and reuse a separate reference for each multi-step dataset
+group:
+
+```bash
+scripts/slurm/submit_phase2.sh multi \
+  --multi-datasets finance_finqa \
+  --execution-mode reference
+
+# Set this only after the reference job reports RUN_COMPLETE.
+FINQA_MULTI_REFERENCE=/path/to/finqa-reference-run/canonical_control
+
+scripts/slurm/submit_phase2.sh multi \
+  --multi-datasets finance_finqa \
+  --layer 12 \
+  --target qkv \
+  --method noise \
+  --strength-mode tensor_rms \
+  --strength 0.01 \
+  --seed 1234 \
+  --execution-mode intervention-only \
+  --control-reference "$FINQA_MULTI_REFERENCE"
+```
+
+The reference must be complete before intervention submission. The launcher
+checks that its directory exists; the evaluator then rejects incomplete or
+incompatible references before expensive altered generation. Combine only
+intervention-only artifacts that link to the same reference and use the same
+target, method, strength mode, and strength value.
+
 Create a plan without generation, then submit one layer/seed chunk per job:
 
 ```bash

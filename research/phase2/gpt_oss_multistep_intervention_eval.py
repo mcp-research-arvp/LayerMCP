@@ -24,6 +24,8 @@ from evaluation.evaluate import (
     SERVER_PATH,
     _evaluate_multistep_with_server,
     load_benchmark,
+    load_tool_catalog,
+    open_evaluation_session,
 )
 from models.routers import gpt_oss_local_router as router
 from research.phase2.experiment_integrity import (
@@ -43,10 +45,15 @@ from research.phase2.layer_screen import (
     LayerScreenPlanError,
     plan_layer_screen,
 )
+from research.phase2.control_reference import (
+    REFERENCE_KIND, invalidate_reference, load_reference,
+    preflight_reference, write_reference,
+)
 
 
 RUN_KIND = "phase2_gpt_oss_multistep_attention_intervention_v2"
 RUN_MANIFEST_KIND = "phase2_multistep_paired_run_manifest_v1"
+INTERVENTION_ONLY_MANIFEST_KIND = "phase2_multistep_intervention_only_run_manifest_v1"
 SCREEN_PLAN_KIND = "phase2_multistep_layer_screen_plan_v1"
 METRICS = {
     "tool_selection": "tool_selection_correct",
@@ -295,8 +302,16 @@ async def run_evaluation_async(
     checkpoint_dir: Path,
     output_dir: Path,
     config: MultistepConfig,
+    execution_mode: str = "paired",
+    control_reference: Path | None = None,
     generator_loader: Callable[[str], Any] = router.load_generator,
 ) -> Path:
+    if execution_mode not in {"paired", "reference", "intervention_only"}:
+        raise ValueError("execution_mode must be paired, reference, or intervention_only")
+    if execution_mode == "intervention_only" and control_reference is None:
+        raise ValueError("intervention_only execution requires a canonical control reference")
+    if execution_mode != "intervention_only" and control_reference is not None:
+        raise ValueError("control_reference applies only to intervention_only execution")
     benchmark, raw_rows, dataset = _selected_dataset(dataset_group, config.workflow_limit)
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
@@ -304,6 +319,36 @@ async def run_evaluation_async(
     identity = checkpoint_identity(checkpoint)
     if generator_loader is router.load_generator and identity["status"] != "complete":
         raise ValueError("GPT-OSS checkpoint/config/Harmony asset provenance is incomplete")
+    selected_ids = [sample.id for sample in dataset]
+    benchmark_sha256 = hashlib.sha256(benchmark.read_bytes()).hexdigest()
+    parent_plan = (
+        _load_parent_plan(config.plan_manifest, dataset_group=dataset_group, benchmark=benchmark,
+                          sample_ids=selected_ids, config=config)
+        if config.plan_manifest is not None else None
+    )
+    if execution_mode == "intervention_only":
+        assert control_reference is not None
+        # Do every compatibility check available without loading model weights.
+        # The runtime and live registry are checked below, still before rollout.
+        preflight_reference(
+            control_reference,
+            workflow_type="multi_step",
+            expected_ids=selected_ids,
+            required_compatibility={
+                "workflow_type": "multi_step",
+                "experiment_kind": RUN_KIND,
+                "checkpoint_fingerprint": identity["fingerprint"],
+                "dataset_group": dataset_group,
+                "benchmark_sha256": benchmark_sha256,
+                "selected_workflow_ids": selected_ids,
+                "evaluation": {
+                    "protocol": MULTISTEP_EVALUATION_PROTOCOL,
+                    "condition_isolation": "fresh_evaluator_mcp_session_per_condition",
+                    "reasoning_mode": "reasoning",
+                    "reasoning_effort": "low",
+                },
+            },
+        )
     generator = generator_loader(str(checkpoint))
     verify_identity_inputs(identity)
     if generator_loader is router.load_generator:
@@ -312,13 +357,6 @@ async def run_evaluation_async(
         raise ValueError(f"Unavailable attention layer: {config.layer}")
     if config.target not in available_attention_targets(generator.model, config.layer):
         raise ValueError(f"Unavailable attention target {config.target!r} at layer {config.layer}")
-
-    selected_ids = [sample.id for sample in dataset]
-    parent_plan = (
-        _load_parent_plan(config.plan_manifest, dataset_group=dataset_group, benchmark=benchmark,
-                          sample_ids=selected_ids, config=config)
-        if config.plan_manifest is not None else None
-    )
 
     target = output_dir.expanduser().resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -332,9 +370,10 @@ async def run_evaluation_async(
         in_progress.write_text(json.dumps({"run_id": run_id, "started_at": started_at}) + "\n", encoding="utf-8")
         config_record = {
             "kind": RUN_KIND,
+            "execution_mode": execution_mode,
             "dataset_group": dataset_group,
             "benchmark_path": str(benchmark),
-            "benchmark_sha256": hashlib.sha256(benchmark.read_bytes()).hexdigest(),
+            "benchmark_sha256": benchmark_sha256,
             "selected_workflow_ids": [sample.id for sample in dataset],
             "selected_workflow_count": len(dataset),
             "selected_step_count": sum(len(sample.expected_steps) for sample in dataset),
@@ -359,6 +398,7 @@ async def run_evaluation_async(
             "manifest_kind": RUN_MANIFEST_KIND,
             "run_id": run_id,
             "workflow_type": "multi_step",
+            "execution_mode": execution_mode,
             "dataset": {
                 "group": dataset_group, "path": str(benchmark),
                 "sha256": config_record["benchmark_sha256"], "selected_workflow_ids": selected_ids,
@@ -388,6 +428,31 @@ async def run_evaluation_async(
             "started_stage": stage,
         }))
         expected_catalog: str | None = None
+        reference: dict[str, Any] | None = None
+        indexed_controls: dict[str, dict[str, Any]] | None = None
+        prepared_reference_compatibility: dict[str, Any] | None = None
+        if execution_mode == "intervention_only":
+            assert control_reference is not None
+            # Check the live registry and runtime before spending an allocation
+            # on intervention rollout.  The reference only supplies outcomes;
+            # each condition still has its own evaluator/tool state.
+            async with open_evaluation_session(SERVER_PATH) as session:
+                catalog = await load_tool_catalog(session)
+            tool_registry = {
+                field: catalog.metadata[field]
+                for field in ("tool_pool", "tool_count", "tool_registry_fingerprint", "tool_registry_fingerprint_version")
+            }
+            prepared_reference_compatibility = {
+                "workflow_type": "multi_step", "experiment_kind": RUN_KIND,
+                "checkpoint_fingerprint": identity["fingerprint"], "dataset_group": dataset_group,
+                "benchmark_sha256": config_record["benchmark_sha256"], "selected_workflow_ids": selected_ids,
+                "evaluation": manifest["evaluation"], "runtime": config_record["runtime"],
+                "tool_registry": tool_registry, "generation": None,
+            }
+            reference, indexed_controls = load_reference(
+                control_reference, workflow_type="multi_step",
+                compatibility=prepared_reference_compatibility, expected_ids=selected_ids,
+            )
 
         def route_for(condition: str):
             def route_query(_router, query, live_tools, schemas, descriptions, reasoning_mode, reasoning_effort):
@@ -427,64 +492,98 @@ async def run_evaluation_async(
                 )
             return route_query
 
-        stage = "control"
-        await _evaluate_multistep_with_server(
-            dataset, benchmark, SERVER_PATH, True, "gpt-oss-local",
-            reasoning_mode="reasoning", reasoning_effort="low",
-            output_dir=target / "control", route_query=route_for("control"),
-        )
-        stage = "intervention"
-        await _evaluate_multistep_with_server(
-            dataset, benchmark, SERVER_PATH, True, "gpt-oss-local",
-            reasoning_mode="reasoning", reasoning_effort="low",
-            output_dir=target / "intervention", route_query=route_for("intervention"),
-        )
-        control_summary = _read_json(target / "control" / "summary.json")
-        intervention_summary = _read_json(target / "intervention" / "summary.json")
-        if control_summary["evaluation_protocol"] != MULTISTEP_EVALUATION_PROTOCOL:
-            raise ValueError("Control did not use the expected guided rollout protocol")
-        for field in ("tool_pool", "tool_count", "tool_registry_fingerprint", "tool_registry_fingerprint_version", "evaluation_protocol", "benchmark_sha256"):
-            if control_summary[field] != intervention_summary[field]:
-                raise ValueError(f"Paired condition metadata differs: {field}")
-        manifest["tool_registry"] = {
-            field: control_summary[field]
-            for field in ("tool_pool", "tool_count", "tool_registry_fingerprint", "tool_registry_fingerprint_version")
+        if execution_mode in {"paired", "reference"}:
+            stage = "control"
+            await _evaluate_multistep_with_server(
+                dataset, benchmark, SERVER_PATH, True, "gpt-oss-local",
+                reasoning_mode="reasoning", reasoning_effort="low",
+                output_dir=target / "control", route_query=route_for("control"),
+            )
+        if execution_mode in {"paired", "intervention_only"}:
+            stage = "intervention"
+            await _evaluate_multistep_with_server(
+                dataset, benchmark, SERVER_PATH, True, "gpt-oss-local",
+                reasoning_mode="reasoning", reasoning_effort="low",
+                output_dir=target / "intervention", route_query=route_for("intervention"),
+            )
+        primary_summary = _read_json(target / ("control" if execution_mode == "reference" else "intervention" if execution_mode == "intervention_only" else "control") / "summary.json")
+        manifest["tool_registry"] = {field: primary_summary[field] for field in (
+            "tool_pool", "tool_count", "tool_registry_fingerprint", "tool_registry_fingerprint_version")}
+        manifest["generation"] = primary_summary.get("generation")
+        compatibility = {
+            "workflow_type": "multi_step", "experiment_kind": RUN_KIND,
+            "checkpoint_fingerprint": identity["fingerprint"], "dataset_group": dataset_group,
+            "benchmark_sha256": config_record["benchmark_sha256"], "selected_workflow_ids": selected_ids,
+            "evaluation": manifest["evaluation"], "runtime": config_record["runtime"],
+            "tool_registry": manifest["tool_registry"], "generation": manifest["generation"],
         }
-        manifest["generation"] = control_summary.get("generation")
-        manifest_bytes = _canonical_json_bytes(manifest)
-        (target / "run_manifest.json").write_bytes(manifest_bytes)
-        manifest_reference = {"run_id": run_id, "filename": "run_manifest.json", "sha256": _sha256_bytes(manifest_bytes)}
-        pairs, diagnostics = _paired_results(
-            _read_workflows(target / "control" / "samples.jsonl"),
-            _read_workflows(target / "intervention" / "samples.jsonl"),
-            checks["control"], checks["intervention"],
-        )
-        if diagnostics["paired_workflow_count"] != len(dataset):
-            raise ValueError("Paired workflow count does not match selected dataset")
-        if [pair["sample_id"] for pair in pairs] != [sample.id for sample in dataset]:
-            raise ValueError("Paired workflow IDs do not match selected dataset")
-        for pair in pairs:
-            pair.update({
-                "kind": RUN_KIND, "run_manifest": manifest_reference,
-                "layer_index": config.layer, "seed": config.seed,
-                "target": config.target, "method": config.method,
-                "strength": float(config.strength), "strength_mode": config.strength_mode,
-                "dataset_group": dataset_group,
-            })
-        stage = "completion"
-        verify_identity_inputs(identity)
-        with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
+        if prepared_reference_compatibility is not None:
+            if compatibility != prepared_reference_compatibility:
+                raise ValueError("Live multi-step protocol changed after control-reference preflight")
+        if execution_mode == "reference":
+            stage = "completion"
+            verify_identity_inputs(identity)
+            reference = write_reference(
+                target / "canonical_control", workflow_type="multi_step", compatibility=compatibility,
+                controls=[{"sample_id": row["sample_id"], "control": row} for row in _read_workflows(target / "control" / "samples.jsonl")],
+                metadata={"run_id": run_id, "started_at": started_at, "completed_at": _utc_now(),
+                          "job_details": _job_details()},
+            )
+            (target / "summary.json").write_text(json.dumps({"kind": REFERENCE_KIND, "execution_mode": "reference",
+                "reference": reference, "control": primary_summary}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            pairs, diagnostics = [], {"paired_workflow_count": len(dataset), "paired_step_count": sum(len(item.expected_steps) for item in dataset)}
+        else:
+            if execution_mode == "paired":
+                control_summary = _read_json(target / "control" / "summary.json")
+                intervention_summary = _read_json(target / "intervention" / "summary.json")
+                for field in ("tool_pool", "tool_count", "tool_registry_fingerprint", "tool_registry_fingerprint_version", "evaluation_protocol", "benchmark_sha256"):
+                    if control_summary[field] != intervention_summary[field]:
+                        raise ValueError(f"Paired condition metadata differs: {field}")
+                controls = _read_workflows(target / "control" / "samples.jsonl")
+                control_checks = checks["control"]
+                reference = None
+            else:
+                assert control_reference is not None
+                assert reference is not None and indexed_controls is not None
+                controls = [indexed_controls[sample_id]["control"] for sample_id in selected_ids]
+                control_checks = [{"enabled": False, "changed_attention_parameter_names": [], "restored_exactly": None,
+                                   "perturbation": {"status": "disabled", "changed_elements": 0}}
+                                  for row in controls for _ in row["steps"]]
+                control_summary = {"reference": reference}
+                intervention_summary = primary_summary
+                config_record["control_reference"] = reference
+                manifest["control_reference"] = reference
+            manifest["manifest_kind"] = RUN_MANIFEST_KIND if execution_mode == "paired" else INTERVENTION_ONLY_MANIFEST_KIND
+            manifest_bytes = _canonical_json_bytes(manifest)
+            (target / "run_manifest.json").write_bytes(manifest_bytes)
+            manifest_reference = {"run_id": run_id, "filename": "run_manifest.json", "sha256": _sha256_bytes(manifest_bytes)}
+            pairs, diagnostics = _paired_results(
+                controls, _read_workflows(target / "intervention" / "samples.jsonl"), control_checks, checks["intervention"],
+            )
+            if diagnostics["paired_workflow_count"] != len(dataset):
+                raise ValueError("Paired workflow count does not match selected dataset")
             for pair in pairs:
-                handle.write(json.dumps(pair, sort_keys=True) + "\n")
-        (target / "summary.json").write_text(json.dumps({
-            "kind": RUN_KIND,
-            "dataset_group": dataset_group,
-            "run_manifest": manifest_reference,
-            "benchmark_mode_counts": config_record["effective_benchmark_mode_counts"],
-            "control": control_summary,
-            "intervention": intervention_summary,
-            **diagnostics,
-        }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+                pair.update({"kind": RUN_KIND, "run_manifest": manifest_reference, "execution_mode": execution_mode,
+                             "layer_index": config.layer, "seed": config.seed, "target": config.target,
+                             "method": config.method, "strength": float(config.strength),
+                             "strength_mode": config.strength_mode, "dataset_group": dataset_group})
+                if reference is not None:
+                    pair["control_reference"] = reference
+                    pair["reference_control_id"] = pair["sample_id"]
+                    pair.pop("control")
+                    for step in pair["steps"]:
+                        step.pop("control")
+                        step.pop("control_verification")
+            stage = "completion"
+            verify_identity_inputs(identity)
+            with (target / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
+                for pair in pairs:
+                    handle.write(json.dumps(pair, sort_keys=True) + "\n")
+            (target / "summary.json").write_text(json.dumps({"kind": RUN_KIND, "execution_mode": execution_mode,
+                "dataset_group": dataset_group, "run_manifest": manifest_reference,
+                "benchmark_mode_counts": config_record["effective_benchmark_mode_counts"],
+                "control": control_summary, "intervention": intervention_summary, **diagnostics}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (target / "run_config.json").write_bytes(_canonical_json_bytes(config_record))
         in_progress.unlink()
         (target / "run_status.json").write_bytes(_canonical_json_bytes({
             "run_id": run_id, "status": "completed", "completed_stage": stage,
@@ -493,6 +592,14 @@ async def run_evaluation_async(
         }))
         (target / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
     except BaseException as error:
+        if execution_mode == "reference":
+            try:
+                invalidate_reference(
+                    target / "canonical_control",
+                    reason=f"parent run failed during {stage}: {type(error).__name__}",
+                )
+            except OSError:
+                pass
         (target / "RUN_FAILED.json").write_text(json.dumps({
             "kind": RUN_KIND, "failure_stage": stage,
             "run_id": run_id, "error_type": type(error).__name__, "error": str(error),
@@ -551,6 +658,8 @@ def main() -> None:
     parser.add_argument("--plan-manifest", type=Path, help="Frozen multi-step screen plan to validate this layer/seed chunk")
     parser.add_argument("--plan-only", action="store_true", help="Discover safe layers and write a frozen plan without generation")
     parser.add_argument("--plan-output", type=Path, help="New plan JSON written by --plan-only")
+    parser.add_argument("--execution-mode", choices=("paired", "reference", "intervention-only"), default="paired")
+    parser.add_argument("--control-reference", type=Path)
     args = parser.parse_args()
     if args.plan_only:
         if args.plan_output is None:
@@ -569,6 +678,10 @@ def main() -> None:
         return
     if args.output_dir is None or args.layer is None:
         parser.error("--output-dir and --layer are required unless --plan-only is used")
+    if args.execution_mode == "intervention-only" and args.control_reference is None:
+        parser.error("--control-reference is required with --execution-mode intervention-only")
+    if args.execution_mode != "intervention-only" and args.control_reference is not None:
+        parser.error("--control-reference applies only to intervention-only execution")
     config = MultistepConfig(
         args.layer, args.target, args.method, args.strength, args.seed, args.workflow_limit,
         args.strength_mode, args.plan_manifest,
@@ -576,6 +689,7 @@ def main() -> None:
     destination = run_evaluation(
         dataset_group=args.dataset_group, checkpoint_dir=args.checkpoint,
         output_dir=args.output_dir, config=config,
+        execution_mode=args.execution_mode.replace("-", "_"), control_reference=args.control_reference,
     )
     print(destination)
 

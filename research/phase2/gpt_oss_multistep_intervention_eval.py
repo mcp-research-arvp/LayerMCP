@@ -304,6 +304,7 @@ async def run_evaluation_async(
     config: MultistepConfig,
     execution_mode: str = "paired",
     control_reference: Path | None = None,
+    control_reference_job_id: str | None = None,
     generator_loader: Callable[[str], Any] = router.load_generator,
 ) -> Path:
     if execution_mode not in {"paired", "reference", "intervention_only"}:
@@ -312,6 +313,11 @@ async def run_evaluation_async(
         raise ValueError("intervention_only execution requires a canonical control reference")
     if execution_mode != "intervention_only" and control_reference is not None:
         raise ValueError("control_reference applies only to intervention_only execution")
+    if control_reference_job_id is not None:
+        if execution_mode != "intervention_only":
+            raise ValueError("control_reference_job_id applies only to intervention_only execution")
+        if not control_reference_job_id.isdigit():
+            raise ValueError("control_reference_job_id must be a Slurm numeric job ID")
     benchmark, raw_rows, dataset = _selected_dataset(dataset_group, config.workflow_limit)
     checkpoint = checkpoint_dir.expanduser().resolve(strict=True)
     if not checkpoint.is_dir():
@@ -348,6 +354,7 @@ async def run_evaluation_async(
                     "reasoning_effort": "low",
                 },
             },
+            expected_scheduler_job_id=control_reference_job_id,
         )
     generator = generator_loader(str(checkpoint))
     verify_identity_inputs(identity)
@@ -393,6 +400,8 @@ async def run_evaluation_async(
             "runtime": runtime_identity(generator.model),
             "run_id": run_id,
         }
+        if control_reference_job_id is not None:
+            config_record["control_reference_dependency_job_id"] = control_reference_job_id
         (target / "run_config.json").write_bytes(_canonical_json_bytes(config_record))
         manifest = {
             "manifest_kind": RUN_MANIFEST_KIND,
@@ -452,6 +461,7 @@ async def run_evaluation_async(
             reference, indexed_controls = load_reference(
                 control_reference, workflow_type="multi_step",
                 compatibility=prepared_reference_compatibility, expected_ids=selected_ids,
+                expected_scheduler_job_id=control_reference_job_id,
             )
 
         def route_for(condition: str):
@@ -660,6 +670,7 @@ def main() -> None:
     parser.add_argument("--plan-output", type=Path, help="New plan JSON written by --plan-only")
     parser.add_argument("--execution-mode", choices=("paired", "reference", "intervention-only"), default="paired")
     parser.add_argument("--control-reference", type=Path)
+    parser.add_argument("--control-reference-job-id")
     args = parser.parse_args()
     if args.plan_only:
         if args.plan_output is None:
@@ -682,6 +693,10 @@ def main() -> None:
         parser.error("--control-reference is required with --execution-mode intervention-only")
     if args.execution_mode != "intervention-only" and args.control_reference is not None:
         parser.error("--control-reference applies only to intervention-only execution")
+    if args.execution_mode != "intervention-only" and args.control_reference_job_id is not None:
+        parser.error("--control-reference-job-id applies only to intervention-only execution")
+    if args.control_reference_job_id is not None and not args.control_reference_job_id.isdigit():
+        parser.error("--control-reference-job-id must be a Slurm numeric job ID")
     config = MultistepConfig(
         args.layer, args.target, args.method, args.strength, args.seed, args.workflow_limit,
         args.strength_mode, args.plan_manifest,
@@ -690,6 +705,7 @@ def main() -> None:
         dataset_group=args.dataset_group, checkpoint_dir=args.checkpoint,
         output_dir=args.output_dir, config=config,
         execution_mode=args.execution_mode.replace("-", "_"), control_reference=args.control_reference,
+        control_reference_job_id=args.control_reference_job_id,
     )
     print(destination)
 

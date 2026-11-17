@@ -39,6 +39,7 @@ Options:
   --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
   --execution-mode MODE      paired (default), reference, or intervention-only (single or one multi group only).
   --control-reference PATH   Completed canonical control for one intervention-only single or multi job.
+  --control-reference-job ID Queue intervention-only work after this reference Slurm job succeeds.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
   -h, --help           Show this help.
@@ -76,6 +77,7 @@ screen_plan_output=""
 combined_output=""
 execution_mode="paired"
 control_reference=""
+control_reference_job=""
 example_limit_override=""
 workflow_limit_override=""
 selected_domains=""
@@ -88,7 +90,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --primary-only) primary_only=1 ;;
     --dry-run) dry_run=1 ;;
-    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--workflow-limit|--plan-manifest|--screen-plan-output|--combined-output|--execution-mode|--control-reference|--env-file|--domains|--single-domains|--multi-domains|--single-datasets|--multi-datasets|--list-datasets)
+    --layer|--target|--method|--strength|--strength-mode|--seed|--seeds|--example-limit|--workflow-limit|--plan-manifest|--screen-plan-output|--combined-output|--execution-mode|--control-reference|--control-reference-job|--env-file|--domains|--single-domains|--multi-domains|--single-datasets|--multi-datasets|--list-datasets)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "Missing value for $1" >&2
         exit 2
@@ -108,6 +110,7 @@ while [[ $# -gt 0 ]]; do
         --combined-output) combined_output="$2" ;;
         --execution-mode) execution_mode="${2//-/_}" ;;
         --control-reference) control_reference="$2" ;;
+        --control-reference-job) control_reference_job="$2" ;;
         --env-file) env_file="$2" ;;
         --domains) selected_domains="$2" ;;
         --single-domains) single_domains="$2" ;;
@@ -253,11 +256,23 @@ if [[ "$execution_mode" != intervention_only && -n "$control_reference" ]]; then
   echo "--control-reference applies only to intervention-only execution" >&2
   exit 2
 fi
+if [[ "$execution_mode" != intervention_only && -n "$control_reference_job" ]]; then
+  echo "--control-reference-job applies only to intervention-only execution" >&2
+  exit 2
+fi
+if [[ -n "$control_reference_job" && ! "$control_reference_job" =~ ^[0-9]+$ ]]; then
+  echo "--control-reference-job must be a Slurm numeric job ID" >&2
+  exit 2
+fi
+if [[ -n "$control_reference_job" && -z "$control_reference" ]]; then
+  echo "--control-reference-job requires --control-reference" >&2
+  exit 2
+fi
 if [[ "$mode" == both && "$execution_mode" == intervention_only ]]; then
   echo "--execution-mode intervention-only is workflow-specific; use single or multi, not both" >&2
   exit 2
 fi
-if [[ -n "$control_reference" && ! -d "$control_reference" ]]; then
+if [[ -n "$control_reference" && -z "$control_reference_job" && ! -d "$control_reference" ]]; then
   echo "Control reference directory does not exist: $control_reference" >&2
   exit 2
 fi
@@ -308,8 +323,18 @@ export LAYER_INDEX ATTENTION_TARGET METHOD STRENGTH STRENGTH_MODE SEED SEEDS EXA
 EXECUTION_MODE="$execution_mode"
 export EXECUTION_MODE
 if [[ -n "$control_reference" ]]; then
-  CONTROL_REFERENCE="$(cd "$control_reference" && pwd -P)"
+  if [[ -d "$control_reference" ]]; then
+    CONTROL_REFERENCE="$(cd "$control_reference" && pwd -P)"
+  elif [[ "$control_reference" == /* ]]; then
+    CONTROL_REFERENCE="$control_reference"
+  else
+    CONTROL_REFERENCE="$PWD/$control_reference"
+  fi
   export CONTROL_REFERENCE
+fi
+if [[ -n "$control_reference_job" ]]; then
+  CONTROL_REFERENCE_JOB_ID="$control_reference_job"
+  export CONTROL_REFERENCE_JOB_ID
 fi
 if [[ -n "$plan_manifest" ]]; then
   PLAN_MANIFEST="$(cd "$(dirname "$plan_manifest")" && pwd -P)/$(basename "$plan_manifest")"
@@ -340,6 +365,7 @@ fi
 
 common_exports="ALL,LAYERMCP_VENV,LAYERMCP_REPO_ROOT,LAYERMCP_GPT_OSS_CHECKPOINT,TIKTOKEN_ENCODINGS_BASE,LAYER_INDEX=$LAYER_INDEX,ATTENTION_TARGET=$ATTENTION_TARGET,METHOD=$METHOD,STRENGTH=$STRENGTH,STRENGTH_MODE=$STRENGTH_MODE,SEED=$SEED,SEEDS=$SEEDS,EXECUTION_MODE=$EXECUTION_MODE"
 [[ -z "${CONTROL_REFERENCE:-}" ]] || common_exports+=",CONTROL_REFERENCE=$CONTROL_REFERENCE"
+[[ -z "${CONTROL_REFERENCE_JOB_ID:-}" ]] || common_exports+=",CONTROL_REFERENCE_JOB_ID=$CONTROL_REFERENCE_JOB_ID"
 [[ -z "$EXAMPLE_LIMIT" ]] || common_exports+=",EXAMPLE_LIMIT=$EXAMPLE_LIMIT"
 [[ -z "${WORKFLOW_LIMIT:-}" ]] || common_exports+=",WORKFLOW_LIMIT=$WORKFLOW_LIMIT"
 if [[ -n "${PLAN_MANIFEST:-}" ]]; then common_exports+=",PLAN_MANIFEST=$PLAN_MANIFEST"; fi
@@ -351,6 +377,7 @@ scheduler_args=()
 [[ -z "${LAYERMCP_SLURM_CPUS_PER_TASK:-}" ]] || scheduler_args+=("--cpus-per-task=$LAYERMCP_SLURM_CPUS_PER_TASK")
 [[ -z "${LAYERMCP_SLURM_MEM:-}" ]] || scheduler_args+=("--mem=$LAYERMCP_SLURM_MEM")
 [[ -z "${LAYERMCP_SLURM_TIME:-}" ]] || scheduler_args+=("--time=$LAYERMCP_SLURM_TIME")
+[[ -z "${CONTROL_REFERENCE_JOB_ID:-}" ]] || scheduler_args+=("--dependency=afterok:$CONTROL_REFERENCE_JOB_ID")
 submitted=0
 submit_job() {
   local label="$1"

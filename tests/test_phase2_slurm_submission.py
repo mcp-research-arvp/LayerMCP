@@ -215,6 +215,33 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("DATASET_GROUP=finance_finqa", commands[0])
         self.assertIn("CONTROL_REFERENCE=", commands[0])
 
+    def test_intervention_only_can_queue_behind_a_planned_reference_job(self) -> None:
+        future_reference = self.root / "future-reference" / "canonical_control"
+        result = self.run_submitter(
+            "multi", "--multi-datasets", "finance_finqa",
+            "--execution-mode", "intervention-only",
+            "--control-reference", str(future_reference),
+            "--control-reference-job", "24000009", "--dry-run",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = next(line for line in result.stdout.splitlines() if line.startswith("sbatch "))
+        self.assertIn("--dependency=afterok:24000009", command)
+        self.assertIn("CONTROL_REFERENCE_JOB_ID=24000009", command)
+        self.assertIn(f"CONTROL_REFERENCE={future_reference}", command)
+
+    def test_planned_reference_job_requires_intervention_and_reference_path(self) -> None:
+        future_reference = self.root / "future-reference" / "canonical_control"
+        for arguments, expected in (
+            (("single", "--execution-mode", "reference", "--control-reference-job", "24000009"), "only to intervention-only"),
+            (("single", "--execution-mode", "intervention-only", "--control-reference-job", "24000009"), "--control-reference is required"),
+            (("single", "--execution-mode", "intervention-only", "--control-reference", str(future_reference), "--control-reference-job", "not-a-job"), "numeric job ID"),
+            (("single", "--execution-mode", "intervention-only", "--control-reference", str(future_reference)), "does not exist"),
+        ):
+            with self.subTest(arguments=arguments):
+                result = self.run_submitter(*arguments, "--dry-run")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected, result.stderr)
+
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
             "both", "--layer", "2", "--target", "qkv", "--strength", "0.02", "--seed", "42"
@@ -355,6 +382,31 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)", commands[0])
         arguments = commands[-1]
         self.assertIn("--example-limit 2", arguments)
+
+    def test_launchers_forward_reference_dependency_job_id(self) -> None:
+        reference = self.root / "future-reference" / "canonical_control"
+        for launcher, extra in (
+            (SINGLE_LAUNCHER, {"DATASET_SELECTION": "benchmark/finance/finance_controlled.json"}),
+            (MULTI_LAUNCHER, {"DATASET_GROUP": "finance_finqa", "RUN_KIND": "short_test"}),
+        ):
+            with self.subTest(launcher=launcher.name):
+                environment = self.environment | {
+                    "SLURM_JOB_ID": "24000004", "LAYERMCP_VENV": str(self.venv),
+                    "LAYERMCP_REPO_ROOT": str(ROOT), "LAYERMCP_GPT_OSS_CHECKPOINT": str(self.checkpoint),
+                    "TIKTOKEN_ENCODINGS_BASE": str(self.tokenizer),
+                    "EXECUTION_MODE": "intervention_only", "CONTROL_REFERENCE": str(reference),
+                    "CONTROL_REFERENCE_JOB_ID": "24000009", "PHASE2_PYTHON_LOG": str(self.root / f"{launcher.stem}.txt"),
+                    **extra,
+                }
+                result = subprocess.run(
+                    ["bash", "-c", 'module() { :; }; python() { printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; }; '
+                     'export -f module python; bash "$1"', "bash", str(launcher)],
+                    env=environment, capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                arguments = (self.root / f"{launcher.stem}.txt").read_text().splitlines()[-1]
+                self.assertIn(f"--control-reference {reference}", arguments)
+                self.assertIn("--control-reference-job-id 24000009", arguments)
 
     def test_missing_environment_fails_before_submission(self):
         for missing in ("activate", "python"):

@@ -36,9 +36,13 @@ SCREEN_PLAN_OUTPUT="${SCREEN_PLAN_OUTPUT:-}"
 COMBINED_OUTPUT="${COMBINED_OUTPUT:-}"
 EXECUTION_MODE="${EXECUTION_MODE:-paired}"
 CONTROL_REFERENCE="${CONTROL_REFERENCE:-}"
+CONTROL_REFERENCE_JOB_ID="${CONTROL_REFERENCE_JOB_ID:-}"
 case "$EXECUTION_MODE" in paired|reference|intervention_only) ;; *) echo "Invalid EXECUTION_MODE" >&2; exit 2 ;; esac
 if [[ "$EXECUTION_MODE" == intervention_only && -z "$CONTROL_REFERENCE" ]]; then
   echo "CONTROL_REFERENCE is required for intervention-only execution" >&2; exit 2
+fi
+if [[ -n "$CONTROL_REFERENCE_JOB_ID" && ! "$CONTROL_REFERENCE_JOB_ID" =~ ^[0-9]+$ ]]; then
+  echo "CONTROL_REFERENCE_JOB_ID must be a Slurm numeric job ID" >&2; exit 2
 fi
 
 source "$LAYERMCP_REPO_ROOT/scripts/slurm/submit_common.sh"
@@ -75,6 +79,9 @@ base_command=(python -m research.phase2.gpt_oss_intervention_eval \
   --execution-mode "${EXECUTION_MODE//_/-}")
 if [[ -n "$CONTROL_REFERENCE" ]]; then
   base_command+=(--control-reference "$CONTROL_REFERENCE")
+fi
+if [[ -n "$CONTROL_REFERENCE_JOB_ID" ]]; then
+  base_command+=(--control-reference-job-id "$CONTROL_REFERENCE_JOB_ID")
 fi
 if [[ -n "$EXAMPLE_LIMIT" ]]; then
   base_command+=(--example-limit "$EXAMPLE_LIMIT")

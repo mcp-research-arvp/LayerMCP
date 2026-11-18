@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -730,6 +731,37 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             combined = combine_linked_reference_runs([intervention_run], control_reference=reference)
             self.assertEqual(combined["unique_control_count"], 2)
             self.assertEqual(combined["paired_observation_count"], 2)
+
+    def test_intervention_only_verifies_and_records_reference_scheduler_job_id(self):
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            config = EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1)
+            with patch.dict(os.environ, {"SLURM_JOB_ID": "24000009"}):
+                reference = run_evaluation(
+                    source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "reference", config=config,
+                    execution_mode="reference", generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                    session_factory=lambda: _session_for_catalog(catalog),
+                ) / "canonical_control"
+            intervention = run_evaluation(
+                source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "intervention", config=config,
+                execution_mode="intervention_only", control_reference=reference, control_reference_job_id="24000009",
+                generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            config_record = json.loads((intervention / "run_config.json").read_text())
+            self.assertEqual(config_record["control_reference_dependency_job_id"], "24000009")
+
+            with self.assertRaisesRegex(ValueError, "scheduler job ID differs"):
+                run_evaluation(
+                    source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "wrong-job", config=config,
+                    execution_mode="intervention_only", control_reference=reference, control_reference_job_id="24000010",
+                    generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                    session_factory=lambda: _session_for_catalog(catalog),
+                )
 
     def test_intervention_only_rejects_wrong_reference_before_loading_generator(self):
         catalog = _catalog()

@@ -121,11 +121,14 @@ scripts/slurm/submit_phase2.sh multi \
   --control-reference "$FINQA_MULTI_REFERENCE"
 ```
 
-The reference must be complete before intervention submission. The launcher
-checks that its directory exists; the evaluator then rejects incomplete or
-incompatible references before expensive altered generation. Combine only
-intervention-only artifacts that link to the same reference and use the same
-target, method, strength mode, and strength value.
+Normally the reference must be complete before intervention submission. To
+queue work while the reference is pending, supply its expected output path and
+`--control-reference-job JOB_ID`. The launcher adds Slurm
+`afterok:JOB_ID`; the evaluator verifies the completed reference's lifecycle,
+identity, coverage, content hashes, and recorded scheduler job ID before it
+loads model weights. Combine only intervention-only artifacts that link to the
+same reference and use the same target, method, strength mode, and strength
+value.
 
 Create a plan without generation, then submit one layer/seed chunk per job:
 

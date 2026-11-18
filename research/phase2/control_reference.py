@@ -32,6 +32,19 @@ def _require(value: bool, message: str) -> None:
         raise ValueError(message)
 
 
+def _require_scheduler_job_id(manifest: dict[str, Any], expected_scheduler_job_id: str | None, path: Path) -> None:
+    """Bind a dependency-submitted intervention to the intended control job."""
+    if expected_scheduler_job_id is None:
+        return
+    details = manifest.get("job_details")
+    actual = details.get("actual") if isinstance(details, dict) else None
+    job_id = actual.get("slurm_job_id") if isinstance(actual, dict) else None
+    _require(
+        str(job_id) == expected_scheduler_job_id,
+        f"{path}: canonical control scheduler job ID differs (expected {expected_scheduler_job_id}, got {job_id!r})",
+    )
+
+
 def write_reference(
     directory: Path,
     *,
@@ -107,6 +120,7 @@ def load_reference(
     workflow_type: str,
     compatibility: dict[str, Any],
     expected_ids: Iterable[str],
+    expected_scheduler_job_id: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     """Load only a complete, byte-linked, protocol-compatible reference."""
     path = Path(directory).expanduser().resolve(strict=True)
@@ -120,6 +134,7 @@ def load_reference(
     manifest = json.loads(manifest_bytes)
     _require(manifest.get("kind") == REFERENCE_KIND, f"{path}: not a canonical-control reference")
     _require(manifest.get("workflow_type") == workflow_type, f"{path}: reference workflow type differs")
+    _require_scheduler_job_id(manifest, expected_scheduler_job_id, path)
     _require(manifest.get("compatibility") == compatibility,
              f"{path}: reference model/input/generation/registry/scoring protocol is incompatible")
     record_name = manifest.get("record_file")
@@ -143,6 +158,7 @@ def load_reference(
 
 def preflight_reference(
     directory: Path | str, *, workflow_type: str, required_compatibility: dict[str, Any], expected_ids: Iterable[str],
+    expected_scheduler_job_id: str | None = None,
 ) -> None:
     """Reject an obviously wrong/incomplete reference before model weights load.
 
@@ -154,6 +170,7 @@ def preflight_reference(
     manifest = json.loads((path / REFERENCE_MANIFEST).read_text(encoding="utf-8"))
     _require(manifest.get("kind") == REFERENCE_KIND and manifest.get("workflow_type") == workflow_type,
              f"{path}: wrong canonical-control workflow")
+    _require_scheduler_job_id(manifest, expected_scheduler_job_id, path)
     compatibility = manifest.get("compatibility")
     _require(isinstance(compatibility, dict), f"{path}: missing canonical compatibility")
     for key, expected in required_compatibility.items():

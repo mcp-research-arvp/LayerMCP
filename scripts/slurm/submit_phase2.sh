@@ -178,6 +178,11 @@ fi
 
 source "$env_file"
 
+# Reference linkage is explicit CLI state. Never inherit it from the caller
+# or deployment environment, where a stale value could attach an unrelated
+# dependency to a paired or reference run.
+unset CONTROL_REFERENCE CONTROL_REFERENCE_JOB_ID
+
 : "${LAYERMCP_REPO_ROOT:?Set LAYERMCP_REPO_ROOT in the environment file}"
 : "${LAYERMCP_GPT_OSS_CHECKPOINT:?Set LAYERMCP_GPT_OSS_CHECKPOINT in the environment file}"
 : "${TIKTOKEN_ENCODINGS_BASE:?Set TIKTOKEN_ENCODINGS_BASE in the environment file}"

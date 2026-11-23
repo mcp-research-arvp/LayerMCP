@@ -242,6 +242,14 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected, result.stderr)
 
+    def test_paired_mode_ignores_an_inherited_reference_job_id(self) -> None:
+        self.environment["CONTROL_REFERENCE_JOB_ID"] = "24000009"
+        result = self.run_submitter("single", "--execution-mode", "paired", "--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = next(line for line in result.stdout.splitlines() if line.startswith("sbatch "))
+        self.assertNotIn("--dependency=afterok:", command)
+        self.assertNotIn("CONTROL_REFERENCE_JOB_ID=", command)
+
     def test_submits_with_explicit_configuration_and_clears_short_test_limit(self) -> None:
         result = self.run_submitter(
             "both", "--layer", "2", "--target", "qkv", "--strength", "0.02", "--seed", "42"

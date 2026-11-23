@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -91,7 +92,7 @@ def write_benchmark(path: Path) -> None:
 class MultistepInterventionTests(unittest.TestCase):
     def _run(self, root: Path, generator: FakeGenerator, *, config: MultistepConfig | None = None,
              execution_mode: str = "paired", control_reference: Path | None = None, output_name: str = "output",
-             generator_loader=None) -> Path:
+             control_reference_job_id: str | None = None, generator_loader=None) -> Path:
         benchmark = root / "benchmark.json"
         write_benchmark(benchmark)
         checkpoint = root / "checkpoint"
@@ -110,6 +111,7 @@ class MultistepInterventionTests(unittest.TestCase):
                 ),
                 generator_loader=generator_loader or (lambda _: generator),
                 execution_mode=execution_mode, control_reference=control_reference,
+                control_reference_job_id=control_reference_job_id,
             )
 
     def test_paired_rollouts_use_separate_predicted_histories_and_restore(self):
@@ -178,6 +180,29 @@ class MultistepInterventionTests(unittest.TestCase):
             self.assertTrue((linked / "RUN_COMPLETE").is_file())
             combined = combine_linked_reference_runs([linked], control_reference=reference_run / "canonical_control")
             self.assertEqual(combined["unique_control_count"], 1)
+
+    def test_intervention_only_verifies_and_records_reference_scheduler_job_id(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = MultistepConfig(0, "qkv", "noise", 0.25, 17, strength_mode="tensor_rms")
+            with patch.dict(os.environ, {"SLURM_JOB_ID": "24000009"}):
+                reference = self._run(
+                    root, FakeGenerator(TinyModel()), config=config,
+                    execution_mode="reference", output_name="reference",
+                ) / "canonical_control"
+            linked = self._run(
+                root, FakeGenerator(TinyModel()), config=config,
+                execution_mode="intervention_only", control_reference=reference,
+                control_reference_job_id="24000009", output_name="linked",
+            )
+            config_record = json.loads((linked / "run_config.json").read_text())
+            self.assertEqual(config_record["control_reference_dependency_job_id"], "24000009")
+            with self.assertRaisesRegex(ValueError, "scheduler job ID differs"):
+                self._run(
+                    root, FakeGenerator(TinyModel()), config=config,
+                    execution_mode="intervention_only", control_reference=reference,
+                    control_reference_job_id="24000010", output_name="wrong-job",
+                )
 
     def test_intervention_only_preflights_missing_reference_before_loading_generator(self):
         with TemporaryDirectory() as directory:

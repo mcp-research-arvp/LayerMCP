@@ -39,9 +39,13 @@ STRENGTH_MODE="${STRENGTH_MODE:-absolute}"
 SEED="${SEED:-1234}"
 EXECUTION_MODE="${EXECUTION_MODE:-paired}"
 CONTROL_REFERENCE="${CONTROL_REFERENCE:-}"
+CONTROL_REFERENCE_JOB_ID="${CONTROL_REFERENCE_JOB_ID:-}"
 case "$EXECUTION_MODE" in paired|reference|intervention_only) ;; *) echo "Invalid EXECUTION_MODE" >&2; exit 2 ;; esac
 if [[ "$EXECUTION_MODE" == intervention_only && -z "$CONTROL_REFERENCE" ]]; then
   echo "CONTROL_REFERENCE is required for intervention-only execution" >&2; exit 2
+fi
+if [[ -n "$CONTROL_REFERENCE_JOB_ID" && ! "$CONTROL_REFERENCE_JOB_ID" =~ ^[0-9]+$ ]]; then
+  echo "CONTROL_REFERENCE_JOB_ID must be a Slurm numeric job ID" >&2; exit 2
 fi
 LIMIT_ARGS=()
 if [[ "$RUN_KIND" == short_test ]]; then
@@ -71,5 +75,8 @@ command=(python -m research.phase2.gpt_oss_multistep_intervention_eval \
   "${LIMIT_ARGS[@]}")
 if [[ -n "$CONTROL_REFERENCE" ]]; then
   command+=(--control-reference "$CONTROL_REFERENCE")
+fi
+if [[ -n "$CONTROL_REFERENCE_JOB_ID" ]]; then
+  command+=(--control-reference-job-id "$CONTROL_REFERENCE_JOB_ID")
 fi
 "${command[@]}"

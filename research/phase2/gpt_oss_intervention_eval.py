@@ -920,6 +920,7 @@ async def _run_reference_or_intervention_direct(
     benchmark_hashes: dict[str, str],
     execution_mode: Literal["reference", "intervention_only"],
     control_reference: Path | None,
+    control_reference_job_id: str | None,
     session_factory: Callable[[], Any] | None,
 ) -> Path:
     """Persist a one-time control or a linked intervention-only direct chunk."""
@@ -965,6 +966,8 @@ async def _run_reference_or_intervention_direct(
                 "screen_plan": screen_plan.as_dict(), "parent_plan": parent_plan,
                 "example_count": len(examples), **input_config,
             }
+            if control_reference_job_id is not None:
+                run_config["control_reference_dependency_job_id"] = control_reference_job_id
             if execution_mode == "reference":
                 failure_stage = "control"
                 for example in examples:
@@ -1005,6 +1008,7 @@ async def _run_reference_or_intervention_direct(
                 reference, controls = load_reference(
                     control_reference, workflow_type="single_step", compatibility=compatibility,
                     expected_ids=[example.sample_id for example in examples],
+                    expected_scheduler_job_id=control_reference_job_id,
                 )
                 run_config["control_reference"] = reference
                 failure_stage = "intervention"
@@ -1118,6 +1122,7 @@ async def run_evaluation_async(
     plan_manifest: Path | None = None,
     execution_mode: Literal["paired", "reference", "intervention_only"] = "paired",
     control_reference: Path | None = None,
+    control_reference_job_id: str | None = None,
     generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
@@ -1165,7 +1170,8 @@ async def run_evaluation_async(
         preflight_reference(control_reference, workflow_type="single_step", expected_ids=selected_ids,
                             required_compatibility={"workflow_type": "single_step", "experiment_kind": RUN_KIND,
                                 "checkpoint_fingerprint": identity["fingerprint"], "model_binding": "native_loader" if generator_loader is gpt_oss_router.load_generator else "injected_loader_unverified",
-                                "inputs": preflight_inputs})
+                                "inputs": preflight_inputs},
+                            expected_scheduler_job_id=control_reference_job_id)
     generator = generator_loader(str(checkpoint))
     verify_identity_inputs(identity)
     if generator_loader is gpt_oss_router.load_generator:
@@ -1189,6 +1195,11 @@ async def run_evaluation_async(
         raise ValueError("intervention_only execution requires --control-reference")
     if execution_mode != "intervention_only" and control_reference is not None:
         raise ValueError("--control-reference applies only to intervention_only execution")
+    if control_reference_job_id is not None:
+        if execution_mode != "intervention_only":
+            raise ValueError("--control-reference-job-id applies only to intervention_only execution")
+        if not control_reference_job_id.isdigit():
+            raise ValueError("--control-reference-job-id must be a Slurm numeric job ID")
     if execution_mode != "paired":
         return await _run_reference_or_intervention_direct(
             source_run_dir=source_run_dir, benchmark_paths=benchmark_paths,
@@ -1197,7 +1208,8 @@ async def run_evaluation_async(
             provenance=provenance, metadata=metadata, saved_examples=saved_examples,
             selected_ids=selected_ids, direct_selection=direct_selection,
             benchmark_hashes=benchmark_hashes, execution_mode=execution_mode,
-            control_reference=control_reference, session_factory=session_factory,
+            control_reference=control_reference, control_reference_job_id=control_reference_job_id,
+            session_factory=session_factory,
         )
 
     target.mkdir(parents=True)
@@ -1327,6 +1339,7 @@ def run_evaluation(
     plan_manifest: Path | None = None,
     execution_mode: Literal["paired", "reference", "intervention_only"] = "paired",
     control_reference: Path | None = None,
+    control_reference_job_id: str | None = None,
     generator_loader: Callable[[str], Any] = gpt_oss_router.load_generator,
     session_factory: Callable[[], Any] | None = None,
 ) -> Path:
@@ -1341,6 +1354,7 @@ def run_evaluation(
             plan_manifest=plan_manifest,
             execution_mode=execution_mode,
             control_reference=control_reference,
+            control_reference_job_id=control_reference_job_id,
             generator_loader=generator_loader,
             session_factory=session_factory,
         )
@@ -1397,6 +1411,8 @@ def main() -> None:
                         help="paired (default), reference (one unchanged control), or intervention-only (requires --control-reference).")
     parser.add_argument("--control-reference", type=Path,
                         help="Completed canonical_control directory used only by intervention-only execution.")
+    parser.add_argument("--control-reference-job-id",
+                        help="Optional Slurm job ID that must match the linked canonical control.")
     args = parser.parse_args()
     if args.example_limit is not None and args.example_limit <= 0:
         parser.error("--example-limit must be positive")
@@ -1412,6 +1428,10 @@ def main() -> None:
         parser.error("--control-reference is required with --execution-mode intervention-only")
     if args.execution_mode != "intervention-only" and args.control_reference is not None:
         parser.error("--control-reference applies only to intervention-only execution")
+    if args.execution_mode != "intervention-only" and args.control_reference_job_id is not None:
+        parser.error("--control-reference-job-id applies only to intervention-only execution")
+    if args.control_reference_job_id is not None and not args.control_reference_job_id.isdigit():
+        parser.error("--control-reference-job-id must be a Slurm numeric job ID")
     config = EvaluationConfig(
         layers=args.layers,
         seeds=_parse_csv_ints(args.seeds, "--seeds"),
@@ -1442,6 +1462,7 @@ def main() -> None:
         plan_manifest=args.plan_manifest,
         execution_mode=args.execution_mode.replace("-", "_"),
         control_reference=args.control_reference,
+        control_reference_job_id=args.control_reference_job_id,
     )
     print(destination)
 

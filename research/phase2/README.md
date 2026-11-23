@@ -565,9 +565,9 @@ categories; repeated controls are not independent benchmark examples.
 
 ### Reuse one canonical performance control
 
-`paired` remains the default diagnostic mode.  For a full layer screen, first
-create one completed reference, then submit intervention-only chunks linked to
-that exact reference.  The reference is comparison evidence only: a multi-step
+`paired` remains the default diagnostic mode.  For a full layer screen, create
+one reference and submit intervention-only chunks linked to that exact
+reference.  The reference is comparison evidence only: a multi-step
 intervention still starts with isolated tool state and develops its own
 predicted-call history.
 
@@ -582,6 +582,25 @@ scripts/slurm/submit_phase2.sh single \
   --strength-mode tensor_rms --strength 0.01 --seeds 1234,5678,9012 \
   --execution-mode intervention-only \
   --control-reference /portable/path/to/reference-run/canonical_control
+```
+
+To queue those chunks at the same time as a not-yet-started reference, provide
+the reference job ID as well as its deterministic future output path.  Slurm
+holds each intervention with `afterok`; when it starts, the evaluator still
+requires the reference's `RUN_COMPLETE`, content hashes, matching coverage,
+and matching job ID before it loads model weights.  A failed reference leaves
+its dependent interventions unstarted.
+
+```bash
+FINANCE_REFERENCE_JOB=27030598
+FINANCE_SINGLE_REFERENCE="$PWD/results/runs/phase2/${FINANCE_REFERENCE_JOB}_gpt-oss_single_step_reference_full_layer0_qkv_noise_tensor_rms_0.01_seeds1234/canonical_control"
+
+scripts/slurm/submit_phase2.sh single \
+  --single-domains finance --layer 12 --target qkv --method noise \
+  --strength-mode tensor_rms --strength 0.01 --seeds 1234 \
+  --execution-mode intervention-only \
+  --control-reference "$FINANCE_SINGLE_REFERENCE" \
+  --control-reference-job "$FINANCE_REFERENCE_JOB"
 ```
 
 For a small multi-step validation, add `--workflow-limit 2` to a `multi`

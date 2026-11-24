@@ -361,10 +361,8 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         })
         command = (
             'module() { :; }; '
-            'python() { '
-            'if [[ "$1" == "-" ]]; then "$LAYERMCP_VENV/bin/python" "$@"; '
-            'else printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; fi; '
-            '}; export -f module python; bash "$1"'
+            'python() { printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; }; '
+            'export -f module python; bash "$1"'
         )
         result = subprocess.run(
             ["bash", "-c", command, "bash", str(SINGLE_LAUNCHER)],
@@ -373,7 +371,9 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Evaluating 13 direct single-step benchmark files", result.stdout)
         commands = (self.root / "python_args.txt").read_text().splitlines()
-        self.assertIn("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)", commands[0])
+        self.assertTrue(any("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)" in command for command in commands))
+        self.assertIn("-", commands[1])
+        self.assertIn("CUDA_VISIBLE_DEVICES", (ROOT / "scripts/slurm/phase2_environment.sh").read_text())
         arguments = commands[-1]
         self.assertIn("--benchmarks", arguments)
         self.assertIn("benchmark/math/math_controlled.json", arguments)

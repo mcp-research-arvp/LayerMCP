@@ -20,3 +20,29 @@ validate_phase2_harmony_runtime() {
   export TIKTOKEN_ENCODINGS_BASE
   python -c 'from openai_harmony import HarmonyEncodingName, load_harmony_encoding; print(load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS).name)'
 }
+
+validate_phase2_cuda_runtime() {
+  # Phase 2 GPT-OSS runs are H100 experiments.  Do not silently construct the
+  # model on CPU when CUDA is unavailable inside an allocated Slurm job.
+  python - <<'PY'
+import os
+import sys
+
+import torch
+
+visible = os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>")
+if not torch.cuda.is_available() or torch.cuda.device_count() < 1:
+    raise SystemExit(
+        "Phase 2 GPT-OSS requires a CUDA-visible GPU after environment setup; "
+        f"CUDA_VISIBLE_DEVICES={visible!r}, "
+        f"torch.cuda.is_available()={torch.cuda.is_available()}, "
+        f"device_count={torch.cuda.device_count()}"
+    )
+print(
+    "Phase 2 CUDA preflight: "
+    f"CUDA_VISIBLE_DEVICES={visible!r}; "
+    f"device_count={torch.cuda.device_count()}; "
+    f"device_0={torch.cuda.get_device_name(0)}"
+)
+PY
+}

@@ -14,7 +14,7 @@ from itertools import product
 import json
 from pathlib import Path
 from typing import Any, Iterable
-from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference
+from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference, protocol_compatible
 
 
 RUN_KIND = "phase2_gpt_oss_multistep_attention_intervention_v2"
@@ -250,7 +250,8 @@ def combine_linked_reference_runs(
                   "selected_workflow_ids": config.get("selected_workflow_ids"),
                   "evaluation": manifest.get("evaluation"), "runtime": config.get("runtime"),
                   "tool_registry": manifest.get("tool_registry"), "generation": manifest.get("generation")}
-        _require(actual == compatibility, f"{path}: incompatible model/dataset/generation/scoring protocol")
+        _require(protocol_compatible(compatibility, actual),
+                 f"{path}: incompatible model/dataset/generation/scoring protocol")
         run_config = config.get("config", {})
         layer, seed = run_config.get("layer"), run_config.get("seed")
         _require(type(layer) is int and type(seed) is int, f"{path}: invalid layer/seed")

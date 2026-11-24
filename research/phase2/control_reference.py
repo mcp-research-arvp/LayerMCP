@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -17,6 +18,18 @@ from typing import Any, Iterable
 REFERENCE_KIND = "phase2_canonical_control_reference_v1"
 REFERENCE_MANIFEST = "control_reference_manifest.json"
 REFERENCE_RECORDS = "control_records.jsonl"
+
+# These identify the checkout used to produce an artifact.  They are durable
+# provenance and remain in every manifest, but are not themselves a change to
+# the model, inputs, tool registry, or evaluation protocol.  The latter are
+# covered by the remaining compatibility fields and must still match exactly.
+# A semantic evaluation change must therefore change the explicit experiment
+# kind/protocol, rather than relying on a whole-tree source hash.
+_RUNTIME_PROVENANCE_ONLY_FIELDS = frozenset({
+    "git_commit",
+    "runtime_code_fingerprint",
+    "tracked_worktree_dirty",
+})
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -30,6 +43,35 @@ def sha256_bytes(value: bytes) -> str:
 def _require(value: bool, message: str) -> None:
     if not value:
         raise ValueError(message)
+
+
+def protocol_compatible(reference: dict[str, Any], current: dict[str, Any]) -> bool:
+    """Compare experimental compatibility while retaining checkout provenance.
+
+    A source revision is recorded for auditability but does not, by itself,
+    alter the experimental protocol.  All other runtime facts (notably model
+    device/dtype, CUDA, driver, and generation settings) remain strict.
+    """
+    expected = deepcopy(reference)
+    observed = deepcopy(current)
+    for value in (expected, observed):
+        runtime = value.get("runtime")
+        if isinstance(runtime, dict):
+            for field in _RUNTIME_PROVENANCE_ONLY_FIELDS:
+                runtime.pop(field, None)
+    return expected == observed
+
+
+def runtime_provenance_difference_fields(reference: dict[str, Any], current: dict[str, Any]) -> list[str]:
+    """Return recorded-only runtime fields that differ between two conditions."""
+    expected = reference.get("runtime")
+    observed = current.get("runtime")
+    if not isinstance(expected, dict) or not isinstance(observed, dict):
+        return []
+    return sorted(
+        field for field in _RUNTIME_PROVENANCE_ONLY_FIELDS
+        if expected.get(field) != observed.get(field)
+    )
 
 
 def _require_scheduler_job_id(manifest: dict[str, Any], expected_scheduler_job_id: str | None, path: Path) -> None:
@@ -135,7 +177,8 @@ def load_reference(
     _require(manifest.get("kind") == REFERENCE_KIND, f"{path}: not a canonical-control reference")
     _require(manifest.get("workflow_type") == workflow_type, f"{path}: reference workflow type differs")
     _require_scheduler_job_id(manifest, expected_scheduler_job_id, path)
-    _require(manifest.get("compatibility") == compatibility,
+    stored_compatibility = manifest.get("compatibility")
+    _require(isinstance(stored_compatibility, dict) and protocol_compatible(stored_compatibility, compatibility),
              f"{path}: reference model/input/generation/registry/scoring protocol is incompatible")
     record_name = manifest.get("record_file")
     _require(record_name == REFERENCE_RECORDS, f"{path}: unexpected reference record file")
@@ -153,6 +196,12 @@ def load_reference(
         "filename": REFERENCE_MANIFEST, "sha256": sha256_bytes(manifest_bytes),
         "record_sha256": manifest["record_sha256"],
     }
+    provenance_differences = runtime_provenance_difference_fields(stored_compatibility, compatibility)
+    if provenance_differences:
+        reference["runtime_provenance"] = {
+            "status": "recorded_checkout_difference",
+            "differing_fields": provenance_differences,
+        }
     return reference, {row["sample_id"]: row for row in rows}
 
 

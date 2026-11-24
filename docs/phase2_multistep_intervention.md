@@ -66,7 +66,10 @@ used only for comparison after the altered rollout completes.
 
 A reference is tied to exactly one workflow type and selected input set. It
 also validates model/checkpoint identity, generation and reasoning settings,
-tool registry, and scoring protocol. Consequently, do **not** use `both` with
+tool registry, scoring protocol, and execution runtime (including device,
+dtype, CUDA, and driver). The originating checkout commit/source fingerprint
+is retained and reported as provenance, but does not alone invalidate an
+otherwise matching protocol. Consequently, do **not** use `both` with
 `--execution-mode intervention-only`: one reference cannot simultaneously
 match a direct single-step job and several distinct multi-step dataset groups.
 Use an explicit `single` or `multi` command for each compatible reference.

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from analysis.benchmark_inventory import infer_benchmark_class
-from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference
+from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference, protocol_compatible
 
 
 RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v1"
@@ -442,7 +442,8 @@ def combine_linked_reference_runs(
                            "condition_isolation": config.get("condition_isolation")},
             "tool_registry": manifest.get("tool_registry"),
         }
-        _require(current_compatibility == reference_compatibility, f"{path}: incompatible reference protocol")
+        _require(protocol_compatible(reference_compatibility, current_compatibility),
+                 f"{path}: incompatible reference protocol")
         resolved = config.get("resolved_config", {})
         layers, seeds = _ids(resolved.get("layers"), "layers"), _ids(resolved.get("seeds"), "seeds")
         declared_protocol = {

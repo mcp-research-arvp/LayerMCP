@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import os
+from copy import deepcopy
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -27,7 +28,7 @@ from research.phase2.gpt_oss_intervention_eval import (
     _selected_sample_manifest,
 )
 from research.phase2.replay import ToolCatalog
-from research.phase2.control_reference import write_reference as seal_reference
+from research.phase2.control_reference import load_reference, write_reference as seal_reference
 from analysis.phase2_paired_results import combine_linked_reference_runs
 
 
@@ -835,6 +836,43 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "incompatible target/method/strength/strength-mode"):
                 combine_linked_reference_runs([first, second], control_reference=reference)
+
+    def test_reference_keeps_checkout_provenance_but_requires_execution_runtime(self):
+        compatibility = {
+            "workflow_type": "single_step",
+            "checkpoint_fingerprint": "checkpoint-a",
+            "inputs": {"selected_sample_ids": ["one"]},
+            "generation": {"reasoning_effort": "low"},
+            "runtime": {
+                "devices": ["cuda:0"], "dtypes": ["torch.bfloat16"],
+                "git_commit": "old", "runtime_code_fingerprint": "old-code",
+                "tracked_worktree_dirty": False,
+            },
+        }
+        with TemporaryDirectory() as directory:
+            reference_dir = Path(directory) / "reference"
+            seal_reference(
+                reference_dir, workflow_type="single_step", compatibility=compatibility,
+                controls=[{"sample_id": "one", "control": {"sample_id": "one"}}], metadata={},
+            )
+            current = deepcopy(compatibility)
+            current["runtime"].update({
+                "git_commit": "new", "runtime_code_fingerprint": "new-code",
+                "tracked_worktree_dirty": True,
+            })
+            reference, _ = load_reference(
+                reference_dir, workflow_type="single_step", compatibility=current, expected_ids=["one"],
+            )
+            self.assertEqual(reference["runtime_provenance"]["status"], "recorded_checkout_difference")
+            self.assertEqual(reference["runtime_provenance"]["differing_fields"], [
+                "git_commit", "runtime_code_fingerprint", "tracked_worktree_dirty",
+            ])
+
+            current["runtime"]["devices"] = ["cpu"]
+            with self.assertRaisesRegex(ValueError, "reference model/input/generation/registry/scoring protocol is incompatible"):
+                load_reference(
+                    reference_dir, workflow_type="single_step", compatibility=current, expected_ids=["one"],
+                )
 
     def test_parent_failure_after_sealing_invalidates_the_child_reference(self):
         catalog = _catalog()

@@ -614,8 +614,11 @@ The same `--execution-mode` and `--control-reference` options work with
 `multi`; each selected multi-step group needs a reference for that exact group.
 References require `RUN_COMPLETE`, one control record for every frozen selected
 ID, content hashes, matching checkpoint/input/generation/tool-registry/scoring
-identity, and a compatible runtime/protocol record. The combiner reads shared
-controls once:
+identity, and a compatible runtime/protocol record. Model device/dtype, CUDA,
+driver, and generation runtime fields must match. Checkout commit and source
+fingerprint remain saved as provenance and are reported when they differ; they
+do not alone invalidate an otherwise identical protocol. The combiner reads
+shared controls once:
 
 ```bash
 python -m analysis.phase2_paired_results \

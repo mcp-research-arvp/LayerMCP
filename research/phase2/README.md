@@ -617,7 +617,12 @@ ID, content hashes, matching checkpoint/input/generation/tool-registry/scoring
 identity, and a compatible runtime/protocol record. Model device/dtype, CUDA,
 driver, and generation runtime fields must match. Checkout commit and source
 fingerprint remain saved as provenance and are reported when they differ; they
-do not alone invalidate an otherwise identical protocol. The combiner reads
+do not alone invalidate an otherwise identical protocol. Native GPT-OSS
+references and interventions must use clean tracked checkouts: an uncommitted
+change cannot be certified merely by recording its source hash. Any change to
+prompts, tool rendering, generation behavior, evaluator/scoring behavior, or
+other experiment semantics must explicitly bump the relevant experiment kind
+or evaluation protocol before a reference can be reused. The combiner reads
 shared controls once:
 
 ```bash

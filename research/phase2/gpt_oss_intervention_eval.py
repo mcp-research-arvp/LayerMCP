@@ -52,7 +52,7 @@ from research.phase2.experiment_integrity import (
 )
 from research.phase2.control_reference import (
     REFERENCE_KIND, canonical_bytes as _reference_bytes, invalidate_reference, load_reference, preflight_reference,
-    sha256_bytes as _reference_sha256, write_reference,
+    runtime_provenance, sha256_bytes as _reference_sha256, write_reference,
 )
 
 
@@ -1011,6 +1011,12 @@ async def _run_reference_or_intervention_direct(
                     expected_scheduler_job_id=control_reference_job_id,
                 )
                 run_config["control_reference"] = reference
+                reference_manifest = json.loads(
+                    (control_reference.expanduser().resolve() / "control_reference_manifest.json").read_text(encoding="utf-8")
+                )
+                reference_provenance = runtime_provenance(reference_manifest["compatibility"], compatibility)
+                if reference_provenance is not None:
+                    run_config["reference_runtime_provenance"] = reference_provenance
                 failure_stage = "intervention"
                 with (output_dir / "paired_records.jsonl").open("x", encoding="utf-8") as handle:
                     for layer_index in resolved_config.layers:

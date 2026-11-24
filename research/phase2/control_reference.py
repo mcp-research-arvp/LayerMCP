@@ -28,7 +28,6 @@ REFERENCE_RECORDS = "control_records.jsonl"
 _RUNTIME_PROVENANCE_ONLY_FIELDS = frozenset({
     "git_commit",
     "runtime_code_fingerprint",
-    "tracked_worktree_dirty",
 })
 
 
@@ -74,6 +73,26 @@ def runtime_provenance_difference_fields(reference: dict[str, Any], current: dic
     )
 
 
+def runtime_provenance(reference: dict[str, Any], current: dict[str, Any]) -> dict[str, Any] | None:
+    """Describe permitted checkout-only differences outside the reference link."""
+    fields = runtime_provenance_difference_fields(reference, current)
+    return (
+        {"status": "recorded_checkout_difference", "differing_fields": fields}
+        if fields else None
+    )
+
+
+def _require_clean_native_checkout(compatibility: dict[str, Any], *, role: str) -> None:
+    """Prevent native reporting artifacts from relying on uncommitted source."""
+    if compatibility.get("model_binding") not in {"native_loader", "native_loaded_inputs"}:
+        return
+    runtime = compatibility.get("runtime")
+    _require(
+        isinstance(runtime, dict) and runtime.get("tracked_worktree_dirty") is False,
+        f"{role}: native GPT-OSS artifacts require a clean tracked checkout",
+    )
+
+
 def _require_scheduler_job_id(manifest: dict[str, Any], expected_scheduler_job_id: str | None, path: Path) -> None:
     """Bind a dependency-submitted intervention to the intended control job."""
     if expected_scheduler_job_id is None:
@@ -102,6 +121,7 @@ def write_reference(
     _require(all(isinstance(value, str) and value for value in ids), "control records require non-empty sample_id")
     _require(len(ids) == len(set(ids)), "canonical reference has duplicate sample/workflow IDs")
     _require(compatibility.get("workflow_type") == workflow_type, "reference workflow type is inconsistent")
+    _require_clean_native_checkout(compatibility, role="canonical reference")
     directory.mkdir(parents=True, exist_ok=False)
     record_bytes = b"".join(canonical_bytes(record) for record in records)
     (directory / REFERENCE_RECORDS).write_bytes(record_bytes)
@@ -180,6 +200,8 @@ def load_reference(
     stored_compatibility = manifest.get("compatibility")
     _require(isinstance(stored_compatibility, dict) and protocol_compatible(stored_compatibility, compatibility),
              f"{path}: reference model/input/generation/registry/scoring protocol is incompatible")
+    _require_clean_native_checkout(stored_compatibility, role=f"{path}: canonical reference")
+    _require_clean_native_checkout(compatibility, role="current intervention")
     record_name = manifest.get("record_file")
     _require(record_name == REFERENCE_RECORDS, f"{path}: unexpected reference record file")
     record_bytes = (path / record_name).read_bytes()
@@ -196,12 +218,6 @@ def load_reference(
         "filename": REFERENCE_MANIFEST, "sha256": sha256_bytes(manifest_bytes),
         "record_sha256": manifest["record_sha256"],
     }
-    provenance_differences = runtime_provenance_difference_fields(stored_compatibility, compatibility)
-    if provenance_differences:
-        reference["runtime_provenance"] = {
-            "status": "recorded_checkout_difference",
-            "differing_fields": provenance_differences,
-        }
     return reference, {row["sample_id"]: row for row in rows}
 
 

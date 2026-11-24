@@ -14,7 +14,9 @@ from itertools import product
 import json
 from pathlib import Path
 from typing import Any, Iterable
-from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference, protocol_compatible
+from research.phase2.control_reference import (
+    REFERENCE_MANIFEST, REFERENCE_KIND, load_reference, protocol_compatible, runtime_provenance,
+)
 
 
 RUN_KIND = "phase2_gpt_oss_multistep_attention_intervention_v2"
@@ -252,6 +254,15 @@ def combine_linked_reference_runs(
                   "tool_registry": manifest.get("tool_registry"), "generation": manifest.get("generation")}
         _require(protocol_compatible(compatibility, actual),
                  f"{path}: incompatible model/dataset/generation/scoring protocol")
+        expected_provenance = runtime_provenance(compatibility, actual)
+        _require(
+            config.get("reference_runtime_provenance") == expected_provenance,
+            f"{path}: reference checkout provenance differs from the recorded runtime",
+        )
+        _require(
+            manifest.get("reference_runtime_provenance") == expected_provenance,
+            f"{path}: manifest reference checkout provenance differs from the recorded runtime",
+        )
         run_config = config.get("config", {})
         layer, seed = run_config.get("layer"), run_config.get("seed")
         _require(type(layer) is int and type(seed) is int, f"{path}: invalid layer/seed")
@@ -319,7 +330,8 @@ def combine_linked_reference_runs(
             seen.add(key); local.add(key); by_layer_seed[(layer, seed)].append(materialized)
         _require(local == {(layer, seed, sample) for sample in indexed}, f"{path}: incomplete layer–seed workflow chunk")
         inputs.append({"directory": str(path), "intervention_record_count": len(records),
-                       "run_manifest_sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()})
+                       "run_manifest_sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest(),
+                       "reference_runtime_provenance": expected_provenance})
     if expected is not None:
         _require(seen == expected, "completed chunks do not match the frozen expected layer–seed–workflow grid")
     rows = []
@@ -348,6 +360,10 @@ def combine_linked_reference_runs(
         rows.append(row)
     return {"kind": SUMMARY_KIND, "execution_mode": "intervention_only", "control_reference": reference,
             "compatibility": compatibility, "expected_plan": expected_reference, "input_runs": inputs,
+            "reference_runtime_provenance_runs": [
+                {"directory": item["directory"], "provenance": item["reference_runtime_provenance"]}
+                for item in inputs if item["reference_runtime_provenance"] is not None
+            ],
             "intervention_protocol": intervention_protocol,
             "unique_workflow_count": len(indexed), "unique_control_count": len(indexed),
             "paired_observation_count": len(seen), "rows": rows}

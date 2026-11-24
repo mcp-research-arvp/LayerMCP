@@ -47,7 +47,7 @@ from research.phase2.layer_screen import (
 )
 from research.phase2.control_reference import (
     REFERENCE_KIND, invalidate_reference, load_reference,
-    preflight_reference, write_reference,
+    preflight_reference, runtime_provenance, write_reference,
 )
 
 
@@ -463,6 +463,13 @@ async def run_evaluation_async(
                 compatibility=prepared_reference_compatibility, expected_ids=selected_ids,
                 expected_scheduler_job_id=control_reference_job_id,
             )
+            reference_manifest = _read_json(control_reference.expanduser().resolve() / "control_reference_manifest.json")
+            reference_provenance = runtime_provenance(
+                reference_manifest["compatibility"], prepared_reference_compatibility,
+            )
+            if reference_provenance is not None:
+                config_record["reference_runtime_provenance"] = reference_provenance
+                manifest["reference_runtime_provenance"] = reference_provenance
 
         def route_for(condition: str):
             def route_query(_router, query, live_tools, schemas, descriptions, reasoning_mode, reasoning_effort):

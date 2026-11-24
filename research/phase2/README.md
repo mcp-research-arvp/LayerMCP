@@ -585,11 +585,15 @@ scripts/slurm/submit_phase2.sh single \
 ```
 
 To queue those chunks at the same time as a not-yet-started reference, provide
-the reference job ID as well as its deterministic future output path.  Slurm
+the reference job ID as well as its deterministic future output path. Slurm
 holds each intervention with `afterok`; when it starts, the evaluator still
 requires the reference's `RUN_COMPLETE`, content hashes, matching coverage,
 and matching job ID before it loads model weights.  A failed reference leaves
 its dependent interventions unstarted.
+
+If the canonical control is already complete, pass the same reference path and
+job ID. The launcher keeps the job ID for runtime identity validation but omits
+the stale Slurm dependency, which some clusters reject for completed parents.
 
 ```bash
 FINANCE_REFERENCE_JOB=27030598

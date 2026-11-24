@@ -39,7 +39,7 @@ Options:
   --combined-output PATH     Combine and integrity-check that single completed chunk inside the job.
   --execution-mode MODE      paired (default), reference, or intervention-only (single or one multi group only).
   --control-reference PATH   Completed canonical control for one intervention-only single or multi job.
-  --control-reference-job ID Queue intervention-only work after this reference Slurm job succeeds.
+  --control-reference-job ID Bind intervention-only work to this reference Slurm job; wait for it only if its reference is not complete.
   --env-file PATH      Environment file (default: repository .env).
   --dry-run            Show all sbatch commands without submitting jobs.
   -h, --help           Show this help.
@@ -382,7 +382,9 @@ scheduler_args=()
 [[ -z "${LAYERMCP_SLURM_CPUS_PER_TASK:-}" ]] || scheduler_args+=("--cpus-per-task=$LAYERMCP_SLURM_CPUS_PER_TASK")
 [[ -z "${LAYERMCP_SLURM_MEM:-}" ]] || scheduler_args+=("--mem=$LAYERMCP_SLURM_MEM")
 [[ -z "${LAYERMCP_SLURM_TIME:-}" ]] || scheduler_args+=("--time=$LAYERMCP_SLURM_TIME")
-[[ -z "${CONTROL_REFERENCE_JOB_ID:-}" ]] || scheduler_args+=("--dependency=afterok:$CONTROL_REFERENCE_JOB_ID")
+if [[ -n "${CONTROL_REFERENCE_JOB_ID:-}" && ! -f "$CONTROL_REFERENCE/RUN_COMPLETE" ]]; then
+  scheduler_args+=("--dependency=afterok:$CONTROL_REFERENCE_JOB_ID")
+fi
 submitted=0
 submit_job() {
   local label="$1"

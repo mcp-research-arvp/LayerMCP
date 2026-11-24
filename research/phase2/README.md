@@ -585,11 +585,15 @@ scripts/slurm/submit_phase2.sh single \
 ```
 
 To queue those chunks at the same time as a not-yet-started reference, provide
-the reference job ID as well as its deterministic future output path.  Slurm
+the reference job ID as well as its deterministic future output path. Slurm
 holds each intervention with `afterok`; when it starts, the evaluator still
 requires the reference's `RUN_COMPLETE`, content hashes, matching coverage,
 and matching job ID before it loads model weights.  A failed reference leaves
 its dependent interventions unstarted.
+
+If the canonical control is already complete, pass the same reference path and
+job ID. The launcher keeps the job ID for runtime identity validation but omits
+the stale Slurm dependency, which some clusters reject for completed parents.
 
 ```bash
 FINANCE_REFERENCE_JOB=27030598
@@ -610,8 +614,16 @@ The same `--execution-mode` and `--control-reference` options work with
 `multi`; each selected multi-step group needs a reference for that exact group.
 References require `RUN_COMPLETE`, one control record for every frozen selected
 ID, content hashes, matching checkpoint/input/generation/tool-registry/scoring
-identity, and a compatible runtime/protocol record. The combiner reads shared
-controls once:
+identity, and a compatible runtime/protocol record. Model device/dtype, CUDA,
+driver, and generation runtime fields must match. Checkout commit and source
+fingerprint remain saved as provenance and are reported when they differ; they
+do not alone invalidate an otherwise identical protocol. Native GPT-OSS
+references and interventions must use clean tracked checkouts: an uncommitted
+change cannot be certified merely by recording its source hash. Any change to
+prompts, tool rendering, generation behavior, evaluator/scoring behavior, or
+other experiment semantics must explicitly bump the relevant experiment kind
+or evaluation protocol before a reference can be reused. The combiner reads
+shared controls once:
 
 ```bash
 python -m analysis.phase2_paired_results \

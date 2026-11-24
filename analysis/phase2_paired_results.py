@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from analysis.benchmark_inventory import infer_benchmark_class
-from research.phase2.control_reference import REFERENCE_MANIFEST, REFERENCE_KIND, load_reference
+from research.phase2.control_reference import (
+    REFERENCE_MANIFEST, REFERENCE_KIND, load_reference, protocol_compatible, runtime_provenance,
+)
 
 
 RUN_KIND = "phase2_gpt_oss_attention_intervention_eval_v1"
@@ -442,7 +444,13 @@ def combine_linked_reference_runs(
                            "condition_isolation": config.get("condition_isolation")},
             "tool_registry": manifest.get("tool_registry"),
         }
-        _require(current_compatibility == reference_compatibility, f"{path}: incompatible reference protocol")
+        _require(protocol_compatible(reference_compatibility, current_compatibility),
+                 f"{path}: incompatible reference protocol")
+        expected_provenance = runtime_provenance(reference_compatibility, current_compatibility)
+        _require(
+            config.get("reference_runtime_provenance") == expected_provenance,
+            f"{path}: reference checkout provenance differs from the recorded runtime",
+        )
         resolved = config.get("resolved_config", {})
         layers, seeds = _ids(resolved.get("layers"), "layers"), _ids(resolved.get("seeds"), "seeds")
         declared_protocol = {
@@ -494,7 +502,8 @@ def combine_linked_reference_runs(
             groups[(layer, seed, infer_benchmark_class(Path(control.get("benchmark_path", "unknown")), [control]), control.get("benchmark_mode", "unknown"))].append(materialized)
         _require(local == set(product(layers, seeds, controls)), f"{path}: incomplete layer–seed–sample grid")
         inputs.append({"directory": str(path), "intervention_record_count": len(records),
-                       "run_manifest_sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()})
+                       "run_manifest_sha256": "sha256:" + hashlib.sha256(manifest_bytes).hexdigest(),
+                       "reference_runtime_provenance": expected_provenance})
     if expected_keys is not None:
         _require(seen == expected_keys, "Completed chunks do not match the frozen expected layer–seed–sample grid")
     rows = []
@@ -531,6 +540,10 @@ def combine_linked_reference_runs(
         rows.append(row)
     return {"kind": SUMMARY_KIND, "execution_mode": "intervention_only", "control_reference": reference,
             "compatibility": reference_compatibility, "input_runs": inputs, "expected_plan": expected_plan_reference,
+            "reference_runtime_provenance_runs": [
+                {"directory": item["directory"], "provenance": item["reference_runtime_provenance"]}
+                for item in inputs if item["reference_runtime_provenance"] is not None
+            ],
             "intervention_protocol": intervention_protocol,
             "unique_sample_count": len(controls), "unique_control_count": len(controls),
             "paired_observation_count": len(seen), "rows": rows}

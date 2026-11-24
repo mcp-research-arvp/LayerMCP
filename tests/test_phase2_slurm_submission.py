@@ -229,6 +229,21 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertIn("CONTROL_REFERENCE_JOB_ID=24000009", command)
         self.assertIn(f"CONTROL_REFERENCE={future_reference}", command)
 
+    def test_completed_reference_keeps_job_identity_without_stale_dependency(self) -> None:
+        reference = self.root / "completed-reference" / "canonical_control"
+        reference.mkdir(parents=True)
+        (reference / "RUN_COMPLETE").write_text("\n", encoding="utf-8")
+        result = self.run_submitter(
+            "multi", "--multi-datasets", "finance_finqa",
+            "--execution-mode", "intervention-only",
+            "--control-reference", str(reference),
+            "--control-reference-job", "24000009", "--dry-run",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = next(line for line in result.stdout.splitlines() if line.startswith("sbatch "))
+        self.assertNotIn("--dependency=afterok:", command)
+        self.assertIn("CONTROL_REFERENCE_JOB_ID=24000009", command)
+
     def test_planned_reference_job_requires_intervention_and_reference_path(self) -> None:
         future_reference = self.root / "future-reference" / "canonical_control"
         for arguments, expected in (
@@ -346,10 +361,8 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         })
         command = (
             'module() { :; }; '
-            'python() { '
-            'if [[ "$1" == "-" ]]; then "$LAYERMCP_VENV/bin/python" "$@"; '
-            'else printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; fi; '
-            '}; export -f module python; bash "$1"'
+            'python() { printf "%s\\n" "$*" >> "$PHASE2_PYTHON_LOG"; }; '
+            'export -f module python; bash "$1"'
         )
         result = subprocess.run(
             ["bash", "-c", command, "bash", str(SINGLE_LAUNCHER)],
@@ -358,7 +371,9 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Evaluating 13 direct single-step benchmark files", result.stdout)
         commands = (self.root / "python_args.txt").read_text().splitlines()
-        self.assertIn("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)", commands[0])
+        self.assertTrue(any("load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)" in command for command in commands))
+        self.assertIn("-", commands[1])
+        self.assertIn("CUDA_VISIBLE_DEVICES", (ROOT / "scripts/slurm/phase2_environment.sh").read_text())
         arguments = commands[-1]
         self.assertIn("--benchmarks", arguments)
         self.assertIn("benchmark/math/math_controlled.json", arguments)

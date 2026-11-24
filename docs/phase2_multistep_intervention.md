@@ -66,7 +66,10 @@ used only for comparison after the altered rollout completes.
 
 A reference is tied to exactly one workflow type and selected input set. It
 also validates model/checkpoint identity, generation and reasoning settings,
-tool registry, and scoring protocol. Consequently, do **not** use `both` with
+tool registry, scoring protocol, and execution runtime (including device,
+dtype, CUDA, and driver). The originating checkout commit/source fingerprint
+is retained and reported as provenance, but does not alone invalidate an
+otherwise matching protocol. Consequently, do **not** use `both` with
 `--execution-mode intervention-only`: one reference cannot simultaneously
 match a direct single-step job and several distinct multi-step dataset groups.
 Use an explicit `single` or `multi` command for each compatible reference.
@@ -123,12 +126,14 @@ scripts/slurm/submit_phase2.sh multi \
 
 Normally the reference must be complete before intervention submission. To
 queue work while the reference is pending, supply its expected output path and
-`--control-reference-job JOB_ID`. The launcher adds Slurm
-`afterok:JOB_ID`; the evaluator verifies the completed reference's lifecycle,
-identity, coverage, content hashes, and recorded scheduler job ID before it
-loads model weights. Combine only intervention-only artifacts that link to the
-same reference and use the same target, method, strength mode, and strength
-value.
+`--control-reference-job JOB_ID`. The launcher adds Slurm `afterok:JOB_ID`.
+If that reference is already complete, the launcher retains the recorded job
+ID for evaluator validation but omits the stale dependency, which some Slurm
+clusters reject for completed parent jobs. The evaluator verifies the reference
+lifecycle, identity, coverage, content hashes, and recorded scheduler job ID
+before it loads model weights. Combine only intervention-only artifacts that
+link to the same reference and use the same target, method, strength mode, and
+strength value.
 
 Create a plan without generation, then submit one layer/seed chunk per job:
 

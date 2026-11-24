@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import os
+from copy import deepcopy
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -15,6 +16,7 @@ import torch
 from torch import nn
 
 from evaluation.evaluate import _tool_pool_metadata
+from research.phase2 import gpt_oss_intervention_eval as direct_evaluation
 from research.phase2.gpt_oss_intervention_eval import (
     EvaluationConfig,
     RUN_KIND,
@@ -27,7 +29,9 @@ from research.phase2.gpt_oss_intervention_eval import (
     _selected_sample_manifest,
 )
 from research.phase2.replay import ToolCatalog
-from research.phase2.control_reference import write_reference as seal_reference
+from research.phase2.control_reference import (
+    load_reference, runtime_provenance, write_reference as seal_reference,
+)
 from analysis.phase2_paired_results import combine_linked_reference_runs
 
 
@@ -732,6 +736,40 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             self.assertEqual(combined["unique_control_count"], 2)
             self.assertEqual(combined["paired_observation_count"], 2)
 
+    def test_linked_combiner_accepts_checkout_provenance_difference(self):
+        """A completed linked run combines when only checkout provenance changed."""
+        catalog = _catalog()
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = _write_saved_run(root, catalog, ["one"])
+            checkpoint = root / "checkpoint"
+            checkpoint.mkdir()
+            config = EvaluationConfig(layers=(0,), seeds=(17,), method="noise", strength=.1, example_limit=1)
+            reference_run = run_evaluation(
+                source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "reference", config=config,
+                execution_mode="reference", generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                session_factory=lambda: _session_for_catalog(catalog),
+            )
+            original_runtime_identity = direct_evaluation.runtime_identity
+
+            def changed_checkout(model):
+                runtime = original_runtime_identity(model)
+                runtime.update({"git_commit": "different-checkout", "runtime_code_fingerprint": "different-source"})
+                return runtime
+
+            with patch.object(direct_evaluation, "runtime_identity", side_effect=changed_checkout):
+                linked = run_evaluation(
+                    source_run_dir=source, checkpoint_dir=checkpoint, output_dir=root / "linked", config=config,
+                    execution_mode="intervention_only", control_reference=reference_run / "canonical_control",
+                    generator_loader=lambda _: MockGenerator(TinyGptOssModel()),
+                    session_factory=lambda: _session_for_catalog(catalog),
+                )
+            combined = combine_linked_reference_runs([linked], control_reference=reference_run / "canonical_control")
+            self.assertEqual(combined["paired_observation_count"], 1)
+            self.assertEqual(combined["reference_runtime_provenance_runs"][0]["provenance"]["differing_fields"], [
+                "git_commit", "runtime_code_fingerprint",
+            ])
+
     def test_intervention_only_verifies_and_records_reference_scheduler_job_id(self):
         catalog = _catalog()
         with TemporaryDirectory() as directory:
@@ -835,6 +873,62 @@ class Phase2GptOssInterventionEvaluationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "incompatible target/method/strength/strength-mode"):
                 combine_linked_reference_runs([first, second], control_reference=reference)
+
+    def test_reference_keeps_checkout_provenance_but_requires_execution_runtime(self):
+        compatibility = {
+            "workflow_type": "single_step",
+            "checkpoint_fingerprint": "checkpoint-a",
+            "inputs": {"selected_sample_ids": ["one"]},
+            "generation": {"reasoning_effort": "low"},
+            "runtime": {
+                "devices": ["cuda:0"], "dtypes": ["torch.bfloat16"],
+                "git_commit": "old", "runtime_code_fingerprint": "old-code",
+                "tracked_worktree_dirty": False,
+            },
+        }
+        with TemporaryDirectory() as directory:
+            reference_dir = Path(directory) / "reference"
+            seal_reference(
+                reference_dir, workflow_type="single_step", compatibility=compatibility,
+                controls=[{"sample_id": "one", "control": {"sample_id": "one"}}], metadata={},
+            )
+            current = deepcopy(compatibility)
+            current["runtime"].update({
+                "git_commit": "new", "runtime_code_fingerprint": "new-code",
+            })
+            reference, _ = load_reference(
+                reference_dir, workflow_type="single_step", compatibility=current, expected_ids=["one"],
+            )
+            self.assertNotIn("runtime_provenance", reference)
+            self.assertEqual(runtime_provenance(compatibility, current), {
+                "status": "recorded_checkout_difference",
+                "differing_fields": ["git_commit", "runtime_code_fingerprint"],
+            })
+
+            current["runtime"]["tracked_worktree_dirty"] = True
+            with self.assertRaisesRegex(ValueError, "reference model/input/generation/registry/scoring protocol is incompatible"):
+                load_reference(
+                    reference_dir, workflow_type="single_step", compatibility=current, expected_ids=["one"],
+                )
+
+            current["runtime"]["tracked_worktree_dirty"] = False
+            current["runtime"]["devices"] = ["cpu"]
+            with self.assertRaisesRegex(ValueError, "reference model/input/generation/registry/scoring protocol is incompatible"):
+                load_reference(
+                    reference_dir, workflow_type="single_step", compatibility=current, expected_ids=["one"],
+                )
+
+    def test_native_reference_rejects_dirty_checkout(self):
+        compatibility = {
+            "workflow_type": "single_step", "model_binding": "native_loader",
+            "runtime": {"tracked_worktree_dirty": True},
+        }
+        with TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, "require a clean tracked checkout"):
+                seal_reference(
+                    Path(directory) / "reference", workflow_type="single_step", compatibility=compatibility,
+                    controls=[{"sample_id": "one", "control": {"sample_id": "one"}}], metadata={},
+                )
 
     def test_parent_failure_after_sealing_invalidates_the_child_reference(self):
         catalog = _catalog()

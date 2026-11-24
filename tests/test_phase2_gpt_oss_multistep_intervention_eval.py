@@ -15,6 +15,7 @@ from torch import nn
 
 from models.routers import gpt_oss_local_router as router
 from analysis.phase2_multistep_paired_results import combine_completed_runs, combine_linked_reference_runs
+from research.phase2 import gpt_oss_multistep_intervention_eval as multistep_evaluation
 from research.phase2.gpt_oss_multistep_intervention_eval import (
     MultistepConfig,
     _paired_results,
@@ -180,6 +181,34 @@ class MultistepInterventionTests(unittest.TestCase):
             self.assertTrue((linked / "RUN_COMPLETE").is_file())
             combined = combine_linked_reference_runs([linked], control_reference=reference_run / "canonical_control")
             self.assertEqual(combined["unique_control_count"], 1)
+
+    def test_linked_combiner_accepts_checkout_provenance_difference(self):
+        """A completed linked workflow combines when only checkout provenance changed."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = MultistepConfig(0, "qkv", "noise", 0.25, 17, strength_mode="tensor_rms")
+            reference_run = self._run(
+                root, FakeGenerator(TinyModel()), config=config,
+                execution_mode="reference", output_name="reference",
+            )
+            original_runtime_identity = multistep_evaluation.runtime_identity
+
+            def changed_checkout(model):
+                runtime = original_runtime_identity(model)
+                runtime.update({"git_commit": "different-checkout", "runtime_code_fingerprint": "different-source"})
+                return runtime
+
+            with patch.object(multistep_evaluation, "runtime_identity", side_effect=changed_checkout):
+                linked = self._run(
+                    root, FakeGenerator(TinyModel()), config=config,
+                    execution_mode="intervention_only", control_reference=reference_run / "canonical_control",
+                    output_name="linked",
+                )
+            combined = combine_linked_reference_runs([linked], control_reference=reference_run / "canonical_control")
+            self.assertEqual(combined["paired_observation_count"], 1)
+            self.assertEqual(combined["reference_runtime_provenance_runs"][0]["provenance"]["differing_fields"], [
+                "git_commit", "runtime_code_fingerprint",
+            ])
 
     def test_intervention_only_verifies_and_records_reference_scheduler_job_id(self):
         with TemporaryDirectory() as directory:

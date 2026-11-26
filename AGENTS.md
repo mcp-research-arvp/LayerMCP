@@ -38,6 +38,11 @@ when public behavior, benchmark coverage, validation procedure, or durable
 project guidance actually changes. Do not update documentation merely to make
 a patch appear more complete.
 
+Phase 2 Slurm job names summarize workflow, resolved dataset selection, layer,
+target, and execution mode; preserve these identifiers when changing the
+launcher. Names are descriptive, not unique: use job IDs and saved manifests
+to identify runs and their exact dataset selections.
+
 ## Single-step reporting
 
 Use `analysis/minimal_scorecard.py` as the standard reporting utility for

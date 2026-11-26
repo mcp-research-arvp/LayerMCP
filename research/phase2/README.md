@@ -565,6 +565,18 @@ categories; repeated controls are not independent benchmark examples.
 
 ### Reuse one canonical performance control
 
+Phase 2 Slurm names summarize the workflow, resolved dataset selection, layer,
+target, and execution mode (`ref`, `int`, or `paired`). For example,
+`p2-single-enterprise-set-l12-qkv-int` covers the selected enterprise direct
+datasets, while `p2-multi-enterprise_tau2-l12-qkv-int` identifies one multi-step
+group. A single direct dataset uses its dataset ID; multiple direct datasets in
+one domain use `<domain>-set`, selections across domains use `mixed-set`, and
+the default unfiltered selection uses `all`. A set label does not identify its
+exact members: inspect the submitted `DATASET_SELECTION` and run manifest.
+Slurm job IDs, not names, uniquely identify jobs. Changing a job name can also
+change the `%x` portion of its log filename; locate logs using the job ID.
+These names apply to future submissions, not already queued jobs.
+
 `paired` remains the default diagnostic mode.  For a full layer screen, create
 one reference and submit intervention-only chunks linked to that exact
 reference.  The reference is comparison evidence only: a multi-step

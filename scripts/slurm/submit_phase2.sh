@@ -386,6 +386,42 @@ if [[ -n "${CONTROL_REFERENCE_JOB_ID:-}" && ! -f "$CONTROL_REFERENCE/RUN_COMPLET
   scheduler_args+=("--dependency=afterok:$CONTROL_REFERENCE_JOB_ID")
 fi
 submitted=0
+case "$EXECUTION_MODE" in
+  paired) job_mode=paired ;;
+  reference) job_mode=ref ;;
+  intervention_only) job_mode=int ;;
+esac
+
+# Summarize the resolved selection, not just the requested selector: domain
+# and dataset selectors can be combined and their union may span domains.
+single_selection_label() {
+  local selection="$1" path id first_domain="" count=0 single_id="" mixed=0
+  local -a paths=()
+  [[ -n "$selection" ]] || { printf 'all'; return; }
+  IFS=':' read -r -a paths <<< "$selection"
+  for path in "${paths[@]}"; do
+    for id in "${SINGLE_STEP_PRIMARY_DATASET_IDS[@]}"; do
+      if [[ "$path" == "${SINGLE_STEP_DATASETS[$id]}" ]]; then
+        count=$((count + 1))
+        single_id="$id"
+        if [[ -z "$first_domain" ]]; then
+          first_domain="${SINGLE_STEP_DATASET_DOMAINS[$id]}"
+        elif [[ "$first_domain" != "${SINGLE_STEP_DATASET_DOMAINS[$id]}" ]]; then
+          mixed=1
+        fi
+        break
+      fi
+    done
+  done
+  if (( count == 1 )); then
+    printf '%s' "$single_id"
+  elif (( mixed )); then
+    printf 'mixed-set'
+  else
+    printf '%s-set' "$first_domain"
+  fi
+}
+
 submit_job() {
   local label="$1"
   local export_spec="$2"
@@ -407,8 +443,9 @@ submit_job() {
 }
 
 if [[ "$mode" != multi ]]; then
+  single_label="$(single_selection_label "$DATASET_SELECTION")"
   submit_job \
-    "p2-single-l${LAYER_INDEX}-${ATTENTION_TARGET}" \
+    "p2-single-${single_label}-l${LAYER_INDEX}-${ATTENTION_TARGET}-${job_mode}" \
     "$common_exports,DATASET_SELECTION=${DATASET_SELECTION}" \
     "$SINGLE_LAUNCHER"
 fi
@@ -432,7 +469,7 @@ if [[ "$mode" != single ]]; then
   fi
   for group in "${groups[@]}"; do
     submit_job \
-      "p2-multi-${group}" \
+      "p2-multi-${group}-l${LAYER_INDEX}-${ATTENTION_TARGET}-${job_mode}" \
       "$common_exports,RUN_KIND=$RUN_KIND,DATASET_GROUP=$group" \
       "$MULTI_LAUNCHER"
   done

@@ -88,6 +88,45 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                 self.assertEqual(any("DATASET_GROUP=math_controlled" in line for line in commands), mode != "single")
         self.assertFalse(self.submit_log.exists())
 
+    def test_job_names_describe_resolved_selection_layer_target_and_mode(self) -> None:
+        reference = self.root / "control-reference"
+        reference.mkdir()
+        cases = (
+            (("single", "--single-domains", "enterprise", "--execution-mode", "reference"),
+             "p2-single-enterprise-set-ref"),
+            (("single", "--single-domains", "finance", "--execution-mode", "intervention-only",
+              "--control-reference", str(reference)), "p2-single-finance-set-l12-qkv-int"),
+            (("single", "--single-datasets", "finance_finqa_test_single"),
+             "p2-single-finance_finqa_test_single-l12-qkv-paired"),
+            (("single", "--single-domains", "math", "--single-datasets", "finance_finqa_test_single"),
+             "p2-single-mixed-set-l12-qkv-paired"),
+            (("single",), "p2-single-all-l12-qkv-paired"),
+            (("multi", "--multi-datasets", "enterprise_tau2"),
+             "p2-multi-enterprise_tau2-l12-qkv-paired"),
+            (("multi", "--multi-datasets", "finance_convfinqa", "--execution-mode", "reference"),
+             "p2-multi-finance_convfinqa-ref"),
+        )
+        for arguments, expected in cases:
+            with self.subTest(arguments=arguments):
+                result = self.run_submitter(*arguments, "--layer", "12", "--target", "qkv", "--dry-run")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                command = next(line for line in result.stdout.splitlines() if line.startswith("sbatch "))
+                self.assertIn(f"--job-name={expected}", shlex.split(command))
+
+    def test_multistep_job_names_distinguish_layers_and_modes(self) -> None:
+        for layer, mode, expected in (
+            (0, "reference", "p2-multi-enterprise_tau2-ref"),
+            (23, "paired", "p2-multi-enterprise_tau2-l23-qkv-paired"),
+        ):
+            with self.subTest(layer=layer, mode=mode):
+                result = self.run_submitter(
+                    "multi", "--multi-datasets", "enterprise_tau2", "--layer", str(layer),
+                    "--execution-mode", mode, "--dry-run",
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                command = next(line for line in result.stdout.splitlines() if line.startswith("sbatch "))
+                self.assertIn(f"--job-name={expected}", shlex.split(command))
+
     def test_primary_only_excludes_controlled_math(self) -> None:
         result = self.run_submitter("multi", "--primary-only", "--dry-run")
         self.assertEqual(result.returncode, 0, result.stderr)

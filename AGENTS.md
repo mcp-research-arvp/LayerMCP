@@ -38,6 +38,12 @@ when public behavior, benchmark coverage, validation procedure, or durable
 project guidance actually changes. Do not update documentation merely to make
 a patch appear more complete.
 
+Phase 2 Slurm names use `p2-<workflow>-<selection>-ref` for unchanged
+references and `p2-<workflow>-<selection>-l<layer>-<target>-<mode>` for
+interventions and paired jobs. Use the same convention across domains; see the
+Phase 2 README for selection labels and examples. Names are descriptive, not
+unique: use cluster, job ID and manifests to identify runs and exact datasets.
+
 ## Single-step reporting
 
 Use `analysis/minimal_scorecard.py` as the standard reporting utility for

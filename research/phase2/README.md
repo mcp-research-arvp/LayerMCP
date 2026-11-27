@@ -565,8 +565,12 @@ categories; repeated controls are not independent benchmark examples.
 
 ### Reuse one canonical performance control
 
-Phase 2 Slurm names summarize the workflow, resolved dataset selection, layer,
-target, and execution mode (`ref`, `int`, or `paired`). For example,
+Phase 2 Slurm names use `p2-<workflow>-<selection>-ref` for unchanged references
+and `p2-<workflow>-<selection>-l<layer>-<target>-<mode>` for intervention-only
+(`int`) and paired (`paired`) jobs. Reference names omit layer and target because
+there is no intervention. For example, `p2-single-finance-set-ref` identifies
+the finance direct reference, and `p2-multi-finance_convfinqa-ref` identifies
+the multi-step ConvFinQA reference. For intervention-only jobs,
 `p2-single-enterprise-set-l12-qkv-int` covers the selected enterprise direct
 datasets, while `p2-multi-enterprise_tau2-l12-qkv-int` identifies one multi-step
 group. A single direct dataset uses its dataset ID; multiple direct datasets in

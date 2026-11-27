@@ -444,8 +444,13 @@ submit_job() {
 
 if [[ "$mode" != multi ]]; then
   single_label="$(single_selection_label "$DATASET_SELECTION")"
+  if [[ "$EXECUTION_MODE" == reference ]]; then
+    single_job_name="p2-single-${single_label}-ref"
+  else
+    single_job_name="p2-single-${single_label}-l${LAYER_INDEX}-${ATTENTION_TARGET}-${job_mode}"
+  fi
   submit_job \
-    "p2-single-${single_label}-l${LAYER_INDEX}-${ATTENTION_TARGET}-${job_mode}" \
+    "$single_job_name" \
     "$common_exports,DATASET_SELECTION=${DATASET_SELECTION}" \
     "$SINGLE_LAUNCHER"
 fi
@@ -468,8 +473,13 @@ if [[ "$mode" != single ]]; then
     fi
   fi
   for group in "${groups[@]}"; do
+    if [[ "$EXECUTION_MODE" == reference ]]; then
+      multi_job_name="p2-multi-${group}-ref"
+    else
+      multi_job_name="p2-multi-${group}-l${LAYER_INDEX}-${ATTENTION_TARGET}-${job_mode}"
+    fi
     submit_job \
-      "p2-multi-${group}-l${LAYER_INDEX}-${ATTENTION_TARGET}-${job_mode}" \
+      "$multi_job_name" \
       "$common_exports,RUN_KIND=$RUN_KIND,DATASET_GROUP=$group" \
       "$MULTI_LAUNCHER"
   done

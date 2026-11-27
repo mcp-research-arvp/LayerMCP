@@ -93,7 +93,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
         reference.mkdir()
         cases = (
             (("single", "--single-domains", "enterprise", "--execution-mode", "reference"),
-             "p2-single-enterprise-set-l12-qkv-ref"),
+             "p2-single-enterprise-set-ref"),
             (("single", "--single-domains", "finance", "--execution-mode", "intervention-only",
               "--control-reference", str(reference)), "p2-single-finance-set-l12-qkv-int"),
             (("single", "--single-datasets", "finance_finqa_test_single"),
@@ -103,6 +103,8 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
             (("single",), "p2-single-all-l12-qkv-paired"),
             (("multi", "--multi-datasets", "enterprise_tau2"),
              "p2-multi-enterprise_tau2-l12-qkv-paired"),
+            (("multi", "--multi-datasets", "finance_convfinqa", "--execution-mode", "reference"),
+             "p2-multi-finance_convfinqa-ref"),
         )
         for arguments, expected in cases:
             with self.subTest(arguments=arguments):
@@ -112,7 +114,10 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                 self.assertIn(f"--job-name={expected}", shlex.split(command))
 
     def test_multistep_job_names_distinguish_layers_and_modes(self) -> None:
-        for layer, mode, suffix in ((0, "reference", "ref"), (23, "paired", "paired")):
+        for layer, mode, expected in (
+            (0, "reference", "p2-multi-enterprise_tau2-ref"),
+            (23, "paired", "p2-multi-enterprise_tau2-l23-qkv-paired"),
+        ):
             with self.subTest(layer=layer, mode=mode):
                 result = self.run_submitter(
                     "multi", "--multi-datasets", "enterprise_tau2", "--layer", str(layer),
@@ -120,7 +125,7 @@ class Phase2SlurmSubmissionTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 command = next(line for line in result.stdout.splitlines() if line.startswith("sbatch "))
-                self.assertIn(f"--job-name=p2-multi-enterprise_tau2-l{layer}-qkv-{suffix}", shlex.split(command))
+                self.assertIn(f"--job-name={expected}", shlex.split(command))
 
     def test_primary_only_excludes_controlled_math(self) -> None:
         result = self.run_submitter("multi", "--primary-only", "--dry-run")
